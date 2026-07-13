@@ -2310,7 +2310,13 @@ el('lbtn').addEventListener('click',async()=>{
   if(!u||!p){toast('Ingresa usuario y contraseña','err');return;}
   el('lbtn').disabled=true;el('lbtn').textContent='Verificando...';
   try{await signInWithEmailAndPassword(auth,u2e(u),p);await openApp(u);el('lp').value='';toast('¡Bienvenido/a! 👋','ok');}
-  catch(e){toast('Usuario o contraseña incorrectos','err');}
+  catch(e){
+    console.error('Login error:',e.code,e.message);
+    if(e.code==='auth/unauthorized-domain')toast('⚠️ Este dominio no está autorizado en Firebase. Avisa al administrador.','err',6000);
+    else if(e.code==='auth/network-request-failed')toast('Sin conexión — revisa tu internet','err');
+    else if(e.code==='auth/user-not-found'||e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')toast('Usuario o contraseña incorrectos','err');
+    else toast('Error al iniciar sesión: '+(e.code||e.message),'err',6000);
+  }
   finally{el('lbtn').disabled=false;el('lbtn').textContent='Entrar al sistema';}
 });
 el('lu').addEventListener('keydown',e=>{if(e.key==='Enter')el('lp').focus();});
