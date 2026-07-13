@@ -1,0 +1,25 @@
+{
+  "name": "Westland Marcaciones",
+  "short_name": "Westland",
+  "description": "Control de marcaciones y control logístico — Juguetería Westland Nivel 300",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#00252e",
+  "theme_color": "#00252e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://i.ibb.co/hFLhT2kg/Pngtree-fingerprint-icon-cartoon-design-4476243.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://i.ibb.co/hFLhT2kg/Pngtree-fingerprint-icon-cartoon-design-4476243.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

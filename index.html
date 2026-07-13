@@ -13,26 +13,16 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Westland">
-<link rel="manifest" id="pwa-manifest">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="https://i.ibb.co/hFLhT2kg/Pngtree-fingerprint-icon-cartoon-design-4476243.png">
+<link rel="icon" href="https://i.ibb.co/hFLhT2kg/Pngtree-fingerprint-icon-cartoon-design-4476243.png">
 <script>
-// Inline PWA manifest
-const manifest={name:"Westland Marcaciones",short_name:"Westland",description:"Control de marcaciones Juguetería Westland Nivel 300",start_url:"./",display:"standalone",background_color:"#00252e",theme_color:"#00252e",orientation:"portrait",icons:[{src:"https://i.ibb.co/hFLhT2kg/Pngtree-fingerprint-icon-cartoon-design-4476243.png",sizes:"192x192",type:"image/png"},{src:"https://i.ibb.co/hFLhT2kg/Pngtree-fingerprint-icon-cartoon-design-4476243.png",sizes:"512x512",type:"image/png"}]};
-const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
-document.getElementById('pwa-manifest').href=URL.createObjectURL(blob);
-// Register service worker for offline/installable
+// Register service worker for offline/installable (archivo real: sw.js, junto a este index.html)
+// Nota: si ves un aviso de "SW error" en una vista previa (no en tu dominio real), es normal —
+// ahí sw.js no está junto al index.html. En GitHub Pages, con los 3 archivos juntos, no aparece.
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{
-    // Inline service worker via blob
-    const swCode=`
-      const CACHE='wl-v1';
-      const URLS=['./'];
-      self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(URLS)));self.skipWaiting();});
-      self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
-      self.addEventListener('fetch',e=>{if(e.request.mode==='navigate')e.respondWith(fetch(e.request).catch(()=>caches.match('./')));});
-    `;
-    const swBlob=new Blob([swCode],{type:'text/javascript'});
-    const swUrl=URL.createObjectURL(swBlob);
-    navigator.serviceWorker.register(swUrl).then(()=>console.log('SW registered')).catch(()=>{});
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
   });
 }
 // PWA install prompt
@@ -880,6 +870,12 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
       <div style="font-size:12.5px;color:var(--mt)">Registro y confirmación de mercancía recibida de proveedores. Cada envío queda vinculado al usuario que lo recibe, con fecha y hora automáticas.</div>
     </div>
 
+    <!-- 📈 KPIs (siempre visibles, arriba) -->
+    <div class="card">
+      <div class="ctitle">📈 KPIs & Estadísticas</div>
+      <div id="log-kpi-cards" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+    </div>
+
     <!-- ⚙️ CONFIGURACIÓN (solo admin) -->
     <div id="log-config-card" style="display:none">
       <div class="asec"><div class="ashdr" data-ac="log-ac-cfg"><span>⚙️ Configuración logística</span><span class="ach">▾</span></div>
@@ -1039,11 +1035,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
       </div>
     </div></div>
 
-    <!-- 📈 KPIs -->
-    <div class="asec"><div class="ashdr" data-ac="log-ac-kpi"><span>📈 KPIs & Estadísticas</span><span class="ach">▾</span></div>
+    <!-- 📅 ACTIVIDAD MENSUAL (gráfica, opcional/abajo) -->
+    <div class="asec"><div class="ashdr" data-ac="log-ac-kpi"><span>📅 Actividad mensual</span><span class="ach">▾</span></div>
     <div class="asbdy" id="log-ac-kpi">
-      <div id="log-kpi-cards" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px"></div>
-      <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📅 Actividad mensual</div>
+      <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📅 Recibos completados por mes</div>
       <canvas id="log-kpi-chart" style="width:100%;max-height:220px"></canvas>
       <div style="font-size:11px;color:var(--mt);text-align:center;margin-top:6px" id="log-kpi-mes-label"></div>
     </div></div>
@@ -3777,7 +3772,7 @@ function tabSwitch(tab){
   el('tab-log').style.display=isLog?'block':'none';
   el('tabbtn-reloj').classList.toggle('active',!isLog);
   el('tabbtn-log').classList.toggle('active',isLog);
-  if(isLog){renderLogHistorial();window.scrollTo({top:0,behavior:'smooth'});}
+  if(isLog){renderLogHistorial();renderLogKPIs();window.scrollTo({top:0,behavior:'smooth'});}
 }
 el('tabbtn-reloj').addEventListener('click',()=>tabSwitch('reloj'));
 el('tabbtn-log').addEventListener('click',()=>tabSwitch('log'));
@@ -4249,12 +4244,15 @@ async function renderLogHistorial(){
   }));
   list.querySelectorAll('[data-mod]').forEach(b=>b.addEventListener('click',async(e)=>{
     e.stopPropagation();const k=b.dataset.mod;const v=LOGR[k];
-    const nuevaFecha=prompt('Nueva fecha de envío (YYYY-MM-DD):',v.fechaEnvio||'');if(!nuevaFecha)return;
+    const esRecibido=v.estado==='recibido'||v.estado==='parcial';
+    const campo=esRecibido?'fechaRecibido':'fechaEnvio';
+    const etiqueta=esRecibido?'fecha de recepción':'fecha de envío';
+    const nuevaFecha=prompt('Nueva '+etiqueta+' (YYYY-MM-DD):',v[campo]||'');if(!nuevaFecha)return;
     const motivo=prompt('Motivo de la modificación:','');if(!motivo){toast('Debes ingresar un motivo','err');return;}
-    const bitEntry={accion:'Fecha modificada de '+v.fechaEnvio+' a '+nuevaFecha,por:CU,ts:new Date().toISOString(),motivo};
+    const bitEntry={accion:'Fecha modificada ('+etiqueta+') de '+(v[campo]||'—')+' a '+nuevaFecha,por:CU,ts:new Date().toISOString(),motivo};
     const bita=v.bitacora?[...Object.values(v.bitacora),bitEntry]:[bitEntry];
-    await set(R(db,LOGREC+'/'+k),{...v,fechaEnvio:nuevaFecha,bitacora:bita});
-    toast('Modificado ✓','ok');renderLogHistorial();
+    await set(R(db,LOGREC+'/'+k),{...v,[campo]:nuevaFecha,bitacora:bita});
+    toast('Modificado ✓','ok');renderLogHistorial();renderLogKPIs();
   }));
   // Botón imprimir PDF
   list.querySelectorAll('[data-print]').forEach(b=>b.addEventListener('click',async(e)=>{
@@ -4349,7 +4347,7 @@ function updateLogBadge(){
 function listenLogistica(){
   if(logListening)return;logListening=true;
   onValue(R(db,LOGPROV),()=>{if(CU)renderLogProveedores();});
-  onValue(R(db,LOGREC),()=>{if(CU){renderLogPendientes();if(el('log-hist-wrap')&&el('log-hist-wrap').style.display==='block')renderLogHistorial();updateLogBadge();}});
+  onValue(R(db,LOGREC),()=>{if(CU){renderLogPendientes();if(el('log-hist-wrap')&&el('log-hist-wrap').style.display==='block')renderLogHistorial();updateLogBadge();if(el('tab-log')&&el('tab-log').style.display!=='none')renderLogKPIs();}});
   onValue(R(db,LOGDEPTO),()=>{if(CU){loadLogDeptos();}});
 }
 
