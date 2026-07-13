@@ -587,6 +587,12 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="horarios-list" style="margin-top:11px"></div>
           </div></div>
 
+          <div class="asec"><div class="ashdr" data-ac="ac-horcol"><span>📋 Horario predeterminado por colaborador</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-horcol">
+            <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Asigna horario de entrada y salida por día de la semana a cada colaborador activo. Solo los activos en vista semanal pueden editarse. El sistema usará este horario para la habilitación automática (10 min antes de entrada).</div>
+            <div id="horcol-list"></div>
+          </div></div>
+
           <div class="asec"><div class="ashdr" data-ac="ac-em"><span>✉ Correo automático (EmailJS)</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-em">
             <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Plan gratuito: 200 correos/mes. <a href="https://www.emailjs.com" target="_blank" style="color:var(--ac)">emailjs.com</a></div>
@@ -874,194 +880,120 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
       <div style="font-size:12.5px;color:var(--mt)">Registro y confirmación de mercancía recibida de proveedores. Cada envío queda vinculado al usuario que lo recibe, con fecha y hora automáticas.</div>
     </div>
 
-    <!-- CONFIGURACIÓN LOGÍSTICA (solo admin) -->
-    <div id="log-config-card" class="card" style="display:none">
-      <div class="ctitle">⚙️ Configuración logística</div>
-
-      <!-- DEPARTAMENTOS -->
-      <div style="margin-bottom:14px">
-        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🏬 Departamentos</div>
-        <div class="fg2">
-          <div class="fg"><input class="fc" id="log-depto-nombre" placeholder="Ej: Juguetería, Ropa, Calzado..."></div>
-          <div class="fg"><button class="btn bp bsm" id="btn-log-depto-add" style="width:auto">➕ Agregar</button></div>
+    <!-- ⚙️ CONFIGURACIÓN (solo admin) -->
+    <div id="log-config-card" style="display:none">
+      <div class="asec"><div class="ashdr" data-ac="log-ac-cfg"><span>⚙️ Configuración logística</span><span class="ach">▾</span></div>
+      <div class="asbdy" id="log-ac-cfg">
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🏬 Departamentos</div>
+          <div class="fg2">
+            <div class="fg"><input class="fc" id="log-depto-nombre" placeholder="Ej: Juguetería, Ropa, Calzado..."></div>
+            <div class="fg"><button class="btn bp bsm" id="btn-log-depto-add" style="width:auto">➕ Agregar</button></div>
+          </div>
+          <div id="log-depto-list" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px"></div>
         </div>
-        <div id="log-depto-list" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px"></div>
-      </div>
-
-      <!-- PROVEEDORES ADICIONALES (Firebase, complementan el maestro) -->
-      <div>
-        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">🏢 Proveedores adicionales</div>
-        <div style="font-size:11px;color:var(--mt);margin-bottom:7px">Los 3,574 proveedores del catálogo maestro ya están disponibles. Agrega aquí proveedores nuevos que no estén en el listado.</div>
-        <div class="fg2">
-          <div class="fg"><input class="fc" id="log-prov-nombre" placeholder="Nombre del proveedor"></div>
-          <div class="fg"><select class="fc" id="log-prov-tipo"><option value="Importación">Importación</option><option value="Zona Libre">Zona Libre</option></select></div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">🏢 Proveedores adicionales</div>
+          <div style="font-size:11px;color:var(--mt);margin-bottom:7px">Los 3,574 proveedores del catálogo maestro ya están disponibles.</div>
+          <div class="fg2">
+            <div class="fg"><input class="fc" id="log-prov-nombre" placeholder="Nombre del proveedor"></div>
+            <div class="fg"><select class="fc" id="log-prov-tipo"><option value="Importación">Importación</option><option value="Zona Libre">Zona Libre</option></select></div>
+          </div>
+          <button class="btn bp bsm" id="btn-log-prov-add" style="width:auto;margin-bottom:8px">➕ Agregar proveedor</button>
+          <div id="log-prov-list" style="max-height:180px;overflow-y:auto"></div>
         </div>
-        <button class="btn bp bsm" id="btn-log-prov-add" style="width:auto;margin-bottom:8px">➕ Agregar proveedor</button>
-        <div id="log-prov-list" style="max-height:180px;overflow-y:auto"></div>
-      </div>
+      </div></div>
     </div>
 
-    <!-- NUEVO ENVÍO (solo admin) -->
-    <div id="log-nuevo-card" class="card" style="display:none">
-      <div class="ctitle">📤 Nuevo envío — notificar a bodega</div>
-
-      <!-- PROVEEDOR Y TIPO -->
-      <div class="fg2">
-        <div class="fg"><label>Proveedor</label>
-          <input class="fc" id="log-nv-prov-search" list="log-prov-datalist" placeholder="Escribe para buscar..." autocomplete="off">
-          <datalist id="log-prov-datalist"></datalist>
-          <input type="hidden" id="log-nv-prov">
-        </div>
-        <div class="fg"><label>Origen</label>
-          <select class="fc" id="log-nv-tipo">
-            <option value="Importación">Importación</option>
-            <option value="Zona Libre">Zona Libre</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- RECIBOS — múltiples con botón + -->
-      <div style="margin-bottom:8px">
-        <label style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px">N° de recibo(s)</label>
-        <div id="log-nv-recibos-list" style="margin-top:6px">
-          <div class="log-recibo-row" style="display:flex;gap:6px;margin-bottom:6px">
-            <input class="fc log-nv-recibo-input" placeholder="Ej: 407227" style="flex:1">
-            <button type="button" class="btn bg bsm btn-rm-recibo" style="width:auto;padding:4px 10px;color:var(--dn);display:none">✕</button>
+    <!-- 📤 NUEVO FORMULARIO (solo admin) -->
+    <div id="log-nuevo-card" style="display:none">
+      <div class="asec"><div class="ashdr" data-ac="log-ac-nuevo"><span>📤 Nuevo formulario de envío</span><span class="ach">▾</span></div>
+      <div class="asbdy" id="log-ac-nuevo">
+        <div class="fg2">
+          <div class="fg"><label>Proveedor</label>
+            <input class="fc" id="log-nv-prov-search" list="log-prov-datalist" placeholder="Escribe para buscar..." autocomplete="off">
+            <datalist id="log-prov-datalist"></datalist>
+            <input type="hidden" id="log-nv-prov">
+          </div>
+          <div class="fg"><label>Origen</label>
+            <select class="fc" id="log-nv-tipo"><option value="Importación">Importación</option><option value="Zona Libre">Zona Libre</option></select>
           </div>
         </div>
-        <button type="button" id="btn-add-recibo" class="btn bg bsm" style="width:auto;font-size:11px;padding:4px 10px">➕ Agregar otro recibo</button>
-      </div>
-
-      <!-- DEPARTAMENTO -->
-      <div class="fg"><label>Departamento</label>
-        <select class="fc" id="log-nv-depto"><option value="">Seleccionar...</option></select>
-      </div>
-
-      <!-- CANTIDADES -->
-      <div class="fg2">
-        <div class="fg"><label>Bultos esperados</label><input type="number" min="0" class="fc" id="log-nv-bultos" placeholder="Ej: 491"></div>
-        <div class="fg"><label>Pallets (opcional)</label><input type="number" min="0" class="fc" id="log-nv-pallets"></div>
-      </div>
-      <div class="fg2">
-        <div class="fg"><label>Piezas esperadas (opcional)</label><input type="number" min="0" class="fc" id="log-nv-piezas"></div>
-        <div class="fg"><label>Cantidad de ítems (opcional)</label><input type="number" min="0" class="fc" id="log-nv-items"></div>
-      </div>
-
-      <!-- EQUIPO — primero tipo, luego naviera, luego cantidad -->
-      <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px">
-        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">🚢 Información del equipo</div>
-        <div class="fg"><label>Tipo de equipo</label>
-          <select class="fc" id="log-nv-tipoequipo">
-            <option value="">Seleccionar...</option>
-            <optgroup label="🚛 Camión / Furgón">
-              <option value="Camión">Camión</option>
-              <option value="Furgón">Furgón</option>
-              <option value="Furgón refrigerado">Furgón refrigerado</option>
-            </optgroup>
-            <optgroup label="📦 Contenedor estándar (8'6&quot; altura)">
-              <option value="Contenedor 20' Std">Contenedor 20' Estándar</option>
-              <option value="Contenedor 40' Std">Contenedor 40' Estándar</option>
-              <option value="Contenedor 45' Std">Contenedor 45' Estándar</option>
-            </optgroup>
-            <optgroup label="📦 Contenedor High Cube (9'6&quot; altura)">
-              <option value="Contenedor 20' HC">Contenedor 20' High Cube</option>
-              <option value="Contenedor 40' HC">Contenedor 40' High Cube</option>
-              <option value="Contenedor 45' HC">Contenedor 45' High Cube</option>
-            </optgroup>
-            <optgroup label="📦 Especiales">
-              <option value="Contenedor Open Top 20'">Contenedor Open Top 20'</option>
-              <option value="Contenedor Open Top 40'">Contenedor Open Top 40'</option>
-              <option value="Contenedor Flat Rack 20'">Contenedor Flat Rack 20'</option>
-              <option value="Contenedor Flat Rack 40'">Contenedor Flat Rack 40'</option>
-              <option value="Contenedor Reefer 20'">Contenedor Reefer 20'</option>
-              <option value="Contenedor Reefer 40'">Contenedor Reefer 40'</option>
-            </optgroup>
-            <optgroup label="✈️ Aéreo / Courier">
-              <option value="Courier">Courier</option>
-              <option value="Carga aérea">Carga aérea</option>
-            </optgroup>
-            <optgroup label="📋 Otros">
-              <option value="Pallet suelto">Pallet suelto</option>
-              <option value="Otro">Otro</option>
-            </optgroup>
-          </select>
-        </div>
-        <!-- Naviera — solo si es contenedor -->
-        <div id="log-naviera-box" style="display:none" class="fg"><label>Naviera / Línea</label>
-          <select class="fc" id="log-nv-naviera">
-            <option value="">Seleccionar...</option>
-            <optgroup label="Top navieras">
-              <option value="MSC">MSC (Mediterranean Shipping Company)</option>
-              <option value="Maersk">Maersk</option>
-              <option value="CMA CGM">CMA CGM</option>
-              <option value="COSCO">COSCO Shipping</option>
-              <option value="Hapag-Lloyd">Hapag-Lloyd</option>
-              <option value="ONE">ONE (Ocean Network Express)</option>
-              <option value="Evergreen">Evergreen</option>
-              <option value="Yang Ming">Yang Ming</option>
-              <option value="HMM">HMM (Hyundai Merchant Marine)</option>
-              <option value="ZIM">ZIM</option>
-              <option value="PIL">PIL (Pacific International Lines)</option>
-              <option value="OOCL">OOCL</option>
-              <option value="APL">APL</option>
-              <option value="Wan Hai">Wan Hai</option>
-            </optgroup>
-            <option value="Otra">Otra naviera</option>
-          </select>
-        </div>
-        <!-- Cantidad y contenedores — solo si es contenedor -->
-        <div id="log-contenedor-box" style="display:none">
-          <div class="fg"><label>Cantidad de equipos</label>
-            <input type="number" min="1" class="fc" id="log-nv-cantequipos" value="1" placeholder="Ej: 3">
+        <div style="margin-bottom:8px">
+          <label style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px">N° de recibo(s)</label>
+          <div id="log-nv-recibos-list" style="margin-top:6px">
+            <div class="log-recibo-row" style="display:flex;gap:6px;margin-bottom:6px">
+              <input class="fc log-nv-recibo-input" placeholder="Ej: 407227" style="flex:1">
+              <button type="button" class="btn bg bsm btn-rm-recibo" style="width:auto;padding:4px 10px;color:var(--dn);display:none">✕</button>
+            </div>
           </div>
-          <div id="log-contenedor-inputs" style="margin-top:6px"></div>
-          <div style="font-size:11px;color:var(--mt);margin-top:4px">Formato estándar: 4 letras + 7 dígitos (ej: TCKU1234567)</div>
+          <button type="button" id="btn-add-recibo" class="btn bg bsm" style="width:auto;font-size:11px;padding:4px 10px">➕ Agregar otro recibo</button>
         </div>
-        <!-- Para camión/furgón: solo cantidad -->
-        <div id="log-camion-cant-box" style="display:none" class="fg">
-          <label>Cantidad de equipos</label>
-          <input type="number" min="1" class="fc" id="log-nv-cantequipos-camion" value="1">
+        <div class="fg"><label>Departamento</label><select class="fc" id="log-nv-depto"><option value="">Seleccionar...</option></select></div>
+        <div class="fg2">
+          <div class="fg"><label>Bultos esperados</label><input type="number" min="0" class="fc" id="log-nv-bultos" placeholder="Ej: 491"></div>
+          <div class="fg"><label>Pallets (opcional)</label><input type="number" min="0" class="fc" id="log-nv-pallets"></div>
         </div>
-      </div>
-
-      <!-- TRANSPORTE -->
-      <div class="fg2">
-        <div class="fg"><label>Chofer (opcional)</label><input class="fc" id="log-nv-chofer"></div>
-        <div class="fg"><label>Placa (opcional)</label><input class="fc" id="log-nv-placa"></div>
-      </div>
-
-      <div class="fg"><label>Nota (opcional)</label><textarea class="fc" id="log-nv-nota" rows="2" style="resize:vertical"></textarea></div>
-      <div class="fg"><label>👤 Asignar a colaborador</label>
-        <select class="fc" id="log-nv-asignado">
-          <option value="todos">📢 Notificar a todos</option>
-        </select>
-      </div>
-      <button class="btn bp bsm" id="btn-log-nv-enviar" style="width:auto">📤 Enviar formulario a bodega</button>
+        <div class="fg2">
+          <div class="fg"><label>Piezas esperadas (opcional)</label><input type="number" min="0" class="fc" id="log-nv-piezas"></div>
+          <div class="fg"><label>Cantidad de ítems (opcional)</label><input type="number" min="0" class="fc" id="log-nv-items"></div>
+        </div>
+        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">🚢 Información del equipo</div>
+          <div class="fg"><label>Tipo de equipo</label>
+            <select class="fc" id="log-nv-tipoequipo">
+              <option value="">Seleccionar...</option>
+              <optgroup label="🚛 Camión / Furgón"><option value="Camión">Camión</option><option value="Furgón">Furgón</option><option value="Furgón refrigerado">Furgón refrigerado</option></optgroup>
+              <optgroup label="📦 Contenedor Estándar"><option value="Contenedor 20' Std">Contenedor 20' Estándar</option><option value="Contenedor 40' Std">Contenedor 40' Estándar</option><option value="Contenedor 45' Std">Contenedor 45' Estándar</option></optgroup>
+              <optgroup label="📦 High Cube"><option value="Contenedor 20' HC">Contenedor 20' HC</option><option value="Contenedor 40' HC">Contenedor 40' HC</option><option value="Contenedor 45' HC">Contenedor 45' HC</option></optgroup>
+              <optgroup label="📦 Especiales"><option value="Contenedor Open Top 20'">Open Top 20'</option><option value="Contenedor Open Top 40'">Open Top 40'</option><option value="Contenedor Flat Rack 20'">Flat Rack 20'</option><option value="Contenedor Flat Rack 40'">Flat Rack 40'</option><option value="Contenedor Reefer 20'">Reefer 20'</option><option value="Contenedor Reefer 40'">Reefer 40'</option></optgroup>
+              <optgroup label="✈️ Aéreo"><option value="Courier">Courier</option><option value="Carga aérea">Carga aérea</option></optgroup>
+              <optgroup label="📋 Otros"><option value="Pallet suelto">Pallet suelto</option><option value="Otro">Otro</option></optgroup>
+            </select>
+          </div>
+          <div id="log-naviera-box" style="display:none" class="fg"><label>Naviera / Línea</label>
+            <select class="fc" id="log-nv-naviera">
+              <option value="">Seleccionar...</option>
+              <option value="MSC">MSC</option><option value="Maersk">Maersk</option><option value="CMA CGM">CMA CGM</option><option value="COSCO">COSCO</option><option value="Hapag-Lloyd">Hapag-Lloyd</option><option value="ONE">ONE</option><option value="Evergreen">Evergreen</option><option value="Yang Ming">Yang Ming</option><option value="HMM">HMM (Hyundai)</option><option value="ZIM">ZIM</option><option value="PIL">PIL</option><option value="OOCL">OOCL</option><option value="APL">APL</option><option value="Wan Hai">Wan Hai</option><option value="Otra">Otra</option>
+            </select>
+          </div>
+          <div id="log-contenedor-box" style="display:none">
+            <div class="fg"><label>Cantidad de equipos</label><input type="number" min="1" class="fc" id="log-nv-cantequipos" value="1"></div>
+            <div id="log-contenedor-inputs" style="margin-top:6px"></div>
+            <div style="font-size:11px;color:var(--mt);margin-top:4px">Formato: TCKU1234567</div>
+          </div>
+          <div id="log-camion-cant-box" style="display:none" class="fg"><label>Cantidad de equipos</label><input type="number" min="1" class="fc" id="log-nv-cantequipos-camion" value="1"></div>
+        </div>
+        <div class="fg2">
+          <div class="fg"><label>Chofer (opcional)</label><input class="fc" id="log-nv-chofer"></div>
+          <div class="fg"><label>Placa (opcional)</label><input class="fc" id="log-nv-placa"></div>
+        </div>
+        <div class="fg"><label>Nota (opcional)</label><textarea class="fc" id="log-nv-nota" rows="2" style="resize:vertical"></textarea></div>
+        <div class="fg"><label>👤 Asignar a colaborador</label><select class="fc" id="log-nv-asignado"><option value="todos">📢 Notificar a todos</option></select></div>
+        <button class="btn bp bsm" id="btn-log-nv-enviar" style="width:auto">📤 Enviar formulario a bodega</button>
+      </div></div>
     </div>
 
-    <!-- RECEPCIÓN DE MERCANCÍA (todos) -->
-    <div class="card">
-      <div class="ctitle">📥 Recepción de mercancía</div>
+    <!-- 📥 FORMULARIOS RECIBIDOS -->
+    <div class="asec"><div class="ashdr" data-ac="log-ac-rec"><span>📥 Formularios recibidos — confirmar recepción</span><span class="ach">▾</span></div>
+    <div class="asbdy" id="log-ac-rec">
       <div class="fg"><label>Envíos pendientes por recibir</label>
         <select class="fc" id="log-rec-select"><option value="">Seleccione un recibo...</option></select>
       </div>
       <div id="log-rec-form" style="display:none;margin-top:6px">
         <div id="log-rec-info" style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:11px 13px;margin-bottom:12px;font-size:12.5px"></div>
-        <!-- Estado de recepción: parcial o completo -->
         <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:10px">
           <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📋 Tipo de recepción</div>
           <div style="display:flex;gap:8px">
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;flex:1;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--bg)">
-              <input type="radio" name="log-rec-tipo" id="log-rec-tipo-completo" value="completo" checked style="width:auto;accent-color:var(--ac)">
-              <span>✅ Completo</span>
+              <input type="radio" name="log-rec-tipo" id="log-rec-tipo-completo" value="completo" checked style="width:auto;accent-color:var(--ac)"><span>✅ Completo</span>
             </label>
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;flex:1;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--bg)">
-              <input type="radio" name="log-rec-tipo" id="log-rec-tipo-parcial" value="parcial" style="width:auto;accent-color:var(--wn)">
-              <span>⏳ Parcial</span>
+              <input type="radio" name="log-rec-tipo" id="log-rec-tipo-parcial" value="parcial" style="width:auto;accent-color:var(--wn)"><span>⏳ Parcial</span>
             </label>
           </div>
           <div id="log-rec-parcial-info" style="display:none;margin-top:8px;font-size:12px;color:var(--wn);background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.2);border-radius:6px;padding:8px 10px">
-            ⚠️ Recepción parcial: el recibo quedará como <strong>Parcial</strong> hasta que se reciban todos los equipos configurados.
+            ⚠️ Recepción parcial: el recibo quedará como <strong>Parcial</strong> hasta recibir todos los equipos.
             <div class="fg" style="margin-top:8px"><label style="font-size:11px">Equipos recibidos en esta entrega</label><input type="number" min="1" class="fc" id="log-rec-equip-parcial" placeholder="Ej: 1 de 3" style="margin-top:4px"></div>
           </div>
         </div>
@@ -1077,34 +1009,46 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
           <div class="fg"><label>Chofer (opcional)</label><input class="fc" id="log-rec-chofer"></div>
           <div class="fg"><label>Placa (opcional)</label><input class="fc" id="log-rec-placa"></div>
         </div>
-        <div class="fg"><label>Nota / reclamo (faltantes, daños, etc.)</label><textarea class="fc" id="log-rec-nota" rows="2" style="resize:vertical"></textarea></div>
-        <div class="fg"><label>Número de nota de crédito (opcional)</label><input class="fc" id="log-rec-notacredito"></div>
-        <div style="font-size:11.5px;color:var(--mt);margin-bottom:10px">Se registrará automáticamente: usuario que recibe, fecha y hora.</div>
+        <div class="fg"><label>Nota / reclamo</label><textarea class="fc" id="log-rec-nota" rows="2" style="resize:vertical"></textarea></div>
+        <div class="fg"><label>N° nota de crédito (opcional)</label><input class="fc" id="log-rec-notacredito"></div>
+        <div style="font-size:11.5px;color:var(--mt);margin-bottom:10px">Se registra automáticamente: usuario, fecha y hora.</div>
         <button class="btn bp bsm" id="btn-log-rec-confirmar" style="width:auto">✅ Confirmar recepción</button>
       </div>
+    </div></div>
 
-    <!-- HISTORIAL -->
-    <div class="card">
-      <div class="htog" id="log-hist-tog">
-        <span class="hlbl">📊 Historial de recibos</span>
-        <span id="log-hist-ch" style="color:var(--mt);font-size:14px;transition:transform var(--t)">▾</span>
-      </div>
-      <div id="log-hist-wrap" style="display:none;margin-top:11px">
-        <div class="fg2" style="margin-bottom:4px">
-          <div class="fg"><label>Filtrar por estado</label>
+    <!-- 📊 HISTORIAL -->
+    <div class="asec"><div class="ashdr" data-ac="log-ac-hist" id="log-hist-tog"><span>📊 Historial de recibos</span><span class="ach" id="log-hist-ch">▾</span></div>
+    <div class="asbdy" id="log-ac-hist">
+      <div style="margin-bottom:10px">
+        <input class="fc" id="log-hist-search" placeholder="🔍 Buscar por recibo, proveedor, depto..." style="margin-bottom:8px">
+        <div class="fg2">
+          <div class="fg"><label>Estado</label>
             <select class="fc" id="log-hist-filtro">
-              <option value="">Todos</option>
-              <option value="pendiente">Pendientes</option>
-              <option value="parcial">⏳ Parciales</option>
-              <option value="recibido">Recibidos</option>
+              <option value="">Todos</option><option value="pendiente">Pendientes</option><option value="parcial">⏳ Parciales</option><option value="recibido">Recibidos</option>
             </select>
           </div>
-          <div class="fg"><label>Filtrar por proveedor</label><select class="fc" id="log-hist-prov"><option value="">Todos</option></select></div>
+          <div class="fg"><label>Proveedor</label><select class="fc" id="log-hist-prov"><option value="">Todos</option></select></div>
         </div>
+        <div class="fg2">
+          <div class="fg"><label>Desde</label><input type="date" class="fc" id="log-hist-fdesde"></div>
+          <div class="fg"><label>Hasta</label><input type="date" class="fc" id="log-hist-fhasta"></div>
+        </div>
+      </div>
+      <div id="log-hist-wrap">
         <div id="log-hist-list"><div style="color:var(--mt);font-size:13px;text-align:center;padding:10px">Sin registros aún</div></div>
       </div>
-    </div>
+    </div></div>
 
+    <!-- 📈 KPIs -->
+    <div class="asec"><div class="ashdr" data-ac="log-ac-kpi"><span>📈 KPIs & Estadísticas</span><span class="ach">▾</span></div>
+    <div class="asbdy" id="log-ac-kpi">
+      <div id="log-kpi-cards" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px"></div>
+      <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📅 Actividad mensual</div>
+      <canvas id="log-kpi-chart" style="width:100%;max-height:220px"></canvas>
+      <div style="font-size:11px;color:var(--mt);text-align:center;margin-top:6px" id="log-kpi-mes-label"></div>
+    </div></div>
+
+  </div>
   </div>
 </div>
 
@@ -1356,19 +1300,24 @@ async function ensureDefaults(){
 function jorPath(u){return`${JDIA}/${isoD(new Date())}/${u}`;}
 
 async function getHorarioBaseDe(user,fecha){
-  // Devuelve el horario por defecto que aplica hoy (horario por día si existe, sino general)
   const DAY=['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
   const d=fecha?new Date(fecha+'T00:00:00'):new Date();
   const dn=DAY[d.getDay()];
+  // Prioridad 1: horario específico del colaborador (HORCOL)
+  try{
+    const cs=await get(R(db,`${HORCOL}/${user}/${dn}`));
+    if(cs.exists()&&cs.val().inicio){
+      const ch=cs.val();
+      const hs=await get(R(db,HOR));const hor=hs.exists()?hs.val():{};
+      return{inicio:ch.inicio,fin:ch.fin||hor.fin||"18:00",almInicio:hor.almInicio||"12:00",duracionAlm:parseInt(hor.duracionAlm||60)};
+    }
+  }catch(e){}
+  // Prioridad 2: horario por día general (HDIAS)
   const hs=await get(R(db,HOR));const hor=hs.exists()?hs.val():{inicio:"09:00",fin:"18:00",duracionAlm:60};
   const ds=await get(R(db,HDIAS));const hdias=ds.exists()?ds.val():{};
   const rs=await get(R(db,RULES));const rul=rs.exists()?rs.val():{};
   const base=hdias[dn]||hor;
-  return{
-    inicio:base.inicio||"09:00",fin:base.fin||"18:00",
-    almInicio:base.almInicio||rul.almInicio||"12:00",
-    duracionAlm:parseInt(base.duracionAlm!==undefined?base.duracionAlm:60)
-  };
+  return{inicio:base.inicio||"09:00",fin:base.fin||"18:00",almInicio:base.almInicio||rul.almInicio||"12:00",duracionAlm:parseInt(base.duracionAlm!==undefined?base.duracionAlm:60)};
 }
 
 function horasEntre(hIni,mIni,hFin,mFin,durAlmMin){
@@ -1539,24 +1488,55 @@ async function renderAsistencia(){
   const users=await getUsers();
   const ast=await getAsistenciaHoy();
   let jorHoy={};try{const js=await get(R(db,`${JDIA}/${today}`));jorHoy=js.exists()?js.val():{};}catch(e){}
-  const colab=Object.values(users).filter(u=>!ADMINS.includes(u.user));
+  // SINCRONIZAR CON VISTA SEMANAL: solo mostrar usuarios habilitados en sem_activos
+  const semActivos=await loadSemActivos();
+  const todosColab=Object.values(users).filter(u=>!ADMINS.includes(u.user));
+  // Si hay selección en sem_activos, filtrar; si está vacío = todos
+  const colab=semActivos.length>0?todosColab.filter(u=>semActivos.includes(u.user)):todosColab;
+  // Auto-habilitar colaboradores activos según horario (10 min antes de entrada)
+  const nowPA=getNowPanama();
+  const nowMin=nowPA.getHours()*60+nowPA.getMinutes();
+  for(const u of colab){
+    const base=await getHorarioBaseDe(u.user,today);
+    if(!base||!base.inicio)continue;
+    const[eh,em]=base.inicio.split(':').map(Number);
+    const entMin=eh*60+em;
+    const ventanaAbierta=nowMin>=(entMin-10)&&nowMin<=(entMin+30); // 10 min antes hasta 30 min después
+    if(ventanaAbierta&&ast[u.user]?.habilitado!==true){
+      // Auto-habilitar silenciosamente
+      await setHabilitado(u.user,true,'sistema-auto');
+    }
+  }
+  // Refrescar asistencia tras auto-habilitar
+  const astFresh=await getAsistenciaHoy();
   c.innerHTML='';
+  let habCount=0;
   colab.forEach(u=>{
-    const on=ast[u.user]?.habilitado===true;
+    const on=astFresh[u.user]?.habilitado===true;
+    if(on)habCount++;
     const jor=jorHoy[u.user];
     const jorLine=jor?(jor.mantuvo
       ?`<div class="ast-sub" style="color:#7a3fb0">🕐 ${jor.entrada}→${jor.salida} (sin cambios) · configuró: ${jor.configuradoPor}</div>`
-      :`<div class="ast-sub" style="color:#7a3fb0">🕐 ${jor.entrada}→${jor.salida}, almuerzo ${jor.almInicio}-${jor.almFin} · configuró: ${jor.configuradoPor} · pago protegido</div>`)
-      :(JORNADA_FLEX.includes(u.user)?`<div class="ast-sub" style="color:var(--mt)">🕐 Aún no ha configurado jornada de hoy</div>`:'');
+      :`<div class="ast-sub" style="color:#7a3fb0">🕐 ${jor.entrada}→${jor.salida} · configuró: ${jor.configuradoPor}${jor.pendienteAprobacion?' ⏳ pend. aprobación':''}</div>`)
+      :'';
+    // Mostrar countdown si aún no es ventana de marcación
+    let countdownLine='';
+    const base=u._base;
+    if(!on&&u._minutosParaEntrada>0){
+      countdownLine=`<div class="ast-sub" style="color:var(--wn)">⏱ Abre en ${u._minutosParaEntrada} min (${u._horaEntrada})</div>`;
+    }
+    const autoTag=astFresh[u.user]?.by==='sistema-auto'?` <span style="font-size:10px;color:var(--mt)">(auto)</span>`:'';
     const d=document.createElement('div');d.className=`ast-item${on?' on':''}`;d.id=`ast_${u.user}`;
     d.innerHTML=`<img class="ast-av" src="${u.profileUrl||DEF_AVT}" onerror="this.src='${DEF_AVT}'">
       <div style="flex:1">
         <div class="ast-name">${u.nombre}</div>
-        <div class="ast-sub">${u.user}${on?` <span style="color:var(--ac)">· Habilitado${ast[u.user]?.by?' por '+ast[u.user].by:''}</span>`:'· No habilitado hoy'}</div>
-        ${jorLine}
+        <div class="ast-sub">${u.user}${on?` <span style="color:var(--ac)">· Habilitado${astFresh[u.user]?.by?' por '+astFresh[u.user].by:''}</span>${autoTag}`:'· No habilitado hoy'}</div>
+        ${jorLine}${countdownLine}
       </div>
       <button class="ast-tog${on?' on':''}" data-user="${u.user}" title="${on?'Deshabilitar':'Habilitar'}"></button>`;
     d.querySelector('.ast-tog').addEventListener('click',async function(){
+      // Solo admins pueden cambiar manualmente
+      if(!ADMINS.includes(CU)&&!GERENTES.includes(CU)){toast('Solo administradores pueden cambiar esto','err');return;}
       const newVal=!this.classList.contains('on');
       this.disabled=true;
       try{
@@ -1567,9 +1547,7 @@ async function renderAsistencia(){
     });
     c.appendChild(d);
   });
-  // Log summary
-  const habCount=Object.values(ast).filter(v=>v.habilitado).length;
-  el('ast-log').textContent=`${habCount} colaborador(es) habilitado(s) hoy`;
+  el('ast-log').textContent=`${habCount} colaborador(es) habilitado(s) hoy · ${colab.length} en lista activa`;
   el('ast-summary').textContent=`${habCount} habilitado(s) · toca para gestionar`;
 }
 
@@ -1588,25 +1566,137 @@ el('btn-ast-ninguno')?.addEventListener('click',async()=>{
 });
 
 async function checkAccesoColab(){
-  // For non-admins: show if they are enabled today
+  await checkAccesoColabConCountdown();
+}
+
+// Hora actual en zona horaria de Panamá (America/Panama = UTC-5, sin cambio de horario)
+function getNowPanama(){
+  const now=new Date();
+  // Panama es UTC-5 fijo (no usa horario de verano)
+  const utc=now.getTime()+(now.getTimezoneOffset()*60000);
+  return new Date(utc+(-5*3600000));
+}
+
+// Auto-refresh de asistencia cada minuto para verificar ventanas de habilitación
+let astAutoRefreshInt=null;
+function startAstAutoRefresh(){
+  if(astAutoRefreshInt)return;
+  astAutoRefreshInt=setInterval(()=>{
+    if(el('ast-list')&&ADMINS.includes(CU)){renderAsistencia();}
+    // También verificar acceso del colaborador
+    if(!ADMINS.includes(CU))checkAccesoColab();
+  },60000); // cada 60 segundos
+}
+
+// Para colaboradores: mostrar countdown si aún no está en ventana
+async function checkAccesoColabConCountdown(){
   if(ADMINS.includes(CU)){el('acceso-card').style.display='none';return;}
   el('acceso-card').style.display='block';
   const ok=await isHabilitado(CU);
   const msg=el('acceso-msg');
   if(ok){
-    msg.textContent='✅ Acceso habilitado — puedes marcar hoy';
+    msg.innerHTML='✅ Acceso habilitado — puedes marcar hoy';
     msg.style.color='var(--ac)';
     el('mbtn').classList.remove('blocked');
   }else{
-    msg.textContent='🔒 No estás habilitado para marcar hoy. Contacta al encargado.';
-    msg.style.color='var(--dn)';
+    // Calcular tiempo restante para la ventana
+    const base=await getHorarioBaseDe(CU);
+    const nowPA=getNowPanama();
+    const nowMin=nowPA.getHours()*60+nowPA.getMinutes();
+    if(base&&base.inicio){
+      const[eh,em]=base.inicio.split(':').map(Number);
+      const entMin=eh*60+em;
+      const minRestantes=(entMin-10)-nowMin;
+      if(minRestantes>0){
+        const h=Math.floor(minRestantes/60),m=minRestantes%60;
+        msg.innerHTML=`⏱ Marcación habilitada a las <strong>${String(eh).padStart(2,'0')}:${String(Math.max(0,em-10)).padStart(2,'0')}</strong>`
+          +(h>0?` — faltan <strong>${h}h ${m}min</strong>`:` — faltan <strong>${m} min</strong>`);
+        msg.style.color='var(--wn)';
+      }else{
+        msg.innerHTML='⏳ Fuera de ventana de marcación. Contacta al encargado.';
+        msg.style.color='var(--dn)';
+      }
+    }else{
+      msg.innerHTML='🔒 No estás habilitado para marcar hoy. Contacta al encargado.';
+      msg.style.color='var(--dn)';
+    }
     el('mbtn').classList.add('blocked');
   }
 }
 
+// HORARIO PREDETERMINADO POR COLABORADOR — paths
+const HORCOL='horario_colab_v1'; // Firebase: horario_colab_v1/{user}/{diaSemana} = {inicio, fin, habilitado}
+
+async function loadHorarioColabAdmin(){
+  const c=el('horcol-list');if(!c)return;
+  c.innerHTML='<div style="color:var(--mt);font-size:12px">Cargando...</div>';
+  const users=await getUsers();
+  const semActivos=await loadSemActivos();
+  const colab=Object.values(users).filter(u=>!ADMINS.includes(u.user));
+  const DIAS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const DIAS_K=['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+  let s;try{s=await get(R(db,HORCOL));s=s.exists()?s.val():{};}catch(e){s={};}
+  // Check si domingo está habilitado globalmente
+  let domHab=false;try{const d=await get(R(db,`${META}/domingo_habilitado`));domHab=d.exists()?d.val():false;}catch(e){}
+  c.innerHTML='';
+  // Toggle domingo global
+  const domDiv=document.createElement('div');
+  domDiv.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--sf);border-radius:var(--rs);border:1px solid var(--bd);margin-bottom:10px';
+  domDiv.innerHTML=`<input type="checkbox" id="horcol-dom-hab" ${domHab?'checked':''} style="width:auto;accent-color:var(--ac)">`
+    +`<label for="horcol-dom-hab" style="font-size:13px;cursor:pointer">Habilitar campo <strong>Domingo</strong> en horarios</label>`;
+  domDiv.querySelector('#horcol-dom-hab').addEventListener('change',async function(){
+    await set(R(db,`${META}/domingo_habilitado`),this.checked);
+    toast('Domingo '+(this.checked?'habilitado':'deshabilitado')+' ✓','ok');
+    loadHorarioColabAdmin();
+  });
+  c.appendChild(domDiv);
+  const diasFinal=domHab?[...DIAS,'Domingo']:DIAS;
+  const diasKFinal=domHab?DIAS_K:DIAS_K.slice(0,6);
+  // Tabla por colaborador
+  colab.forEach(u=>{
+    const activo=semActivos.length===0||semActivos.includes(u.user);
+    const uHor=s[u.user]||{};
+    const div=document.createElement('div');
+    div.style.cssText=`background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px;${!activo?'opacity:.5':''}`;
+    let diasHTML=diasFinal.map((dia,i)=>{
+      const k=diasKFinal[i];
+      const h=uHor[k]||{};
+      return`<div style="margin-bottom:6px;padding:6px 8px;background:var(--bg);border-radius:6px">
+        <div style="font-size:11px;font-weight:700;color:var(--mt);margin-bottom:4px">${dia}</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="time" class="fc horcol-inp" data-user="${u.user}" data-dia="${k}" data-campo="inicio" value="${h.inicio||''}" style="flex:1;font-size:12px;padding:4px 6px" ${!activo?'disabled':''}>
+          <span style="font-size:11px;color:var(--mt)">→</span>
+          <input type="time" class="fc horcol-inp" data-user="${u.user}" data-dia="${k}" data-campo="fin" value="${h.fin||''}" style="flex:1;font-size:12px;padding:4px 6px" ${!activo?'disabled':''}>
+        </div>
+      </div>`;
+    }).join('');
+    div.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <img src="${u.profileUrl||DEF_AVT}" style="width:32px;height:32px;border-radius:50%;object-fit:cover">
+        <div><div style="font-weight:700;font-size:13px;color:var(--tx)">${u.nombre}</div>
+        <div style="font-size:11px;color:${activo?'var(--ac)':'var(--mt)'}">${activo?'✅ Activo en vista semanal':'⛔ Inactivo — no en lista semanal'}</div></div>
+        <button class="btn bp bsm btn-save-horcol" data-user="${u.user}" style="width:auto;font-size:11px;padding:4px 10px;margin-left:auto" ${!activo?'disabled':''}>💾 Guardar</button>
+      </div>${diasHTML}`;
+    c.appendChild(div);
+  });
+  // Guardar horario individual
+  c.querySelectorAll('.btn-save-horcol').forEach(btn=>btn.addEventListener('click',async function(){
+    const user=this.dataset.user;
+    const inps=c.querySelectorAll(`.horcol-inp[data-user="${user}"]`);
+    const horData={};
+    inps.forEach(inp=>{
+      if(!horData[inp.dataset.dia])horData[inp.dataset.dia]={};
+      horData[inp.dataset.dia][inp.dataset.campo]=inp.value;
+    });
+    await set(R(db,`${HORCOL}/${user}`),horData);
+    toast('Horario de '+user+' guardado ✓','ok');
+  }));
+}
+
+// getHorarioBaseDe ahora también consulta HORCOL (ver función arriba)
+const _origGetHorarioBase=null; // referencia legacy, no usar
+
 // OPEN APP
 async function openApp(user){
-  el('login-scr').style.display='none';el('app').style.display='block';CU=user;
   el('tb-date').textContent=new Date().toLocaleDateString('es',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const all=await getUsers();
   const meta=Object.values(all).find(m=>m.user===user)||{nombre:user,user,cedula:'',rol:'Colaborador'};
@@ -1714,8 +1804,9 @@ async function renderDatosBancariosGerente(){
 async function refreshUI(){
   const u=await getUsers();renderUserList(u);fillSelects(u);
   renderHistToday();renderLog();loadRules();loadHorario();loadFeriados();loadGPSCfg();loadHorariosDias();
-  if(ADMINS.includes(CU))renderSemUserChecks();
+  if(ADMINS.includes(CU)){renderSemUserChecks();loadBandejaBanco();loadHorarioColabAdmin();}
   if(ADMINS.includes(CU)||GERENTES.includes(CU))loadBandejaBanco();
+  startAstAutoRefresh();
 }
 
 // USER LIST
@@ -4122,51 +4213,128 @@ async function renderLogHistorial(){
   const list=el('log-hist-list');if(!list)return;
   const filtroE=el('log-hist-filtro')?.value||'';
   const filtroP=el('log-hist-prov')?.value||'';
+  const busq=(el('log-hist-search')?.value||'').toLowerCase().trim();
+  const fdesde=el('log-hist-fdesde')?.value||'';
+  const fhasta=el('log-hist-fhasta')?.value||'';
+  const isAdm=ADMINS.includes(CU)||GERENTES.includes(CU);
   let entries=Object.entries(LOGR);
   if(filtroE)entries=entries.filter(([,v])=>v.estado===filtroE);
   if(filtroP)entries=entries.filter(([,v])=>v.proveedor===filtroP);
+  if(fdesde)entries=entries.filter(([,v])=>(v.fechaEnvio||'')>=fdesde);
+  if(fhasta)entries=entries.filter(([,v])=>(v.fechaEnvio||'')<=fhasta);
+  if(busq)entries=entries.filter(([,v])=>
+    (v.numeroRecibo||'').toLowerCase().includes(busq)||
+    (v.proveedor||'').toLowerCase().includes(busq)||
+    (v.departamento||'').toLowerCase().includes(busq)||
+    (v.tipoEquipo||'').toLowerCase().includes(busq)||
+    (v.naviera||'').toLowerCase().includes(busq)
+  );
   entries.sort((a,b)=>((b[1].fechaEnvio||'')+(b[1].horaEnvio||'')).localeCompare((a[1].fechaEnvio||'')+(a[1].horaEnvio||'')));
-  if(!entries.length){list.innerHTML='<div style="color:var(--mt);font-size:13px;text-align:center;padding:10px">Sin registros</div>';return;}
-  const isAdm=ADMINS.includes(CU)||GERENTES.includes(CU);
+  if(!entries.length){list.innerHTML='<div style="color:var(--mt);font-size:13px;text-align:center;padding:10px">Sin registros para los filtros seleccionados</div>';return;}
   list.innerHTML=entries.map(([k,v])=>{
     const bitaStr=v.bitacora?Object.values(v.bitacora).map(b=>`<div style="font-size:10px;color:var(--mt);border-left:2px solid var(--bd);padding-left:6px;margin-top:3px">${new Date(b.ts).toLocaleString('es')} — <strong>${b.por}</strong>: ${b.accion}${b.motivo?' ('+b.motivo+')':''}</div>`).join(''):'';
-    return logItemHTML(k,v)+(isAdm?`<div style="padding:6px 10px 6px 10px;border-top:1px solid var(--bd)">`
+    return logItemHTML(k,v)+(isAdm?`<div style="padding:6px 10px 8px 10px;border-top:1px solid var(--bd)">`
       +(bitaStr?`<div style="margin-bottom:6px">${bitaStr}</div>`:'')
       +`<div style="display:flex;gap:6px;flex-wrap:wrap">`
-      +`<button data-mod="${k}" class="btn bg bsm" style="font-size:11px;padding:4px 8px;width:auto">✏️ Modificar fecha/datos</button>`
-      +(isAdm&&v.estado==='pendiente'?`<button data-del="${k}" class="btn bg bsm" style="font-size:11px;padding:4px 8px;width:auto;color:var(--dn)">🗑 Eliminar</button>`:'')
+      +`<button data-mod="${k}" class="btn bg bsm" style="font-size:11px;padding:4px 8px;width:auto">✏️ Modificar</button>`
+      +`<button data-print="${k}" class="btn bg bsm" style="font-size:11px;padding:4px 8px;width:auto">🖨️ Imprimir PDF</button>`
+      +(isAdm&&(v.estado==='pendiente'||v.estado==='parcial')?`<button data-del="${k}" class="btn bg bsm" style="font-size:11px;padding:4px 8px;width:auto;color:var(--dn)">🗑 Eliminar</button>`:'')
       +`</div></div>`:'');
   }).join('');
-  list.querySelectorAll('.litem').forEach(it=>{
-    it.querySelector('.litem-top').addEventListener('click',()=>it.classList.toggle('open'));
-  });
+  list.querySelectorAll('.litem').forEach(it=>{it.querySelector('.litem-top').addEventListener('click',()=>it.classList.toggle('open'));});
   list.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',async(e)=>{
-    e.stopPropagation();
-    if(!confirm('¿Eliminar este registro de forma permanente?'))return;
-    await remove(R(db,LOGREC+'/'+b.dataset.del));
-    toast('Registro eliminado','ok');renderLogHistorial();renderLogPendientes();
+    e.stopPropagation();if(!confirm('¿Eliminar este registro?'))return;
+    await remove(R(db,LOGREC+'/'+b.dataset.del));toast('Eliminado','ok');renderLogHistorial();renderLogPendientes();
   }));
   list.querySelectorAll('[data-mod]').forEach(b=>b.addEventListener('click',async(e)=>{
-    e.stopPropagation();
-    const k=b.dataset.mod;const v=LOGR[k];
-    const nuevaFecha=prompt('Nueva fecha de envío (YYYY-MM-DD):',v.fechaEnvio||'');
-    if(!nuevaFecha)return;
-    const motivo=prompt('Motivo de la modificación:','');
-    if(!motivo){toast('Debes ingresar un motivo','err');return;}
+    e.stopPropagation();const k=b.dataset.mod;const v=LOGR[k];
+    const nuevaFecha=prompt('Nueva fecha de envío (YYYY-MM-DD):',v.fechaEnvio||'');if(!nuevaFecha)return;
+    const motivo=prompt('Motivo de la modificación:','');if(!motivo){toast('Debes ingresar un motivo','err');return;}
     const bitEntry={accion:'Fecha modificada de '+v.fechaEnvio+' a '+nuevaFecha,por:CU,ts:new Date().toISOString(),motivo};
     const bita=v.bitacora?[...Object.values(v.bitacora),bitEntry]:[bitEntry];
     await set(R(db,LOGREC+'/'+k),{...v,fechaEnvio:nuevaFecha,bitacora:bita});
-    toast('Registro modificado por '+CU+' ✓','ok');
-    renderLogHistorial();
+    toast('Modificado ✓','ok');renderLogHistorial();
+  }));
+  // Botón imprimir PDF
+  list.querySelectorAll('[data-print]').forEach(b=>b.addEventListener('click',async(e)=>{
+    e.stopPropagation();const k=b.dataset.print;const v=LOGR[k];
+    const win=window.open('','_blank');
+    const TH='background:#00313C;color:#fff;padding:8px 10px;font-size:12px;border:1px solid #00313C;text-align:left';
+    const TD='padding:7px 10px;border:1px solid #ccc;font-size:12px';
+    const fila=(label,val)=>`<tr><td style="${TD};font-weight:600;background:#f9f9f9;width:160px">${label}</td><td style="${TD}">${val||'—'}</td></tr>`;
+    win.document.write(`<!DOCTYPE html><html><head><title>Recibo #${v.numeroRecibo}</title>
+    <style>body{font-family:Arial,sans-serif;color:#022;margin:20px}table{border-collapse:collapse;width:100%}@media print{button{display:none}}</style></head><body>
+    <h2 style="color:#00313C;margin:0 0 4px 0">📦 Recibo de Mercancía #${v.numeroRecibo}</h2>
+    <p style="color:#555;font-size:13px;margin:0 0 14px 0">Juguetería Westland · Nivel 300 · ${new Date().toLocaleDateString('es')}</p>
+    <table>${fila('Proveedor',v.proveedor+' ('+v.tipo+')')}${fila('Departamento',v.departamento)}${fila('Tipo equipo',v.tipoEquipo)}${fila('Naviera',v.naviera)}${fila('N° contenedores',(v.numerosContenedor||[]).join(', '))}${fila('Enviado por',v.creadoPor+' · '+v.fechaEnvio)}${fila('Bultos esperados',fmtNum(v.bultosEsperados))}${fila('Bultos recibidos',fmtNum(v.bultosRecibidos))}${fila('Pallets recibidos',fmtNum(v.palletsRecibidos))}${fila('Piezas recibidas',fmtNum(v.piezasRecibidas))}${fila('Ítems recibidos',fmtNum(v.itemsRecibidos))}${fila('Recibido por',(v.usuarioRecibio||'')+(v.fechaRecibido?' · '+v.fechaRecibido:''))}${fila('Nota recepción',v.notaRecepcion)}${fila('Nota de crédito',v.notaCredito)}${fila('Estado',(v.estado||'').toUpperCase())}</table>
+    <p style="margin-top:20px;font-size:11px;color:#555;border-top:1px solid #ccc;padding-top:8px">Generado por Westland Marcaciones · ${new Date().toLocaleString('es')}</p>
+    <button onclick="window.print()" style="margin-top:10px;padding:8px 20px;background:#00313C;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px">🖨️ Imprimir</button>
+    </body></html>`);
+    win.document.close();
   }));
 }
 el('log-hist-tog')?.addEventListener('click',()=>{
-  const w=el('log-hist-wrap'),ch=el('log-hist-ch'),open=w.style.display==='block';
-  w.style.display=open?'none':'block';ch.style.transform=open?'':'rotate(180deg)';
+  const w=el('log-ac-hist'),ch=el('log-hist-ch');
+  const open=w.style.display!=='none'&&w.style.display!=='';
+  w.style.display=open?'none':'block';
+  if(ch)ch.style.transform=open?'':'rotate(180deg)';
   if(!open)renderLogHistorial();
 });
 el('log-hist-filtro')?.addEventListener('change',renderLogHistorial);
 el('log-hist-prov')?.addEventListener('change',renderLogHistorial);
+el('log-hist-search')?.addEventListener('input',renderLogHistorial);
+el('log-hist-fdesde')?.addEventListener('change',renderLogHistorial);
+el('log-hist-fhasta')?.addEventListener('change',renderLogHistorial);
+
+// KPIs logísticos
+async function renderLogKPIs(){
+  const s=await get(R(db,LOGREC));LOGR=s.exists()?s.val():{};
+  const kpiC=el('log-kpi-cards');if(!kpiC)return;
+  const todos=Object.values(LOGR);
+  const recibidos=todos.filter(v=>v.estado==='recibido');
+  const parciales=todos.filter(v=>v.estado==='parcial');
+  const pendientes=todos.filter(v=>v.estado==='pendiente');
+  const totalBultos=recibidos.reduce((a,v)=>a+(v.bultosRecibidos||0),0);
+  const totalPiezas=recibidos.reduce((a,v)=>a+(v.piezasRecibidas||0),0);
+  const kpis=[
+    {label:'Total recibidos',val:recibidos.length,icon:'✅',color:'var(--ac)'},
+    {label:'Pendientes',val:pendientes.length,icon:'⏳',color:'var(--wn)'},
+    {label:'Parciales',val:parciales.length,icon:'🔄',color:'#b06ce0'},
+    {label:'Bultos recibidos',val:fmtNum(totalBultos),icon:'📦',color:'var(--ac)'},
+    {label:'Piezas procesadas',val:fmtNum(totalPiezas),icon:'🧩',color:'var(--ac)'},
+    {label:'Proveedores únicos',val:new Set(recibidos.map(v=>v.proveedor)).size,icon:'🏢',color:'var(--mt)'},
+  ];
+  kpiC.innerHTML=kpis.map(k=>`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:12px;text-align:center">
+    <div style="font-size:20px">${k.icon}</div>
+    <div style="font-size:18px;font-weight:800;color:${k.color};margin:4px 0">${k.val}</div>
+    <div style="font-size:11px;color:var(--mt)">${k.label}</div>
+  </div>`).join('');
+  // Gráfica mensual con Canvas
+  const canvas=el('log-kpi-chart');if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const now=new Date();
+  const meses=Array.from({length:6},(_,i)=>{const d=new Date(now);d.setMonth(d.getMonth()-5+i);return d;});
+  const labels=meses.map(d=>d.toLocaleDateString('es',{month:'short',year:'2-digit'}));
+  const counts=meses.map(d=>{
+    const mes=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    return recibidos.filter(v=>(v.fechaRecibido||'').startsWith(mes)).length;
+  });
+  const W=canvas.offsetWidth||320;canvas.width=W;canvas.height=200;
+  const max=Math.max(...counts,1);
+  const PAD=30,BAR_W=Math.floor((W-PAD*2)/labels.length*0.6),GAP=Math.floor((W-PAD*2)/labels.length);
+  ctx.clearRect(0,0,W,200);
+  labels.forEach((lbl,i)=>{
+    const x=PAD+i*GAP;const h=Math.floor((counts[i]/max)*140);const y=170-h;
+    ctx.fillStyle='rgba(0,201,167,.7)';ctx.fillRect(x,y,BAR_W,h);
+    ctx.fillStyle='#aaa';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText(lbl,x+BAR_W/2,190);
+    if(counts[i]>0){ctx.fillStyle='var(--ac,#00c9a7)';ctx.fillText(counts[i],x+BAR_W/2,y-4);}
+  });
+  el('log-kpi-mes-label').textContent='Recibos completados por mes — últimos 6 meses';
+}
+
+// Cargar KPIs cuando se abre el acordeón
+document.querySelector('[data-ac="log-ac-kpi"]')?.closest('.ashdr')?.addEventListener('click',renderLogKPIs);
 
 function updateLogBadge(){
   try{
