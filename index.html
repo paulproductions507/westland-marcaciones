@@ -1697,6 +1697,7 @@ const _origGetHorarioBase=null; // referencia legacy, no usar
 
 // OPEN APP
 async function openApp(user){
+  el('login-scr').style.display='none';el('app').style.display='block';CU=user;
   el('tb-date').textContent=new Date().toLocaleDateString('es',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const all=await getUsers();
   const meta=Object.values(all).find(m=>m.user===user)||{nombre:user,user,cedula:'',rol:'Colaborador'};
