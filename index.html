@@ -227,6 +227,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
     <div class="ig"><label>Contraseña</label><input id="lp" class="if" type="password" placeholder="••••••••" autocomplete="current-password"></div>
     <button id="lbtn" class="btn bp" style="margin-top:6px">Entrar al sistema</button>
     <a href="#" id="lforg" class="lnk">¿Olvidaste tu contraseña? Enviar solicitud al administrador</a>
+    <a href="https://paulproductions507.github.io/westland-marcaciones/" target="_blank" rel="noopener" class="lnk" style="margin-top:6px;display:block">🔗 ¿Se ve como escritorio? Abrir en el navegador para ajustar vista móvil</a>
   </div>
 </div>
 
@@ -1111,7 +1112,13 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
       </div>
       <div class="fg2">
         <div class="fg"><label>Piezas sueltas (fuera de caja)</label><input type="number" min="0" class="fc" id="log-sum-sueltas" value="0"></div>
-        <div class="fg"><label>Código (opcional)</label><input class="fc" id="log-sum-codigo"></div>
+        <div class="fg"><label>Referencia del proveedor</label><input class="fc" id="log-sum-refprov" placeholder="Ej: NS39O361"></div>
+      </div>
+      <div class="fg2">
+        <div class="fg"><label>Ubicación (bodega)</label><input class="fc" id="log-sum-ubicacion" list="log-sum-ubic-dl" placeholder="Ej: Bodega 2, Rack A-3..." autocomplete="off">
+          <datalist id="log-sum-ubic-dl"></datalist>
+        </div>
+        <div class="fg"><label>Código interno (opcional)</label><input class="fc" id="log-sum-codigo" placeholder="Libre — aún sin definir"></div>
       </div>
       <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:9px 12px;margin-bottom:10px;font-size:13px;display:flex;justify-content:space-between;align-items:center">
         <span style="color:var(--mt)">Total a registrar:</span><b id="log-sum-total-preview">0</b>
@@ -1121,8 +1128,12 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         <button class="btn bg bsm" id="btn-log-sum-salida" style="width:auto">➖ Registrar salida</button>
       </div>
 
-      <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">📋 Listado de suministros (existencia)</div>
-      <div id="log-sum-stock-list" style="margin-bottom:16px"><div style="color:var(--mt);font-size:12px">Sin existencias registradas aún</div></div>
+      <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🏬 Bodega de Consumo Interno — Saldo</div>
+      <div style="font-size:11px;color:var(--mt);margin-bottom:8px">Aquí vive el suministro para consumo interno de los colaboradores (no es una tienda de venta).</div>
+      <div id="log-sum-stock-list" style="margin-bottom:16px;overflow-x:auto"><div style="color:var(--mt);font-size:12px">Sin existencias registradas aún</div></div>
+
+      <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">👥 Consumo por colaborador</div>
+      <div id="log-sum-porcolab" style="margin-bottom:16px"><div style="color:var(--mt);font-size:12px">Aún nadie tiene suministro en su poder</div></div>
 
       <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🕓 Últimos movimientos</div>
       <div id="log-sum-mov-list" style="margin-bottom:16px"><div style="color:var(--mt);font-size:12px">Sin movimientos aún</div></div>
@@ -4543,24 +4554,64 @@ async function loadLogSumMov(){
   try{
     const s=await get(R(db,LOGSUM_MOV));LOGSUMMOVS=s.exists()?s.val():{};
   }catch(e){console.error('loadLogSumMov',e);LOGSUMMOVS={};toast('No se pudo cargar el listado de suministros: '+(e.message||e),'err');}
-  renderLogSumStock();renderLogSumMovList();fillLogSumNombresDatalist();
+  renderLogSumStock();renderLogSumMovList();fillLogSumNombresDatalist();fillLogSumUbicDatalist();
+}
+function fillLogSumUbicDatalist(){
+  const dl=el('log-sum-ubic-dl');if(!dl)return;
+  const ubics=new Set();
+  Object.values(LOGSUMMOVS).forEach(m=>{if(m.ubicacion)ubics.add(m.ubicacion);});
+  dl.innerHTML=[...ubics].sort().map(u=>`<option value="${u.replace(/"/g,'&quot;')}">`).join('');
 }
 
 function renderLogSumStock(){
   const c=el('log-sum-stock-list');if(!c)return;
   const agg={};
-  Object.values(LOGSUMMOVS).forEach(m=>{
+  Object.values(LOGSUMMOVS).sort((a,b)=>(a.ts||0)-(b.ts||0)).forEach(m=>{
     const k=sumStockKey(m.nombre,m.tamNombre);
-    if(!agg[k])agg[k]={nombre:m.nombre,tamNombre:m.tamNombre,codigo:'',total:0};
-    agg[k].total+=(m.signo||1)*(m.subtotal||0);
-    if(m.codigo)agg[k].codigo=m.codigo;
+    if(!agg[k])agg[k]={nombre:m.nombre,tamNombre:m.tamNombre,refProv:'',ubicacion:'',codigoInterno:'',stock:0,consumido:0};
+    agg[k].stock+=(m.signo||1)*(m.subtotal||0);
+    if((m.signo||1)<0)agg[k].consumido+=(m.subtotal||0);
+    // Se conserva el último valor no vacío informado (referencia/ubicación pueden cambiar con el tiempo)
+    if(m.refProv)agg[k].refProv=m.refProv;
+    if(m.ubicacion)agg[k].ubicacion=m.ubicacion;
+    if(m.codigo)agg[k].codigoInterno=m.codigo;
   });
-  const keys=Object.keys(agg).filter(k=>agg[k].total!==0).sort((a,b)=>agg[a].nombre.localeCompare(agg[b].nombre));
+  const keys=Object.keys(agg).filter(k=>agg[k].stock!==0||agg[k].consumido!==0).sort((a,b)=>agg[a].nombre.localeCompare(agg[b].nombre));
   if(!keys.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">Sin existencias registradas aún</div>';return;}
+  c.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="text-align:left;color:var(--mt);border-bottom:1px solid var(--bd)">
+      <th style="padding:6px 8px">Ítem</th><th style="padding:6px 8px">Ubicación</th><th style="padding:6px 8px">Ref. proveedor</th><th style="padding:6px 8px">Cód. interno</th><th style="padding:6px 8px;text-align:right">Saldo en bodega</th><th style="padding:6px 8px;text-align:right">Consumido</th>
+    </tr></thead><tbody>${keys.map(k=>{
+      const v=agg[k];
+      const nom=v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre;
+      return `<tr style="border-bottom:1px solid var(--bd)">
+        <td style="padding:6px 8px">${nom}</td>
+        <td style="padding:6px 8px;color:var(--mt)">${v.ubicacion||'—'}</td>
+        <td style="padding:6px 8px;color:var(--mt)">${v.refProv||'—'}</td>
+        <td style="padding:6px 8px;color:var(--mt)">${v.codigoInterno||'—'}</td>
+        <td style="padding:6px 8px;text-align:right"><b>${fmtNum(v.stock)}</b></td>
+        <td style="padding:6px 8px;text-align:right;color:var(--mt)">${fmtNum(v.consumido)}</td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+function renderLogSumPorColaborador(){
+  const c=el('log-sum-porcolab');if(!c)return;
+  const agg={};
+  Object.values(LOGSUMREQ).forEach(r=>{
+    if(!r.cantidadDespachada)return; // solo colaboradores que realmente recibieron algo
+    const neto=(r.cantidadDespachada||0)-(r.cantidadDevuelta||0);
+    if(neto<=0)return; // ya devolvió todo, no queda nada en su poder
+    const k=r.solicitante;
+    if(!agg[k])agg[k]={nombre:r.solicitanteNombre||r.solicitante,items:{}};
+    agg[k].items[r.item]=(agg[k].items[r.item]||0)+neto;
+  });
+  const keys=Object.keys(agg).sort((a,b)=>agg[a].nombre.localeCompare(agg[b].nombre));
+  if(!keys.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">Aún nadie tiene suministro en su poder</div>';return;}
   c.innerHTML=keys.map(k=>{
-    const v=agg[k];
-    const nom=v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre;
-    return `<div class="sumrow"><span>${nom}${v.codigo?` <span style="color:var(--mt)">(${v.codigo})</span>`:''}</span><span><b>${fmtNum(v.total)}</b> piezas</span></div>`;
+    const u=agg[k];
+    const detalle=Object.entries(u.items).map(([item,cant])=>`${item}: <b>${fmtNum(cant)}</b>`).join(' · ');
+    return `<div class="sumrow"><span>${u.nombre}<br><span style="font-size:11px;color:var(--mt)">${detalle}</span></span></div>`;
   }).join('');
 }
 
@@ -4593,11 +4644,13 @@ async function logSumGuardar(signo){
   const sueltas=parseInt(el('log-sum-sueltas').value)||0;
   const subtotal=cajas*ppc+sueltas;
   if(subtotal<=0){toast('Ingresa cajas + piezas por caja, y/o piezas sueltas','err');return;}
+  const refProv=el('log-sum-refprov').value.trim();
+  const ubicacion=el('log-sum-ubicacion').value.trim();
   const codigo=el('log-sum-codigo').value.trim();
   try{
     const r=push(R(db,LOGSUM_MOV));
-    await set(r,{nombre,tamNombre,cajas,piezasPorCaja:ppc,piezasSueltas:sueltas,subtotal,codigo,signo,usuario:CU||'',ts:Date.now()});
-    el('log-sum-nombre').value='';el('log-sum-cajas').value=0;el('log-sum-ppc').value=0;el('log-sum-sueltas').value=0;el('log-sum-codigo').value='';
+    await set(r,{nombre,tamNombre,cajas,piezasPorCaja:ppc,piezasSueltas:sueltas,subtotal,refProv,ubicacion,codigo,signo,usuario:CU||'',ts:Date.now()});
+    el('log-sum-nombre').value='';el('log-sum-cajas').value=0;el('log-sum-ppc').value=0;el('log-sum-sueltas').value=0;el('log-sum-refprov').value='';el('log-sum-ubicacion').value='';el('log-sum-codigo').value='';
     if(el('log-sum-tamano'))el('log-sum-tamano').value='';
     if(el('log-sum-tamano-box'))el('log-sum-tamano-box').style.display='none';
     calcSumTotalPreview();
@@ -4633,6 +4686,7 @@ async function renderLogSumRoleView(){
   fillLogSumNombresDatalist();
   renderLogSumReqPend();
   renderLogSumReqMias();
+  renderLogSumPorColaborador();
 }
 
 async function fillSumUserSelects(){
@@ -4696,7 +4750,7 @@ async function loadLogSumReq(){
   try{
     const s=await get(R(db,LOGSUM_REQ));LOGSUMREQ=s.exists()?s.val():{};
   }catch(e){console.error('loadLogSumReq',e);LOGSUMREQ={};toast('No se pudieron cargar las solicitudes: '+(e.message||e),'err');}
-  renderLogSumReqPend();renderLogSumReqMias();
+  renderLogSumReqPend();renderLogSumReqMias();renderLogSumPorColaborador();
 }
 
 function tiempoDesde(ts){
@@ -4739,8 +4793,38 @@ function renderLogSumReqMias(){
   const estadoTxt={pendiente:'⏳ Pendiente',parcial:'🟡 Parcial',completado:'✅ Completado'};
   c.innerHTML=keys.map(k=>{
     const r=LOGSUMREQ[k];
-    return `<div class="sumrow"><span>${r.item}<br><span style="font-size:11px;color:var(--mt)">Solicitado: ${r.cantidadSolicitada} · Despachado: ${r.cantidadDespachada||0}</span></span><span>${estadoTxt[r.estado]||''}</span></div>`;
+    const enPoder=Math.max(0,(r.cantidadDespachada||0)-(r.cantidadDevuelta||0));
+    const devolverBox=enPoder>0?`<div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+        <input type="number" min="1" max="${enPoder}" value="${enPoder}" class="fc" style="width:70px" id="dev-cant-${k}">
+        <button class="btn bg bsm" style="width:auto" data-k="${k}">↩️ Devolver a bodega</button>
+      </div>`:'';
+    return `<div class="sumrow" style="flex-direction:column;align-items:stretch;gap:4px">
+      <div style="display:flex;justify-content:space-between"><span>${r.item}</span><span>${estadoTxt[r.estado]||''}</span></div>
+      <span style="font-size:11px;color:var(--mt)">Solicitado: ${r.cantidadSolicitada} · Despachado: ${r.cantidadDespachada||0}${r.cantidadDevuelta?` · Devuelto: ${r.cantidadDevuelta}`:''} · En tu poder: ${enPoder}</span>
+      ${devolverBox}
+    </div>`;
   }).join('');
+  c.querySelectorAll('button[data-k]').forEach(b=>b.addEventListener('click',()=>devolverSuministro(b.dataset.k)));
+}
+
+async function devolverSuministro(key){
+  const r=LOGSUMREQ[key];if(!r)return;
+  const inp=el('dev-cant-'+key);
+  const cant=parseInt(inp?.value)||0;
+  const enPoder=Math.max(0,(r.cantidadDespachada||0)-(r.cantidadDevuelta||0));
+  if(cant<=0||cant>enPoder){toast('Cantidad inválida (máx. '+enPoder+')','err');return;}
+  try{
+    const nuevaDevuelta=(r.cantidadDevuelta||0)+cant;
+    const devoluciones=[...(r.devoluciones||[]),{cantidad:cant,ts:Date.now(),por:CU}];
+    await set(R(db,LOGSUM_REQ+'/'+key),{...r,cantidadDevuelta:nuevaDevuelta,devoluciones});
+    // Reingresa la cantidad a la Bodega de Consumo Interno
+    const mr=push(R(db,LOGSUM_MOV));
+    await set(mr,{nombre:r.item,tamNombre:'',cajas:0,piezasPorCaja:0,piezasSueltas:cant,subtotal:cant,codigo:'',signo:1,usuario:CU||'',ts:Date.now(),solicitudRef:key,devolucion:true});
+    toast('Devuelto a bodega ✓','ok');
+    const resps=[...Object.keys(LOGSUMRESP).filter(k=>LOGSUMRESP[k]),...ADMINS];
+    for(const u of [...new Set(resps)])await sendNotif(CU,u,'↩️ Devolución de suministro',`${(CUM&&CUM.nombre)||CU} devolvió ${cant} de "${r.item}" a bodega`);
+    loadLogSumReq();loadLogSumMov();
+  }catch(e){console.error('devolverSuministro',e);toast('❌ No se pudo devolver: '+(e.message||e),'err');}
 }
 
 el('btn-log-solreq-enviar')?.addEventListener('click',async()=>{
@@ -4750,7 +4834,7 @@ el('btn-log-solreq-enviar')?.addEventListener('click',async()=>{
   if(cant<=0){toast('Ingresa una cantidad válida','err');return;}
   try{
     const r=push(R(db,LOGSUM_REQ));
-    await set(r,{item,cantidadSolicitada:cant,cantidadDespachada:0,estado:'pendiente',solicitante:CU,solicitanteNombre:(CUM&&CUM.nombre)||CU,ts:Date.now(),despachos:[]});
+    await set(r,{item,cantidadSolicitada:cant,cantidadDespachada:0,cantidadDevuelta:0,estado:'pendiente',solicitante:CU,solicitanteNombre:(CUM&&CUM.nombre)||CU,ts:Date.now(),despachos:[],devoluciones:[]});
     el('log-solreq-cant').value=1;
     toast('Solicitud enviada ✓','ok');
     const resps=[...Object.keys(LOGSUMRESP).filter(k=>LOGSUMRESP[k]),...ADMINS];
