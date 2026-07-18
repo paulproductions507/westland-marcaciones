@@ -185,6 +185,20 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .sumchip{display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--bd);border-radius:20px;padding:5px 8px 5px 12px;font-size:12px;margin:0 6px 6px 0}
 .sumchip b{cursor:pointer;color:var(--dn);font-weight:800;padding:0 3px}
 .sumrow{display:flex;justify-content:space-between;align-items:center;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:9px 12px;margin-bottom:7px;font-size:12.5px}
+.asig-chk-row{display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--bd);font-size:13px}
+.asig-chk-row:last-child{border-bottom:none}
+.asig-chk-row input[type="number"]{width:80px;padding:5px 8px;background:var(--bg);border:1px solid var(--bd);border-radius:6px;color:#fff;font-size:13px}
+#acuse-print-area{font-family:'DM Sans',system-ui,sans-serif;color:#111}
+#acuse-print-area table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+#acuse-print-area th,#acuse-print-area td{border:1px solid #999;padding:6px 8px;text-align:left}
+#acuse-print-area .firma-box{margin-top:40px;display:flex;justify-content:space-between;gap:40px}
+#acuse-print-area .firma-linea{border-top:1px solid #111;margin-top:40px;padding-top:4px;font-size:12px;text-align:center}
+@media print{
+  body *{visibility:hidden}
+  #acuse-print-area,#acuse-print-area *{visibility:visible}
+  #acuse-print-area{position:absolute;left:0;top:0;width:100%}
+  .no-print{display:none!important}
+}
 @media(max-width:600px){
   .fg2{grid-template-columns:1fr}.cbar{gap:5px}.mbtn{width:94px;height:94px}.mbtn img{width:44px;height:44px}
   .tb{padding:8px 14px;gap:6px}.tb-brand{flex:1 1 100%;order:1}.tb-act{flex:1 1 100%;order:2;justify-content:flex-end}
@@ -1066,86 +1080,158 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
           <div class="fg"><label>Cantidad solicitada</label><input type="number" min="1" class="fc" id="log-solreq-cant" value="1"></div>
           <button class="btn bp bsm" id="btn-log-solreq-enviar" style="width:auto">📤 Enviar solicitud</button>
         </div>
-        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">📋 Mis solicitudes</div>
+        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">📦 Lo que tengo asignado / en mi poder</div>
+        <div style="font-size:12px;color:var(--mt);margin-bottom:8px">Cuando el responsable te asigna suministro, aparece aquí. Puedes marcarlo como consumido o devolver lo que no usaste.</div>
         <div id="log-solreq-mias"><div style="color:var(--mt);font-size:12px">Sin solicitudes aún</div></div>
       </div>
 
-      <!-- VISTA ADMIN / RESPONSABLE: control total -->
+      <!-- VISTA ADMIN / RESPONSABLE: control total, organizado en submenús -->
       <div id="log-sum-admin-box" style="display:none">
 
-      <div style="border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:14px;background:var(--sf)">
-        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">📥 Solicitudes por atender</div>
+      <!-- Submenú: Solicitudes por atender -->
+      <div class="asec"><div class="ashdr" data-ac="log-ac-sum-req"><span>📥 Solicitudes por atender</span><span class="ach">▾</span></div>
+      <div class="asbdy" id="log-ac-sum-req">
         <div id="log-sumreq-pend"><div style="color:var(--mt);font-size:12px">Sin solicitudes pendientes</div></div>
-      </div>
+      </div></div>
 
-      <div id="log-sumresp-box" style="display:none;border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:14px;background:var(--sf)">
-        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">👤 Responsable de Suministro</div>
-        <div style="font-size:12px;color:var(--mt);margin-bottom:8px">Asigna quién más (además de los administradores) puede ver el inventario completo y despachar solicitudes.</div>
+      <!-- Submenú: Responsable de Suministro (solo admins lo ven) -->
+      <div class="asec" id="log-sumresp-box" style="display:none"><div class="ashdr" data-ac="log-ac-sum-resp"><span>👤 Responsable de Suministro</span><span class="ach">▾</span></div>
+      <div class="asbdy" id="log-ac-sum-resp">
+        <div style="font-size:12px;color:var(--mt);margin-bottom:8px">Asigna quién más (además de los administradores) puede ver el inventario completo, despachar solicitudes y asignar suministro a colaboradores.</div>
         <div class="fg2">
           <div class="fg"><select class="fc" id="log-sumresp-user"><option value="">Seleccionar colaborador...</option></select></div>
           <div class="fg"><button class="btn bp bsm" id="btn-log-sumresp-add" style="width:auto">➕ Asignar responsable</button></div>
         </div>
         <div id="log-sumresp-list">Sin responsables asignados</div>
-      </div>
+      </div></div>
 
-      <div style="border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:14px;background:var(--sf)">
-        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🗂️ Catálogo de suministros (agregar rubros manualmente)</div>
-        <div style="font-size:12px;color:var(--mt);margin-bottom:8px">Si un rubro no aparece en la lista (ej: Tape transparente, Cartapacio), agrégalo aquí una sola vez y quedará disponible para seleccionar al registrar entradas/salidas y en las solicitudes de los colaboradores.</div>
+      <!-- Submenú: Catálogos -->
+      <div class="asec"><div class="ashdr" data-ac="log-ac-sum-cat"><span>🗂️ Catálogos de suministro</span><span class="ach">▾</span></div>
+      <div class="asbdy" id="log-ac-sum-cat">
+        <div style="margin-bottom:16px">
+          <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🧾 Rubros (nombres de suministro)</div>
+          <div style="font-size:12px;color:var(--mt);margin-bottom:8px">Si un rubro no aparece en la lista (ej: Tape transparente, Cartapacio), agrégalo aquí una sola vez y quedará disponible para seleccionar al registrar entradas/salidas y en las solicitudes de los colaboradores.</div>
+          <div class="fg2">
+            <div class="fg"><input class="fc" id="log-sumcat-nombre" placeholder="Ej: Tape transparente, Cartapacio..."></div>
+            <div class="fg"><button class="btn bp bsm" id="btn-log-sumcat-add" style="width:auto">➕ Agregar al catálogo</button></div>
+          </div>
+          <div id="log-sumcat-list">Sin rubros agregados aún</div>
+        </div>
+        <div style="border-top:1px solid var(--bd);padding-top:12px;margin-bottom:16px">
+          <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🏷️ Tamaños de etiqueta</div>
+          <div class="fg2">
+            <div class="fg"><input class="fc" id="log-sumtam-nombre" placeholder="Ej: 4x6 pulg, 5x34..."></div>
+            <div class="fg"><button class="btn bp bsm" id="btn-log-sumtam-add" style="width:auto">➕ Agregar tamaño</button></div>
+          </div>
+          <div id="log-sumtam-list">Sin tamaños aún</div>
+        </div>
+        <div style="border-top:1px solid var(--bd);padding-top:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🏢 Áreas / Sucursales / Bodegas vecinas</div>
+          <div style="font-size:12px;color:var(--mt);margin-bottom:8px">Úsalas cuando debas asignar suministro a un destino que no es un colaborador individual (ej: préstamo a otra sucursal o bodega).</div>
+          <div class="fg2">
+            <div class="fg"><input class="fc" id="log-sumarea-nombre" placeholder="Ej: Bodega vecina, Sucursal Norte..."></div>
+            <div class="fg"><button class="btn bp bsm" id="btn-log-sumarea-add" style="width:auto">➕ Agregar área</button></div>
+          </div>
+          <div id="log-sumarea-list">Sin áreas aún</div>
+        </div>
+      </div></div>
+
+      <!-- Submenú: Registrar entrada/salida en bodega -->
+      <div class="asec"><div class="ashdr" data-ac="log-ac-sum-reg"><span>➕ Registrar entrada / salida</span><span class="ach">▾</span></div>
+      <div class="asbdy" id="log-ac-sum-reg">
+        <div class="fg"><label>Nombre del suministro</label>
+          <input class="fc" id="log-sum-nombre" list="log-sum-nombres-dl" placeholder="Ej: Lápices, Papel toalla, Cartucho mediano..." autocomplete="off">
+          <datalist id="log-sum-nombres-dl"></datalist>
+        </div>
+        <div id="log-sum-tamano-box" style="display:none" class="fg"><label>Tamaño de etiqueta</label>
+          <select class="fc" id="log-sum-tamano"><option value="">Seleccionar...</option></select>
+        </div>
         <div class="fg2">
-          <div class="fg"><input class="fc" id="log-sumcat-nombre" placeholder="Ej: Tape transparente, Cartapacio..."></div>
-          <div class="fg"><button class="btn bp bsm" id="btn-log-sumcat-add" style="width:auto">➕ Agregar al catálogo</button></div>
+          <div class="fg"><label>Cajas</label><input type="number" min="0" class="fc" id="log-sum-cajas" value="0"></div>
+          <div class="fg"><label>Piezas por caja</label><input type="number" min="0" class="fc" id="log-sum-ppc" value="0"></div>
         </div>
-        <div id="log-sumcat-list">Sin rubros agregados aún</div>
-      </div>
-
-      <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">➕ Agregar suministro</div>
-      <div class="fg"><label>Nombre del suministro</label>
-        <input class="fc" id="log-sum-nombre" list="log-sum-nombres-dl" placeholder="Ej: Lápices, Papel toalla, Cartucho mediano..." autocomplete="off">
-        <datalist id="log-sum-nombres-dl"></datalist>
-      </div>
-      <div id="log-sum-tamano-box" style="display:none" class="fg"><label>Tamaño de etiqueta</label>
-        <select class="fc" id="log-sum-tamano"><option value="">Seleccionar...</option></select>
-      </div>
-      <div class="fg2">
-        <div class="fg"><label>Cajas</label><input type="number" min="0" class="fc" id="log-sum-cajas" value="0"></div>
-        <div class="fg"><label>Piezas por caja</label><input type="number" min="0" class="fc" id="log-sum-ppc" value="0"></div>
-      </div>
-      <div class="fg2">
-        <div class="fg"><label>Piezas sueltas (fuera de caja)</label><input type="number" min="0" class="fc" id="log-sum-sueltas" value="0"></div>
-        <div class="fg"><label>Referencia del proveedor</label><input class="fc" id="log-sum-refprov" placeholder="Ej: NS39O361"></div>
-      </div>
-      <div class="fg2">
-        <div class="fg"><label>Ubicación (bodega)</label><input class="fc" id="log-sum-ubicacion" list="log-sum-ubic-dl" placeholder="Ej: Bodega 2, Rack A-3..." autocomplete="off">
-          <datalist id="log-sum-ubic-dl"></datalist>
-        </div>
-        <div class="fg"><label>Código interno (opcional)</label><input class="fc" id="log-sum-codigo" placeholder="Libre — aún sin definir"></div>
-      </div>
-      <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:9px 12px;margin-bottom:10px;font-size:13px;display:flex;justify-content:space-between;align-items:center">
-        <span style="color:var(--mt)">Total a registrar:</span><b id="log-sum-total-preview">0</b>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:16px">
-        <button class="btn bp bsm" id="btn-log-sum-guardar" style="width:auto">💾 Guardar entrada</button>
-        <button class="btn bg bsm" id="btn-log-sum-salida" style="width:auto">➖ Registrar salida</button>
-      </div>
-
-      <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🏬 Bodega de Consumo Interno — Saldo</div>
-      <div style="font-size:11px;color:var(--mt);margin-bottom:8px">Aquí vive el suministro para consumo interno de los colaboradores (no es una tienda de venta).</div>
-      <div id="log-sum-stock-list" style="margin-bottom:16px;overflow-x:auto"><div style="color:var(--mt);font-size:12px">Sin existencias registradas aún</div></div>
-
-      <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">👥 Consumo por colaborador</div>
-      <div id="log-sum-porcolab" style="margin-bottom:16px"><div style="color:var(--mt);font-size:12px">Aún nadie tiene suministro en su poder</div></div>
-
-      <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🕓 Últimos movimientos</div>
-      <div id="log-sum-mov-list" style="margin-bottom:16px"><div style="color:var(--mt);font-size:12px">Sin movimientos aún</div></div>
-
-      <div style="border-top:1px solid var(--bd);padding-top:12px">
-        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🏷️ Tamaños de etiqueta (catálogo)</div>
         <div class="fg2">
-          <div class="fg"><input class="fc" id="log-sumtam-nombre" placeholder="Ej: 4x6 pulg, 5x34..."></div>
-          <div class="fg"><button class="btn bp bsm" id="btn-log-sumtam-add" style="width:auto">➕ Agregar tamaño</button></div>
+          <div class="fg"><label>Piezas sueltas (fuera de caja)</label><input type="number" min="0" class="fc" id="log-sum-sueltas" value="0"></div>
+          <div class="fg"><label>Referencia del proveedor</label><input class="fc" id="log-sum-refprov" placeholder="Ej: NS39O361"></div>
         </div>
-        <div id="log-sumtam-list">Sin tamaños aún</div>
-      </div>
+        <div class="fg2">
+          <div class="fg"><label>Ubicación (bodega)</label><input class="fc" id="log-sum-ubicacion" list="log-sum-ubic-dl" placeholder="Ej: Bodega 2, Rack A-3..." autocomplete="off">
+            <datalist id="log-sum-ubic-dl"></datalist>
+          </div>
+          <div class="fg"><label>Código interno (opcional)</label><input class="fc" id="log-sum-codigo" placeholder="Libre — aún sin definir"></div>
+        </div>
+        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:9px 12px;margin-bottom:10px;font-size:13px;display:flex;justify-content:space-between;align-items:center">
+          <span style="color:var(--mt)">Total a registrar:</span><b id="log-sum-total-preview">0</b>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bp bsm" id="btn-log-sum-guardar" style="width:auto">💾 Guardar entrada</button>
+          <button class="btn bg bsm" id="btn-log-sum-salida" style="width:auto">➖ Registrar salida manual</button>
+        </div>
+      </div></div>
+
+      <!-- Submenú: Bodega de consumo interno (saldo + asignar) -->
+      <div class="asec"><div class="ashdr" data-ac="log-ac-sum-stock"><span>🏬 Bodega de Consumo Interno — Saldo</span><span class="ach">▾</span></div>
+      <div class="asbdy" id="log-ac-sum-stock">
+        <div style="font-size:11px;color:var(--mt);margin-bottom:8px">Aquí vive el suministro para consumo interno. <b>Saldo disponible</b> = lo que aún puedes asignar. <b>En tránsito</b> = ya despachado a colaboradores/áreas pero aún no confirmado como consumido. <b>Consumido</b> = confirmado como usado. Usa <b>Asignar</b> para despachar a uno o varios colaboradores/áreas en un solo movimiento.</div>
+        <div id="log-sum-stock-list" style="overflow-x:auto"><div style="color:var(--mt);font-size:12px">Sin existencias registradas aún</div></div>
+
+        <div id="log-sum-asignar-box" style="display:none;margin-top:12px;border:1px solid var(--ac);border-radius:var(--rs);padding:10px 12px;background:var(--sf)">
+          <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">📤 Asignar / Despachar suministro</div>
+          <div style="font-size:13px;margin-bottom:8px">Ítem: <b id="log-sum-asignar-item">—</b> · Saldo disponible: <b id="log-sum-asignar-saldo">0</b></div>
+          <div class="fg"><label>Destino</label>
+            <select class="fc" id="log-sum-asignar-tipo">
+              <option value="user">👤 Colaboradores</option>
+              <option value="area">🏢 Áreas / Sucursales</option>
+            </select>
+          </div>
+          <div style="font-size:12px;color:var(--mt);margin-bottom:6px">Marca uno o varios destinos y coloca la cantidad para cada uno. Puede ser una asignación parcial o completa del saldo disponible.</div>
+          <div id="log-sum-asignar-checklist" style="max-height:260px;overflow-y:auto;border:1px solid var(--bd);border-radius:var(--rs);padding:8px;margin-bottom:10px;background:var(--bg)"></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:10px">
+            <span style="color:var(--mt)">Total a despachar:</span><b id="log-sum-asignar-total">0</b>
+          </div>
+          <div class="fg"><label>Correo(s) para el acuse de recibo (opcional, separados por coma)</label>
+            <input class="fc" id="log-sum-asignar-email" placeholder="ejemplo@westland.com, gerencia@westland.com"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn bp bsm" id="btn-log-sum-asignar-confirm" style="width:auto">✅ Emitir despacho</button>
+            <button class="btn bg bsm" id="btn-log-sum-asignar-cancel" style="width:auto">Cancelar</button>
+          </div>
+        </div>
+
+        <div id="log-sum-acuse-box" style="display:none;margin-top:12px;border:1px solid var(--ac);border-radius:var(--rs);padding:12px;background:#fff;color:#111">
+          <div id="acuse-print-area"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px" class="no-print">
+            <button class="btn bp bsm" id="btn-acuse-imprimir" style="width:auto">🖨️ Imprimir / Guardar PDF</button>
+            <button class="btn bg bsm" id="btn-acuse-email" style="width:auto">📧 Enviar por correo</button>
+            <button class="btn bg bsm" id="btn-acuse-cerrar" style="width:auto">Cerrar</button>
+          </div>
+        </div>
+      </div></div>
+
+      <!-- Submenú: Consumo por colaborador / área -->
+      <div class="asec"><div class="ashdr" data-ac="log-ac-sum-porcolab"><span>👥 Consumo por colaborador / área</span><span class="ach">▾</span></div>
+      <div class="asbdy" id="log-ac-sum-porcolab">
+        <div id="log-sum-porcolab"><div style="color:var(--mt);font-size:12px">Aún nadie tiene suministro en su poder</div></div>
+      </div></div>
+
+      <!-- Submenú: Historial de consumo (auditoría completa) -->
+      <div class="asec"><div class="ashdr" data-ac="log-ac-sum-consumo-hist"><span>🧾 Historial de consumo</span><span class="ach">▾</span></div>
+      <div class="asbdy" id="log-ac-sum-consumo-hist">
+        <div style="font-size:12px;color:var(--mt);margin-bottom:8px">Quién consumió qué, cuánto y en qué fecha/hora (incluye colaboradores y áreas).</div>
+        <div id="log-sum-consumo-hist-list" style="overflow-x:auto"><div style="color:var(--mt);font-size:12px">Sin consumos registrados aún</div></div>
+      </div></div>
+
+      <!-- Submenú: Acuses de despacho (histórico, reimprimir/reenviar) -->
+      <div class="asec"><div class="ashdr" data-ac="log-ac-sum-acuses"><span>📄 Acuses de despacho</span><span class="ach">▾</span></div>
+      <div class="asbdy" id="log-ac-sum-acuses">
+        <div id="log-sum-acuses-list"><div style="color:var(--mt);font-size:12px">Sin acuses emitidos aún</div></div>
+      </div></div>
+
+      <!-- Submenú: Últimos movimientos -->
+      <div class="asec"><div class="ashdr" data-ac="log-ac-sum-mov"><span>🕓 Últimos movimientos</span><span class="ach">▾</span></div>
+      <div class="asbdy" id="log-ac-sum-mov">
+        <div id="log-sum-mov-list"><div style="color:var(--mt);font-size:12px">Sin movimientos aún</div></div>
+      </div></div>
+
       </div>
     </div></div>
 
@@ -1270,7 +1356,7 @@ const app=initializeApp(FB),auth=getAuth(app),db=getDatabase(app);
 // PATHS
 const META="meta_v1",USERS="users_v1",HIST="historial_v1",PLOG="prolog_v1",FER="feriados_v1",APR="approvals_v1";
 const LOGPROV="logistica_proveedores_v1",LOGREC="logistica_recibos_v1",LOGDEPTO="logistica_deptos_v1";
-const LOGSUM="logistica_suministro_v1",LOGSUM_MOV=LOGSUM+"/movimientos",LOGSUM_TAM=LOGSUM+"/tamanos",LOGSUM_CAT=LOGSUM+"/catalogo",LOGSUM_RESP=LOGSUM+"/responsables",LOGSUM_REQ=LOGSUM+"/solicitudes";
+const LOGSUM="logistica_suministro_v1",LOGSUM_MOV=LOGSUM+"/movimientos",LOGSUM_TAM=LOGSUM+"/tamanos",LOGSUM_CAT=LOGSUM+"/catalogo",LOGSUM_RESP=LOGSUM+"/responsables",LOGSUM_REQ=LOGSUM+"/solicitudes",LOGSUM_AREA=LOGSUM+"/areas",LOGSUM_ACUSE=LOGSUM+"/acuses";
 const SUM_BASE_NOMBRES=["Lápices","Bolígrafos","Exactos","Hojas para exacto","Papel de embalaje (plástico)","Etiquetas","Tinta / rollo para impresora (Zebra)","Papel toalla","Papel higiénico","Cartucho pequeño","Cartucho mediano","Cartucho grande","Cartucho extra pequeño","Rema hoja carta","Rema hoja legal","Escoba","Trapeador","Cloro","Jabón","Detergente","Desinfectante","Tape transparente","Cartapacio"];
 
 // ── CATÁLOGO MAESTRO DE PROVEEDORES (3,574 del Excel UBC014) ──
@@ -1850,7 +1936,7 @@ async function openApp(user){
   el('sec-usuarios').style.display=isSA?'':'none';
   el('log-config-card').style.display=isAdm?'block':'none';
   el('log-nuevo-card').style.display=isAdm?'block':'none';
-  tabSwitch('reloj');renderLogProveedores();renderLogPendientes();loadLogDeptos();fillLogAsignadoSelect();listenLogistica();loadLogSumMov();loadLogSumTam();loadLogSumCat();loadLogSumResp();loadLogSumReq();
+  tabSwitch('reloj');renderLogProveedores();renderLogPendientes();loadLogDeptos();fillLogAsignadoSelect();listenLogistica();loadLogSumMov();loadLogSumTam();loadLogSumCat();loadLogSumResp();loadLogSumReq();loadLogSumAreas();loadLogSumAcuses();
   // Gerente: hide buttons they shouldn't see
   if(isGer){
     ['btn-limpiar'].forEach(id=>{if(el(id))el(id).style.display='none';});
@@ -4461,7 +4547,8 @@ async function renderLogKPIs(){
 document.querySelector('[data-ac="log-ac-kpi"]')?.closest('.ashdr')?.addEventListener('click',renderLogKPIs);
 
 // ── SUMINISTRO ──────────────────────────────────────────────────────
-let LOGSUMMOVS={},LOGSUMTAMS={},LOGSUMCAT={},LOGSUMRESP={},LOGSUMREQ={};
+let LOGSUMMOVS={},LOGSUMTAMS={},LOGSUMCAT={},LOGSUMRESP={},LOGSUMREQ={},LOGSUMAREAS={};
+let LOGSUM_STOCK_AGG={};
 function esEtiquetaNombre(n){return (n||'').toLowerCase().includes('etiqueta');}
 function sumStockKey(nombre,tam){return (nombre||'').trim().toUpperCase()+'|'+(tam||'').trim().toUpperCase();}
 
@@ -4516,6 +4603,36 @@ el('btn-log-sumcat-add')?.addEventListener('click',async()=>{
   }catch(e){console.error('add sumcat',e);toast('Error al agregar rubro: '+(e.message||e),'err');}
 });
 
+async function loadLogSumAreas(){
+  try{
+    const s=await get(R(db,LOGSUM_AREA));LOGSUMAREAS=s.exists()?s.val():{};
+  }catch(e){console.error('loadLogSumAreas',e);LOGSUMAREAS={};toast('No se pudieron cargar las áreas: '+(e.message||e),'err');}
+  renderLogSumAreaList();
+}
+function renderLogSumAreaList(){
+  const c=el('log-sumarea-list');if(!c)return;
+  const keys=Object.keys(LOGSUMAREAS).sort((a,b)=>(LOGSUMAREAS[a].nombre||'').localeCompare(LOGSUMAREAS[b].nombre||''));
+  c.innerHTML=keys.length?keys.map(k=>`<span class="sumchip">${LOGSUMAREAS[k].nombre}<b data-k="${k}">✕</b></span>`).join(''):'<span style="font-size:12px;color:var(--mt)">Sin áreas aún</span>';
+  c.querySelectorAll('b[data-k]').forEach(b=>b.addEventListener('click',async()=>{
+    if(!confirm('¿Eliminar el área "'+LOGSUMAREAS[b.dataset.k].nombre+'"?'))return;
+    try{await remove(R(db,LOGSUM_AREA+'/'+b.dataset.k));toast('Eliminada','ok');loadLogSumAreas();}
+    catch(e){toast('Error al eliminar: '+(e.message||e),'err');}
+  }));
+}
+el('btn-log-sumarea-add')?.addEventListener('click',async()=>{
+  const nombre=el('log-sumarea-nombre').value.trim();
+  if(!nombre){toast('Ingresa el nombre del área','err');return;}
+  const yaExiste=Object.values(LOGSUMAREAS).some(v=>(v.nombre||'').toLowerCase()===nombre.toLowerCase());
+  if(yaExiste){toast('Esa área ya existe','err');return;}
+  try{
+    const r=push(R(db,LOGSUM_AREA));
+    await set(r,{nombre,creadoPor:CU||'',ts:Date.now()});
+    el('log-sumarea-nombre').value='';
+    toast('Área agregada ✓','ok');
+    loadLogSumAreas();
+  }catch(e){console.error('add area',e);toast('Error al agregar área: '+(e.message||e),'err');}
+});
+
 async function loadLogSumTam(){
   try{
     const s=await get(R(db,LOGSUM_TAM));LOGSUMTAMS=s.exists()?s.val():{};
@@ -4563,24 +4680,39 @@ function fillLogSumUbicDatalist(){
   dl.innerHTML=[...ubics].sort().map(u=>`<option value="${u.replace(/"/g,'&quot;')}">`).join('');
 }
 
+// Construye la clave de bodega para una solicitud/despacho (usa itemNombre/itemTam si existen; si no, cae a 'item' plano)
+function reqStockKey(r){
+  if(r.itemNombre)return sumStockKey(r.itemNombre,r.itemTam||'');
+  return sumStockKey(r.item,'');
+}
+
 function renderLogSumStock(){
   const c=el('log-sum-stock-list');if(!c)return;
   const agg={};
   Object.values(LOGSUMMOVS).sort((a,b)=>(a.ts||0)-(b.ts||0)).forEach(m=>{
     const k=sumStockKey(m.nombre,m.tamNombre);
-    if(!agg[k])agg[k]={nombre:m.nombre,tamNombre:m.tamNombre,refProv:'',ubicacion:'',codigoInterno:'',stock:0,consumido:0};
+    if(!agg[k])agg[k]={nombre:m.nombre,tamNombre:m.tamNombre,refProv:'',ubicacion:'',codigoInterno:'',stock:0,enTransito:0,consumido:0};
     agg[k].stock+=(m.signo||1)*(m.subtotal||0);
-    if((m.signo||1)<0)agg[k].consumido+=(m.subtotal||0);
     // Se conserva el último valor no vacío informado (referencia/ubicación pueden cambiar con el tiempo)
     if(m.refProv)agg[k].refProv=m.refProv;
     if(m.ubicacion)agg[k].ubicacion=m.ubicacion;
     if(m.codigo)agg[k].codigoInterno=m.codigo;
   });
-  const keys=Object.keys(agg).filter(k=>agg[k].stock!==0||agg[k].consumido!==0).sort((a,b)=>agg[a].nombre.localeCompare(agg[b].nombre));
+  // En tránsito y Consumido se calculan desde las solicitudes/despachos (no desde el ledger),
+  // porque una devolución ya vuelve a sumar al "stock" mediante su propio movimiento de entrada.
+  Object.values(LOGSUMREQ).forEach(r=>{
+    const k=reqStockKey(r);
+    if(!agg[k])agg[k]={nombre:r.itemNombre||r.item,tamNombre:r.itemTam||'',refProv:'',ubicacion:'',codigoInterno:'',stock:0,enTransito:0,consumido:0};
+    const despachada=r.cantidadDespachada||0,devuelta=r.cantidadDevuelta||0,consumoF=r.consumoFinal||0;
+    agg[k].enTransito+=Math.max(0,despachada-devuelta-consumoF);
+    agg[k].consumido+=consumoF;
+  });
+  const keys=Object.keys(agg).filter(k=>agg[k].stock!==0||agg[k].enTransito!==0||agg[k].consumido!==0).sort((a,b)=>agg[a].nombre.localeCompare(agg[b].nombre));
+  LOGSUM_STOCK_AGG=agg;
   if(!keys.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">Sin existencias registradas aún</div>';return;}
   c.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px">
     <thead><tr style="text-align:left;color:var(--mt);border-bottom:1px solid var(--bd)">
-      <th style="padding:6px 8px">Ítem</th><th style="padding:6px 8px">Ubicación</th><th style="padding:6px 8px">Ref. proveedor</th><th style="padding:6px 8px">Cód. interno</th><th style="padding:6px 8px;text-align:right">Saldo en bodega</th><th style="padding:6px 8px;text-align:right">Consumido</th>
+      <th style="padding:6px 8px">Ítem</th><th style="padding:6px 8px">Ubicación</th><th style="padding:6px 8px">Ref. proveedor</th><th style="padding:6px 8px">Cód. interno</th><th style="padding:6px 8px;text-align:right">Saldo disponible</th><th style="padding:6px 8px;text-align:right">En tránsito</th><th style="padding:6px 8px;text-align:right">Consumido</th><th style="padding:6px 8px"></th>
     </tr></thead><tbody>${keys.map(k=>{
       const v=agg[k];
       const nom=v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre;
@@ -4590,9 +4722,232 @@ function renderLogSumStock(){
         <td style="padding:6px 8px;color:var(--mt)">${v.refProv||'—'}</td>
         <td style="padding:6px 8px;color:var(--mt)">${v.codigoInterno||'—'}</td>
         <td style="padding:6px 8px;text-align:right"><b>${fmtNum(v.stock)}</b></td>
+        <td style="padding:6px 8px;text-align:right;color:var(--wn)">${fmtNum(v.enTransito)}</td>
         <td style="padding:6px 8px;text-align:right;color:var(--mt)">${fmtNum(v.consumido)}</td>
+        <td style="padding:6px 8px;text-align:right">${v.stock>0?`<button class="btn bp bsm" style="width:auto;padding:4px 10px" data-k="${k}">📤 Asignar</button>`:''}</td>
       </tr>`;
     }).join('')}</tbody></table>`;
+  c.querySelectorAll('button[data-k]').forEach(b=>b.addEventListener('click',()=>abrirAsignar(b.dataset.k)));
+}
+
+let ASIGNAR_ACTUAL_KEY=null,ASIGNAR_USERS_CACHE=[];
+async function abrirAsignar(key){
+  const v=LOGSUM_STOCK_AGG[key];if(!v){toast('No se encontró el ítem','err');return;}
+  if(v.stock<=0){toast('No hay saldo disponible para asignar','err');return;}
+  ASIGNAR_ACTUAL_KEY=key;
+  const nom=v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre;
+  if(el('log-sum-asignar-item'))el('log-sum-asignar-item').textContent=nom;
+  if(el('log-sum-asignar-saldo'))el('log-sum-asignar-saldo').textContent=fmtNum(v.stock);
+  if(el('log-sum-asignar-email'))el('log-sum-asignar-email').value='';
+  if(el('log-sum-asignar-tipo'))el('log-sum-asignar-tipo').value='user';
+  try{const all=await getUsers();ASIGNAR_USERS_CACHE=Object.values(all).filter(u=>u.user);}catch(e){ASIGNAR_USERS_CACHE=[];}
+  await renderAsignarChecklist();
+  const box=el('log-sum-asignar-box');
+  if(box){box.style.display='block';box.scrollIntoView({behavior:'smooth',block:'center'});}
+  if(el('log-sum-acuse-box'))el('log-sum-acuse-box').style.display='none';
+}
+async function renderAsignarChecklist(){
+  const cont=el('log-sum-asignar-checklist');if(!cont)return;
+  const tipo=el('log-sum-asignar-tipo')?.value||'user';
+  let items=[];
+  if(tipo==='area'){
+    items=Object.entries(LOGSUMAREAS).sort((a,b)=>(a[1].nombre||'').localeCompare(b[1].nombre||'')).map(([k,v])=>({id:'area:'+k,nombre:'🏢 '+(v.nombre||k)}));
+  }else{
+    items=ASIGNAR_USERS_CACHE.map(u=>({id:u.user,nombre:u.nombre+' ('+u.user+')'})).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  }
+  if(!items.length){cont.innerHTML=`<div style="color:var(--mt);font-size:12px">${tipo==='area'?'No hay áreas agregadas. Ve al submenú Catálogos → Áreas.':'No hay colaboradores disponibles.'}</div>`;actualizarTotalAsignar();return;}
+  cont.innerHTML=items.map(it=>`<div class="asig-chk-row">
+      <input type="checkbox" data-chk="${it.id}" id="asigchk-${it.id.replace(/[^a-zA-Z0-9]/g,'_')}">
+      <label for="asigchk-${it.id.replace(/[^a-zA-Z0-9]/g,'_')}" style="flex:1;cursor:pointer">${it.nombre}</label>
+      <input type="number" min="1" placeholder="Cant." data-qty="${it.id}" style="display:none">
+    </div>`).join('');
+  cont.querySelectorAll('input[type="checkbox"]').forEach(chk=>{
+    chk.addEventListener('change',function(){
+      const qty=cont.querySelector(`input[data-qty="${CSS.escape(this.dataset.chk)}"]`);
+      if(qty){qty.style.display=this.checked?'inline-block':'none';if(this.checked&&!qty.value)qty.value=1;}
+      actualizarTotalAsignar();
+    });
+  });
+  cont.querySelectorAll('input[type="number"]').forEach(inp=>inp.addEventListener('input',actualizarTotalAsignar));
+  actualizarTotalAsignar();
+}
+el('log-sum-asignar-tipo')?.addEventListener('change',renderAsignarChecklist);
+function actualizarTotalAsignar(){
+  const cont=el('log-sum-asignar-checklist');if(!cont)return;
+  let total=0;
+  cont.querySelectorAll('input[type="checkbox"]:checked').forEach(chk=>{
+    const qty=cont.querySelector(`input[data-qty="${CSS.escape(chk.dataset.chk)}"]`);
+    total+=parseInt(qty?.value)||0;
+  });
+  if(el('log-sum-asignar-total'))el('log-sum-asignar-total').textContent=fmtNum(total);
+  return total;
+}
+el('btn-log-sum-asignar-cancel')?.addEventListener('click',()=>{
+  if(el('log-sum-asignar-box'))el('log-sum-asignar-box').style.display='none';
+  ASIGNAR_ACTUAL_KEY=null;
+});
+
+function folioDespacho(){return 'D-'+Date.now().toString(36).toUpperCase();}
+
+async function confirmarAsignacion(){
+  const key=ASIGNAR_ACTUAL_KEY;const v=key?LOGSUM_STOCK_AGG[key]:null;
+  if(!v){toast('Selecciona un ítem para asignar','err');return;}
+  const tipo=el('log-sum-asignar-tipo').value;
+  const cont=el('log-sum-asignar-checklist');
+  const destinos=[];
+  cont.querySelectorAll('input[type="checkbox"]:checked').forEach(chk=>{
+    const qty=cont.querySelector(`input[data-qty="${CSS.escape(chk.dataset.chk)}"]`);
+    const cant=parseInt(qty?.value)||0;
+    if(cant>0)destinos.push({id:chk.dataset.chk,cant});
+  });
+  if(!destinos.length){toast('Marca al menos un destino con cantidad','err');return;}
+  const total=destinos.reduce((s,d)=>s+d.cant,0);
+  if(total>v.stock){toast('El total ('+total+') supera el saldo disponible ('+v.stock+')','err');return;}
+  const item=v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre;
+  const folio=folioDespacho();
+  const destinosInfo=[];
+  try{
+    for(const d of destinos){
+      let destinoNombre='',esArea=d.id.startsWith('area:');
+      if(esArea){
+        const areaKey=d.id.slice(5);
+        destinoNombre=LOGSUMAREAS[areaKey]?.nombre||areaKey;
+      }else{
+        destinoNombre=ASIGNAR_USERS_CACHE.find(u=>u.user===d.id)?.nombre||d.id;
+      }
+      const r=push(R(db,LOGSUM_REQ));
+      await set(r,{
+        item,itemNombre:v.nombre,itemTam:v.tamNombre||'',
+        cantidadSolicitada:d.cant,cantidadDespachada:d.cant,cantidadDevuelta:0,consumoFinal:0,
+        estado:'completado',
+        solicitante:d.id,
+        solicitanteNombre:esArea?('🏢 '+destinoNombre):destinoNombre,
+        tipoDestino:esArea?'area':'user',
+        origen:'asignacion',asignadoPor:CU||'',folioDespacho:folio,ts:Date.now(),
+        despachos:[{cantidad:d.cant,ts:Date.now(),por:CU}],devoluciones:[],consumos:[]
+      });
+      destinosInfo.push({nombre:destinoNombre,esArea,cant:d.cant,id:d.id});
+    }
+    // Un solo movimiento de bodega por el total (no uno por destinatario)
+    const mr=push(R(db,LOGSUM_MOV));
+    await set(mr,{nombre:v.nombre,tamNombre:v.tamNombre||'',cajas:0,piezasPorCaja:0,piezasSueltas:total,subtotal:total,refProv:'',ubicacion:v.ubicacion||'',codigo:'',signo:-1,usuario:CU||'',ts:Date.now(),folioDespacho:folio,asignacionDirecta:true,destinatarios:destinosInfo.map(d=>d.nombre+' ('+d.cant+')').join(', ')});
+    toast('Despacho emitido ✓','ok');
+    for(const d of destinosInfo){if(!d.esArea)await sendNotif(CU,d.id,'📦 Suministro asignado',`Se te asignó ${d.cant} de "${item}". Ya está en tu poder.`);}
+    // Genera y guarda el acuse de recibo
+    const emailsInput=(el('log-sum-asignar-email')?.value||'').trim();
+    const acuse={folio,item,total,ts:Date.now(),asignadoPor:CU||'',asignadoPorNombre:(CUM&&CUM.nombre)||CU,destinatarios:destinosInfo,emails:emailsInput};
+    await set(R(db,LOGSUM_ACUSE+'/'+folio),acuse);
+    if(el('log-sum-asignar-box'))el('log-sum-asignar-box').style.display='none';
+    ASIGNAR_ACTUAL_KEY=null;
+    mostrarAcuse(acuse);
+    loadLogSumReq();loadLogSumMov();loadLogSumAcuses();
+  }catch(e){console.error('confirmarAsignacion',e);toast('❌ No se pudo emitir el despacho: '+(e.message||e),'err');}
+}
+el('btn-log-sum-asignar-confirm')?.addEventListener('click',confirmarAsignacion);
+
+function acuseHTML(acuse){
+  const fecha=new Date(acuse.ts).toLocaleString('es');
+  const filas=acuse.destinatarios.map(d=>`<tr><td>${d.esArea?'🏢 Área':'👤 Colaborador'}</td><td>${d.nombre}</td><td style="text-align:right">${fmtNum(d.cant)}</td></tr>`).join('');
+  return `
+    <div style="text-align:center;margin-bottom:6px"><b style="font-size:16px">ACUSE DE RECIBO DE SUMINISTRO</b></div>
+    <div style="text-align:center;font-size:12px;color:#555;margin-bottom:14px">Westland — Control de Suministro Interno</div>
+    <div style="font-size:13px;margin-bottom:4px"><b>Folio:</b> ${acuse.folio}</div>
+    <div style="font-size:13px;margin-bottom:4px"><b>Fecha:</b> ${fecha}</div>
+    <div style="font-size:13px;margin-bottom:4px"><b>Ítem:</b> ${acuse.item}</div>
+    <div style="font-size:13px;margin-bottom:4px"><b>Total despachado:</b> ${fmtNum(acuse.total)} pza(s)</div>
+    <div style="font-size:13px;margin-bottom:10px"><b>Emitido por:</b> ${acuse.asignadoPorNombre||acuse.asignadoPor}</div>
+    <table><thead><tr><th>Tipo</th><th>Destinatario</th><th style="text-align:right">Cantidad</th></tr></thead><tbody>${filas}</tbody></table>
+    <div class="firma-box">
+      <div style="flex:1"><div class="firma-linea">Entregado por</div></div>
+      <div style="flex:1"><div class="firma-linea">Recibido por</div></div>
+    </div>
+    <div style="font-size:11px;color:#777;margin-top:16px">Este documento sustenta la salida de suministro de la Bodega de Consumo Interno, con base en la solicitud/gestión del responsable de suministro.</div>
+  `;
+}
+function mostrarAcuse(acuse){
+  const box=el('log-sum-acuse-box');if(!box)return;
+  el('acuse-print-area').innerHTML=acuseHTML(acuse);
+  box.dataset.folio=acuse.folio;
+  box.style.display='block';
+  box.scrollIntoView({behavior:'smooth',block:'center'});
+}
+el('btn-acuse-imprimir')?.addEventListener('click',()=>window.print());
+el('btn-acuse-cerrar')?.addEventListener('click',()=>{if(el('log-sum-acuse-box'))el('log-sum-acuse-box').style.display='none';});
+el('btn-acuse-email')?.addEventListener('click',async()=>{
+  const folio=el('log-sum-acuse-box')?.dataset.folio;
+  const acuse=LOGSUMACUSES[folio];
+  if(!acuse){toast('No se encontró el acuse','err');return;}
+  await enviarAcusePorCorreo(acuse);
+});
+async function enviarAcusePorCorreo(acuse){
+  let cfg=null;
+  try{const s=await get(R(db,EMCFG));if(!s.exists()){toast('Configura EmailJS primero en el Panel Administrativo','err');return;}cfg=s.val();}
+  catch(e){toast('Error al leer configuración de EmailJS','err');return;}
+  if(!cfg.publicKey||!cfg.serviceId||!cfg.templateId){toast('Faltan datos de EmailJS (Panel Administrativo)','err');return;}
+  const destinatariosTxt=acuse.destinatarios.map(d=>`${d.nombre}: ${d.cant}`).join(' · ');
+  let toEmail=(acuse.emails||'').trim();
+  if(!toEmail){
+    try{
+      const all=await getUsers();
+      const emails=acuse.destinatarios.filter(d=>!d.esArea).map(d=>Object.values(all).find(u=>u.user===d.id)?.email).filter(Boolean);
+      toEmail=emails.join(',');
+    }catch(e){}
+  }
+  if(!toEmail){toast('No hay correo destino. Escríbelo en el campo de correo antes de emitir, o edítalo aquí.','err');return;}
+  try{
+    if(typeof emailjs==='undefined'){toast('EmailJS no está disponible en esta página','err');return;}
+    emailjs.init(cfg.publicKey);
+    await emailjs.send(cfg.serviceId,cfg.templateId,{
+      to_email:toEmail,subject:'Acuse de recibo de suministro · Folio '+acuse.folio,
+      message:`Acuse de recibo de suministro\nFolio: ${acuse.folio}\nÍtem: ${acuse.item}\nTotal: ${acuse.total}\nDestinatarios: ${destinatariosTxt}\nEmitido por: ${acuse.asignadoPorNombre||acuse.asignadoPor}\nFecha: ${new Date(acuse.ts).toLocaleString('es')}`,
+      html_content:acuseHTML(acuse),
+      timestamp:new Date().toLocaleString('es')
+    });
+    toast('Acuse enviado por correo ✓','ok');
+  }catch(e){console.error('enviarAcusePorCorreo',e);toast('❌ No se pudo enviar: '+(e.text||e.message||e),'err');}
+}
+
+let LOGSUMACUSES={};
+async function loadLogSumAcuses(){
+  try{const s=await get(R(db,LOGSUM_ACUSE));LOGSUMACUSES=s.exists()?s.val():{};}
+  catch(e){console.error('loadLogSumAcuses',e);LOGSUMACUSES={};}
+  renderLogSumAcusesList();
+}
+function renderLogSumAcusesList(){
+  const c=el('log-sum-acuses-list');if(!c)return;
+  const keys=Object.keys(LOGSUMACUSES).sort((a,b)=>(LOGSUMACUSES[b].ts||0)-(LOGSUMACUSES[a].ts||0)).slice(0,30);
+  if(!keys.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">Sin acuses emitidos aún</div>';return;}
+  c.innerHTML=keys.map(k=>{
+    const a=LOGSUMACUSES[k];
+    const dest=a.destinatarios.map(d=>`${d.nombre} (${d.cant})`).join(' · ');
+    return `<div class="sumrow" style="flex-direction:column;align-items:stretch;gap:4px">
+      <div style="display:flex;justify-content:space-between"><span><b>${a.folio}</b> — ${a.item}</span><span style="color:var(--mt);font-size:11px">${new Date(a.ts).toLocaleString('es')}</span></div>
+      <span style="font-size:11px;color:var(--mt)">Total: ${fmtNum(a.total)} · ${dest}</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn bg bsm" style="width:auto" data-ver="${k}">👁️ Ver / Reimprimir</button>
+      </div>
+    </div>`;
+  }).join('');
+  c.querySelectorAll('button[data-ver]').forEach(b=>b.addEventListener('click',()=>mostrarAcuse(LOGSUMACUSES[b.dataset.ver])));
+}
+
+function renderLogSumConsumoHist(){
+  const c=el('log-sum-consumo-hist-list');if(!c)return;
+  const eventos=[];
+  Object.values(LOGSUMREQ).forEach(r=>{
+    (r.consumos||[]).forEach(ev=>eventos.push({...ev,item:r.item,destino:r.solicitanteNombre||r.solicitante}));
+  });
+  eventos.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(!eventos.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">Sin consumos registrados aún</div>';return;}
+  c.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="text-align:left;color:var(--mt);border-bottom:1px solid var(--bd)">
+      <th style="padding:6px 8px">Fecha/Hora</th><th style="padding:6px 8px">Destino</th><th style="padding:6px 8px">Ítem</th><th style="padding:6px 8px;text-align:right">Cantidad</th>
+    </tr></thead><tbody>${eventos.slice(0,100).map(ev=>`<tr style="border-bottom:1px solid var(--bd)">
+      <td style="padding:6px 8px;color:var(--mt)">${new Date(ev.ts).toLocaleString('es')}</td>
+      <td style="padding:6px 8px">${ev.destino}</td>
+      <td style="padding:6px 8px">${ev.item}</td>
+      <td style="padding:6px 8px;text-align:right"><b>${fmtNum(ev.cantidad)}</b></td>
+    </tr>`).join('')}</tbody></table>`;
 }
 
 function renderLogSumPorColaborador(){
@@ -4600,7 +4955,7 @@ function renderLogSumPorColaborador(){
   const agg={};
   Object.values(LOGSUMREQ).forEach(r=>{
     if(!r.cantidadDespachada)return; // solo colaboradores que realmente recibieron algo
-    const neto=(r.cantidadDespachada||0)-(r.cantidadDevuelta||0);
+    const neto=(r.cantidadDespachada||0)-(r.cantidadDevuelta||0)-(r.consumoFinal||0);
     if(neto<=0)return; // ya devolvió todo, no queda nada en su poder
     const k=r.solicitante;
     if(!agg[k])agg[k]={nombre:r.solicitanteNombre||r.solicitante,items:{}};
@@ -4750,7 +5105,7 @@ async function loadLogSumReq(){
   try{
     const s=await get(R(db,LOGSUM_REQ));LOGSUMREQ=s.exists()?s.val():{};
   }catch(e){console.error('loadLogSumReq',e);LOGSUMREQ={};toast('No se pudieron cargar las solicitudes: '+(e.message||e),'err');}
-  renderLogSumReqPend();renderLogSumReqMias();renderLogSumPorColaborador();
+  renderLogSumReqPend();renderLogSumReqMias();renderLogSumPorColaborador();renderLogSumConsumoHist();renderLogSumStock();
 }
 
 function tiempoDesde(ts){
@@ -4793,25 +5148,27 @@ function renderLogSumReqMias(){
   const estadoTxt={pendiente:'⏳ Pendiente',parcial:'🟡 Parcial',completado:'✅ Completado'};
   c.innerHTML=keys.map(k=>{
     const r=LOGSUMREQ[k];
-    const enPoder=Math.max(0,(r.cantidadDespachada||0)-(r.cantidadDevuelta||0));
-    const devolverBox=enPoder>0?`<div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+    const enPoder=Math.max(0,(r.cantidadDespachada||0)-(r.cantidadDevuelta||0)-(r.consumoFinal||0));
+    const accionesBox=enPoder>0?`<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap">
         <input type="number" min="1" max="${enPoder}" value="${enPoder}" class="fc" style="width:70px" id="dev-cant-${k}">
-        <button class="btn bg bsm" style="width:auto" data-k="${k}">↩️ Devolver a bodega</button>
+        <button class="btn bp bsm" style="width:auto" data-consumir="${k}">✅ Dar salida (consumido)</button>
+        <button class="btn bg bsm" style="width:auto" data-devolver="${k}">↩️ Devolver a bodega</button>
       </div>`:'';
     return `<div class="sumrow" style="flex-direction:column;align-items:stretch;gap:4px">
       <div style="display:flex;justify-content:space-between"><span>${r.item}</span><span>${estadoTxt[r.estado]||''}</span></div>
-      <span style="font-size:11px;color:var(--mt)">Solicitado: ${r.cantidadSolicitada} · Despachado: ${r.cantidadDespachada||0}${r.cantidadDevuelta?` · Devuelto: ${r.cantidadDevuelta}`:''} · En tu poder: ${enPoder}</span>
-      ${devolverBox}
+      <span style="font-size:11px;color:var(--mt)">Solicitado: ${r.cantidadSolicitada} · Despachado: ${r.cantidadDespachada||0}${r.cantidadDevuelta?` · Devuelto: ${r.cantidadDevuelta}`:''}${r.consumoFinal?` · Consumido: ${r.consumoFinal}`:''} · En tu poder: ${enPoder}</span>
+      ${accionesBox}
     </div>`;
   }).join('');
-  c.querySelectorAll('button[data-k]').forEach(b=>b.addEventListener('click',()=>devolverSuministro(b.dataset.k)));
+  c.querySelectorAll('button[data-devolver]').forEach(b=>b.addEventListener('click',()=>devolverSuministro(b.dataset.devolver)));
+  c.querySelectorAll('button[data-consumir]').forEach(b=>b.addEventListener('click',()=>consumirSuministro(b.dataset.consumir)));
 }
 
 async function devolverSuministro(key){
   const r=LOGSUMREQ[key];if(!r)return;
   const inp=el('dev-cant-'+key);
   const cant=parseInt(inp?.value)||0;
-  const enPoder=Math.max(0,(r.cantidadDespachada||0)-(r.cantidadDevuelta||0));
+  const enPoder=Math.max(0,(r.cantidadDespachada||0)-(r.cantidadDevuelta||0)-(r.consumoFinal||0));
   if(cant<=0||cant>enPoder){toast('Cantidad inválida (máx. '+enPoder+')','err');return;}
   try{
     const nuevaDevuelta=(r.cantidadDevuelta||0)+cant;
@@ -4819,12 +5176,28 @@ async function devolverSuministro(key){
     await set(R(db,LOGSUM_REQ+'/'+key),{...r,cantidadDevuelta:nuevaDevuelta,devoluciones});
     // Reingresa la cantidad a la Bodega de Consumo Interno
     const mr=push(R(db,LOGSUM_MOV));
-    await set(mr,{nombre:r.item,tamNombre:'',cajas:0,piezasPorCaja:0,piezasSueltas:cant,subtotal:cant,codigo:'',signo:1,usuario:CU||'',ts:Date.now(),solicitudRef:key,devolucion:true});
+    await set(mr,{nombre:r.itemNombre||r.item,tamNombre:r.itemTam||'',cajas:0,piezasPorCaja:0,piezasSueltas:cant,subtotal:cant,codigo:'',signo:1,usuario:CU||'',ts:Date.now(),solicitudRef:key,devolucion:true});
     toast('Devuelto a bodega ✓','ok');
     const resps=[...Object.keys(LOGSUMRESP).filter(k=>LOGSUMRESP[k]),...ADMINS];
     for(const u of [...new Set(resps)])await sendNotif(CU,u,'↩️ Devolución de suministro',`${(CUM&&CUM.nombre)||CU} devolvió ${cant} de "${r.item}" a bodega`);
     loadLogSumReq();loadLogSumMov();
   }catch(e){console.error('devolverSuministro',e);toast('❌ No se pudo devolver: '+(e.message||e),'err');}
+}
+
+async function consumirSuministro(key){
+  const r=LOGSUMREQ[key];if(!r)return;
+  const inp=el('dev-cant-'+key);
+  const cant=parseInt(inp?.value)||0;
+  const enPoder=Math.max(0,(r.cantidadDespachada||0)-(r.cantidadDevuelta||0)-(r.consumoFinal||0));
+  if(cant<=0||cant>enPoder){toast('Cantidad inválida (máx. '+enPoder+')','err');return;}
+  if(!confirm(`¿Confirmas que ya consumiste/usaste ${cant} de "${r.item}"? Esto lo quita de tu saldo en poder (no regresa a la bodega, ya que se descontó al asignarse).`))return;
+  try{
+    const nuevoConsumo=(r.consumoFinal||0)+cant;
+    const consumos=[...(r.consumos||[]),{cantidad:cant,ts:Date.now(),por:CU}];
+    await set(R(db,LOGSUM_REQ+'/'+key),{...r,consumoFinal:nuevoConsumo,consumos});
+    toast('Consumo registrado ✓','ok');
+    loadLogSumReq();
+  }catch(e){console.error('consumirSuministro',e);toast('❌ No se pudo registrar el consumo: '+(e.message||e),'err');}
 }
 
 el('btn-log-solreq-enviar')?.addEventListener('click',async()=>{
@@ -4873,6 +5246,8 @@ function listenLogistica(){
   onValue(R(db,LOGSUM_CAT),()=>{if(CU)loadLogSumCat();},(e)=>{console.error('onValue LOGSUM_CAT',e);toast('Catálogo: '+(e.message||e),'err');});
   onValue(R(db,LOGSUM_RESP),()=>{if(CU)loadLogSumResp();},(e)=>{console.error('onValue LOGSUM_RESP',e);toast('Responsables: '+(e.message||e),'err');});
   onValue(R(db,LOGSUM_REQ),()=>{if(CU)loadLogSumReq();},(e)=>{console.error('onValue LOGSUM_REQ',e);toast('Solicitudes: '+(e.message||e),'err');});
+  onValue(R(db,LOGSUM_AREA),()=>{if(CU)loadLogSumAreas();},(e)=>{console.error('onValue LOGSUM_AREA',e);toast('Áreas: '+(e.message||e),'err');});
+  onValue(R(db,LOGSUM_ACUSE),()=>{if(CU)loadLogSumAcuses();},(e)=>{console.error('onValue LOGSUM_ACUSE',e);toast('Acuses: '+(e.message||e),'err');});
 }
 
 // BOOTSTRAP
