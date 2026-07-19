@@ -39,8 +39,8 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPro
   --t:.18s cubic-bezier(.4,0,.2,1);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;-webkit-font-smoothing:antialiased}
+html{scroll-behavior:smooth;overflow-x:hidden;width:100%}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden;width:100%}
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:var(--sf)}
 ::-webkit-scrollbar-thumb{background:var(--sf2);border-radius:99px}
@@ -1087,6 +1087,8 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 
       <!-- VISTA ADMIN / RESPONSABLE: control total, organizado en submenús -->
       <div id="log-sum-admin-box" style="display:none">
+
+      <div id="log-sum-kpis" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px"></div>
 
       <!-- Submenú: Solicitudes por atender -->
       <div class="asec"><div class="ashdr" data-ac="log-ac-sum-req"><span>📥 Solicitudes por atender</span><span class="ach">▾</span></div>
@@ -4742,26 +4744,41 @@ function renderLogSumStock(){
   const keys=Object.keys(agg).filter(k=>agg[k].stock!==0||agg[k].enTransito!==0||agg[k].consumido!==0).sort((a,b)=>agg[a].nombre.localeCompare(agg[b].nombre));
   LOGSUM_STOCK_AGG=agg;
   if(!keys.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">Sin existencias registradas aún</div>';return;}
-  c.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px">
-    <thead><tr style="text-align:left;color:var(--mt);border-bottom:1px solid var(--bd)">
-      <th style="padding:6px 8px">Ítem</th><th style="padding:6px 8px">Ubicación</th><th style="padding:6px 8px">Ref. proveedor</th><th style="padding:6px 8px">Cód. interno</th><th style="padding:6px 8px;text-align:right">Saldo disponible</th><th style="padding:6px 8px;text-align:right">En tránsito</th><th style="padding:6px 8px;text-align:right">Consumido</th><th style="padding:6px 8px"></th>
-    </tr></thead><tbody>${keys.map(k=>{
-      const v=agg[k];
-      const nom=v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre;
-      return `<tr style="border-bottom:1px solid var(--bd)">
-        <td style="padding:6px 8px">${nom}</td>
-        <td style="padding:6px 8px;color:var(--mt)">${v.ubicacion||'—'}</td>
-        <td style="padding:6px 8px;color:var(--mt)">${v.refProv||'—'}</td>
-        <td style="padding:6px 8px;color:var(--mt)">${v.codigoInterno||'—'}</td>
-        <td style="padding:6px 8px;text-align:right"><b>${fmtNum(v.stock)}</b></td>
-        <td style="padding:6px 8px;text-align:right;color:var(--wn)">${fmtNum(v.enTransito)}</td>
-        <td style="padding:6px 8px;text-align:right;color:var(--mt)">${fmtNum(v.consumido)}</td>
-        <td style="padding:6px 8px;text-align:right;white-space:nowrap">${v.stock>0?`<button class="btn bp bsm" style="width:auto;padding:4px 8px" data-k="${k}">📤 Asignar</button>`:''} ${v.enTransito>0?`<button class="btn bg bsm" style="width:auto;padding:4px 8px" data-ver-asig="${k}">👁️ Ver</button>`:''}</td>
-      </tr>`;
-    }).join('')}</tbody></table>`;
+  // Tarjetas apiladas (no tabla ancha): evita que columnas/botones se desborden en pantallas de celular
+  c.innerHTML=keys.map(k=>{
+    const v=agg[k];
+    const nom=v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre;
+    return `<div style="border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px;background:var(--sf)">
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:6px">${nom}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--mt);margin-bottom:8px">
+        ${v.ubicacion?`<span>📍 ${v.ubicacion}</span>`:''}
+        ${v.refProv?`<span>🔖 Ref: ${v.refProv}</span>`:''}
+        ${v.codigoInterno?`<span>🏷️ ${v.codigoInterno}</span>`:''}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px">
+        <div style="flex:1;min-width:82px;background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">
+          <div style="font-size:16px;font-weight:800">${fmtNum(v.stock)}</div>
+          <div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.4px">Disponible</div>
+        </div>
+        <div style="flex:1;min-width:82px;background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">
+          <div style="font-size:16px;font-weight:800;color:var(--wn)">${fmtNum(v.enTransito)}</div>
+          <div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.4px">En tránsito</div>
+        </div>
+        <div style="flex:1;min-width:82px;background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">
+          <div style="font-size:16px;font-weight:800;color:var(--mt)">${fmtNum(v.consumido)}</div>
+          <div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.4px">Consumido</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${v.stock>0?`<button class="btn bp bsm" style="width:auto" data-k="${k}">📤 Asignar</button>`:''}
+        ${v.enTransito>0?`<button class="btn bg bsm" style="width:auto" data-ver-asig="${k}">👁️ Ver asignaciones</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
   c.querySelectorAll('button[data-k]').forEach(b=>b.addEventListener('click',()=>abrirAsignar(b.dataset.k)));
   c.querySelectorAll('button[data-ver-asig]').forEach(b=>b.addEventListener('click',()=>verAsignaciones(b.dataset.verAsig)));
   renderSumReporteCorreo();
+  renderLogSumKPIs();
 }
 
 let VERASIG_ACTUAL_KEY=null;
@@ -4770,30 +4787,77 @@ function verAsignaciones(key){
   VERASIG_ACTUAL_KEY=key;
   const nom=v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre;
   if(el('verasig-titulo'))el('verasig-titulo').textContent='📦 Asignaciones — '+nom;
-  const filas=Object.values(LOGSUMREQ).filter(r=>reqStockKey(r)===key).map(r=>{
+  const filas=Object.entries(LOGSUMREQ).filter(([rk,r])=>reqStockKey(r)===key).map(([rk,r])=>{
     const enPoder=Math.max(0,(r.cantidadDespachada||0)-(r.cantidadDevuelta||0)-(r.consumoFinal||0));
-    return{...r,enPoder};
+    return{...r,reqKey:rk,enPoder};
   }).filter(r=>r.enPoder>0).sort((a,b)=>(b.ts||0)-(a.ts||0));
   const c=el('verasig-list');
   if(!filas.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">Nadie tiene este ítem en su poder actualmente.</div>';}
   else{
-    c.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12.5px">
-      <thead><tr style="text-align:left;color:var(--mt);border-bottom:1px solid var(--bd)">
-        <th style="padding:5px">Destino</th><th style="padding:5px;text-align:right">En su poder</th><th style="padding:5px">Desde</th>
-      </tr></thead><tbody>${filas.map(r=>`<tr style="border-bottom:1px solid var(--bd)">
-        <td style="padding:5px">${r.tipoDestino==='area'?'🏢 ':'👤 '}${r.solicitanteNombre||r.solicitante}</td>
-        <td style="padding:5px;text-align:right"><b>${fmtNum(r.enPoder)}</b></td>
-        <td style="padding:5px;color:var(--mt)">${new Date(r.ts).toLocaleDateString('es')}</td>
-      </tr>`).join('')}</tbody></table>
-      <div style="font-size:11px;color:var(--mt);margin-top:8px">Total en tránsito: <b>${fmtNum(filas.reduce((s,r)=>s+r.enPoder,0))}</b></div>`;
+    c.innerHTML=filas.map(r=>`<div style="border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;margin-bottom:7px;background:var(--bg)">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+          <span>${r.tipoDestino==='area'?'🏢 ':'👤 '}${r.solicitanteNombre||r.solicitante}</span>
+          <b>${fmtNum(r.enPoder)}</b>
+        </div>
+        <div style="font-size:11px;color:var(--mt);margin:3px 0 7px">Desde ${new Date(r.ts).toLocaleDateString('es')}${r.editado?' · editado':''}</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn bg bsm" style="width:auto;padding:4px 8px" data-editar="${r.reqKey}">✏️ Editar cantidad</button>
+          <button class="btn bg bsm" style="width:auto;padding:4px 8px;color:var(--dn)" data-eliminar="${r.reqKey}">🗑️ Eliminar</button>
+        </div>
+      </div>`).join('')
+      +`<div style="font-size:11px;color:var(--mt);margin-top:4px">Total en tránsito: <b>${fmtNum(filas.reduce((s,r)=>s+r.enPoder,0))}</b></div>`;
   }
   el('m-verasig').classList.add('open');
+  c.querySelectorAll('button[data-editar]').forEach(b=>b.addEventListener('click',()=>editarAsignacion(b.dataset.editar)));
+  c.querySelectorAll('button[data-eliminar]').forEach(b=>b.addEventListener('click',()=>eliminarAsignacion(b.dataset.eliminar)));
 }
 el('verasig-cerrar')?.addEventListener('click',()=>el('m-verasig').classList.remove('open'));
 el('verasig-asignarmas')?.addEventListener('click',()=>{
   el('m-verasig').classList.remove('open');
   if(VERASIG_ACTUAL_KEY)abrirAsignar(VERASIG_ACTUAL_KEY);
 });
+
+// Permite al responsable corregir una cantidad ya asignada (aumentar o reducir), ajustando el saldo de bodega
+async function editarAsignacion(reqKey){
+  const r=LOGSUMREQ[reqKey];if(!r)return;
+  const minPermitido=(r.cantidadDevuelta||0)+(r.consumoFinal||0);
+  const nuevaStr=prompt(`Editar cantidad asignada a ${r.solicitanteNombre||r.solicitante}.\nDespachado actualmente: ${r.cantidadDespachada}. Ya devuelto/consumido: ${minPermitido} (no se puede bajar de ahí).\n\nNueva cantidad total despachada:`,r.cantidadDespachada);
+  if(nuevaStr===null)return;
+  const nueva=parseInt(nuevaStr);
+  if(isNaN(nueva)||nueva<minPermitido){toast('Cantidad inválida (mínimo '+minPermitido+')','err');return;}
+  const delta=nueva-(r.cantidadDespachada||0);
+  if(delta===0){toast('Sin cambios','ok');return;}
+  try{
+    if(delta>0){
+      const saldoReal=await saldoFrescoBodega(r.itemNombre||r.item,r.itemTam||'');
+      if(saldoReal===null){toast('No se pudo verificar el saldo. Intenta de nuevo.','err');return;}
+      if(delta>saldoReal){toast('No hay saldo suficiente para aumentar en '+delta+' (disponible: '+saldoReal+')','err');return;}
+    }
+    await set(R(db,LOGSUM_REQ+'/'+reqKey),{...r,cantidadDespachada:nueva,cantidadSolicitada:Math.max(r.cantidadSolicitada||0,nueva),editado:true,ultimaEdicion:{ts:Date.now(),por:CU||''}});
+    const mr=push(R(db,LOGSUM_MOV));
+    await set(mr,{nombre:r.itemNombre||r.item,tamNombre:r.itemTam||'',cajas:0,piezasPorCaja:0,piezasSueltas:Math.abs(delta),subtotal:Math.abs(delta),codigo:'',signo:delta>0?-1:1,usuario:CU||'',ts:Date.now(),solicitudRef:reqKey,edicionAsignacion:true});
+    toast('Asignación actualizada ✓','ok');
+    loadLogSumReq();loadLogSumMov();
+    if(VERASIG_ACTUAL_KEY)verAsignaciones(VERASIG_ACTUAL_KEY);
+  }catch(e){console.error('editarAsignacion',e);toast('❌ No se pudo editar: '+(e.message||e),'err');}
+}
+
+// Elimina una asignación por completo (ej. un duplicado) y regresa lo que estaba en poder al saldo de bodega
+async function eliminarAsignacion(reqKey){
+  const r=LOGSUMREQ[reqKey];if(!r)return;
+  const enPoder=Math.max(0,(r.cantidadDespachada||0)-(r.cantidadDevuelta||0)-(r.consumoFinal||0));
+  if(!confirm(`¿Eliminar esta asignación de ${r.solicitanteNombre||r.solicitante} (${fmtNum(enPoder)} en su poder)?\nEsto la borra por completo y regresa ${fmtNum(enPoder)} al saldo disponible de bodega. Útil para corregir duplicados.`))return;
+  try{
+    if(enPoder>0){
+      const mr=push(R(db,LOGSUM_MOV));
+      await set(mr,{nombre:r.itemNombre||r.item,tamNombre:r.itemTam||'',cajas:0,piezasPorCaja:0,piezasSueltas:enPoder,subtotal:enPoder,codigo:'',signo:1,usuario:CU||'',ts:Date.now(),solicitudRef:reqKey,correccionEliminacion:true});
+    }
+    await remove(R(db,LOGSUM_REQ+'/'+reqKey));
+    toast('Asignación eliminada y saldo devuelto a bodega ✓','ok');
+    loadLogSumReq();loadLogSumMov();
+    if(VERASIG_ACTUAL_KEY)verAsignaciones(VERASIG_ACTUAL_KEY);
+  }catch(e){console.error('eliminarAsignacion',e);toast('❌ No se pudo eliminar: '+(e.message||e),'err');}
+}
 
 let ASIGNAR_ACTUAL_KEY=null,ASIGNAR_USERS_CACHE=[];
 async function abrirAsignar(key){
@@ -4896,7 +4960,9 @@ async function saldoFrescoBodega(nombre,tamNombre){
   }catch(e){console.error('saldoFrescoBodega',e);return null;}
 }
 
+let ASIGNANDO_EN_CURSO=false;
 async function confirmarAsignacion(){
+  if(ASIGNANDO_EN_CURSO){toast('Ya se está procesando el despacho, espera un momento...','err');return;}
   const key=ASIGNAR_ACTUAL_KEY;const v=key?LOGSUM_STOCK_AGG[key]:null;
   if(!v){toast('Selecciona un ítem para asignar','err');return;}
   const tipo=el('log-sum-asignar-tipo').value;
@@ -4910,21 +4976,22 @@ async function confirmarAsignacion(){
   if(!destinos.length){toast('Marca al menos un destino con cantidad','err');return;}
   const total=destinos.reduce((s,d)=>s+d.cant,0);
   if(total>v.stock){toast('El total ('+total+') supera el saldo disponible ('+v.stock+')','err');return;}
+  ASIGNANDO_EN_CURSO=true;
   const btnEmitir=el('btn-log-sum-asignar-confirm');
   if(btnEmitir){btnEmitir.disabled=true;btnEmitir.textContent='Verificando saldo...';}
-  // Revalidación en tiempo real contra el servidor (evita sobre-asignar si alguien más asignó justo antes)
-  const saldoReal=await saldoFrescoBodega(v.nombre,v.tamNombre||'');
-  if(btnEmitir){btnEmitir.disabled=false;btnEmitir.textContent='✅ Emitir despacho';}
-  if(saldoReal===null){toast('No se pudo verificar el saldo actual. Revisa tu conexión e intenta de nuevo.','err');return;}
-  if(total>saldoReal){
-    toast(`⚠️ El saldo cambió: otro responsable ya asignó/movió existencias. Disponible real ahora: ${saldoReal}. Ajusta las cantidades e intenta de nuevo.`,'err',7000);
-    loadLogSumMov();
-    return;
-  }
-  const item=v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre;
-  const folio=folioDespacho();
-  const destinosInfo=[];
   try{
+    // Revalidación en tiempo real contra el servidor (evita sobre-asignar si alguien más asignó justo antes)
+    const saldoReal=await saldoFrescoBodega(v.nombre,v.tamNombre||'');
+    if(saldoReal===null){toast('No se pudo verificar el saldo actual. Revisa tu conexión e intenta de nuevo.','err');return;}
+    if(total>saldoReal){
+      toast(`⚠️ El saldo cambió: otro responsable ya asignó/movió existencias. Disponible real ahora: ${saldoReal}. Ajusta las cantidades e intenta de nuevo.`,'err',7000);
+      loadLogSumMov();
+      return;
+    }
+    if(btnEmitir)btnEmitir.textContent='Emitiendo despacho...';
+    const item=v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre;
+    const folio=folioDespacho();
+    const destinosInfo=[];
     for(const d of destinos){
       let destinoNombre='',esArea=d.id.startsWith('area:');
       if(esArea){
@@ -4960,6 +5027,10 @@ async function confirmarAsignacion(){
     mostrarAcuse(acuse);
     loadLogSumReq();loadLogSumMov();loadLogSumAcuses();
   }catch(e){console.error('confirmarAsignacion',e);toast('❌ No se pudo emitir el despacho: '+(e.message||e),'err');}
+  finally{
+    ASIGNANDO_EN_CURSO=false;
+    if(btnEmitir){btnEmitir.disabled=false;btnEmitir.textContent='✅ Emitir despacho';}
+  }
 }
 el('btn-log-sum-asignar-confirm')?.addEventListener('click',confirmarAsignacion);
 
@@ -5138,6 +5209,30 @@ async function enviarReporteSuministro(){
   }catch(e){console.error('enviarReporteSuministro',e);toast('❌ No se pudo enviar: '+(e.text||e.message||e),'err');}
 }
 el('btn-log-sumrep-enviar')?.addEventListener('click',enviarReporteSuministro);
+
+// KPIs de Suministro
+function renderLogSumKPIs(){
+  const c=el('log-sum-kpis');if(!c)return;
+  const items=Object.values(LOGSUM_STOCK_AGG);
+  const totalItems=items.length;
+  const totalDisponible=items.reduce((s,v)=>s+(v.stock>0?v.stock:0),0);
+  const totalTransito=items.reduce((s,v)=>s+(v.enTransito||0),0);
+  const totalConsumido=items.reduce((s,v)=>s+(v.consumido||0),0);
+  const umbral=parseFloat(el('log-sumrep-umbral')?.value)||25;
+  const enAlerta=calcularPorcentajesStock().filter(x=>x.pct!==null&&x.pct<=umbral).length;
+  const kpis=[
+    {label:'Ítems distintos',val:totalItems,icon:'📦',color:'var(--ac)'},
+    {label:'Piezas disponibles',val:fmtNum(totalDisponible),icon:'🏬',color:'var(--ac)'},
+    {label:'En tránsito',val:fmtNum(totalTransito),icon:'🚚',color:'var(--wn)'},
+    {label:'Consumido',val:fmtNum(totalConsumido),icon:'✅',color:'var(--mt)'},
+    {label:'En alerta (≤'+umbral+'%)',val:enAlerta,icon:'⚠️',color:enAlerta>0?'var(--dn)':'var(--mt)'},
+  ];
+  c.innerHTML=kpis.map(k=>`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:12px;text-align:center">
+    <div style="font-size:20px">${k.icon}</div>
+    <div style="font-size:18px;font-weight:800;color:${k.color};margin:4px 0">${k.val}</div>
+    <div style="font-size:11px;color:var(--mt)">${k.label}</div>
+  </div>`).join('');
+}
 
 function renderLogSumPorColaborador(){
   const c=el('log-sum-porcolab');if(!c)return;
