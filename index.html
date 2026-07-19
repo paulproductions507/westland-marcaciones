@@ -1226,6 +1226,18 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         <div id="log-sum-acuses-list"><div style="color:var(--mt);font-size:12px">Sin acuses emitidos aún</div></div>
       </div></div>
 
+      <!-- Submenú: Reporte de suministro por correo (alerta de bajo stock) -->
+      <div class="asec"><div class="ashdr" data-ac="log-ac-sum-reporte"><span>📧 Reporte de suministro (correo)</span><span class="ach">▾</span></div>
+      <div class="asbdy" id="log-ac-sum-reporte">
+        <div style="font-size:12px;color:var(--mt);margin-bottom:8px">Marca los ítems que quieres incluir y envía un solo correo con el resumen (estilo acuse). Los que ya llegaron al umbral de alerta se marcan solos.</div>
+        <div class="fg2">
+          <div class="fg"><label>Umbral de alerta (%)</label><input type="number" min="1" max="99" value="25" class="fc" id="log-sumrep-umbral"></div>
+          <div class="fg"><label>Correo(s) destino</label><input class="fc" id="log-sumrep-email" placeholder="gerencia@westland.com, compras@westland.com"></div>
+        </div>
+        <div id="log-sumrep-checklist" style="max-height:320px;overflow-y:auto;border:1px solid var(--bd);border-radius:var(--rs);padding:8px;margin:8px 0;background:var(--bg)"><div style="color:var(--mt);font-size:12px">Sin existencias registradas aún</div></div>
+        <button class="btn bp bsm" id="btn-log-sumrep-enviar" style="width:auto">📧 Enviar reporte</button>
+      </div></div>
+
       <!-- Submenú: Últimos movimientos -->
       <div class="asec"><div class="ashdr" data-ac="log-ac-sum-mov"><span>🕓 Últimos movimientos</span><span class="ach">▾</span></div>
       <div class="asbdy" id="log-ac-sum-mov">
@@ -1273,6 +1285,18 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
     <div class="mfoot">
       <button class="btn bg" id="rpt-cancel">Cancelar</button>
       <button class="btn bp" id="rpt-gen" style="width:auto">Generar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VER ASIGNACIONES DE UN SUMINISTRO -->
+<div id="m-verasig" class="mbd">
+  <div class="mbox">
+    <h3 id="verasig-titulo">Asignaciones</h3>
+    <div id="verasig-list" style="margin-top:10px"><div style="color:var(--mt);font-size:12px">Cargando...</div></div>
+    <div class="mfoot">
+      <button class="btn bg" id="verasig-cerrar">Cerrar</button>
+      <button class="btn bp" id="verasig-asignarmas" style="width:auto">📤 Asignar más</button>
     </div>
   </div>
 </div>
@@ -2075,10 +2099,10 @@ function fillSelects(obj){
 
 // HISTORIAL HOY
 const TIPOS=['Entrada','Salida Alm.','Regreso Alm.','Salida Final'];
-async function renderHistToday(){
+async function renderHistToday(preList){
   const today=isoD(new Date()),c=el('hlist');c.innerHTML='';
   if(!CU){c.innerHTML='<div style="color:var(--mt);font-size:13px;text-align:center;padding:8px">Sin sesión</div>';return;}
-  const arr=await getHist(today);
+  const arr=preList||await getHist(today);
   const mine=(arr||[]).filter(x=>x.user===CU);
   // Orden fijo por tipo de marcación, no por hora
   const TIPO_ORD={'Entrada':0,'Salida Alm.':1,'Regreso Alm.':2,'Salida Final':3};
@@ -2760,30 +2784,38 @@ el('btn-enviar-banco-mailto')?.addEventListener('click',function(){
   window.open(mailto,'_blank');
   toast('Se abrió Gmail. Adjunta el formulario antes de enviar.','ok',6000);
 });
-async function canMark(date,user){
-  const key=isoD(date),list=await getHist(key),mine=(list||[]).filter(x=>x.user===user);
+async function canMark(date,user,preList){
+  const key=isoD(date),list=preList||await getHist(key),mine=(list||[]).filter(x=>x.user===user);
   if(mine.length>=4)return{ok:false,msg:'Límite: ya tienes 4 marcaciones hoy.'};
   if(mine.length>0){const sorted=mine.sort((a,b)=>a.hora.localeCompare(b.hora));const diff=(date-new Date(sorted[sorted.length-1].stamp))/60000;if(diff<15)return{ok:false,msg:`Espera ${Math.ceil(15-diff)} min más.`};}
   return{ok:true};
 }
 async function registrar(date=new Date(),user=CU,tipoForzado=null){
   if(!user){toast('Inicie sesión','err');return;}
-  // Check access for non-admins
-  if(!ADMINS.includes(user)){
-    const ok=await isHabilitado(user);
-    if(!ok){flashBtn('No estás habilitado hoy. Contacta al encargado.');return;}
-  }
-  if(!tipoForzado){const chk=await canMark(date,user);if(!chk.ok){flashBtn(chk.msg);return;}}
-  checkGPS();await doMark(date,user,tipoForzado);
-}
-async function doMark(date,user,tipoForzado=null){
+  const key=isoD(date);
+  let list;
   try{
-    const key=isoD(date),list=await getHist(key);
+    // Se piden en paralelo (no en serie) para no acumular latencia de red
+    const [habilitadoOk,histList]=await Promise.all([
+      ADMINS.includes(user)?Promise.resolve(true):isHabilitado(user),
+      getHist(key)
+    ]);
+    list=histList||[];
+    if(!ADMINS.includes(user)&&!habilitadoOk){flashBtn('No estás habilitado hoy. Contacta al encargado.');return;}
+  }catch(e){toast('Error de conexión. Verifica tu internet.','err');return;}
+  if(!tipoForzado){const chk=await canMark(date,user,list);if(!chk.ok){flashBtn(chk.msg);return;}}
+  checkGPS();await doMark(date,user,tipoForzado,list);
+}
+async function doMark(date,user,tipoForzado=null,preList=null){
+  try{
+    const key=isoD(date),list=preList||await getHist(key);
     const mine=(list||[]).filter(x=>x.user===user);
     const tipo=tipoForzado||TIPOS[mine.length]||'Marcación';
     const obj={tipo,hora:fmtT(date),stamp:date.toISOString(),user};
-    list.push(obj);await saveHist(key,list);await addLog(`Marcación: ${user} — ${tipo} — ${key} ${obj.hora}`);
-    renderHistToday();
+    const nuevaLista=[...list,obj];
+    await saveHist(key,nuevaLista);await addLog(`Marcación: ${user} — ${tipo} — ${key} ${obj.hora}`);
+    // Actualización optimista: usamos la lista que ya tenemos en memoria, sin volver a leer de la red
+    renderHistToday(nuevaLista);
     el('mbtn').classList.add('pulse');setTimeout(()=>el('mbtn').classList.remove('pulse'),900);
     toast(`✅ ${tipo} — ${obj.hora}`,'ok',2200);
   }catch(e){toast('Error al marcar. Verifica conexión.','err');}
@@ -4724,11 +4756,44 @@ function renderLogSumStock(){
         <td style="padding:6px 8px;text-align:right"><b>${fmtNum(v.stock)}</b></td>
         <td style="padding:6px 8px;text-align:right;color:var(--wn)">${fmtNum(v.enTransito)}</td>
         <td style="padding:6px 8px;text-align:right;color:var(--mt)">${fmtNum(v.consumido)}</td>
-        <td style="padding:6px 8px;text-align:right">${v.stock>0?`<button class="btn bp bsm" style="width:auto;padding:4px 10px" data-k="${k}">📤 Asignar</button>`:''}</td>
+        <td style="padding:6px 8px;text-align:right;white-space:nowrap">${v.stock>0?`<button class="btn bp bsm" style="width:auto;padding:4px 8px" data-k="${k}">📤 Asignar</button>`:''} ${v.enTransito>0?`<button class="btn bg bsm" style="width:auto;padding:4px 8px" data-ver-asig="${k}">👁️ Ver</button>`:''}</td>
       </tr>`;
     }).join('')}</tbody></table>`;
   c.querySelectorAll('button[data-k]').forEach(b=>b.addEventListener('click',()=>abrirAsignar(b.dataset.k)));
+  c.querySelectorAll('button[data-ver-asig]').forEach(b=>b.addEventListener('click',()=>verAsignaciones(b.dataset.verAsig)));
+  renderSumReporteCorreo();
 }
+
+let VERASIG_ACTUAL_KEY=null;
+function verAsignaciones(key){
+  const v=LOGSUM_STOCK_AGG[key];if(!v)return;
+  VERASIG_ACTUAL_KEY=key;
+  const nom=v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre;
+  if(el('verasig-titulo'))el('verasig-titulo').textContent='📦 Asignaciones — '+nom;
+  const filas=Object.values(LOGSUMREQ).filter(r=>reqStockKey(r)===key).map(r=>{
+    const enPoder=Math.max(0,(r.cantidadDespachada||0)-(r.cantidadDevuelta||0)-(r.consumoFinal||0));
+    return{...r,enPoder};
+  }).filter(r=>r.enPoder>0).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const c=el('verasig-list');
+  if(!filas.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">Nadie tiene este ítem en su poder actualmente.</div>';}
+  else{
+    c.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <thead><tr style="text-align:left;color:var(--mt);border-bottom:1px solid var(--bd)">
+        <th style="padding:5px">Destino</th><th style="padding:5px;text-align:right">En su poder</th><th style="padding:5px">Desde</th>
+      </tr></thead><tbody>${filas.map(r=>`<tr style="border-bottom:1px solid var(--bd)">
+        <td style="padding:5px">${r.tipoDestino==='area'?'🏢 ':'👤 '}${r.solicitanteNombre||r.solicitante}</td>
+        <td style="padding:5px;text-align:right"><b>${fmtNum(r.enPoder)}</b></td>
+        <td style="padding:5px;color:var(--mt)">${new Date(r.ts).toLocaleDateString('es')}</td>
+      </tr>`).join('')}</tbody></table>
+      <div style="font-size:11px;color:var(--mt);margin-top:8px">Total en tránsito: <b>${fmtNum(filas.reduce((s,r)=>s+r.enPoder,0))}</b></div>`;
+  }
+  el('m-verasig').classList.add('open');
+}
+el('verasig-cerrar')?.addEventListener('click',()=>el('m-verasig').classList.remove('open'));
+el('verasig-asignarmas')?.addEventListener('click',()=>{
+  el('m-verasig').classList.remove('open');
+  if(VERASIG_ACTUAL_KEY)abrirAsignar(VERASIG_ACTUAL_KEY);
+});
 
 let ASIGNAR_ACTUAL_KEY=null,ASIGNAR_USERS_CACHE=[];
 async function abrirAsignar(key){
@@ -4749,6 +4814,8 @@ async function abrirAsignar(key){
 async function renderAsignarChecklist(){
   const cont=el('log-sum-asignar-checklist');if(!cont)return;
   const tipo=el('log-sum-asignar-tipo')?.value||'user';
+  const v=LOGSUM_STOCK_AGG[ASIGNAR_ACTUAL_KEY];
+  const maxSaldo=v?v.stock:0;
   let items=[];
   if(tipo==='area'){
     items=Object.entries(LOGSUMAREAS).sort((a,b)=>(a[1].nombre||'').localeCompare(b[1].nombre||'')).map(([k,v])=>({id:'area:'+k,nombre:'🏢 '+(v.nombre||k)}));
@@ -4756,30 +4823,57 @@ async function renderAsignarChecklist(){
     items=ASIGNAR_USERS_CACHE.map(u=>({id:u.user,nombre:u.nombre+' ('+u.user+')'})).sort((a,b)=>a.nombre.localeCompare(b.nombre));
   }
   if(!items.length){cont.innerHTML=`<div style="color:var(--mt);font-size:12px">${tipo==='area'?'No hay áreas agregadas. Ve al submenú Catálogos → Áreas.':'No hay colaboradores disponibles.'}</div>`;actualizarTotalAsignar();return;}
-  cont.innerHTML=items.map(it=>`<div class="asig-chk-row">
-      <input type="checkbox" data-chk="${it.id}" id="asigchk-${it.id.replace(/[^a-zA-Z0-9]/g,'_')}">
-      <label for="asigchk-${it.id.replace(/[^a-zA-Z0-9]/g,'_')}" style="flex:1;cursor:pointer">${it.nombre}</label>
-      <input type="number" min="1" placeholder="Cant." data-qty="${it.id}" style="display:none">
-    </div>`).join('');
+  cont.innerHTML=items.map(it=>{
+    const safeId=it.id.replace(/[^a-zA-Z0-9]/g,'_');
+    return `<div class="asig-chk-row">
+      <input type="checkbox" data-chk="${it.id}" id="asigchk-${safeId}">
+      <label for="asigchk-${safeId}" style="flex:1;cursor:pointer">${it.nombre}</label>
+      <span data-qtywrap="${it.id}" style="display:none;align-items:center;gap:4px">
+        <button type="button" class="btn bg bsm" data-step="-1" data-target="${it.id}" style="width:30px;padding:4px 0">−</button>
+        <input type="number" min="1" max="${maxSaldo}" value="1" data-qty="${it.id}" style="width:64px;text-align:center">
+        <button type="button" class="btn bg bsm" data-step="1" data-target="${it.id}" style="width:30px;padding:4px 0">+</button>
+      </span>
+    </div>`;
+  }).join('');
   cont.querySelectorAll('input[type="checkbox"]').forEach(chk=>{
     chk.addEventListener('change',function(){
+      const wrap=cont.querySelector(`span[data-qtywrap="${CSS.escape(this.dataset.chk)}"]`);
       const qty=cont.querySelector(`input[data-qty="${CSS.escape(this.dataset.chk)}"]`);
-      if(qty){qty.style.display=this.checked?'inline-block':'none';if(this.checked&&!qty.value)qty.value=1;}
+      if(wrap)wrap.style.display=this.checked?'inline-flex':'none';
+      if(qty&&this.checked&&!qty.value)qty.value=1;
       actualizarTotalAsignar();
     });
   });
   cont.querySelectorAll('input[type="number"]').forEach(inp=>inp.addEventListener('input',actualizarTotalAsignar));
+  cont.querySelectorAll('button[data-step]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const inp=cont.querySelector(`input[data-qty="${CSS.escape(btn.dataset.target)}"]`);
+      if(!inp)return;
+      const step=parseInt(btn.dataset.step);
+      let val=(parseInt(inp.value)||0)+step;
+      if(val<1)val=1;
+      if(maxSaldo&&val>maxSaldo)val=maxSaldo;
+      inp.value=val;
+      actualizarTotalAsignar();
+    });
+  });
   actualizarTotalAsignar();
 }
 el('log-sum-asignar-tipo')?.addEventListener('change',renderAsignarChecklist);
 function actualizarTotalAsignar(){
-  const cont=el('log-sum-asignar-checklist');if(!cont)return;
+  const cont=el('log-sum-asignar-checklist');if(!cont)return 0;
+  const v=LOGSUM_STOCK_AGG[ASIGNAR_ACTUAL_KEY];
+  const maxSaldo=v?v.stock:0;
   let total=0;
   cont.querySelectorAll('input[type="checkbox"]:checked').forEach(chk=>{
     const qty=cont.querySelector(`input[data-qty="${CSS.escape(chk.dataset.chk)}"]`);
     total+=parseInt(qty?.value)||0;
   });
-  if(el('log-sum-asignar-total'))el('log-sum-asignar-total').textContent=fmtNum(total);
+  const totalEl=el('log-sum-asignar-total');
+  const btnEmitir=el('btn-log-sum-asignar-confirm');
+  const excede=total>maxSaldo;
+  if(totalEl){totalEl.textContent=fmtNum(total);totalEl.style.color=excede?'var(--dn)':'var(--ac)';}
+  if(btnEmitir)btnEmitir.disabled=excede||total===0;
   return total;
 }
 el('btn-log-sum-asignar-cancel')?.addEventListener('click',()=>{
@@ -4787,7 +4881,20 @@ el('btn-log-sum-asignar-cancel')?.addEventListener('click',()=>{
   ASIGNAR_ACTUAL_KEY=null;
 });
 
-function folioDespacho(){return 'D-'+Date.now().toString(36).toUpperCase();}
+function folioDespacho(){return 'D-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,6).toUpperCase();}
+
+// Lee el saldo real desde el servidor (no el caché local) justo antes de confirmar,
+// para evitar que dos asignaciones simultáneas (dos responsables a la vez) sobre-asignen el mismo saldo.
+async function saldoFrescoBodega(nombre,tamNombre){
+  try{
+    const s=await get(R(db,LOGSUM_MOV));
+    const movs=s.exists()?Object.values(s.val()):[];
+    const k=sumStockKey(nombre,tamNombre||'');
+    let stock=0;
+    movs.forEach(m=>{if(sumStockKey(m.nombre,m.tamNombre)===k)stock+=(m.signo||1)*(m.subtotal||0);});
+    return stock;
+  }catch(e){console.error('saldoFrescoBodega',e);return null;}
+}
 
 async function confirmarAsignacion(){
   const key=ASIGNAR_ACTUAL_KEY;const v=key?LOGSUM_STOCK_AGG[key]:null;
@@ -4803,6 +4910,17 @@ async function confirmarAsignacion(){
   if(!destinos.length){toast('Marca al menos un destino con cantidad','err');return;}
   const total=destinos.reduce((s,d)=>s+d.cant,0);
   if(total>v.stock){toast('El total ('+total+') supera el saldo disponible ('+v.stock+')','err');return;}
+  const btnEmitir=el('btn-log-sum-asignar-confirm');
+  if(btnEmitir){btnEmitir.disabled=true;btnEmitir.textContent='Verificando saldo...';}
+  // Revalidación en tiempo real contra el servidor (evita sobre-asignar si alguien más asignó justo antes)
+  const saldoReal=await saldoFrescoBodega(v.nombre,v.tamNombre||'');
+  if(btnEmitir){btnEmitir.disabled=false;btnEmitir.textContent='✅ Emitir despacho';}
+  if(saldoReal===null){toast('No se pudo verificar el saldo actual. Revisa tu conexión e intenta de nuevo.','err');return;}
+  if(total>saldoReal){
+    toast(`⚠️ El saldo cambió: otro responsable ya asignó/movió existencias. Disponible real ahora: ${saldoReal}. Ajusta las cantidades e intenta de nuevo.`,'err',7000);
+    loadLogSumMov();
+    return;
+  }
   const item=v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre;
   const folio=folioDespacho();
   const destinosInfo=[];
@@ -4949,6 +5067,77 @@ function renderLogSumConsumoHist(){
       <td style="padding:6px 8px;text-align:right"><b>${fmtNum(ev.cantidad)}</b></td>
     </tr>`).join('')}</tbody></table>`;
 }
+
+// Calcula, por ítem, el % de saldo disponible respecto al total histórico realmente ingresado
+// (entradas reales; no cuenta devoluciones como "capacidad nueva", ya eran parte del total original)
+function calcularPorcentajesStock(){
+  const entradasTotales={};
+  Object.values(LOGSUMMOVS).forEach(m=>{
+    if((m.signo||1)>0&&!m.devolucion){
+      const k=sumStockKey(m.nombre,m.tamNombre);
+      entradasTotales[k]=(entradasTotales[k]||0)+(m.subtotal||0);
+    }
+  });
+  return Object.keys(LOGSUM_STOCK_AGG).map(k=>{
+    const v=LOGSUM_STOCK_AGG[k];
+    const totalHist=entradasTotales[k]||0;
+    const pct=totalHist>0?Math.round((v.stock/totalHist)*1000)/10:null;
+    return{key:k,nombre:v.nombre,tamNombre:v.tamNombre,stock:v.stock,totalHist,pct};
+  }).filter(x=>x.totalHist>0).sort((a,b)=>(a.pct??999)-(b.pct??999));
+}
+
+function renderSumReporteCorreo(){
+  const cont=el('log-sumrep-checklist');if(!cont)return;
+  const umbral=parseFloat(el('log-sumrep-umbral')?.value)||25;
+  const items=calcularPorcentajesStock();
+  if(!items.length){cont.innerHTML='<div style="color:var(--mt);font-size:12px">Sin existencias registradas aún</div>';return;}
+  cont.innerHTML=items.map(it=>{
+    const nom=it.tamNombre?`${it.nombre} — ${it.tamNombre}`:it.nombre;
+    const bajo=it.pct!==null&&it.pct<=umbral;
+    const color=bajo?'var(--dn)':(it.pct<=50?'var(--wn)':'var(--mt)');
+    return `<div class="asig-chk-row">
+      <input type="checkbox" data-repchk="${it.key}" id="repchk-${it.key.replace(/[^a-zA-Z0-9]/g,'_')}" ${bajo?'checked':''}>
+      <label for="repchk-${it.key.replace(/[^a-zA-Z0-9]/g,'_')}" style="flex:1;cursor:pointer">${nom} <span style="color:var(--mt);font-size:11px">(saldo ${fmtNum(it.stock)} de ${fmtNum(it.totalHist)})</span></label>
+      <b style="color:${color};min-width:48px;text-align:right">${it.pct}%</b>
+    </div>`;
+  }).join('');
+}
+el('log-sumrep-umbral')?.addEventListener('input',renderSumReporteCorreo);
+
+async function enviarReporteSuministro(){
+  const cont=el('log-sumrep-checklist');
+  const seleccionados=[];
+  cont?.querySelectorAll('input[type="checkbox"]:checked').forEach(chk=>{
+    const it=calcularPorcentajesStock().find(x=>x.key===chk.dataset.repchk);
+    if(it)seleccionados.push(it);
+  });
+  if(!seleccionados.length){toast('Marca al menos un ítem para el reporte','err');return;}
+  const toEmail=(el('log-sumrep-email')?.value||'').trim();
+  if(!toEmail){toast('Escribe al menos un correo destino','err');return;}
+  let cfg=null;
+  try{const s=await get(R(db,EMCFG));if(!s.exists()){toast('Configura EmailJS primero en el Panel Administrativo','err');return;}cfg=s.val();}
+  catch(e){toast('Error al leer configuración de EmailJS','err');return;}
+  if(!cfg.publicKey||!cfg.serviceId||!cfg.templateId){toast('Faltan datos de EmailJS (Panel Administrativo)','err');return;}
+  const umbral=parseFloat(el('log-sumrep-umbral')?.value)||25;
+  const filas=seleccionados.map(it=>{
+    const nom=it.tamNombre?`${it.nombre} — ${it.tamNombre}`:it.nombre;
+    return `<tr><td>${nom}</td><td style="text-align:right">${fmtNum(it.stock)}</td><td style="text-align:right">${fmtNum(it.totalHist)}</td><td style="text-align:right;${it.pct<=umbral?'color:#c00;font-weight:700':''}">${it.pct}%</td></tr>`;
+  }).join('');
+  const html=`<div style="text-align:center;margin-bottom:6px"><b style="font-size:16px">REPORTE DE SUMINISTRO — WESTLAND</b></div>
+    <div style="text-align:center;font-size:12px;color:#555;margin-bottom:14px">Umbral de alerta: ${umbral}% · Generado: ${new Date().toLocaleString('es')}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#eee"><th>Ítem</th><th>Saldo</th><th>Total histórico</th><th>%</th></tr></thead><tbody>${filas}</tbody></table>`;
+  try{
+    if(typeof emailjs==='undefined'){toast('EmailJS no está disponible en esta página','err');return;}
+    emailjs.init(cfg.publicKey);
+    await emailjs.send(cfg.serviceId,cfg.templateId,{
+      to_email:toEmail,subject:`Reporte de suministro · ${seleccionados.filter(x=>x.pct<=umbral).length} ítem(s) en alerta (≤${umbral}%)`,
+      message:`Reporte de suministro. ${seleccionados.length} ítem(s) incluidos.`,
+      html_content:html,timestamp:new Date().toLocaleString('es')
+    });
+    toast('Reporte enviado por correo ✓','ok');
+  }catch(e){console.error('enviarReporteSuministro',e);toast('❌ No se pudo enviar: '+(e.text||e.message||e),'err');}
+}
+el('btn-log-sumrep-enviar')?.addEventListener('click',enviarReporteSuministro);
 
 function renderLogSumPorColaborador(){
   const c=el('log-sum-porcolab');if(!c)return;
