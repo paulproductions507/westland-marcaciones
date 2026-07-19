@@ -6,6 +6,7 @@
 <title>Westland — Control de Marcaciones</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <!-- PWA -->
 <meta name="theme-color" content="#00252e">
@@ -185,6 +186,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .sumchip{display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--bd);border-radius:20px;padding:5px 8px 5px 12px;font-size:12px;margin:0 6px 6px 0}
 .sumchip b{cursor:pointer;color:var(--dn);font-weight:800;padding:0 3px}
 .sumrow{display:flex;justify-content:space-between;align-items:center;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:9px 12px;margin-bottom:7px;font-size:12.5px}
+.an-subtab.active{background:var(--ac);color:#001a20;border-color:var(--ac);font-weight:800}
 .asig-chk-row{display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--bd);font-size:13px}
 .asig-chk-row:last-child{border-bottom:none}
 .asig-chk-row input[type="number"]{width:80px;padding:5px 8px;background:var(--bg);border:1px solid var(--bd);border-radius:6px;color:#fff;font-size:13px}
@@ -868,6 +870,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
     "logistica_suministro_v1": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "logistica_analisis_v1": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }</pre>
@@ -1157,11 +1163,17 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
           <div class="fg"><label>Referencia del proveedor</label><input class="fc" id="log-sum-refprov" placeholder="Ej: NS39O361"></div>
         </div>
         <div class="fg2">
+          <div class="fg"><label>Destino</label>
+            <select class="fc" id="log-sum-destino">
+              <option value="bodega">🏬 Bodega</option>
+              <option value="transito">🚚 Bodega de tránsito</option>
+            </select>
+          </div>
           <div class="fg"><label>Ubicación (bodega)</label><input class="fc" id="log-sum-ubicacion" list="log-sum-ubic-dl" placeholder="Ej: Bodega 2, Rack A-3..." autocomplete="off">
             <datalist id="log-sum-ubic-dl"></datalist>
           </div>
-          <div class="fg"><label>Código interno (opcional)</label><input class="fc" id="log-sum-codigo" placeholder="Libre — aún sin definir"></div>
         </div>
+        <div class="fg"><label>Código interno (opcional)</label><input class="fc" id="log-sum-codigo" placeholder="Libre — aún sin definir"></div>
         <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:9px 12px;margin-bottom:10px;font-size:13px;display:flex;justify-content:space-between;align-items:center">
           <span style="color:var(--mt)">Total a registrar:</span><b id="log-sum-total-preview">0</b>
         </div>
@@ -1174,7 +1186,14 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
       <!-- Submenú: Bodega de consumo interno (saldo + asignar) -->
       <div class="asec"><div class="ashdr" data-ac="log-ac-sum-stock"><span>🏬 Bodega de Consumo Interno — Saldo</span><span class="ach">▾</span></div>
       <div class="asbdy" id="log-ac-sum-stock">
-        <div style="font-size:11px;color:var(--mt);margin-bottom:8px">Aquí vive el suministro para consumo interno. <b>Saldo disponible</b> = lo que aún puedes asignar. <b>En tránsito</b> = ya despachado a colaboradores/áreas pero aún no confirmado como consumido. <b>Consumido</b> = confirmado como usado. Usa <b>Asignar</b> para despachar a uno o varios colaboradores/áreas en un solo movimiento.</div>
+        <div style="font-size:11px;color:var(--mt);margin-bottom:8px">Aquí vive el suministro para consumo interno. <b>Bodega</b> = disponible para asignar. <b>Bodega de tránsito</b> = ya llegó pero está en otra ubicación temporal, aún no disponible para asignar. <b>Asignado</b> = ya despachado a colaboradores/áreas pero aún no confirmado como consumido. <b>Consumido</b> = confirmado como usado. Toca un KPI de arriba para filtrar la lista.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <button class="btn bg bsm" id="btn-sum-inv-pdf" style="width:auto">🖨️ Imprimir PDF</button>
+          <button class="btn bg bsm" id="btn-sum-inv-xlsx" style="width:auto">⬇️ Descargar Excel</button>
+          <button class="btn bg bsm" id="btn-sum-inv-csv" style="width:auto">⬇️ Descargar CSV</button>
+          <button class="btn bg bsm" id="btn-sum-inv-clearfilter" style="width:auto;display:none;color:var(--dn)">✕ Quitar filtro</button>
+        </div>
+        <div id="log-sum-filter-label" style="font-size:12px;color:var(--ac);margin-bottom:8px;display:none"></div>
         <div id="log-sum-stock-list" style="overflow-x:auto"><div style="color:var(--mt);font-size:12px">Sin existencias registradas aún</div></div>
 
         <div id="log-sum-asignar-box" style="display:none;margin-top:12px;border:1px solid var(--ac);border-radius:var(--rs);padding:10px 12px;background:var(--sf)">
@@ -1258,6 +1277,61 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
     </div></div>
 
     </div>
+    </div>
+
+    <!-- 📊 ANÁLISIS DE INVENTARIO SEMANAL -->
+    <div class="card" style="margin-top:14px">
+      <div class="ctitle">📊 Análisis de Inventario Semanal</div>
+      <div style="font-size:12.5px;color:var(--mt)">Compara la existencia de bodega semana contra semana (corte los sábados), cruza contra las transferencias despachadas y el costo de mano de obra de esa semana.</div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn bg bsm an-subtab active" data-antab="sem" style="width:auto">📥 Semanas cargadas</button>
+        <button class="btn bg bsm an-subtab" data-antab="trans" style="width:auto">🚚 Transferencias</button>
+        <button class="btn bg bsm an-subtab" data-antab="gen" style="width:auto">📊 Generar análisis</button>
+      </div>
+
+      <!-- SUB: SEMANAS -->
+      <div id="an-sub-sem" class="an-subpanel">
+        <div style="font-size:11.5px;color:var(--mt);margin-bottom:12px">Sube aquí el Excel de "Existencia Detalle por Sitio y Bodega" (el que descargas de Tableau) cada sábado, con el lunes de esa semana.</div>
+        <div class="fg"><label>Lunes de la semana a cargar</label><input type="date" class="fc" id="an-sem-lunes"></div>
+        <div id="an-sem-rango" style="font-size:11.5px;color:var(--ac);margin-bottom:10px"></div>
+        <div class="fg"><label>Archivo Excel (Existencia Detalle por Sitio y Bodega)</label><input type="file" class="fc" id="an-sem-file" accept=".xlsx,.xls"></div>
+        <button class="btn bp bsm" id="btn-an-sem-cargar" style="width:auto;margin-bottom:18px">💾 Guardar semana</button>
+
+        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🗂️ Semanas guardadas</div>
+        <div id="an-sem-list"><div style="color:var(--mt);font-size:12px">Sin semanas cargadas aún</div></div>
+      </div>
+
+      <!-- SUB: TRANSFERENCIAS -->
+      <div id="an-sub-trans" class="an-subpanel" style="display:none">
+        <div style="font-size:11.5px;color:var(--mt);margin-bottom:12px">Sube aquí los reportes de transferencia (uno por tienda/envío) de la semana que estás analizando — el sistema suma automáticamente lo despachado por producto.</div>
+        <div class="fg"><label>Semana</label><select class="fc" id="an-trans-semana"><option value="">Seleccionar semana...</option></select></div>
+        <div class="fg"><label>Archivo Excel de transferencia</label><input type="file" class="fc" id="an-trans-file" accept=".xlsx,.xls"></div>
+        <button class="btn bp bsm" id="btn-an-trans-cargar" style="width:auto;margin-bottom:18px">💾 Guardar transferencia</button>
+
+        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🗂️ Transferencias cargadas</div>
+        <div id="an-trans-list"><div style="color:var(--mt);font-size:12px">Selecciona una semana</div></div>
+      </div>
+
+      <!-- SUB: GENERAR ANÁLISIS -->
+      <div id="an-sub-gen" class="an-subpanel" style="display:none">
+        <div class="fg2">
+          <div class="fg"><label>Semana base (anterior)</label><select class="fc" id="an-gen-base"><option value="">Seleccionar...</option></select></div>
+          <div class="fg"><label>Semana comparación (actual)</label><select class="fc" id="an-gen-comp"><option value="">Seleccionar...</option></select></div>
+        </div>
+        <button class="btn bp bsm" id="btn-an-generar" style="width:auto;margin-bottom:16px">🔍 Generar análisis</button>
+
+        <div id="an-gen-resumen" style="display:none;margin-bottom:16px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px" id="an-gen-cards"></div>
+        </div>
+
+        <div id="an-gen-tablewrap" style="overflow-x:auto"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn bg bsm" id="btn-an-exportar" style="width:auto;display:none">⬇️ Exportar a Excel</button>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -1383,6 +1457,7 @@ const app=initializeApp(FB),auth=getAuth(app),db=getDatabase(app);
 const META="meta_v1",USERS="users_v1",HIST="historial_v1",PLOG="prolog_v1",FER="feriados_v1",APR="approvals_v1";
 const LOGPROV="logistica_proveedores_v1",LOGREC="logistica_recibos_v1",LOGDEPTO="logistica_deptos_v1";
 const LOGSUM="logistica_suministro_v1",LOGSUM_MOV=LOGSUM+"/movimientos",LOGSUM_TAM=LOGSUM+"/tamanos",LOGSUM_CAT=LOGSUM+"/catalogo",LOGSUM_RESP=LOGSUM+"/responsables",LOGSUM_REQ=LOGSUM+"/solicitudes",LOGSUM_AREA=LOGSUM+"/areas",LOGSUM_ACUSE=LOGSUM+"/acuses";
+const LOGAN="logistica_analisis_v1",LOGAN_SEM=LOGAN+"/semanas",LOGAN_TRANS=LOGAN+"/transferencias",LOGAN_NOTAS=LOGAN+"/notas";
 const SUM_BASE_NOMBRES=["Lápices","Bolígrafos","Exactos","Hojas para exacto","Papel de embalaje (plástico)","Etiquetas","Tinta / rollo para impresora (Zebra)","Papel toalla","Papel higiénico","Cartucho pequeño","Cartucho mediano","Cartucho grande","Cartucho extra pequeño","Rema hoja carta","Rema hoja legal","Escoba","Trapeador","Cloro","Jabón","Detergente","Desinfectante","Tape transparente","Cartapacio"];
 
 // ── CATÁLOGO MAESTRO DE PROVEEDORES (3,574 del Excel UBC014) ──
@@ -1962,7 +2037,7 @@ async function openApp(user){
   el('sec-usuarios').style.display=isSA?'':'none';
   el('log-config-card').style.display=isAdm?'block':'none';
   el('log-nuevo-card').style.display=isAdm?'block':'none';
-  tabSwitch('reloj');renderLogProveedores();renderLogPendientes();loadLogDeptos();fillLogAsignadoSelect();listenLogistica();loadLogSumMov();loadLogSumTam();loadLogSumCat();loadLogSumResp();loadLogSumReq();loadLogSumAreas();loadLogSumAcuses();
+  tabSwitch('reloj');renderLogProveedores();renderLogPendientes();loadLogDeptos();fillLogAsignadoSelect();listenLogistica();loadLogSumMov();loadLogSumTam();loadLogSumCat();loadLogSumResp();loadLogSumReq();loadLogSumAreas();loadLogSumAcuses();loadAnSemanas();
   // Gerente: hide buttons they shouldn't see
   if(isGer){
     ['btn-limpiar'].forEach(id=>{if(el(id))el(id).style.display='none';});
@@ -4583,6 +4658,7 @@ document.querySelector('[data-ac="log-ac-kpi"]')?.closest('.ashdr')?.addEventLis
 // ── SUMINISTRO ──────────────────────────────────────────────────────
 let LOGSUMMOVS={},LOGSUMTAMS={},LOGSUMCAT={},LOGSUMRESP={},LOGSUMREQ={},LOGSUMAREAS={};
 let LOGSUM_STOCK_AGG={};
+let SUM_ACTIVE_FILTER='all';
 function esEtiquetaNombre(n){return (n||'').toLowerCase().includes('etiqueta');}
 function sumStockKey(nombre,tam){return (nombre||'').trim().toUpperCase()+'|'+(tam||'').trim().toUpperCase();}
 
@@ -4725,8 +4801,9 @@ function renderLogSumStock(){
   const agg={};
   Object.values(LOGSUMMOVS).sort((a,b)=>(a.ts||0)-(b.ts||0)).forEach(m=>{
     const k=sumStockKey(m.nombre,m.tamNombre);
-    if(!agg[k])agg[k]={nombre:m.nombre,tamNombre:m.tamNombre,refProv:'',ubicacion:'',codigoInterno:'',stock:0,enTransito:0,consumido:0};
-    agg[k].stock+=(m.signo||1)*(m.subtotal||0);
+    if(!agg[k])agg[k]={nombre:m.nombre,tamNombre:m.tamNombre,refProv:'',ubicacion:'',codigoInterno:'',stock:0,transito:0,enTransito:0,consumido:0};
+    if((m.destino||'bodega')==='transito'){agg[k].transito+=(m.signo||1)*(m.subtotal||0);}
+    else{agg[k].stock+=(m.signo||1)*(m.subtotal||0);}
     // Se conserva el último valor no vacío informado (referencia/ubicación pueden cambiar con el tiempo)
     if(m.refProv)agg[k].refProv=m.refProv;
     if(m.ubicacion)agg[k].ubicacion=m.ubicacion;
@@ -4736,14 +4813,24 @@ function renderLogSumStock(){
   // porque una devolución ya vuelve a sumar al "stock" mediante su propio movimiento de entrada.
   Object.values(LOGSUMREQ).forEach(r=>{
     const k=reqStockKey(r);
-    if(!agg[k])agg[k]={nombre:r.itemNombre||r.item,tamNombre:r.itemTam||'',refProv:'',ubicacion:'',codigoInterno:'',stock:0,enTransito:0,consumido:0};
+    if(!agg[k])agg[k]={nombre:r.itemNombre||r.item,tamNombre:r.itemTam||'',refProv:'',ubicacion:'',codigoInterno:'',stock:0,transito:0,enTransito:0,consumido:0};
     const despachada=r.cantidadDespachada||0,devuelta=r.cantidadDevuelta||0,consumoF=r.consumoFinal||0;
     agg[k].enTransito+=Math.max(0,despachada-devuelta-consumoF);
     agg[k].consumido+=consumoF;
   });
-  const keys=Object.keys(agg).filter(k=>agg[k].stock!==0||agg[k].enTransito!==0||agg[k].consumido!==0).sort((a,b)=>agg[a].nombre.localeCompare(agg[b].nombre));
+  let keys=Object.keys(agg).filter(k=>agg[k].stock!==0||agg[k].transito!==0||agg[k].enTransito!==0||agg[k].consumido!==0);
   LOGSUM_STOCK_AGG=agg;
-  if(!keys.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">Sin existencias registradas aún</div>';return;}
+  if(SUM_ACTIVE_FILTER==='bodega')keys=keys.filter(k=>agg[k].stock>0);
+  else if(SUM_ACTIVE_FILTER==='transito')keys=keys.filter(k=>agg[k].transito>0);
+  else if(SUM_ACTIVE_FILTER==='asignado')keys=keys.filter(k=>agg[k].enTransito>0);
+  else if(SUM_ACTIVE_FILTER==='consumido')keys=keys.filter(k=>agg[k].consumido>0);
+  else if(SUM_ACTIVE_FILTER==='alerta'){
+    const pctMap={};calcularPorcentajesStock().forEach(x=>pctMap[x.key]=x.pct);
+    const umbral=parseFloat(el('log-sumrep-umbral')?.value)||25;
+    keys=keys.filter(k=>pctMap[k]!=null&&pctMap[k]<=umbral);
+  }
+  keys=keys.sort((a,b)=>agg[a].nombre.localeCompare(agg[b].nombre));
+  if(!keys.length){c.innerHTML=`<div style="color:var(--mt);font-size:12px">${SUM_ACTIVE_FILTER==='all'?'Sin existencias registradas aún':'Ningún ítem coincide con este filtro'}</div>`;renderSumReporteCorreo();renderLogSumKPIs();return;}
   // Tarjetas apiladas (no tabla ancha): evita que columnas/botones se desborden en pantallas de celular
   c.innerHTML=keys.map(k=>{
     const v=agg[k];
@@ -4756,29 +4843,53 @@ function renderLogSumStock(){
         ${v.codigoInterno?`<span>🏷️ ${v.codigoInterno}</span>`:''}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px">
-        <div style="flex:1;min-width:82px;background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">
+        <div style="flex:1;min-width:76px;background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">
           <div style="font-size:16px;font-weight:800">${fmtNum(v.stock)}</div>
-          <div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.4px">Disponible</div>
+          <div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.4px">Bodega</div>
         </div>
-        <div style="flex:1;min-width:82px;background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">
+        <div style="flex:1;min-width:76px;background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">
+          <div style="font-size:16px;font-weight:800;color:#48b8e0">${fmtNum(v.transito)}</div>
+          <div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.4px">Bod. tránsito</div>
+        </div>
+        <div style="flex:1;min-width:76px;background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">
           <div style="font-size:16px;font-weight:800;color:var(--wn)">${fmtNum(v.enTransito)}</div>
-          <div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.4px">En tránsito</div>
+          <div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.4px">Asignado</div>
         </div>
-        <div style="flex:1;min-width:82px;background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">
+        <div style="flex:1;min-width:76px;background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">
           <div style="font-size:16px;font-weight:800;color:var(--mt)">${fmtNum(v.consumido)}</div>
           <div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.4px">Consumido</div>
         </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${v.stock>0?`<button class="btn bp bsm" style="width:auto" data-k="${k}">📤 Asignar</button>`:''}
+        ${v.transito>0?`<button class="btn bg bsm" style="width:auto" data-pasar="${k}">🔁 Pasar a bodega</button>`:''}
         ${v.enTransito>0?`<button class="btn bg bsm" style="width:auto" data-ver-asig="${k}">👁️ Ver asignaciones</button>`:''}
       </div>
     </div>`;
   }).join('');
   c.querySelectorAll('button[data-k]').forEach(b=>b.addEventListener('click',()=>abrirAsignar(b.dataset.k)));
   c.querySelectorAll('button[data-ver-asig]').forEach(b=>b.addEventListener('click',()=>verAsignaciones(b.dataset.verAsig)));
+  c.querySelectorAll('button[data-pasar]').forEach(b=>b.addEventListener('click',()=>trasladarATransito(b.dataset.pasar)));
   renderSumReporteCorreo();
   renderLogSumKPIs();
+}
+
+async function trasladarATransito(key){
+  const v=LOGSUM_STOCK_AGG[key];if(!v)return;
+  const max=v.transito||0;
+  const qtyStr=prompt(`¿Cuántas piezas de "${v.tamNombre?v.nombre+' — '+v.tamNombre:v.nombre}" quieres pasar de bodega de tránsito a bodega? (máximo ${max})`,String(max));
+  if(qtyStr==null)return;
+  const qty=parseInt(qtyStr);
+  if(!qty||qty<=0||qty>max){toast('Cantidad inválida','err');return;}
+  try{
+    const base={nombre:v.nombre,tamNombre:v.tamNombre,cajas:0,piezasPorCaja:0,refProv:v.refProv||'',ubicacion:v.ubicacion||'',codigo:v.codigoInterno||'',usuario:CU||''};
+    const r1=push(R(db,LOGSUM_MOV));
+    await set(r1,{...base,piezasSueltas:qty,subtotal:qty,destino:'transito',signo:-1,ts:Date.now()});
+    const r2=push(R(db,LOGSUM_MOV));
+    await set(r2,{...base,piezasSueltas:qty,subtotal:qty,destino:'bodega',signo:1,ts:Date.now()});
+    toast('Traslado registrado ✓','ok');
+    loadLogSumMov();
+  }catch(e){console.error('trasladarATransito',e);toast('❌ No se pudo trasladar: '+(e.message||e),'err');}
 }
 
 let VERASIG_ACTUAL_KEY=null;
@@ -5152,7 +5263,7 @@ function calcularPorcentajesStock(){
   return Object.keys(LOGSUM_STOCK_AGG).map(k=>{
     const v=LOGSUM_STOCK_AGG[k];
     const totalHist=entradasTotales[k]||0;
-    const pct=totalHist>0?Math.round((v.stock/totalHist)*1000)/10:null;
+    const pct=totalHist>0?Math.round((((v.stock||0)+(v.transito||0))/totalHist)*1000)/10:null;
     return{key:k,nombre:v.nombre,tamNombre:v.tamNombre,stock:v.stock,totalHist,pct};
   }).filter(x=>x.totalHist>0).sort((a,b)=>(a.pct??999)-(b.pct??999));
 }
@@ -5216,23 +5327,115 @@ function renderLogSumKPIs(){
   const items=Object.values(LOGSUM_STOCK_AGG);
   const totalItems=items.length;
   const totalDisponible=items.reduce((s,v)=>s+(v.stock>0?v.stock:0),0);
-  const totalTransito=items.reduce((s,v)=>s+(v.enTransito||0),0);
+  const totalTransitoBodega=items.reduce((s,v)=>s+(v.transito>0?v.transito:0),0);
+  const totalAsignado=items.reduce((s,v)=>s+(v.enTransito||0),0);
   const totalConsumido=items.reduce((s,v)=>s+(v.consumido||0),0);
   const umbral=parseFloat(el('log-sumrep-umbral')?.value)||25;
   const enAlerta=calcularPorcentajesStock().filter(x=>x.pct!==null&&x.pct<=umbral).length;
   const kpis=[
-    {label:'Ítems distintos',val:totalItems,icon:'📦',color:'var(--ac)'},
-    {label:'Piezas disponibles',val:fmtNum(totalDisponible),icon:'🏬',color:'var(--ac)'},
-    {label:'En tránsito',val:fmtNum(totalTransito),icon:'🚚',color:'var(--wn)'},
-    {label:'Consumido',val:fmtNum(totalConsumido),icon:'✅',color:'var(--mt)'},
-    {label:'En alerta (≤'+umbral+'%)',val:enAlerta,icon:'⚠️',color:enAlerta>0?'var(--dn)':'var(--mt)'},
+    {label:'Ítems distintos',val:totalItems,icon:'📦',color:'var(--ac)',f:'all'},
+    {label:'Piezas en bodega',val:fmtNum(totalDisponible),icon:'🏬',color:'var(--ac)',f:'bodega'},
+    {label:'En bodega de tránsito',val:fmtNum(totalTransitoBodega),icon:'🚚',color:'#48b8e0',f:'transito'},
+    {label:'Asignado',val:fmtNum(totalAsignado),icon:'🧑‍🤝‍🧑',color:'var(--wn)',f:'asignado'},
+    {label:'Consumido',val:fmtNum(totalConsumido),icon:'✅',color:'var(--mt)',f:'consumido'},
+    {label:'En alerta (≤'+umbral+'%)',val:enAlerta,icon:'⚠️',color:enAlerta>0?'var(--dn)':'var(--mt)',f:'alerta'},
   ];
-  c.innerHTML=kpis.map(k=>`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:12px;text-align:center">
+  c.innerHTML=kpis.map(k=>`<div class="sum-kpi-card" data-kpif="${k.f}" style="cursor:pointer;background:var(--sf);border:1px solid ${SUM_ACTIVE_FILTER===k.f?'var(--ac)':'var(--bd)'};border-radius:var(--rs);padding:12px;text-align:center;user-select:none">
     <div style="font-size:20px">${k.icon}</div>
     <div style="font-size:18px;font-weight:800;color:${k.color};margin:4px 0">${k.val}</div>
     <div style="font-size:11px;color:var(--mt)">${k.label}</div>
   </div>`).join('');
+  c.querySelectorAll('.sum-kpi-card').forEach(card=>card.addEventListener('click',()=>applySumKpiFilter(card.dataset.kpif)));
 }
+
+function applySumKpiFilter(f){
+  SUM_ACTIVE_FILTER=f;
+  renderLogSumStock();
+  const labels={all:'',bodega:'🔎 Filtrado: ítems con piezas en bodega',transito:'🔎 Filtrado: ítems con piezas en bodega de tránsito',asignado:'🔎 Filtrado: ítems con piezas asignadas',consumido:'🔎 Filtrado: ítems con consumo registrado',alerta:'🔎 Filtrado: ítems en alerta de stock bajo'};
+  const lbl=el('log-sum-filter-label');
+  if(lbl){lbl.style.display=f==='all'?'none':'block';lbl.textContent=labels[f]||'';}
+  const btn=el('btn-sum-inv-clearfilter');
+  if(btn)btn.style.display=f==='all'?'none':'inline-block';
+  if(f!=='all')el('log-sum-stock-list')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+el('btn-sum-inv-clearfilter')?.addEventListener('click',()=>applySumKpiFilter('all'));
+
+function getSumExportRows(){
+  let keys=Object.keys(LOGSUM_STOCK_AGG).filter(k=>{
+    const v=LOGSUM_STOCK_AGG[k];
+    return v.stock!==0||v.transito!==0||v.enTransito!==0||v.consumido!==0;
+  });
+  if(SUM_ACTIVE_FILTER==='bodega')keys=keys.filter(k=>LOGSUM_STOCK_AGG[k].stock>0);
+  else if(SUM_ACTIVE_FILTER==='transito')keys=keys.filter(k=>LOGSUM_STOCK_AGG[k].transito>0);
+  else if(SUM_ACTIVE_FILTER==='asignado')keys=keys.filter(k=>LOGSUM_STOCK_AGG[k].enTransito>0);
+  else if(SUM_ACTIVE_FILTER==='consumido')keys=keys.filter(k=>LOGSUM_STOCK_AGG[k].consumido>0);
+  else if(SUM_ACTIVE_FILTER==='alerta'){
+    const pctMap={};calcularPorcentajesStock().forEach(x=>pctMap[x.key]=x.pct);
+    const umbral=parseFloat(el('log-sumrep-umbral')?.value)||25;
+    keys=keys.filter(k=>pctMap[k]!=null&&pctMap[k]<=umbral);
+  }
+  keys.sort((a,b)=>LOGSUM_STOCK_AGG[a].nombre.localeCompare(LOGSUM_STOCK_AGG[b].nombre));
+  return keys.map(k=>{
+    const v=LOGSUM_STOCK_AGG[k];
+    return{
+      'Ítem':v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre,
+      'Ubicación':v.ubicacion||'',
+      'Referencia':v.refProv||'',
+      'Código':v.codigoInterno||'',
+      'Bodega':v.stock||0,
+      'Bodega de tránsito':v.transito||0,
+      'Asignado':v.enTransito||0,
+      'Consumido':v.consumido||0
+    };
+  });
+}
+
+el('btn-sum-inv-xlsx')?.addEventListener('click',()=>{
+  const data=getSumExportRows();
+  if(!data.length){toast('No hay datos para exportar','err');return;}
+  try{
+    const ws=XLSX.utils.json_to_sheet(data);
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Inventario Suministro');
+    XLSX.writeFile(wb,`Inventario_Suministro_${isoD(new Date())}.xlsx`);
+    toast('Excel generado ✓','ok');
+  }catch(e){console.error('export sum xlsx',e);toast('❌ Error al exportar: '+(e.message||e),'err');}
+});
+
+el('btn-sum-inv-csv')?.addEventListener('click',()=>{
+  const data=getSumExportRows();
+  if(!data.length){toast('No hay datos para exportar','err');return;}
+  try{
+    const ws=XLSX.utils.json_to_sheet(data);
+    const csv=XLSX.utils.sheet_to_csv(ws);
+    const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=`Inventario_Suministro_${isoD(new Date())}.csv`;document.body.appendChild(a);a.click();a.remove();
+    URL.revokeObjectURL(url);
+    toast('CSV descargado ✓','ok');
+  }catch(e){console.error('export sum csv',e);toast('❌ Error al exportar: '+(e.message||e),'err');}
+});
+
+el('btn-sum-inv-pdf')?.addEventListener('click',()=>{
+  const data=getSumExportRows();
+  if(!data.length){toast('No hay datos para exportar','err');return;}
+  const rows=data.map(r=>`<tr><td>${r['Ítem']}</td><td>${r['Ubicación']}</td><td>${r['Referencia']}</td><td>${r['Código']}</td><td style="text-align:right">${fmtNum(r['Bodega'])}</td><td style="text-align:right">${fmtNum(r['Bodega de tránsito'])}</td><td style="text-align:right">${fmtNum(r['Asignado'])}</td><td style="text-align:right">${fmtNum(r['Consumido'])}</td></tr>`).join('');
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Inventario de Suministro</title>
+  <style>body{font-family:Arial,Helvetica,sans-serif;color:#022;background:#fff;padding:20px;margin:0}
+  #tb{position:fixed;top:0;left:0;right:0;background:#00313C;padding:10px 16px;display:flex;gap:8px;align-items:center;z-index:999}
+  #tb span{color:#fff;font-weight:800;font-size:14px;flex:1 1 auto}
+  #tb button{padding:6px 12px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;background:#0984e3;color:#fff}
+  #c{margin-top:60px}table{border-collapse:collapse;width:100%}th{background:#00313C;color:#fff;padding:8px;border:1px solid #00313C;font-size:12px;text-align:left}td{padding:6px 8px;border:1px solid #ccc;font-size:12px}
+  @media print{#tb{display:none}#c{margin-top:0}}</style></head><body>
+  <div id="tb"><span>📦 Inventario de Suministro — ${new Date().toLocaleDateString('es-PA')}</span><button onclick="window.print()">🖨 Imprimir / PDF</button></div>
+  <div id="c">
+  <h2 style="color:#00313C;margin-bottom:4px">Inventario de Suministro — Juguetería Westland</h2>
+  <p style="color:#555;margin-bottom:14px">Generado: ${new Date().toLocaleString('es-PA')}${SUM_ACTIVE_FILTER!=='all'?' · Filtro activo: '+SUM_ACTIVE_FILTER:''}</p>
+  <table><thead><tr><th>Ítem</th><th>Ubicación</th><th>Referencia</th><th>Código</th><th>Bodega</th><th>Bod. tránsito</th><th>Asignado</th><th>Consumido</th></tr></thead>
+  <tbody>${rows}</tbody></table>
+  </div></body></html>`;
+  openRptWin(html);
+});
 
 function renderLogSumPorColaborador(){
   const c=el('log-sum-porcolab');if(!c)return;
@@ -5286,10 +5489,12 @@ async function logSumGuardar(signo){
   const refProv=el('log-sum-refprov').value.trim();
   const ubicacion=el('log-sum-ubicacion').value.trim();
   const codigo=el('log-sum-codigo').value.trim();
+  const destino=el('log-sum-destino')?.value||'bodega';
   try{
     const r=push(R(db,LOGSUM_MOV));
-    await set(r,{nombre,tamNombre,cajas,piezasPorCaja:ppc,piezasSueltas:sueltas,subtotal,refProv,ubicacion,codigo,signo,usuario:CU||'',ts:Date.now()});
+    await set(r,{nombre,tamNombre,cajas,piezasPorCaja:ppc,piezasSueltas:sueltas,subtotal,refProv,ubicacion,codigo,destino,signo,usuario:CU||'',ts:Date.now()});
     el('log-sum-nombre').value='';el('log-sum-cajas').value=0;el('log-sum-ppc').value=0;el('log-sum-sueltas').value=0;el('log-sum-refprov').value='';el('log-sum-ubicacion').value='';el('log-sum-codigo').value='';
+    if(el('log-sum-destino'))el('log-sum-destino').value='bodega';
     if(el('log-sum-tamano'))el('log-sum-tamano').value='';
     if(el('log-sum-tamano-box'))el('log-sum-tamano-box').style.display='none';
     calcSumTotalPreview();
@@ -5520,6 +5725,371 @@ async function despacharSolicitud(key){
   }catch(e){console.error('despacharSolicitud',e);toast('❌ No se pudo despachar: '+(e.message||e),'err');}
 }
 
+// ── ANÁLISIS DE INVENTARIO SEMANAL ──────────────────────────────────
+let AN_SEMANAS={},AN_TRANS={},AN_RESULT={rows:[],notas:{},baseId:'',compId:''};
+const anTh='padding:6px 8px;border:1px solid var(--bd);background:var(--sf2);text-align:left;color:var(--tx);white-space:nowrap';
+const anTd='padding:5px 8px;border:1px solid var(--bd)';
+
+document.querySelectorAll('.an-subtab').forEach(b=>b.addEventListener('click',function(){
+  document.querySelectorAll('.an-subtab').forEach(x=>x.classList.remove('active'));
+  this.classList.add('active');
+  document.querySelectorAll('.an-subpanel').forEach(p=>p.style.display='none');
+  const p=el('an-sub-'+this.dataset.antab);if(p)p.style.display='block';
+}));
+
+function anWeekRange(lunesStr){
+  const d=new Date(lunesStr+'T00:00:00');
+  const fin=new Date(d);fin.setDate(d.getDate()+5); // sábado
+  return{ini:isoD(d),fin:isoD(fin)};
+}
+el('an-sem-lunes')?.addEventListener('change',function(){
+  if(!this.value){el('an-sem-rango').textContent='';return;}
+  const d=new Date(this.value+'T00:00:00');
+  if(d.getDay()!==1){toast('Selecciona un día lunes','err');el('an-sem-rango').textContent='';return;}
+  const{ini,fin}=anWeekRange(this.value);
+  el('an-sem-rango').textContent=`Semana: ${ini} al ${fin} (lunes a sábado)`;
+});
+
+// Lee el Excel de "Existencia Detalle por Sitio y Bodega" por nombre de columna
+function parseExistenciaWorkbook(wb){
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+  if(!rows.length)return{items:{},count:0};
+  const headers=(rows[0]||[]).map(h=>(h==null?'':h.toString().trim().toLowerCase()));
+  const idx=name=>headers.indexOf(name.toLowerCase());
+  const iCod=idx('Cod Producto'),iRef=idx('Referencia Suplidor'),iDesc=idx('Descrip Producto'),
+        iDepto=idx('DEPARTAMENTO'),iDiv=idx('DIVISION'),iLin=idx('LINEA'),iSub=idx('SUBLINEA'),
+        iSup=idx('SUPLIDOR'),iUbi=idx('UBICACION'),iPrecio=idx('Precio'),iExist=idx('Existencia'),
+        iVP=idx('Valor Precio'),iVC=idx('Valor Costo');
+  if(iCod<0||iExist<0)return{items:{},count:0,faltan:true};
+  const items={};let count=0;
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i];if(!r||r[iCod]==null||r[iCod]==='')continue;
+    const cod=String(r[iCod]).trim();
+    items[cod]={
+      ref:iRef>=0?(r[iRef]||'').toString().trim():'',
+      desc:iDesc>=0?(r[iDesc]||'').toString().trim():'',
+      depto:iDepto>=0?(r[iDepto]||'').toString().trim():'',
+      division:iDiv>=0?(r[iDiv]||'').toString().trim():'',
+      linea:iLin>=0?(r[iLin]||'').toString().trim():'',
+      sublinea:iSub>=0?(r[iSub]||'').toString().trim():'',
+      suplidor:iSup>=0?(r[iSup]||'').toString().trim():'',
+      ubicacion:iUbi>=0?(r[iUbi]||'').toString().trim():'',
+      precio:iPrecio>=0?(Number(r[iPrecio])||0):0,
+      existencia:iExist>=0?(Number(r[iExist])||0):0,
+      valorPrecio:iVP>=0?(Number(r[iVP])||0):0,
+      valorCosto:iVC>=0?(Number(r[iVC])||0):0
+    };
+    count++;
+  }
+  return{items,count};
+}
+
+// Lee un reporte de transferencia (formato TRAN010L) por posición de columna
+function parseTransferWorkbook(wb){
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+  let numero='',origen='',destino='',estatus='',solicitadoPor='',despachadoPor='',fechaSolicitado='',fechaDespacho='',bultos=0,headerRow=-1;
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i]||[];
+    const txt=r.map(c=>c==null?'':String(c));
+    let idx=txt.findIndex(t=>t.includes('Desde'));
+    if(idx>=0){origen=(r[idx+1]||'').toString().trim();
+      const idx2=txt.findIndex(t=>t.includes('Hasta'));
+      if(idx2>=0)destino=(r[idx2+1]||'').toString().trim();
+    }
+    idx=txt.findIndex(t=>t.includes('Estatus'));
+    if(idx>=0)estatus=(r[idx+1]||'').toString().trim();
+    idx=txt.findIndex(t=>t.includes('Solicitado Por'));
+    if(idx>=0){
+      for(let j=idx+1;j<r.length;j++){if(r[j]){solicitadoPor=String(r[j]).trim();break;}}
+      const idxf=txt.findIndex(t=>t.includes('Fecha Solicitado'));
+      if(idxf>=0)for(let j=idxf+1;j<r.length;j++){if(r[j]){fechaSolicitado=r[j];break;}}
+    }
+    idx=txt.findIndex(t=>t.includes('Despachado Por'));
+    if(idx>=0){
+      for(let j=idx+1;j<r.length;j++){if(r[j]){despachadoPor=String(r[j]).trim();break;}}
+      const idxf=txt.findIndex(t=>t.includes('Fecha Despacho'));
+      if(idxf>=0)for(let j=idxf+1;j<r.length;j++){if(r[j]){fechaDespacho=r[j];break;}}
+    }
+    if(!numero){
+      const m=txt.find(t=>/^\*?T?\d{6,}\*?$/.test(t.trim()));
+      if(m)numero=m.replace(/[^\d]/g,'');
+    }
+    if(txt.some(t=>t.trim()==='Código'))headerRow=i;
+    if(txt.some(t=>t.trim()==='BULTOS')){
+      const nums=r.filter(c=>typeof c==='number');
+      if(nums.length)bultos=nums[nums.length-1];
+    }
+  }
+  const items=[];
+  if(headerRow>=0){
+    for(let i=headerRow+1;i<rows.length;i++){
+      const r=rows[i]||[];
+      if(r.some(c=>typeof c==='string'&&c.trim()==='Total:'))break;
+      const codigo=r[3];
+      if(codigo!=null&&(typeof codigo==='number'||/^\d+$/.test(String(codigo).trim()))){
+        const desc=(r[4]||'').toString().trim();
+        const solicitado=Number(r[8])||0,despachado=Number(r[9])||0,recibido=Number(r[10])||0;
+        const precio=Number(r[11])||0,ubicacion=(r[12]||'').toString().trim();
+        let ref='';
+        for(let k=i+1;k<Math.min(i+4,rows.length);k++){
+          const rr=rows[k]||[];
+          if(rr[2]&&String(rr[2]).trim().startsWith('Ref')){ref=(rr[3]||'').toString().trim();break;}
+          if(rr[3]!=null&&(typeof rr[3]==='number'||/^\d+$/.test(String(rr[3]).trim())))break;
+        }
+        items.push({codigo:String(codigo).trim(),ref,desc,solicitado,despachado,recibido,precio,ubicacion});
+      }
+    }
+  }
+  return{numero,origen,destino,estatus,solicitadoPor,despachadoPor,fechaSolicitado,fechaDespacho,bultos,items};
+}
+
+el('btn-an-sem-cargar')?.addEventListener('click',async()=>{
+  const lunes=el('an-sem-lunes').value;
+  if(!lunes){toast('Selecciona el lunes de la semana','err');return;}
+  const d=new Date(lunes+'T00:00:00');
+  if(d.getDay()!==1){toast('El día seleccionado no es lunes','err');return;}
+  const f=el('an-sem-file').files[0];
+  if(!f){toast('Selecciona el archivo Excel','err');return;}
+  try{
+    toast('Leyendo archivo...','',2500);
+    const buf=await f.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const{items,count,faltan}=parseExistenciaWorkbook(wb);
+    if(faltan){toast('❌ No se encontraron las columnas "Cod Producto" / "Existencia". Verifica que sea el archivo correcto.','err',5000);return;}
+    if(!count){toast('No se encontraron filas de producto en el archivo','err');return;}
+    const{ini,fin}=anWeekRange(lunes);
+    await set(R(db,LOGAN_SEM+'/'+ini),{label:`${ini} al ${fin}`,ini,fin,uploadedAt:Date.now(),uploadedBy:CU||'',archivo:f.name,count,items});
+    toast(`Semana guardada ✓ (${count} productos)`,'ok');
+    el('an-sem-file').value='';
+    loadAnSemanas();
+  }catch(e){console.error('cargar semana análisis',e);toast('❌ No se guardó: '+(e.message||e),'err',5000);}
+});
+
+async function loadAnSemanas(){
+  try{
+    const s=await get(R(db,LOGAN_SEM));
+    AN_SEMANAS=s.exists()?s.val():{};
+  }catch(e){console.error('loadAnSemanas',e);AN_SEMANAS={};toast('No se pudieron cargar las semanas: '+(e.message||e),'err');}
+  renderAnSemanas();fillAnSemanaSelects();
+}
+function renderAnSemanas(){
+  const c=el('an-sem-list');if(!c)return;
+  const keys=Object.keys(AN_SEMANAS).sort().reverse();
+  if(!keys.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">Sin semanas cargadas aún</div>';return;}
+  c.innerHTML=keys.map(k=>{
+    const w=AN_SEMANAS[k];
+    return `<div class="sumrow"><span><b>${w.label}</b><br><span style="font-size:11px;color:var(--mt)">${w.count} productos · subido por ${w.uploadedBy||'—'}</span></span><button data-k="${k}" class="btn bg bsm an-del-sem" style="width:auto;padding:3px 8px;color:var(--dn)">✕</button></div>`;
+  }).join('');
+  c.querySelectorAll('.an-del-sem').forEach(b=>b.addEventListener('click',async()=>{
+    if(!confirm('¿Eliminar la semana "'+AN_SEMANAS[b.dataset.k].label+'"? También se pierden las transferencias y notas asociadas a esa semana.'))return;
+    try{
+      await remove(R(db,LOGAN_SEM+'/'+b.dataset.k));
+      await remove(R(db,LOGAN_TRANS+'/'+b.dataset.k));
+      await remove(R(db,LOGAN_NOTAS+'/'+b.dataset.k));
+      toast('Eliminada','ok');loadAnSemanas();
+    }catch(e){toast('Error al eliminar: '+(e.message||e),'err');}
+  }));
+}
+function fillAnSemanaSelects(){
+  const opts=Object.keys(AN_SEMANAS).sort().reverse().map(k=>`<option value="${k}">${AN_SEMANAS[k].label}</option>`).join('');
+  ['an-trans-semana','an-gen-base','an-gen-comp'].forEach(id=>{
+    const sel=el(id);if(!sel)return;const cur=sel.value;
+    sel.innerHTML='<option value="">Seleccionar...</option>'+opts;
+    if(cur&&AN_SEMANAS[cur])sel.value=cur;
+  });
+}
+
+el('an-trans-semana')?.addEventListener('change',function(){loadAnTrans(this.value);});
+el('btn-an-trans-cargar')?.addEventListener('click',async()=>{
+  const weekId=el('an-trans-semana').value;
+  if(!weekId){toast('Selecciona la semana','err');return;}
+  const f=el('an-trans-file').files[0];
+  if(!f){toast('Selecciona el archivo de transferencia','err');return;}
+  try{
+    toast('Leyendo transferencia...','',2500);
+    const buf=await f.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const data=parseTransferWorkbook(wb);
+    if(!data.items.length){toast('❌ No se encontraron productos en la transferencia. Verifica que sea el mismo formato de reporte.','err',5000);return;}
+    const r=push(R(db,LOGAN_TRANS+'/'+weekId));
+    await set(r,{...data,uploadedAt:Date.now(),uploadedBy:CU||'',archivo:f.name});
+    toast(`Transferencia guardada ✓ (${data.items.length} productos)`,'ok');
+    el('an-trans-file').value='';
+    loadAnTrans(weekId);
+  }catch(e){console.error('cargar transferencia',e);toast('❌ No se guardó: '+(e.message||e),'err',5000);}
+});
+
+async function loadAnTrans(weekId){
+  if(!weekId){AN_TRANS={};el('an-trans-list').innerHTML='<div style="color:var(--mt);font-size:12px">Selecciona una semana</div>';return;}
+  try{
+    const s=await get(R(db,LOGAN_TRANS+'/'+weekId));
+    AN_TRANS=s.exists()?s.val():{};
+  }catch(e){console.error('loadAnTrans',e);AN_TRANS={};toast('No se pudieron cargar las transferencias: '+(e.message||e),'err');}
+  renderAnTrans(weekId);
+}
+function renderAnTrans(weekId){
+  const c=el('an-trans-list');if(!c)return;
+  const keys=Object.keys(AN_TRANS);
+  if(!keys.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">Sin transferencias cargadas para esta semana</div>';return;}
+  c.innerHTML=keys.map(k=>{
+    const t=AN_TRANS[k];
+    const totalDesp=(t.items||[]).reduce((a,it)=>a+(it.despachado||0),0);
+    return `<div class="sumrow"><span><b>#${t.numero||'—'}</b> ${t.origen||''} → ${t.destino||''}<br><span style="font-size:11px;color:var(--mt)">${(t.items||[]).length} productos · ${fmtNum(totalDesp)} pzs despachadas · ${t.archivo||''}</span></span><button data-k="${k}" class="btn bg bsm an-del-trans" style="width:auto;padding:3px 8px;color:var(--dn)">✕</button></div>`;
+  }).join('');
+  c.querySelectorAll('.an-del-trans').forEach(b=>b.addEventListener('click',async()=>{
+    if(!confirm('¿Eliminar esta transferencia?'))return;
+    try{await remove(R(db,LOGAN_TRANS+'/'+weekId+'/'+b.dataset.k));toast('Eliminada','ok');loadAnTrans(weekId);}
+    catch(e){toast('Error al eliminar: '+(e.message||e),'err');}
+  }));
+}
+
+async function computeManoDeObra(weekId){
+  const w=AN_SEMANAS[weekId];if(!w)return{horas:0,costo:0,personasProm:0,dias:0};
+  const lunes=new Date(w.ini+'T00:00:00');
+  const dias=Array.from({length:6},(_,i)=>isoDateAdd(lunes,i)); // lunes a sábado
+  const isoList=dias.map(d=>isoD(d));
+  const users=await getUsers();
+  const todosColab=Object.values(users).filter(u=>!GERENTES.includes(u.user));
+  const fs=await get(R(db,FER));const feriados=fs.exists()?Object.values(fs.val()).map(f=>f.fecha):[];
+  let totalCosto=0,totalHoras=0,diasConGente=0,personasSuma=0;
+  for(const k of isoList){
+    const hist=await getHist(k);
+    const dPersonas=new Set();let dCosto=0,dHoras=0;
+    for(const u of todosColab){
+      const marks=hist.filter(m=>m.user===u.user);
+      if(!marks.length)continue;
+      dPersonas.add(u.user);
+      const cnt=marks.length,completo=cnt>=4;
+      const dow=new Date(k+'T00:00:00').getDay();
+      const isFer=feriados.includes(k);
+      const tar=isFer?(u.tarifa?.feriado||u.tarifa?.regular||20):(dow===0?(u.tarifa?.domingo||u.tarifa?.regular||20):(u.tarifa?.regular||20));
+      const hrs=computeHrs(marks);
+      const hrsParcial=cnt<4?computeHrsParcial(marks):hrs;
+      const monto=completo?tar:+((Math.min(hrsParcial,8)/8)*tar).toFixed(2);
+      dCosto+=monto;dHoras+=hrsParcial;
+    }
+    if(dPersonas.size){diasConGente++;personasSuma+=dPersonas.size;}
+    totalCosto+=dCosto;totalHoras+=dHoras;
+  }
+  return{horas:totalHoras,costo:totalCosto,personasProm:diasConGente?+(personasSuma/diasConGente).toFixed(1):0,dias:diasConGente};
+}
+
+el('btn-an-generar')?.addEventListener('click',async()=>{
+  const baseId=el('an-gen-base').value,compId=el('an-gen-comp').value;
+  if(!baseId||!compId){toast('Selecciona ambas semanas','err');return;}
+  if(baseId===compId){toast('Selecciona dos semanas distintas','err');return;}
+  const base=AN_SEMANAS[baseId],comp=AN_SEMANAS[compId];
+  if(!base||!comp){toast('No se pudo cargar la información de las semanas','err');return;}
+  toast('Generando análisis...','',2500);
+  try{
+    const ts=await get(R(db,LOGAN_TRANS+'/'+compId));
+    const transWeek=ts.exists()?ts.val():{};
+    const despachadoPorCodigo={};
+    Object.values(transWeek).forEach(t=>{(t.items||[]).forEach(it=>{
+      despachadoPorCodigo[it.codigo]=(despachadoPorCodigo[it.codigo]||0)+(it.despachado||0);
+    });});
+
+    const baseItems=base.items||{},compItems=comp.items||{};
+    const codigos=new Set([...Object.keys(baseItems),...Object.keys(compItems)]);
+    const rows=[];
+    codigos.forEach(cod=>{
+      const b=baseItems[cod],c=compItems[cod];
+      const exB=b?b.existencia:0,exC=c?c.existencia:0;
+      const delta=exC-exB;
+      if(delta===0)return;
+      const info=c||b;
+      const transferido=despachadoPorCodigo[cod]||0;
+      const salioSistema=delta<0?-delta:0;
+      const diferencia=salioSistema-transferido;
+      rows.push({codigo:cod,ref:info.ref,desc:info.desc,depto:info.depto,suplidor:info.suplidor,ubicacion:info.ubicacion,
+        precio:info.precio,existB:exB,existC:exC,delta,transferido,diferencia,
+        valorDelta:+(Math.abs(delta)*(info.precio||0)).toFixed(2)});
+    });
+    rows.sort((a,b)=>a.delta-b.delta);
+
+    const ns=await get(R(db,LOGAN_NOTAS+'/'+compId));
+    const notas=ns.exists()?ns.val():{};
+    AN_RESULT={baseId,compId,rows,notas};
+
+    const mo=await computeManoDeObra(compId);
+    renderAnAnalisis(base,comp,rows,notas,mo);
+  }catch(e){console.error('generar analisis',e);toast('❌ Error al generar el análisis: '+(e.message||e),'err',5000);}
+});
+
+function renderAnAnalisis(base,comp,rows,notas,mo){
+  const totalSalidas=rows.filter(r=>r.delta<0).reduce((a,r)=>a-r.delta,0);
+  const totalEntradas=rows.filter(r=>r.delta>0).reduce((a,r)=>a+r.delta,0);
+  const totalValor=rows.reduce((a,r)=>a+r.valorDelta,0);
+  const rojos=rows.filter(r=>r.diferencia!==0).length;
+
+  el('an-gen-resumen').style.display='block';
+  el('an-gen-cards').innerHTML=[
+    ['📦 Piezas despachadas',fmtNum(totalSalidas)],
+    ['📥 Piezas ingresadas',fmtNum(totalEntradas)],
+    ['💵 Valor movido',`$${totalValor.toLocaleString('es-PA',{minimumFractionDigits:2,maximumFractionDigits:2})}`],
+    ['🔴 Diferencias sin cuadrar',rojos],
+    ['👷 Horas mano de obra',fmtNum(+mo.horas.toFixed(1))],
+    ['💰 Costo mano de obra',`$${mo.costo.toFixed(2)}`],
+    ['👥 Personas prom./día',mo.personasProm]
+  ].map(([lab,val])=>`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px;text-align:center"><div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">${lab}</div><div style="font-size:16px;font-weight:800;color:var(--ac)">${val}</div></div>`).join('');
+
+  const tw=el('an-gen-tablewrap');
+  let html=`<table style="border-collapse:collapse;width:100%;font-size:11.5px;min-width:960px">
+    <tr><th style="${anTh}">Código</th><th style="${anTh}">Ref.</th><th style="${anTh}">Descripción</th>
+    <th style="${anTh}">Suplidor</th><th style="${anTh}">Exist. ${base.ini}</th><th style="${anTh}">Exist. ${comp.ini}</th>
+    <th style="${anTh}">Delta</th><th style="${anTh}">Transferido</th><th style="${anTh}">Diferencia</th>
+    <th style="${anTh}">Valor</th><th style="${anTh}">Nota / tienda</th></tr>`;
+  if(!rows.length){
+    html+=`<tr><td colspan="11" style="${anTd};text-align:center;color:var(--mt)">No hay cambios de existencia entre estas dos semanas</td></tr>`;
+  }
+  rows.forEach(r=>{
+    const rojo=r.diferencia!==0;
+    const notaVal=((notas[r.codigo]&&notas[r.codigo].nota)||'').toString();
+    html+=`<tr style="${rojo?'background:rgba(255,90,90,.08)':''}">
+      <td style="${anTd}">${r.codigo}</td><td style="${anTd}">${r.ref||''}</td><td style="${anTd}">${r.desc||''}</td>
+      <td style="${anTd}">${r.suplidor||''}</td><td style="${anTd};text-align:right">${fmtNum(r.existB)}</td><td style="${anTd};text-align:right">${fmtNum(r.existC)}</td>
+      <td style="${anTd};text-align:right;color:${r.delta<0?'var(--dn)':'var(--ac)'};font-weight:700">${r.delta}</td>
+      <td style="${anTd};text-align:right">${fmtNum(r.transferido)}</td>
+      <td style="${anTd};text-align:right;font-weight:800;color:${rojo?'var(--dn)':'var(--ac)'}">${rojo?(r.diferencia>0?'+':'')+r.diferencia:'✓'}</td>
+      <td style="${anTd};text-align:right">$${r.valorDelta.toFixed(2)}</td>
+      <td style="${anTd}"><input class="fc an-nota-input" data-cod="${r.codigo}" value="${notaVal.replace(/"/g,'&quot;')}" placeholder="Ej: tienda / motivo..." style="font-size:11px;padding:4px 6px;min-width:140px"></td>
+    </tr>`;
+  });
+  html+='</table>';
+  tw.innerHTML=html;
+  el('btn-an-exportar').style.display=rows.length?'inline-block':'none';
+
+  tw.querySelectorAll('.an-nota-input').forEach(inp=>{
+    inp.addEventListener('change',async()=>{
+      try{
+        await set(R(db,LOGAN_NOTAS+'/'+AN_RESULT.compId+'/'+inp.dataset.cod),{nota:inp.value,ts:Date.now(),usuario:CU||''});
+        AN_RESULT.notas[inp.dataset.cod]={nota:inp.value};
+        toast('Nota guardada ✓','ok',1800);
+      }catch(e){toast('Error al guardar nota: '+(e.message||e),'err');}
+    });
+  });
+}
+
+el('btn-an-exportar')?.addEventListener('click',()=>{
+  if(!AN_RESULT.rows||!AN_RESULT.rows.length){toast('No hay análisis para exportar','err');return;}
+  try{
+    const baseIni=AN_SEMANAS[AN_RESULT.baseId]?.ini||'',compIni=AN_SEMANAS[AN_RESULT.compId]?.ini||'';
+    const data=AN_RESULT.rows.map(r=>({
+      'Código':r.codigo,'Referencia':r.ref,'Descripción':r.desc,'Suplidor':r.suplidor,'Ubicación':r.ubicacion,
+      [`Existencia ${baseIni}`]:r.existB,[`Existencia ${compIni}`]:r.existC,
+      'Delta':r.delta,'Transferido':r.transferido,'Diferencia':r.diferencia,'Valor movido':r.valorDelta,
+      'Nota':(AN_RESULT.notas[r.codigo]&&AN_RESULT.notas[r.codigo].nota)||''
+    }));
+    const wsOut=XLSX.utils.json_to_sheet(data);
+    const wbOut=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wbOut,wsOut,'Analisis');
+    XLSX.writeFile(wbOut,`Analisis_Inventario_${baseIni}_vs_${compIni}.xlsx`);
+    toast('Excel generado ✓','ok');
+  }catch(e){console.error('exportar analisis',e);toast('❌ Error al exportar: '+(e.message||e),'err');}
+});
+
 function listenLogistica(){
   if(logListening)return;logListening=true;
   onValue(R(db,LOGPROV),()=>{if(CU)renderLogProveedores();});
@@ -5532,6 +6102,7 @@ function listenLogistica(){
   onValue(R(db,LOGSUM_REQ),()=>{if(CU)loadLogSumReq();},(e)=>{console.error('onValue LOGSUM_REQ',e);toast('Solicitudes: '+(e.message||e),'err');});
   onValue(R(db,LOGSUM_AREA),()=>{if(CU)loadLogSumAreas();},(e)=>{console.error('onValue LOGSUM_AREA',e);toast('Áreas: '+(e.message||e),'err');});
   onValue(R(db,LOGSUM_ACUSE),()=>{if(CU)loadLogSumAcuses();},(e)=>{console.error('onValue LOGSUM_ACUSE',e);toast('Acuses: '+(e.message||e),'err');});
+  onValue(R(db,LOGAN_SEM),()=>{if(CU)loadAnSemanas();},(e)=>{console.error('onValue LOGAN_SEM',e);toast('Análisis semanas: '+(e.message||e),'err');});
 }
 
 // BOOTSTRAP
