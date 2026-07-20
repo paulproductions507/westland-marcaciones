@@ -1268,24 +1268,11 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
       </div>
     </div></div>
 
-    <!-- 📅 ACTIVIDAD MENSUAL (gráfica, opcional/abajo) -->
-    <div class="asec"><div class="ashdr" data-ac="log-ac-kpi"><span>📅 Actividad mensual</span><span class="ach">▾</span></div>
-    <div class="asbdy" id="log-ac-kpi">
-      <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📅 Recibos completados por mes</div>
-      <canvas id="log-kpi-chart" style="width:100%;max-height:220px"></canvas>
-      <div style="font-size:11px;color:var(--mt);text-align:center;margin-top:6px" id="log-kpi-mes-label"></div>
-    </div></div>
-
-    </div>
-    </div>
-
     <!-- 📊 ANÁLISIS DE INVENTARIO SEMANAL -->
-    <div class="card" style="margin-top:14px">
-      <div class="ctitle">📊 Análisis de Inventario Semanal</div>
-      <div style="font-size:12.5px;color:var(--mt)">Compara la existencia de bodega semana contra semana (corte los sábados), cruza contra las transferencias despachadas y el costo de mano de obra de esa semana.</div>
-    </div>
+    <div class="asec"><div class="ashdr" data-ac="log-ac-an"><span>📊 Análisis de Inventario Semanal</span><span class="ach">▾</span></div>
+    <div class="asbdy" id="log-ac-an">
+      <div style="font-size:11.5px;color:var(--mt);margin-bottom:14px">Compara la existencia de bodega semana contra semana (corte los sábados: lunes a sábado), cruza contra las transferencias despachadas y el costo de mano de obra de esa semana.</div>
 
-    <div class="card">
       <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
         <button class="btn bg bsm an-subtab active" data-antab="sem" style="width:auto">📥 Semanas cargadas</button>
         <button class="btn bg bsm an-subtab" data-antab="trans" style="width:auto">🚚 Transferencias</button>
@@ -1294,9 +1281,9 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 
       <!-- SUB: SEMANAS -->
       <div id="an-sub-sem" class="an-subpanel">
-        <div style="font-size:11.5px;color:var(--mt);margin-bottom:12px">Sube aquí el Excel de "Existencia Detalle por Sitio y Bodega" (el que descargas de Tableau) cada sábado, con el lunes de esa semana.</div>
+        <div style="font-size:11.5px;color:var(--mt);margin-bottom:12px">Sube aquí el Excel de "Existencia Detalle por Sitio y Bodega" (el que descargas de Tableau) todos los sábados, indicando el <b>lunes con el que arranca esa semana</b> (la semana corre de lunes a sábado — el sábado es el día de corte/descarga).</div>
         <div class="fg"><label>Lunes de la semana a cargar</label><input type="date" class="fc" id="an-sem-lunes"></div>
-        <div id="an-sem-rango" style="font-size:11.5px;color:var(--ac);margin-bottom:10px"></div>
+        <div id="an-sem-rango" style="font-size:12.5px;font-weight:700;color:var(--ac);margin-bottom:10px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;display:none"></div>
         <div class="fg"><label>Archivo Excel (Existencia Detalle por Sitio y Bodega)</label><input type="file" class="fc" id="an-sem-file" accept=".xlsx,.xls"></div>
         <button class="btn bp bsm" id="btn-an-sem-cargar" style="width:auto;margin-bottom:18px">💾 Guardar semana</button>
 
@@ -1332,6 +1319,17 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
           <button class="btn bg bsm" id="btn-an-exportar" style="width:auto;display:none">⬇️ Exportar a Excel</button>
         </div>
       </div>
+    </div></div>
+
+    <!-- 📅 ACTIVIDAD MENSUAL (gráfica, opcional/abajo) -->
+    <div class="asec"><div class="ashdr" data-ac="log-ac-kpi"><span>📅 Actividad mensual</span><span class="ach">▾</span></div>
+    <div class="asbdy" id="log-ac-kpi">
+      <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📅 Recibos completados por mes</div>
+      <canvas id="log-kpi-chart" style="width:100%;max-height:220px"></canvas>
+      <div style="font-size:11px;color:var(--mt);text-align:center;margin-top:6px" id="log-kpi-mes-label"></div>
+    </div></div>
+
+    </div>
     </div>
 
   </div>
@@ -1373,6 +1371,20 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
     <div class="mfoot">
       <button class="btn bg" id="verasig-cerrar">Cerrar</button>
       <button class="btn bp" id="verasig-asignarmas" style="width:auto">📤 Asignar más</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE DE ÍTEM (se abre al tocar el ícono ⓘ en cada tarjeta de Suministro) -->
+<div id="m-detitem" class="mbd">
+  <div class="mbox">
+    <h3 id="detitem-titulo">📦 Detalle</h3>
+    <div id="detitem-body" style="margin-top:10px"></div>
+    <div class="mfoot" style="flex-wrap:wrap;gap:8px">
+      <button class="btn bg" id="detitem-cerrar">Cerrar</button>
+      <button class="btn bp bsm" id="detitem-asignar" style="width:auto;display:none">📤 Asignar</button>
+      <button class="btn bg bsm" id="detitem-pasar" style="width:auto;display:none">🔁 Pasar a bodega</button>
+      <button class="btn bg bsm" id="detitem-verasig" style="width:auto;display:none">👁️ Ver asignaciones</button>
     </div>
   </div>
 </div>
@@ -4836,7 +4848,10 @@ function renderLogSumStock(){
     const v=agg[k];
     const nom=v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre;
     return `<div style="border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px;background:var(--sf)">
-      <div style="font-weight:700;font-size:13.5px;margin-bottom:6px">${nom}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+        <div style="font-weight:700;font-size:13.5px">${nom}</div>
+        <button type="button" data-detalle="${k}" title="Ver detalle" style="flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:1px solid var(--bd);background:var(--bg);color:var(--ac);font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center">ⓘ</button>
+      </div>
       <div style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--mt);margin-bottom:8px">
         ${v.ubicacion?`<span>📍 ${v.ubicacion}</span>`:''}
         ${v.refProv?`<span>🔖 Ref: ${v.refProv}</span>`:''}
@@ -4867,6 +4882,7 @@ function renderLogSumStock(){
       </div>
     </div>`;
   }).join('');
+  c.querySelectorAll('button[data-detalle]').forEach(b=>b.addEventListener('click',()=>abrirDetalleItem(b.dataset.detalle)));
   c.querySelectorAll('button[data-k]').forEach(b=>b.addEventListener('click',()=>abrirAsignar(b.dataset.k)));
   c.querySelectorAll('button[data-ver-asig]').forEach(b=>b.addEventListener('click',()=>verAsignaciones(b.dataset.verAsig)));
   c.querySelectorAll('button[data-pasar]').forEach(b=>b.addEventListener('click',()=>trasladarATransito(b.dataset.pasar)));
@@ -4893,6 +4909,42 @@ async function trasladarATransito(key){
 }
 
 let VERASIG_ACTUAL_KEY=null;
+// Modal de detalle por ítem — se abre con el ícono ⓘ de cada tarjeta de Suministro
+function abrirDetalleItem(key){
+  const v=LOGSUM_STOCK_AGG[key];if(!v)return;
+  const nom=v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre;
+  if(el('detitem-titulo'))el('detitem-titulo').textContent='📦 '+nom;
+  const pctInfo=calcularPorcentajesStock().find(x=>x.key===key);
+  const umbral=parseFloat(el('log-sumrep-umbral')?.value)||25;
+  const enAlerta=pctInfo&&pctInfo.pct!==null&&pctInfo.pct<=umbral;
+  const movs=Object.values(LOGSUMMOVS).filter(m=>sumStockKey(m.nombre,m.tamNombre)===key).sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,8);
+  const c=el('detitem-body');
+  if(c)c.innerHTML=`
+    <div style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--mt);margin-bottom:10px">
+      ${v.ubicacion?`<span>📍 ${v.ubicacion}</span>`:''}
+      ${v.refProv?`<span>🔖 Ref: ${v.refProv}</span>`:''}
+      ${v.codigoInterno?`<span>🏷️ ${v.codigoInterno}</span>`:''}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <div style="flex:1;min-width:76px;background:var(--bg);border-radius:6px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:800">${fmtNum(v.stock)}</div><div style="font-size:10px;color:var(--mt);text-transform:uppercase">Bodega</div></div>
+      <div style="flex:1;min-width:76px;background:var(--bg);border-radius:6px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:800;color:#48b8e0">${fmtNum(v.transito)}</div><div style="font-size:10px;color:var(--mt);text-transform:uppercase">Bod. tránsito</div></div>
+      <div style="flex:1;min-width:76px;background:var(--bg);border-radius:6px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:800;color:var(--wn)">${fmtNum(v.enTransito)}</div><div style="font-size:10px;color:var(--mt);text-transform:uppercase">Asignado</div></div>
+      <div style="flex:1;min-width:76px;background:var(--bg);border-radius:6px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:800;color:var(--mt)">${fmtNum(v.consumido)}</div><div style="font-size:10px;color:var(--mt);text-transform:uppercase">Consumido</div></div>
+    </div>
+    ${pctInfo&&pctInfo.pct!==null?`<div style="font-size:12px;margin-bottom:10px;color:${enAlerta?'var(--dn)':'var(--mt)'}">${enAlerta?'⚠️':'ℹ️'} ${pctInfo.pct}% de lo recibido históricamente sigue disponible (bodega + tránsito)</div>`:''}
+    <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🕓 Últimos movimientos</div>
+    <div>${movs.length?movs.map(m=>`<div style="display:flex;justify-content:space-between;font-size:11.5px;border-bottom:1px solid var(--bd);padding:4px 0"><span>${(m.signo||1)<0?'➖':'➕'} ${(m.destino||'bodega')==='transito'?'Bod. tránsito':'Bodega'} · ${m.usuario||''}</span><b>${fmtNum(m.subtotal)}</b></div>`).join(''):'<div style="color:var(--mt);font-size:12px">Sin movimientos recientes</div>'}</div>
+  `;
+  if(el('detitem-asignar')){el('detitem-asignar').style.display=v.stock>0?'inline-block':'none';el('detitem-asignar').dataset.k=key;}
+  if(el('detitem-pasar')){el('detitem-pasar').style.display=v.transito>0?'inline-block':'none';el('detitem-pasar').dataset.k=key;}
+  if(el('detitem-verasig')){el('detitem-verasig').style.display=v.enTransito>0?'inline-block':'none';el('detitem-verasig').dataset.k=key;}
+  el('m-detitem').classList.add('open');
+}
+el('detitem-cerrar')?.addEventListener('click',()=>el('m-detitem').classList.remove('open'));
+el('detitem-asignar')?.addEventListener('click',function(){el('m-detitem').classList.remove('open');abrirAsignar(this.dataset.k);});
+el('detitem-pasar')?.addEventListener('click',function(){el('m-detitem').classList.remove('open');trasladarATransito(this.dataset.k);});
+el('detitem-verasig')?.addEventListener('click',function(){el('m-detitem').classList.remove('open');verAsignaciones(this.dataset.k);});
+
 function verAsignaciones(key){
   const v=LOGSUM_STOCK_AGG[key];if(!v)return;
   VERASIG_ACTUAL_KEY=key;
@@ -4980,7 +5032,13 @@ async function abrirAsignar(key){
   if(el('log-sum-asignar-saldo'))el('log-sum-asignar-saldo').textContent=fmtNum(v.stock);
   if(el('log-sum-asignar-email'))el('log-sum-asignar-email').value='';
   if(el('log-sum-asignar-tipo'))el('log-sum-asignar-tipo').value='user';
-  try{const all=await getUsers();ASIGNAR_USERS_CACHE=Object.values(all).filter(u=>u.user);}catch(e){ASIGNAR_USERS_CACHE=[];}
+  try{
+    const all=await getUsers();
+    const semActivos=await loadSemActivos();
+    let users=Object.values(all).filter(u=>u.user);
+    if(semActivos.length>0)users=users.filter(u=>semActivos.includes(u.user));
+    ASIGNAR_USERS_CACHE=users;
+  }catch(e){ASIGNAR_USERS_CACHE=[];}
   await renderAsignarChecklist();
   const box=el('log-sum-asignar-box');
   if(box){box.style.display='block';box.scrollIntoView({behavior:'smooth',block:'center'});}
@@ -5332,11 +5390,17 @@ function renderLogSumKPIs(){
   const totalConsumido=items.reduce((s,v)=>s+(v.consumido||0),0);
   const umbral=parseFloat(el('log-sumrep-umbral')?.value)||25;
   const enAlerta=calcularPorcentajesStock().filter(x=>x.pct!==null&&x.pct<=umbral).length;
+  // Personas/áreas distintas que tienen algo en su poder ahora mismo
+  const personasConAsignado=new Set();
+  Object.values(LOGSUMREQ).forEach(r=>{
+    const enPoder=Math.max(0,(r.cantidadDespachada||0)-(r.cantidadDevuelta||0)-(r.consumoFinal||0));
+    if(enPoder>0)personasConAsignado.add(r.solicitante);
+  });
   const kpis=[
     {label:'Ítems distintos',val:totalItems,icon:'📦',color:'var(--ac)',f:'all'},
     {label:'Piezas en bodega',val:fmtNum(totalDisponible),icon:'🏬',color:'var(--ac)',f:'bodega'},
     {label:'En bodega de tránsito',val:fmtNum(totalTransitoBodega),icon:'🚚',color:'#48b8e0',f:'transito'},
-    {label:'Asignado',val:fmtNum(totalAsignado),icon:'🧑‍🤝‍🧑',color:'var(--wn)',f:'asignado'},
+    {label:'Personas / piezas asignadas',val:`${personasConAsignado.size}/${fmtNum(totalAsignado)}`,icon:'🧑‍🤝‍🧑',color:'var(--wn)',f:'asignado'},
     {label:'Consumido',val:fmtNum(totalConsumido),icon:'✅',color:'var(--mt)',f:'consumido'},
     {label:'En alerta (≤'+umbral+'%)',val:enAlerta,icon:'⚠️',color:enAlerta>0?'var(--dn)':'var(--mt)',f:'alerta'},
   ];
@@ -5349,9 +5413,16 @@ function renderLogSumKPIs(){
 }
 
 function applySumKpiFilter(f){
+  // KPIs "con vida": si el KPI es de conectividad persona↔ítem (asignado) y solo hay
+  // un ítem involucrado, abrimos directo el modal de detalle en vez de solo filtrar la lista.
+  if(f==='asignado'){
+    const conAsignado=Object.keys(LOGSUM_STOCK_AGG).filter(k=>LOGSUM_STOCK_AGG[k].enTransito>0);
+    if(!conAsignado.length){toast('No hay piezas asignadas actualmente','err');return;}
+    if(conAsignado.length===1){verAsignaciones(conAsignado[0]);return;}
+  }
   SUM_ACTIVE_FILTER=f;
   renderLogSumStock();
-  const labels={all:'',bodega:'🔎 Filtrado: ítems con piezas en bodega',transito:'🔎 Filtrado: ítems con piezas en bodega de tránsito',asignado:'🔎 Filtrado: ítems con piezas asignadas',consumido:'🔎 Filtrado: ítems con consumo registrado',alerta:'🔎 Filtrado: ítems en alerta de stock bajo'};
+  const labels={all:'',bodega:'🔎 Filtrado: ítems con piezas en bodega',transito:'🔎 Filtrado: ítems con piezas en bodega de tránsito',asignado:'🔎 Filtrado: ítems con piezas asignadas — toca "👁️ Ver asignaciones" en cada uno para ver el detalle por persona',consumido:'🔎 Filtrado: ítems con consumo registrado',alerta:'🔎 Filtrado: ítems en alerta de stock bajo'};
   const lbl=el('log-sum-filter-label');
   if(lbl){lbl.style.display=f==='all'?'none':'block';lbl.textContent=labels[f]||'';}
   const btn=el('btn-sum-inv-clearfilter');
@@ -5536,7 +5607,9 @@ async function renderLogSumRoleView(){
 async function fillSumUserSelects(){
   try{
     const all=await getUsers();
-    const users=Object.values(all).filter(u=>u.user);
+    const semActivos=await loadSemActivos();
+    let users=Object.values(all).filter(u=>u.user);
+    if(semActivos.length>0)users=users.filter(u=>semActivos.includes(u.user));
     const selResp=el('log-sumresp-user');
     if(selResp){
       const cur=selResp.value;
@@ -5743,11 +5816,15 @@ function anWeekRange(lunesStr){
   return{ini:isoD(d),fin:isoD(fin)};
 }
 el('an-sem-lunes')?.addEventListener('change',function(){
-  if(!this.value){el('an-sem-rango').textContent='';return;}
+  const box=el('an-sem-rango');
+  if(!this.value){box.style.display='none';return;}
   const d=new Date(this.value+'T00:00:00');
-  if(d.getDay()!==1){toast('Selecciona un día lunes','err');el('an-sem-rango').textContent='';return;}
+  if(d.getDay()!==1){toast('Selecciona un día lunes — el sistema arma la semana de lunes a sábado a partir de esa fecha','err',4500);box.style.display='none';return;}
   const{ini,fin}=anWeekRange(this.value);
-  el('an-sem-rango').textContent=`Semana: ${ini} al ${fin} (lunes a sábado)`;
+  const dIni=new Date(ini+'T00:00:00'),dFin=new Date(fin+'T00:00:00');
+  const fmt=x=>x.toLocaleDateString('es-PA',{weekday:'long',day:'2-digit',month:'short'});
+  box.innerHTML=`📅 Esta carga corresponde a la semana: <b>${fmt(dIni)}</b> → <b>${fmt(dFin)}</b><br><span style="font-weight:400;color:var(--mt);font-size:11.5px">Sube el Excel que descargas el día del corte (sábado ${fin}).</span>`;
+  box.style.display='block';
 });
 
 // Lee el Excel de "Existencia Detalle por Sitio y Bodega" por nombre de columna
