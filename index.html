@@ -244,9 +244,55 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .log-side-btn:hover{background:rgba(31,143,127,.14);border-color:var(--ac);color:var(--ac);transform:translateY(-1px);}
 .log-side-btn.active{background:linear-gradient(135deg,#1a7a6e,#145f55);color:#fff;box-shadow:var(--sh);}
 .log-content{flex:1;min-width:0;}
+/* Navegación tipo flyout (sub-menú lateral al pasar el cursor) */
+.log-nav-item{position:relative;}
+.log-flyout{
+  position:absolute;left:calc(100% + 8px);top:0;min-width:230px;max-width:300px;
+  background:var(--sf);border:1px solid var(--bd);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);
+  padding:6px;opacity:0;visibility:hidden;transform:translateX(-6px);
+  transition:opacity .14s ease,transform .14s ease,visibility .14s ease;z-index:60;
+}
+.log-nav-item:hover .log-flyout,.log-nav-item.open .log-flyout{opacity:1;visibility:visible;transform:translateX(0);}
+.log-flyout-title{font-size:10.5px;font-weight:800;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;padding:6px 10px 4px;}
+.log-flyout-item{
+  display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;background:transparent;
+  color:var(--tx,#e7f1ef);font-size:12.5px;font-weight:600;padding:9px 10px;border-radius:8px;cursor:pointer;
+  transition:background .12s ease;
+}
+.log-flyout-item:hover{background:rgba(31,143,127,.16);color:var(--ac);}
+.log-flyout-item.active{background:linear-gradient(135deg,#1a7a6e,#145f55);color:#fff;}
 @media(max-width:760px){
   .log-shell{flex-direction:column;}
-  .log-sidebar{position:static;flex-direction:row;overflow-x:auto;width:100%;top:auto;}
+  .log-sidebar{position:static;flex-direction:row;overflow-x:auto;width:100%;top:auto;flex-wrap:wrap;}
+  .log-flyout{left:0;top:calc(100% + 6px);}
+}
+/* Contenido sectorizado: solo la sección activa se muestra */
+.log-sec{display:none;}
+.log-sec.log-active{display:block;animation:logFadeIn .18s ease;}
+@keyframes logFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.log-home{
+  display:flex;align-items:center;justify-content:center;min-height:420px;border-radius:18px;overflow:hidden;
+  position:relative;background:
+    radial-gradient(circle at 15% 20%,rgba(31,143,127,.35),transparent 55%),
+    radial-gradient(circle at 85% 80%,rgba(212,162,76,.18),transparent 50%),
+    linear-gradient(135deg,#062b2a 0%,#00252e 60%,#001519 100%);
+  border:1px solid var(--bd);
+}
+.log-home::before{
+  content:'';position:absolute;inset:0;opacity:.5;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
+  background-size:34px 34px;
+}
+.log-home-inner{position:relative;text-align:center;padding:36px 24px;max-width:560px;}
+.log-home-ico{font-size:56px;line-height:1;margin-bottom:14px;filter:drop-shadow(0 6px 18px rgba(0,0,0,.4));}
+.log-home-inner h2{font-size:24px;font-weight:800;color:#fff;margin:0 0 8px;letter-spacing:.2px;}
+.log-home-inner p{font-size:13.5px;color:var(--mt);margin:0;line-height:1.5;}
+.log-home-badges{display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap;}
+.log-home-badges span{
+  font-size:11px;font-weight:700;color:#cfeee8;background:rgba(31,143,127,.18);
+  border:1px solid rgba(31,143,127,.4);padding:6px 12px;border-radius:20px;
 }
 #tab-log, #tab-log input, #tab-log select, #tab-log textarea, #tab-log button{
   font-family:'Inter',system-ui,-apple-system,sans-serif;
@@ -1031,16 +1077,78 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 
     <!-- Secciones de Control Logístico organizadas en 2 columnas -->
     <div class="log-shell">
-  <aside class="log-sidebar">
-      <button type="button" class="log-side-btn" data-jump="log-nuevo-jump" title="Nuevo formulario de envío"><span>📤</span></button>
-      <button type="button" class="log-side-btn" data-jump="log-rec-jump" title="Formularios recibidos — confirmar recepción"><span>📥</span></button>
-      <button type="button" class="log-side-btn" data-jump="log-cfg-jump" title="Configuración logística"><span>⚙️</span></button>
-      <button type="button" class="log-side-btn" data-jump="log-hist-jump" title="Historial de recibos"><span>📊</span></button>
-      <button type="button" class="log-side-btn" data-jump="log-sum-jump" title="Suministro"><span>📦</span></button>
-      <button type="button" class="log-side-btn" data-jump="log-an-jump" title="Análisis de inventario semanal"><span>📈</span></button>
-      <button type="button" class="log-side-btn" data-jump="log-kpi-jump" title="Actividad mensual"><span>📅</span></button>
+  <aside class="log-sidebar" id="log-sidebar">
+      <div class="log-nav-item" data-group="home">
+        <button type="button" class="log-side-btn active" data-home="1" title="Inicio"><span>🏠</span></button>
+        <div class="log-flyout"><div class="log-flyout-title">Inicio</div>
+          <button type="button" class="log-flyout-item" data-home="1">🏠 Panel de Control Logístico</button>
+        </div>
+      </div>
+      <div class="log-nav-item" data-group="nuevo">
+        <button type="button" class="log-side-btn" title="Nuevo formulario de envío"><span>📤</span></button>
+        <div class="log-flyout"><div class="log-flyout-title">Envíos</div>
+          <button type="button" class="log-flyout-item" data-jump="log-nuevo-jump">📤 Nuevo formulario de envío</button>
+        </div>
+      </div>
+      <div class="log-nav-item" data-group="rec">
+        <button type="button" class="log-side-btn" title="Formularios recibidos"><span>📥</span></button>
+        <div class="log-flyout"><div class="log-flyout-title">Recepción</div>
+          <button type="button" class="log-flyout-item" data-jump="log-rec-jump">📥 Formularios recibidos — confirmar recepción</button>
+        </div>
+      </div>
+      <div class="log-nav-item" data-group="cfg">
+        <button type="button" class="log-side-btn" title="Configuración logística"><span>⚙️</span></button>
+        <div class="log-flyout"><div class="log-flyout-title">Ajustes</div>
+          <button type="button" class="log-flyout-item" data-jump="log-cfg-jump">⚙️ Configuración logística</button>
+        </div>
+      </div>
+      <div class="log-nav-item" data-group="hist">
+        <button type="button" class="log-side-btn" title="Historial de recibos"><span>📊</span></button>
+        <div class="log-flyout"><div class="log-flyout-title">Historial</div>
+          <button type="button" class="log-flyout-item" data-jump="log-hist-jump">📊 Historial de recibos</button>
+        </div>
+      </div>
+      <div class="log-nav-item" data-group="sum">
+        <button type="button" class="log-side-btn" title="Suministro"><span>📦</span></button>
+        <div class="log-flyout"><div class="log-flyout-title">Suministro</div>
+          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-req">📥 Solicitudes por atender</button>
+          <button type="button" class="log-flyout-item log-flyout-resp" data-jump="log-sum-jump" data-ac="log-ac-sum-resp" style="display:none">👤 Responsable de Suministro</button>
+          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-cat">🗂️ Catálogos de suministro</button>
+          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-reg">➕ Registrar entrada / salida</button>
+          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-stock">🏬 Bodega de Consumo Interno</button>
+          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-porcolab">👥 Consumo por colaborador/área</button>
+          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-consumo-hist">🧾 Historial de consumo</button>
+          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-acuses">📄 Acuses de despacho</button>
+          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-reporte">📧 Reporte de suministro</button>
+          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-mov">🕓 Últimos movimientos</button>
+        </div>
+      </div>
+      <div class="log-nav-item" data-group="an">
+        <button type="button" class="log-side-btn" title="Análisis de inventario semanal"><span>📈</span></button>
+        <div class="log-flyout"><div class="log-flyout-title">Análisis</div>
+          <button type="button" class="log-flyout-item" data-jump="log-an-jump">📈 Análisis de inventario semanal</button>
+        </div>
+      </div>
+      <div class="log-nav-item" data-group="kpi">
+        <button type="button" class="log-side-btn" title="Actividad mensual"><span>📅</span></button>
+        <div class="log-flyout"><div class="log-flyout-title">Estadísticas</div>
+          <button type="button" class="log-flyout-item" data-jump="log-kpi-jump">📅 Actividad mensual</button>
+        </div>
+      </div>
   </aside>
   <div class="log-content">
+    <div id="log-home-jump" class="log-sec log-active">
+      <div class="log-home">
+        <div class="log-home-inner">
+          <div class="log-home-ico">📦🚚</div>
+          <h2>Control Logístico</h2>
+          <p>Registro y confirmación de mercancía recibida de proveedores. Selecciona una sección en el menú lateral para comenzar.</p>
+          <div class="log-home-badges">
+            <span>📤 Envíos</span><span>📥 Recepción</span><span>📦 Suministro</span><span>📈 Análisis</span>
+          </div>
+        </div>
+      </div>
+    </div>
     <div id="log-nuevo-jump" class="log-sec">
 <div id="log-nuevo-card" style="display:none">
       <div class="asec"><div class="ashdr" data-ac="log-ac-nuevo"><span>📤 Nuevo formulario de envío</span><span class="ach">▾</span></div>
@@ -2796,17 +2904,62 @@ document.querySelectorAll('.ashdr').forEach(h=>{
   });
 });
 
-// Sidebar de Control Logístico: al tocar un ícono, abre esa sección y hace scroll hasta ella
-document.querySelectorAll('.log-side-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    document.querySelectorAll('.log-side-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    const target=document.getElementById(btn.dataset.jump);
-    if(!target)return;
+// Sidebar de Control Logístico: navegación tipo flyout, sectorizada (una sola sección visible)
+function logShowSection(sectionId,acId){
+  document.querySelectorAll('#tab-log .log-sec').forEach(s=>s.classList.remove('log-active'));
+  const target=document.getElementById(sectionId);
+  if(!target)return;
+  target.classList.add('log-active');
+  if(acId){
+    const hdr=document.querySelector(`[data-ac="${acId}"]`);
+    if(hdr && !hdr.classList.contains('open'))hdr.click();
+    if(hdr)setTimeout(()=>hdr.scrollIntoView({behavior:'smooth',block:'start'}),40);
+  }else{
     const hdr=target.querySelector('.ashdr');
     if(hdr && !hdr.classList.contains('open'))hdr.click();
-    setTimeout(()=>target.scrollIntoView({behavior:'smooth',block:'start'}),40);
+  }
+  document.getElementById('log-sidebar')?.querySelectorAll('.log-nav-item').forEach(n=>n.classList.remove('open'));
+}
+function logSetActiveNav(groupEl,itemBtn){
+  document.querySelectorAll('#log-sidebar .log-side-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#log-sidebar .log-flyout-item').forEach(b=>b.classList.remove('active'));
+  groupEl?.querySelector('.log-side-btn')?.classList.add('active');
+  itemBtn?.classList.add('active');
+}
+document.querySelectorAll('#log-sidebar .log-flyout-item[data-home]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    logShowSection('log-home-jump',null);
+    logSetActiveNav(btn.closest('.log-nav-item'),btn);
   });
+});
+document.querySelectorAll('#log-sidebar .log-side-btn[data-home]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    logShowSection('log-home-jump',null);
+    logSetActiveNav(btn.closest('.log-nav-item'),null);
+  });
+});
+document.querySelectorAll('#log-sidebar .log-flyout-item[data-jump]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    logShowSection(btn.dataset.jump,btn.dataset.ac||null);
+    logSetActiveNav(btn.closest('.log-nav-item'),btn);
+  });
+});
+// En pantallas táctiles el hover no existe: un tap en el ícono abre/cierra el flyout
+document.querySelectorAll('#log-sidebar .log-nav-item > .log-side-btn:not([data-home])').forEach(btn=>{
+  btn.addEventListener('click',(e)=>{
+    const item=btn.closest('.log-nav-item');
+    const wasOpen=item.classList.contains('open');
+    document.querySelectorAll('#log-sidebar .log-nav-item').forEach(n=>n.classList.remove('open'));
+    if(!wasOpen){
+      item.classList.add('open');
+      // Si el grupo tiene un solo destino, navega directo al tocar el ícono
+      const items=item.querySelectorAll('.log-flyout-item');
+      if(items.length===1)items[0].click();
+    }
+  });
+});
+document.addEventListener('click',(e)=>{
+  if(!e.target.closest('#log-sidebar'))document.querySelectorAll('#log-sidebar .log-nav-item').forEach(n=>n.classList.remove('open'));
 });
 
 // FOTO
@@ -5738,6 +5891,7 @@ async function renderLogSumRoleView(){
   if(el('log-sum-admin-box'))el('log-sum-admin-box').style.display=esResp?'block':'none';
   if(el('log-sum-colab-box'))el('log-sum-colab-box').style.display=esResp?'none':'block';
   if(el('log-sumresp-box'))el('log-sumresp-box').style.display=soloAdmin?'block':'none';
+  document.querySelectorAll('.log-flyout-resp').forEach(b=>b.style.display=soloAdmin?'flex':'none');
   await fillSumUserSelects();
   fillLogSumNombresDatalist();
   renderLogSumReqPend();
