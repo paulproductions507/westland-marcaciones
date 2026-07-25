@@ -223,9 +223,30 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
   --sh:0 1px 2px rgba(0,0,0,.25),0 8px 24px -8px rgba(0,0,0,.4);
   max-width:1500px;
   background:
-    radial-gradient(circle at 12% -4%, rgba(31,143,127,.12), transparent 42%),
-    radial-gradient(circle at 100% 10%, rgba(212,162,76,.06), transparent 38%);
+    radial-gradient(circle at 12% -4%, rgba(31,143,127,.22), transparent 46%),
+    radial-gradient(circle at 100% 10%, rgba(212,162,76,.12), transparent 42%),
+    radial-gradient(circle at 50% 100%, rgba(31,143,127,.10), transparent 50%);
   padding-left:18px;padding-right:18px;
+  border-radius:20px;
+}
+
+/* Sidebar + panel de contenido (reemplaza el layout de 2 columnas) */
+.log-shell{display:flex;align-items:flex-start;gap:14px;}
+.log-sidebar{
+  position:sticky;top:74px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;
+  background:var(--sf);border:1px solid var(--bd);border-radius:16px;padding:8px;box-shadow:var(--sh);
+}
+.log-side-btn{
+  width:46px;height:46px;border-radius:11px;border:1px solid transparent;background:transparent;
+  color:var(--mt);font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .15s ease;
+}
+.log-side-btn:hover{background:rgba(31,143,127,.14);border-color:var(--ac);color:var(--ac);transform:translateY(-1px);}
+.log-side-btn.active{background:linear-gradient(135deg,#1a7a6e,#145f55);color:#fff;box-shadow:var(--sh);}
+.log-content{flex:1;min-width:0;}
+@media(max-width:760px){
+  .log-shell{flex-direction:column;}
+  .log-sidebar{position:static;flex-direction:row;overflow-x:auto;width:100%;top:auto;}
 }
 #tab-log, #tab-log input, #tab-log select, #tab-log textarea, #tab-log button{
   font-family:'Inter',system-ui,-apple-system,sans-serif;
@@ -249,10 +270,18 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 }
 #tab-log .card:first-child > div:last-child{font-size:13.5px;color:var(--tx);opacity:.75;max-width:640px;}
 
-/* KPIs */
+/* KPIs — efecto "glacial" (vidrio esmerilado) */
 #log-kpi-cards{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!important;}
 #tab-log .sum-kpi-card, #tab-log #log-kpi-cards>div, #tab-log #an-gen-cards>div{
   transition:transform .12s ease,border-color .12s ease;
+  position:relative;overflow:hidden;
+  background:linear-gradient(160deg,rgba(31,143,127,.16),rgba(17,32,29,.9))!important;
+  backdrop-filter:blur(6px);
+  border-top:1px solid rgba(255,255,255,.14)!important;
+}
+#tab-log .sum-kpi-card::before, #tab-log #log-kpi-cards>div::before, #tab-log #an-gen-cards>div::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);
 }
 #tab-log .sum-kpi-card:hover, #tab-log #an-gen-cards>div:hover{transform:translateY(-2px);border-color:var(--ac)!important;}
 
@@ -1001,36 +1030,19 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
     </div>
 
     <!-- Secciones de Control Logístico organizadas en 2 columnas -->
-    <div class="loggrid">
-    <div class="loggrid-col1">
-
-    <!-- ⚙️ CONFIGURACIÓN (solo admin) -->
-    <div id="log-config-card" style="display:none">
-      <div class="asec"><div class="ashdr" data-ac="log-ac-cfg"><span>⚙️ Configuración logística</span><span class="ach">▾</span></div>
-      <div class="asbdy" id="log-ac-cfg">
-        <div style="margin-bottom:14px">
-          <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🏬 Departamentos</div>
-          <div class="fg2">
-            <div class="fg"><input class="fc" id="log-depto-nombre" placeholder="Ej: Juguetería, Ropa, Calzado..."></div>
-            <div class="fg"><button class="btn bp bsm" id="btn-log-depto-add" style="width:auto">➕ Agregar</button></div>
-          </div>
-          <div id="log-depto-list" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px"></div>
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">🏢 Proveedores adicionales</div>
-          <div style="font-size:11px;color:var(--mt);margin-bottom:7px">Los 3,574 proveedores del catálogo maestro ya están disponibles.</div>
-          <div class="fg2">
-            <div class="fg"><input class="fc" id="log-prov-nombre" placeholder="Nombre del proveedor"></div>
-            <div class="fg"><select class="fc" id="log-prov-tipo"><option value="Importación">Importación</option><option value="Zona Libre">Zona Libre</option></select></div>
-          </div>
-          <button class="btn bp bsm" id="btn-log-prov-add" style="width:auto;margin-bottom:8px">➕ Agregar proveedor</button>
-          <div id="log-prov-list" style="max-height:180px;overflow-y:auto"></div>
-        </div>
-      </div></div>
-    </div>
-
-    <!-- 📤 NUEVO FORMULARIO (solo admin) -->
-    <div id="log-nuevo-card" style="display:none">
+    <div class="log-shell">
+  <aside class="log-sidebar">
+      <button type="button" class="log-side-btn" data-jump="log-nuevo-jump" title="Nuevo formulario de envío"><span>📤</span></button>
+      <button type="button" class="log-side-btn" data-jump="log-rec-jump" title="Formularios recibidos — confirmar recepción"><span>📥</span></button>
+      <button type="button" class="log-side-btn" data-jump="log-cfg-jump" title="Configuración logística"><span>⚙️</span></button>
+      <button type="button" class="log-side-btn" data-jump="log-hist-jump" title="Historial de recibos"><span>📊</span></button>
+      <button type="button" class="log-side-btn" data-jump="log-sum-jump" title="Suministro"><span>📦</span></button>
+      <button type="button" class="log-side-btn" data-jump="log-an-jump" title="Análisis de inventario semanal"><span>📈</span></button>
+      <button type="button" class="log-side-btn" data-jump="log-kpi-jump" title="Actividad mensual"><span>📅</span></button>
+  </aside>
+  <div class="log-content">
+    <div id="log-nuevo-jump" class="log-sec">
+<div id="log-nuevo-card" style="display:none">
       <div class="asec"><div class="ashdr" data-ac="log-ac-nuevo"><span>📤 Nuevo formulario de envío</span><span class="ach">▾</span></div>
       <div class="asbdy" id="log-ac-nuevo">
         <div class="fg2">
@@ -1097,9 +1109,9 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         <button class="btn bp bsm" id="btn-log-nv-enviar" style="width:auto">📤 Enviar formulario a bodega</button>
       </div></div>
     </div>
-
-    <!-- 📥 FORMULARIOS RECIBIDOS -->
-    <div class="asec"><div class="ashdr" data-ac="log-ac-rec"><span>📥 Formularios recibidos — confirmar recepción</span><span class="ach">▾</span></div>
+    </div>
+    <div id="log-rec-jump" class="log-sec">
+<div class="asec"><div class="ashdr" data-ac="log-ac-rec"><span>📥 Formularios recibidos — confirmar recepción</span><span class="ach">▾</span></div>
     <div class="asbdy" id="log-ac-rec">
       <div class="fg"><label>Envíos pendientes por recibir</label>
         <select class="fc" id="log-rec-select"><option value="">Seleccione un recibo...</option></select>
@@ -1139,12 +1151,34 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         <button class="btn bp bsm" id="btn-log-rec-confirmar" style="width:auto">✅ Confirmar recepción</button>
       </div>
     </div></div>
-
     </div>
-    <div class="loggrid-col2">
-
-    <!-- 📊 HISTORIAL -->
-    <div class="asec"><div class="ashdr" data-ac="log-ac-hist" id="log-hist-tog"><span>📊 Historial de recibos</span><span class="ach" id="log-hist-ch">▾</span></div>
+    <div id="log-cfg-jump" class="log-sec">
+<div id="log-config-card" style="display:none">
+      <div class="asec"><div class="ashdr" data-ac="log-ac-cfg"><span>⚙️ Configuración logística</span><span class="ach">▾</span></div>
+      <div class="asbdy" id="log-ac-cfg">
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🏬 Departamentos</div>
+          <div class="fg2">
+            <div class="fg"><input class="fc" id="log-depto-nombre" placeholder="Ej: Juguetería, Ropa, Calzado..."></div>
+            <div class="fg"><button class="btn bp bsm" id="btn-log-depto-add" style="width:auto">➕ Agregar</button></div>
+          </div>
+          <div id="log-depto-list" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">🏢 Proveedores adicionales</div>
+          <div style="font-size:11px;color:var(--mt);margin-bottom:7px">Los 3,574 proveedores del catálogo maestro ya están disponibles.</div>
+          <div class="fg2">
+            <div class="fg"><input class="fc" id="log-prov-nombre" placeholder="Nombre del proveedor"></div>
+            <div class="fg"><select class="fc" id="log-prov-tipo"><option value="Importación">Importación</option><option value="Zona Libre">Zona Libre</option></select></div>
+          </div>
+          <button class="btn bp bsm" id="btn-log-prov-add" style="width:auto;margin-bottom:8px">➕ Agregar proveedor</button>
+          <div id="log-prov-list" style="max-height:180px;overflow-y:auto"></div>
+        </div>
+      </div></div>
+    </div>
+    </div>
+    <div id="log-hist-jump" class="log-sec">
+<div class="asec"><div class="ashdr" data-ac="log-ac-hist" id="log-hist-tog"><span>📊 Historial de recibos</span><span class="ach" id="log-hist-ch">▾</span></div>
     <div class="asbdy" id="log-ac-hist">
       <div style="margin-bottom:10px">
         <input class="fc" id="log-hist-search" placeholder="🔍 Buscar por recibo, proveedor, depto..." style="margin-bottom:8px">
@@ -1165,9 +1199,9 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         <div id="log-hist-list"><div style="color:var(--mt);font-size:13px;text-align:center;padding:10px">Sin registros aún</div></div>
       </div>
     </div></div>
-
-    <!-- 📦 SUMINISTRO -->
-    <div class="asec"><div class="ashdr" data-ac="log-ac-sum"><span>📦 Suministro</span><span class="ach">▾</span></div>
+    </div>
+    <div id="log-sum-jump" class="log-sec">
+<div class="asec"><div class="ashdr" data-ac="log-ac-sum"><span>📦 Suministro</span><span class="ach">▾</span></div>
     <div class="asbdy" id="log-ac-sum">
 
       <!-- VISTA COLABORADOR (restringida): solo solicitar y ver sus propias solicitudes -->
@@ -1361,9 +1395,9 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 
       </div>
     </div></div>
-
-    <!-- 📊 ANÁLISIS DE INVENTARIO SEMANAL -->
-    <div class="asec"><div class="ashdr" data-ac="log-ac-an"><span>📊 Análisis de Inventario Semanal</span><span class="ach">▾</span></div>
+    </div>
+    <div id="log-an-jump" class="log-sec">
+<div class="asec"><div class="ashdr" data-ac="log-ac-an"><span>📊 Análisis de Inventario Semanal</span><span class="ach">▾</span></div>
     <div class="asbdy" id="log-ac-an">
       <div style="font-size:11.5px;color:var(--mt);margin-bottom:14px">Compara la existencia de bodega semana contra semana (corte los sábados: lunes a sábado), cruza contra las transferencias despachadas y el costo de mano de obra de esa semana.</div>
 
@@ -1414,17 +1448,17 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         </div>
       </div>
     </div></div>
-
-    <!-- 📅 ACTIVIDAD MENSUAL (gráfica, opcional/abajo) -->
-    <div class="asec"><div class="ashdr" data-ac="log-ac-kpi"><span>📅 Actividad mensual</span><span class="ach">▾</span></div>
+    </div>
+    <div id="log-kpi-jump" class="log-sec">
+<div class="asec"><div class="ashdr" data-ac="log-ac-kpi"><span>📅 Actividad mensual</span><span class="ach">▾</span></div>
     <div class="asbdy" id="log-ac-kpi">
       <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📅 Recibos completados por mes</div>
       <canvas id="log-kpi-chart" style="width:100%;max-height:220px"></canvas>
       <div style="font-size:11px;color:var(--mt);text-align:center;margin-top:6px" id="log-kpi-mes-label"></div>
     </div></div>
-
     </div>
-    </div>
+  </div>
+</div>
 
   </div>
   </div>
@@ -2759,6 +2793,19 @@ document.querySelectorAll('.ashdr').forEach(h=>{
       });
     }
     b.classList.toggle('open',!open);h.classList.toggle('open',!open);
+  });
+});
+
+// Sidebar de Control Logístico: al tocar un ícono, abre esa sección y hace scroll hasta ella
+document.querySelectorAll('.log-side-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.log-side-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const target=document.getElementById(btn.dataset.jump);
+    if(!target)return;
+    const hdr=target.querySelector('.ashdr');
+    if(hdr && !hdr.classList.contains('open'))hdr.click();
+    setTimeout(()=>target.scrollIntoView({behavior:'smooth',block:'start'}),40);
   });
 });
 
