@@ -233,38 +233,41 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 /* Sidebar + panel de contenido (reemplaza el layout de 2 columnas) */
 .log-shell{display:flex;align-items:flex-start;gap:14px;}
 .log-sidebar{
-  position:sticky;top:74px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;
-  background:var(--sf);border:1px solid var(--bd);border-radius:16px;padding:8px;box-shadow:var(--sh);
+  position:sticky;top:74px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;
+  width:224px;background:var(--sf);border:1px solid var(--bd);border-radius:16px;padding:10px;box-shadow:var(--sh);
+  z-index:5;isolation:isolate;
 }
 .log-side-btn{
-  width:46px;height:46px;border-radius:11px;border:1px solid transparent;background:transparent;
-  color:var(--mt);font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  transition:all .15s ease;
+  width:100%;min-height:44px;border-radius:11px;border:1px solid transparent;background:transparent;
+  color:var(--mt);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:10px;
+  padding:9px 12px;text-align:left;transition:all .15s ease;
 }
-.log-side-btn:hover{background:rgba(31,143,127,.14);border-color:var(--ac);color:var(--ac);transform:translateY(-1px);}
+.log-side-btn .log-ico{font-size:17px;flex-shrink:0;line-height:1;}
+.log-side-btn .log-lbl{flex:1;line-height:1.25;white-space:normal;}
+.log-side-btn .log-chev{font-size:10px;opacity:.65;flex-shrink:0;transition:transform .15s ease;}
+.log-side-btn:hover{background:rgba(31,143,127,.14);border-color:var(--ac);color:var(--ac);}
 .log-side-btn.active{background:linear-gradient(135deg,#1a7a6e,#145f55);color:#fff;box-shadow:var(--sh);}
+.log-nav-item.open>.log-side-btn .log-chev{transform:rotate(180deg);}
 .log-content{flex:1;min-width:0;}
-/* Navegación tipo flyout (sub-menú lateral al pasar el cursor) */
+/* Navegación tipo acordeón: el submenú se abre hacia abajo, dentro del propio sidebar (ya no flota sobre el contenido) */
 .log-nav-item{position:relative;}
 .log-flyout{
-  position:absolute;left:calc(100% + 8px);top:0;min-width:230px;max-width:300px;
-  background:var(--sf);border:1px solid var(--bd);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);
-  padding:6px;opacity:0;visibility:hidden;transform:translateX(-6px);
-  transition:opacity .14s ease,transform .14s ease,visibility .14s ease;z-index:60;
+  position:static;overflow:hidden;max-height:0;opacity:0;
+  background:var(--bg);border-radius:10px;margin:0;padding:0 4px;
+  transition:max-height .22s ease,opacity .18s ease,padding .22s ease,margin .22s ease;
 }
-.log-nav-item:hover .log-flyout,.log-nav-item.open .log-flyout{opacity:1;visibility:visible;transform:translateX(0);}
-.log-flyout-title{font-size:10.5px;font-weight:800;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;padding:6px 10px 4px;}
+.log-nav-item.open .log-flyout{max-height:640px;opacity:1;padding:4px;margin:2px 0 4px;}
+.log-flyout-title{display:none;}
 .log-flyout-item{
   display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;background:transparent;
-  color:var(--tx,#e7f1ef);font-size:12.5px;font-weight:600;padding:9px 10px;border-radius:8px;cursor:pointer;
+  color:var(--tx,#e7f1ef);font-size:12px;font-weight:600;padding:8px 10px;border-radius:8px;cursor:pointer;
   transition:background .12s ease;
 }
 .log-flyout-item:hover{background:rgba(31,143,127,.16);color:var(--ac);}
 .log-flyout-item.active{background:linear-gradient(135deg,#1a7a6e,#145f55);color:#fff;}
 @media(max-width:760px){
   .log-shell{flex-direction:column;}
-  .log-sidebar{position:static;flex-direction:row;overflow-x:auto;width:100%;top:auto;flex-wrap:wrap;}
-  .log-flyout{left:0;top:calc(100% + 6px);}
+  .log-sidebar{position:static;width:100%;top:auto;}
 }
 /* Contenido sectorizado: solo la sección activa se muestra */
 .log-sec{display:none;}
@@ -1079,38 +1082,38 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
     <div class="log-shell">
   <aside class="log-sidebar" id="log-sidebar">
       <div class="log-nav-item" data-group="home">
-        <button type="button" class="log-side-btn active" data-home="1" title="Inicio"><span>🏠</span></button>
-        <div class="log-flyout"><div class="log-flyout-title">Inicio</div>
+        <button type="button" class="log-side-btn active" data-home="1" title="Inicio"><span class="log-ico">🏠</span><span class="log-lbl">Inicio</span></button>
+        <div class="log-flyout">
           <button type="button" class="log-flyout-item" data-home="1">🏠 Panel de Control Logístico</button>
         </div>
       </div>
       <div class="log-nav-item" data-group="nuevo">
-        <button type="button" class="log-side-btn" title="Nuevo formulario de envío"><span>📤</span></button>
-        <div class="log-flyout"><div class="log-flyout-title">Envíos</div>
+        <button type="button" class="log-side-btn" title="Nuevo formulario de envío"><span class="log-ico">📤</span><span class="log-lbl">Nuevo envío</span></button>
+        <div class="log-flyout">
           <button type="button" class="log-flyout-item" data-jump="log-nuevo-jump">📤 Nuevo formulario de envío</button>
         </div>
       </div>
       <div class="log-nav-item" data-group="rec">
-        <button type="button" class="log-side-btn" title="Formularios recibidos"><span>📥</span></button>
-        <div class="log-flyout"><div class="log-flyout-title">Recepción</div>
+        <button type="button" class="log-side-btn" title="Formularios recibidos"><span class="log-ico">📥</span><span class="log-lbl">Recepción</span></button>
+        <div class="log-flyout">
           <button type="button" class="log-flyout-item" data-jump="log-rec-jump">📥 Formularios recibidos — confirmar recepción</button>
         </div>
       </div>
       <div class="log-nav-item" data-group="cfg">
-        <button type="button" class="log-side-btn" title="Configuración logística"><span>⚙️</span></button>
-        <div class="log-flyout"><div class="log-flyout-title">Ajustes</div>
+        <button type="button" class="log-side-btn" title="Configuración logística"><span class="log-ico">⚙️</span><span class="log-lbl">Ajustes</span></button>
+        <div class="log-flyout">
           <button type="button" class="log-flyout-item" data-jump="log-cfg-jump">⚙️ Configuración logística</button>
         </div>
       </div>
       <div class="log-nav-item" data-group="hist">
-        <button type="button" class="log-side-btn" title="Historial de recibos"><span>📊</span></button>
-        <div class="log-flyout"><div class="log-flyout-title">Historial</div>
+        <button type="button" class="log-side-btn" title="Historial de recibos"><span class="log-ico">📊</span><span class="log-lbl">Historial</span></button>
+        <div class="log-flyout">
           <button type="button" class="log-flyout-item" data-jump="log-hist-jump">📊 Historial de recibos</button>
         </div>
       </div>
       <div class="log-nav-item" data-group="sum">
-        <button type="button" class="log-side-btn" title="Suministro"><span>📦</span></button>
-        <div class="log-flyout"><div class="log-flyout-title">Suministro</div>
+        <button type="button" class="log-side-btn" title="Suministro"><span class="log-ico">📦</span><span class="log-lbl">Suministro</span><span class="log-chev">▾</span></button>
+        <div class="log-flyout">
           <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-req">📥 Solicitudes por atender</button>
           <button type="button" class="log-flyout-item log-flyout-resp" data-jump="log-sum-jump" data-ac="log-ac-sum-resp" style="display:none">👤 Responsable de Suministro</button>
           <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-cat">🗂️ Catálogos de suministro</button>
@@ -1124,14 +1127,14 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         </div>
       </div>
       <div class="log-nav-item" data-group="an">
-        <button type="button" class="log-side-btn" title="Análisis de inventario semanal"><span>📈</span></button>
-        <div class="log-flyout"><div class="log-flyout-title">Análisis</div>
+        <button type="button" class="log-side-btn" title="Análisis de inventario semanal"><span class="log-ico">📈</span><span class="log-lbl">Análisis de inventario</span></button>
+        <div class="log-flyout">
           <button type="button" class="log-flyout-item" data-jump="log-an-jump">📈 Análisis de inventario semanal</button>
         </div>
       </div>
       <div class="log-nav-item" data-group="kpi">
-        <button type="button" class="log-side-btn" title="Actividad mensual"><span>📅</span></button>
-        <div class="log-flyout"><div class="log-flyout-title">Estadísticas</div>
+        <button type="button" class="log-side-btn" title="Actividad mensual"><span class="log-ico">📅</span><span class="log-lbl">Estadísticas</span></button>
+        <div class="log-flyout">
           <button type="button" class="log-flyout-item" data-jump="log-kpi-jump">📅 Actividad mensual</button>
         </div>
       </div>
@@ -1534,7 +1537,11 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         <div class="fg"><label>Archivo Excel de transferencia</label><input type="file" class="fc" id="an-trans-file" accept=".xlsx,.xls"></div>
         <button class="btn bp bsm" id="btn-an-trans-cargar" style="width:auto;margin-bottom:18px">💾 Guardar transferencia</button>
 
-        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🗂️ Transferencias cargadas</div>
+        <div style="font-size:11.5px;color:var(--mt);margin:4px 0 12px;border-top:1px dashed var(--bd);padding-top:12px">💎 Ventas a cliente (Cristal): sube aquí la proforma de venta (VTA005L). El código de producto, cantidad despachada y datos del cliente se suman igual que una transferencia, pero se agrupan como <b>Cristal</b> en vez de una tienda.</div>
+        <div class="fg"><label>Archivo Excel de proforma (Cristal)</label><input type="file" class="fc" id="an-proforma-file" accept=".xlsx,.xls"></div>
+        <button class="btn bp bsm" id="btn-an-proforma-cargar" style="width:auto;margin-bottom:18px">💎 Guardar proforma (Cristal)</button>
+
+        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">🗂️ Transferencias y proformas cargadas</div>
         <div id="an-trans-list"><div style="color:var(--mt);font-size:12px">Selecciona una semana</div></div>
       </div>
 
@@ -2930,33 +2937,32 @@ document.querySelectorAll('#log-sidebar .log-flyout-item[data-home]').forEach(bt
   btn.addEventListener('click',()=>{
     logShowSection('log-home-jump',null);
     logSetActiveNav(btn.closest('.log-nav-item'),btn);
-  });
-});
-document.querySelectorAll('#log-sidebar .log-side-btn[data-home]').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    logShowSection('log-home-jump',null);
-    logSetActiveNav(btn.closest('.log-nav-item'),null);
+    document.querySelectorAll('#log-sidebar .log-nav-item').forEach(n=>n.classList.remove('open'));
   });
 });
 document.querySelectorAll('#log-sidebar .log-flyout-item[data-jump]').forEach(btn=>{
   btn.addEventListener('click',()=>{
     logShowSection(btn.dataset.jump,btn.dataset.ac||null);
     logSetActiveNav(btn.closest('.log-nav-item'),btn);
+    document.querySelectorAll('#log-sidebar .log-nav-item').forEach(n=>n.classList.remove('open'));
   });
 });
-// En pantallas táctiles el hover no existe: un tap en el ícono abre/cierra el flyout
-document.querySelectorAll('#log-sidebar .log-nav-item > .log-side-btn:not([data-home])').forEach(btn=>{
-  btn.addEventListener('click',(e)=>{
-    const item=btn.closest('.log-nav-item');
-    const wasOpen=item.classList.contains('open');
-    document.querySelectorAll('#log-sidebar .log-nav-item').forEach(n=>n.classList.remove('open'));
-    if(!wasOpen){
-      item.classList.add('open');
-      // Si el grupo tiene un solo destino, navega directo al tocar el ícono
-      const items=item.querySelectorAll('.log-flyout-item');
-      if(items.length===1)items[0].click();
-    }
-  });
+// Botón principal de cada grupo del sidebar:
+// - Si el grupo tiene un solo destino (Inicio, Envíos, Recepción, Ajustes, Historial, Análisis, Estadísticas) navega directo, sin desplegar nada.
+// - Si el grupo tiene varios destinos (Suministro), despliega un acordeón hacia abajo dentro del propio sidebar (ya no flota sobre el contenido/los KPIs).
+document.querySelectorAll('#log-sidebar .log-nav-item').forEach(item=>{
+  const mainBtn=item.querySelector(':scope > .log-side-btn');
+  if(mainBtn.dataset.home)return; // Inicio ya tiene su propio listener arriba
+  const subItems=item.querySelectorAll('.log-flyout-item');
+  if(subItems.length<=1){
+    mainBtn.addEventListener('click',()=>{ if(subItems.length===1)subItems[0].click(); });
+  }else{
+    mainBtn.addEventListener('click',()=>{
+      const wasOpen=item.classList.contains('open');
+      document.querySelectorAll('#log-sidebar .log-nav-item').forEach(n=>n.classList.remove('open'));
+      if(!wasOpen)item.classList.add('open');
+    });
+  }
 });
 document.addEventListener('click',(e)=>{
   if(!e.target.closest('#log-sidebar'))document.querySelectorAll('#log-sidebar .log-nav-item').forEach(n=>n.classList.remove('open'));
@@ -6094,7 +6100,38 @@ async function despacharSolicitud(key){
 }
 
 // ── ANÁLISIS DE INVENTARIO SEMANAL ──────────────────────────────────
-let AN_SEMANAS={},AN_TRANS={},AN_RESULT={rows:[],notas:{},baseId:'',compId:''};
+let AN_SEMANAS={},AN_TRANS={},AN_RESULT={rows:[],notas:{},baseId:'',compId:''},AN_TRANSWEEK={};
+// Tiendas válidas conocidas. Cualquier destino de transferencia que no calce con una de estas
+// (o toda proforma de venta a cliente) se agrupa como "CRISTAL".
+const AN_TIENDAS_VALIDAS=['S4','S5','S6','S7','S8','S9','S11','S12','S13'];
+function anClasificaDestino(t){
+  if(t.tipo==='cristal')return 'CRISTAL';
+  const raw=(t.destino||'').toString().toUpperCase().trim();
+  let m=raw.match(/S\.?A?\.?C?\.?\s*0*([0-9]{1,2})\b/);
+  if(!m)m=raw.match(/(\d{1,2})\s*$/);
+  if(m){
+    const code='S'+parseInt(m[1],10);
+    if(AN_TIENDAS_VALIDAS.includes(code))return code;
+  }
+  return 'CRISTAL';
+}
+// Devuelve, para un código de producto, el detalle de en qué transferencias/proformas de la
+// semana comparada se despachó (tienda o Cristal, número de documento, fecha, cantidad).
+function anDetalleCodigo(codigo){
+  const out=[];
+  Object.values(AN_TRANSWEEK||{}).forEach(t=>{
+    (t.items||[]).forEach(it=>{
+      if(String(it.codigo)===String(codigo)&&(it.despachado||0)>0){
+        out.push({
+          tienda:anClasificaDestino(t),destinoRaw:t.destino||'',numero:t.numero||'',
+          cliente:t.cliente||'',nota:t.nota||'',fecha:t.fechaDespacho||t.fecha||'',
+          despachado:it.despachado||0,tipo:t.tipo==='cristal'?'Cristal (venta a cliente)':'Transferencia'
+        });
+      }
+    });
+  });
+  return out;
+}
 const anTh='padding:6px 8px;border:1px solid var(--bd);background:var(--sf2);text-align:left;color:var(--tx);white-space:nowrap';
 const anTd='padding:5px 8px;border:1px solid var(--bd)';
 
@@ -6217,6 +6254,73 @@ function parseTransferWorkbook(wb){
   return{numero,origen,destino,estatus,solicitadoPor,despachadoPor,fechaSolicitado,fechaDespacho,bultos,items};
 }
 
+// Lee una proforma de venta a cliente (formato VTA005L Proforma Normal) — ventas que se agrupan como "Cristal"
+function parseProformaWorkbook(wb){
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+  let numero='',cliente='',nota='',fecha='',vendedor='',headerRow=-1;
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i]||[];
+    const txt=r.map(c=>c==null?'':String(c));
+    let idx=txt.findIndex(t=>t.includes('Proforma Nº'));
+    if(idx>=0&&r[idx+1]!=null)numero=String(r[idx+1]).trim();
+    idx=txt.findIndex(t=>t.trim().replace(/\s+/g,' ').startsWith('Cliente'));
+    if(idx>=0&&r[idx+1]!=null)cliente=String(r[idx+1]).trim();
+    idx=txt.findIndex(t=>t.trim().startsWith('Fecha'));
+    if(idx>=0&&r[idx+1]!=null)fecha=r[idx+1];
+    idx=txt.findIndex(t=>t.trim().startsWith('Vendedor'));
+    if(idx>=0&&r[idx+1]!=null)vendedor=String(r[idx+1]).trim();
+    idx=txt.findIndex(t=>t.trim().startsWith('Nota'));
+    if(idx>=0&&r[idx+1]!=null)nota=String(r[idx+1]).trim();
+    if(txt.some(t=>t.trim()==='Producto')&&txt.some(t=>t.trim()==='Descripción'))headerRow=i;
+  }
+  const items=[];
+  if(headerRow>=0){
+    const hdr=(rows[headerRow]||[]).map(h=>h==null?'':String(h).trim());
+    const iRef=hdr.indexOf('Referencia'),iProd=hdr.indexOf('Producto'),iDesc=hdr.indexOf('Descripción'),
+          iUnidad=hdr.indexOf('Unidad'),iDesp=hdr.indexOf('Desp'),iPrecio=hdr.indexOf('Precio'),iUbi=hdr.indexOf('Ubicación');
+    for(let i=headerRow+1;i<rows.length;i++){
+      const r=rows[i]||[];
+      const txt=r.map(c=>c==null?'':String(c));
+      if(txt.some(t=>t.trim().startsWith('Subtotal')))break;
+      const codigo=iProd>=0?r[iProd]:null;
+      if(codigo==null||codigo==='')continue;
+      const cant=(iDesp>=0&&Number(r[iDesp]))||(iUnidad>=0&&Number(r[iUnidad]))||0;
+      if(!cant)continue;
+      items.push({
+        codigo:String(codigo).trim(),
+        ref:iRef>=0?(r[iRef]||'').toString().trim():'',
+        desc:iDesc>=0?(r[iDesc]||'').toString().trim():'',
+        despachado:cant,
+        precio:iPrecio>=0?(Number(r[iPrecio])||0):0,
+        ubicacion:iUbi>=0?(r[iUbi]||'').toString().trim():''
+      });
+    }
+  }
+  return{numero,cliente,nota,fecha,vendedor,items};
+}
+
+el('btn-an-proforma-cargar')?.addEventListener('click',async()=>{
+  const weekId=el('an-trans-semana').value;
+  if(!weekId){toast('Selecciona la semana','err');return;}
+  const f=el('an-proforma-file').files[0];
+  if(!f){toast('Selecciona el archivo de proforma','err');return;}
+  try{
+    toast('Leyendo proforma...','',2500);
+    const buf=await f.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const data=parseProformaWorkbook(wb);
+    if(!data.items.length){toast('❌ No se encontraron productos en la proforma. Verifica que sea el formato VTA005L Proforma Normal.','err',5000);return;}
+    const r=push(R(db,LOGAN_TRANS+'/'+weekId));
+    await set(r,{tipo:'cristal',numero:data.numero,origen:'BODEGA',destino:'CRISTAL',cliente:data.cliente,
+      nota:data.nota,vendedor:data.vendedor,fechaDespacho:data.fecha,items:data.items,
+      uploadedAt:Date.now(),uploadedBy:CU||'',archivo:f.name});
+    toast(`Proforma guardada ✓ (${data.items.length} productos · Cristal)`,'ok');
+    el('an-proforma-file').value='';
+    loadAnTrans(weekId);
+  }catch(e){console.error('cargar proforma',e);toast('❌ No se guardó: '+(e.message||e),'err',5000);}
+});
+
 el('btn-an-sem-cargar')?.addEventListener('click',async()=>{
   const lunes=el('an-sem-lunes').value;
   if(!lunes){toast('Selecciona el lunes de la semana','err');return;}
@@ -6308,6 +6412,9 @@ function renderAnTrans(weekId){
   c.innerHTML=keys.map(k=>{
     const t=AN_TRANS[k];
     const totalDesp=(t.items||[]).reduce((a,it)=>a+(it.despachado||0),0);
+    if(t.tipo==='cristal'){
+      return `<div class="sumrow"><span>💎 <b>Cristal</b> · Proforma #${t.numero||'—'}${t.cliente?(' · Cliente '+t.cliente):''}${t.nota?(' · '+t.nota):''}<br><span style="font-size:11px;color:var(--mt)">${(t.items||[]).length} productos · ${fmtNum(totalDesp)} pzs · ${t.archivo||''}</span></span><button data-k="${k}" class="btn bg bsm an-del-trans" style="width:auto;padding:3px 8px;color:var(--dn)">✕</button></div>`;
+    }
     return `<div class="sumrow"><span><b>#${t.numero||'—'}</b> ${t.origen||''} → ${t.destino||''}<br><span style="font-size:11px;color:var(--mt)">${(t.items||[]).length} productos · ${fmtNum(totalDesp)} pzs despachadas · ${t.archivo||''}</span></span><button data-k="${k}" class="btn bg bsm an-del-trans" style="width:auto;padding:3px 8px;color:var(--dn)">✕</button></div>`;
   }).join('');
   c.querySelectorAll('.an-del-trans').forEach(b=>b.addEventListener('click',async()=>{
@@ -6358,12 +6465,16 @@ el('btn-an-generar')?.addEventListener('click',async()=>{
   try{
     const ts=await get(R(db,LOGAN_TRANS+'/'+compId));
     const transWeek=ts.exists()?ts.val():{};
+    AN_TRANSWEEK=transWeek;
     const despachadoPorCodigo={};
     Object.values(transWeek).forEach(t=>{(t.items||[]).forEach(it=>{
       despachadoPorCodigo[it.codigo]=(despachadoPorCodigo[it.codigo]||0)+(it.despachado||0);
     });});
 
     const baseItems=base.items||{},compItems=comp.items||{};
+    // Unión de códigos de ambas semanas: un producto que existía en la semana base y ya no
+    // aparece en la semana de comparación NO se descarta — el sistema no lista productos en 0,
+    // así que se toma como agotado (existencia 0) y su caída completa cuenta como surtido/productividad.
     const codigos=new Set([...Object.keys(baseItems),...Object.keys(compItems)]);
     const rows=[];
     codigos.forEach(cod=>{
@@ -6375,8 +6486,9 @@ el('btn-an-generar')?.addEventListener('click',async()=>{
       const transferido=despachadoPorCodigo[cod]||0;
       const salioSistema=delta<0?-delta:0;
       const diferencia=salioSistema-transferido;
+      const agotado=!c&&!!b; // existía en la semana base y ya no aparece en la de comparación
       rows.push({codigo:cod,ref:info.ref,desc:info.desc,depto:info.depto,suplidor:info.suplidor,ubicacion:info.ubicacion,
-        precio:info.precio,existB:exB,existC:exC,delta,transferido,diferencia,
+        precio:info.precio,existB:exB,existC:exC,delta,transferido,diferencia,agotado,
         valorDelta:+(Math.abs(delta)*(info.precio||0)).toFixed(2)});
     });
     rows.sort((a,b)=>a.delta-b.delta);
@@ -6408,31 +6520,40 @@ function renderAnAnalisis(base,comp,rows,notas,mo){
   ].map(([lab,val])=>`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px;text-align:center"><div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">${lab}</div><div style="font-size:16px;font-weight:800;color:var(--ac)">${val}</div></div>`).join('');
 
   const tw=el('an-gen-tablewrap');
-  let html=`<table style="border-collapse:collapse;width:100%;font-size:11.5px;min-width:960px">
-    <tr><th style="${anTh}">Código</th><th style="${anTh}">Ref.</th><th style="${anTh}">Descripción</th>
+  let html=`<table style="border-collapse:collapse;width:100%;font-size:11.5px;min-width:1040px">
+    <tr><th style="${anTh}"></th><th style="${anTh}">Código</th><th style="${anTh}">Ref.</th><th style="${anTh}">Descripción</th>
     <th style="${anTh}">Suplidor</th><th style="${anTh}">Exist. ${base.ini}</th><th style="${anTh}">Exist. ${comp.ini}</th>
     <th style="${anTh}">Delta</th><th style="${anTh}">Transferido</th><th style="${anTh}">Diferencia</th>
     <th style="${anTh}">Valor</th><th style="${anTh}">Nota / tienda</th></tr>`;
   if(!rows.length){
-    html+=`<tr><td colspan="11" style="${anTd};text-align:center;color:var(--mt)">No hay cambios de existencia entre estas dos semanas</td></tr>`;
+    html+=`<tr><td colspan="12" style="${anTd};text-align:center;color:var(--mt)">No hay cambios de existencia entre estas dos semanas</td></tr>`;
   }
-  rows.forEach(r=>{
+  rows.forEach((r,i)=>{
     const rojo=r.diferencia!==0;
     const notaVal=((notas[r.codigo]&&notas[r.codigo].nota)||'').toString();
+    const rid='an-det-'+i;
     html+=`<tr style="${rojo?'background:rgba(255,90,90,.08)':''}">
-      <td style="${anTd}">${r.codigo}</td><td style="${anTd}">${r.ref||''}</td><td style="${anTd}">${r.desc||''}</td>
+      <td style="${anTd};text-align:center"><button type="button" class="btn bg bsm an-det-toggle" data-target="${rid}" title="Ver detalle de despacho" style="width:auto;padding:2px 8px;font-size:11px">🔍</button></td>
+      <td style="${anTd}">${r.codigo}${r.agotado?'<br><span style="font-size:9.5px;font-weight:800;color:var(--dn);letter-spacing:.3px">🚫 AGOTADO (100% surtido)</span>':''}</td><td style="${anTd}">${r.ref||''}</td><td style="${anTd}">${r.desc||''}</td>
       <td style="${anTd}">${r.suplidor||''}</td><td style="${anTd};text-align:right">${fmtNum(r.existB)}</td><td style="${anTd};text-align:right">${fmtNum(r.existC)}</td>
       <td style="${anTd};text-align:right;color:${r.delta<0?'var(--dn)':'var(--ac)'};font-weight:700">${r.delta}</td>
       <td style="${anTd};text-align:right">${fmtNum(r.transferido)}</td>
       <td style="${anTd};text-align:right;font-weight:800;color:${rojo?'var(--dn)':'var(--ac)'}">${rojo?(r.diferencia>0?'+':'')+r.diferencia:'✓'}</td>
       <td style="${anTd};text-align:right">$${r.valorDelta.toFixed(2)}</td>
       <td style="${anTd}"><input class="fc an-nota-input" data-cod="${r.codigo}" value="${notaVal.replace(/"/g,'&quot;')}" placeholder="Ej: tienda / motivo..." style="font-size:11px;padding:4px 6px;min-width:140px"></td>
+    </tr>
+    <tr id="${rid}" class="an-det-row" style="display:none">
+      <td colspan="12" style="${anTd};background:var(--bg)">${anRenderDetalle(r.codigo)}</td>
     </tr>`;
   });
   html+='</table>';
   tw.innerHTML=html;
   el('btn-an-exportar').style.display=rows.length?'inline-block':'none';
 
+  tw.querySelectorAll('.an-det-toggle').forEach(b=>b.addEventListener('click',()=>{
+    const row=el(b.dataset.target);if(!row)return;
+    row.style.display=row.style.display==='none'?'table-row':'none';
+  }));
   tw.querySelectorAll('.an-nota-input').forEach(inp=>{
     inp.addEventListener('change',async()=>{
       try{
@@ -6444,6 +6565,58 @@ function renderAnAnalisis(base,comp,rows,notas,mo){
   });
 }
 
+// Panel de detalle por código: en qué tienda(s) o en Cristal (venta a cliente) se despachó,
+// con número de documento, fecha y cantidad. Se arma con manual_add si el usuario carga a mano.
+function anRenderDetalle(codigo){
+  const det=anDetalleCodigo(codigo);
+  const manual=(AN_RESULT.manual&&AN_RESULT.manual[codigo])||[];
+  const todos=[...det,...manual];
+  let rowsHtml=todos.length?todos.map(d=>`<tr>
+      <td style="${anTd};font-weight:700;color:${d.tienda==='CRISTAL'?'#d4a24c':'var(--ac)'}">${d.tienda==='CRISTAL'?'💎 Cristal':d.tienda}</td>
+      <td style="${anTd}">${d.tipo||''}</td>
+      <td style="${anTd}">${d.numero||''}</td>
+      <td style="${anTd}">${d.cliente?('Cliente '+d.cliente):(d.nota||d.destinoRaw||'')}</td>
+      <td style="${anTd}">${d.fecha?fmtFecha(d.fecha):''}</td>
+      <td style="${anTd};text-align:right">${fmtNum(d.despachado)}</td>
+    </tr>`).join('') : `<tr><td colspan="6" style="${anTd};color:var(--mt);text-align:center">Sin transferencias/proformas cargadas que referencien este código en esta semana. Puedes agregar el destino manualmente abajo.</td></tr>`;
+  return `<div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">📍 Detalle de despacho — código ${codigo}</div>
+    <table style="border-collapse:collapse;width:100%;font-size:11px;margin-bottom:8px">
+      <tr><th style="${anTh}">Tienda / Cristal</th><th style="${anTh}">Tipo</th><th style="${anTh}">Documento</th><th style="${anTh}">Cliente / nota</th><th style="${anTh}">Fecha</th><th style="${anTh}">Cant.</th></tr>
+      ${rowsHtml}
+    </table>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:end">
+      <div class="fg" style="margin:0;min-width:100px"><label style="font-size:10px">Tienda / Cristal</label><input class="fc an-manual-tienda" placeholder="Ej: S12 o CRISTAL" style="font-size:11px;padding:5px 7px"></div>
+      <div class="fg" style="margin:0;min-width:110px"><label style="font-size:10px">Documento</label><input class="fc an-manual-doc" placeholder="N° transf./proforma" style="font-size:11px;padding:5px 7px"></div>
+      <div class="fg" style="margin:0;min-width:110px"><label style="font-size:10px">Cliente / nota</label><input class="fc an-manual-nota" placeholder="Opcional" style="font-size:11px;padding:5px 7px"></div>
+      <div class="fg" style="margin:0;min-width:80px"><label style="font-size:10px">Cantidad</label><input type="number" class="fc an-manual-cant" style="font-size:11px;padding:5px 7px"></div>
+      <button type="button" class="btn bp bsm an-manual-add" data-cod="${codigo}" style="width:auto;padding:5px 10px">➕ Agregar manual</button>
+    </div>`;
+}
+function fmtFecha(v){
+  try{
+    if(v instanceof Date)return v.toLocaleDateString('es-PA');
+    if(typeof v==='number')return new Date(v).toLocaleDateString('es-PA');
+    return String(v);
+  }catch(e){return String(v);}
+}
+// Delegación: agregar destino manual de despacho (tienda o Cristal) cuando no venga en ninguna transferencia/proforma cargada
+document.addEventListener('click',(e)=>{
+  const btn=e.target.closest('.an-manual-add');if(!btn)return;
+  const cod=btn.dataset.cod;
+  const wrap=btn.closest('div[style*="flex-wrap"]');
+  const tienda=(wrap.querySelector('.an-manual-tienda').value||'').trim().toUpperCase()||'CRISTAL';
+  const doc=(wrap.querySelector('.an-manual-doc').value||'').trim();
+  const nota=(wrap.querySelector('.an-manual-nota').value||'').trim();
+  const cant=Number(wrap.querySelector('.an-manual-cant').value)||0;
+  if(!cant){toast('Indica una cantidad','err');return;}
+  AN_RESULT.manual=AN_RESULT.manual||{};
+  AN_RESULT.manual[cod]=AN_RESULT.manual[cod]||[];
+  AN_RESULT.manual[cod].push({tienda,numero:doc,nota,cliente:'',fecha:Date.now(),despachado:cant,tipo:'Manual'});
+  const row=btn.closest('.an-det-row');
+  if(row){const td=row.querySelector('td');td.innerHTML=anRenderDetalle(cod);}
+  toast('Destino agregado ✓','ok',1800);
+});
+
 el('btn-an-exportar')?.addEventListener('click',()=>{
   if(!AN_RESULT.rows||!AN_RESULT.rows.length){toast('No hay análisis para exportar','err');return;}
   try{
@@ -6452,11 +6625,26 @@ el('btn-an-exportar')?.addEventListener('click',()=>{
       'Código':r.codigo,'Referencia':r.ref,'Descripción':r.desc,'Suplidor':r.suplidor,'Ubicación':r.ubicacion,
       [`Existencia ${baseIni}`]:r.existB,[`Existencia ${compIni}`]:r.existC,
       'Delta':r.delta,'Transferido':r.transferido,'Diferencia':r.diferencia,'Valor movido':r.valorDelta,
+      'Agotado (100% surtido)':r.agotado?'Sí':'',
       'Nota':(AN_RESULT.notas[r.codigo]&&AN_RESULT.notas[r.codigo].nota)||''
     }));
     const wsOut=XLSX.utils.json_to_sheet(data);
     const wbOut=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wbOut,wsOut,'Analisis');
+    // Segunda hoja: detalle de a dónde fue cada despacho (tienda o Cristal) por código
+    const detData=[];
+    AN_RESULT.rows.forEach(r=>{
+      const det=[...anDetalleCodigo(r.codigo),...((AN_RESULT.manual&&AN_RESULT.manual[r.codigo])||[])];
+      det.forEach(d=>detData.push({
+        'Código':r.codigo,'Descripción':r.desc,'Tienda / Cristal':d.tienda,'Tipo':d.tipo||'',
+        'Documento':d.numero||'','Cliente / nota':d.cliente?('Cliente '+d.cliente):(d.nota||d.destinoRaw||''),
+        'Fecha':d.fecha?fmtFecha(d.fecha):'','Cantidad':d.despachado
+      }));
+    });
+    if(detData.length){
+      const wsDet=XLSX.utils.json_to_sheet(detData);
+      XLSX.utils.book_append_sheet(wbOut,wsDet,'Detalle por tienda-Cristal');
+    }
     XLSX.writeFile(wbOut,`Analisis_Inventario_${baseIni}_vs_${compIni}.xlsx`);
     toast('Excel generado ✓','ok');
   }catch(e){console.error('exportar analisis',e);toast('❌ Error al exportar: '+(e.message||e),'err');}
