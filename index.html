@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Westland — Control de Marcaciones</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
@@ -206,6 +207,98 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
   .tb{padding:8px 14px;gap:6px}.tb-brand{flex:1 1 100%;order:1}.tb-act{flex:1 1 100%;order:2;justify-content:flex-end}
   .tb-sub{display:none}#sess-tmr{font-size:11px;padding:3px 8px}.btn.bg.bsm{padding:5px 10px;font-size:12px}
   .loggrid{grid-template-columns:1fr}
+}
+
+/* ============================================================
+   TEMA "COMPRAS ZONA LIBRE" — aplicado solo a Control Logístico
+   (mismos tokens que se usan en toda la app: --bg,--sf,--sf2,--bd,
+   --ac,--wn,--dn,--tx,--mt,--r,--rs,--sh — por eso todo el módulo
+   se re-viste solo, sin tocar cálculos ni estructura)
+   ============================================================ */
+#tab-log{
+  --bg:#0a1513;--sf:#11201d;--sf2:#152823;
+  --bd:#1d3531;--ac:#1f8f7f;--wn:#d4a24c;--dn:#c25450;
+  --tx:#eaf3f0;--mt:#8fb3aa;
+  --r:16px;--rs:11px;
+  --sh:0 1px 2px rgba(0,0,0,.25),0 8px 24px -8px rgba(0,0,0,.4);
+  max-width:1500px;
+  background:
+    radial-gradient(circle at 12% -4%, rgba(31,143,127,.12), transparent 42%),
+    radial-gradient(circle at 100% 10%, rgba(212,162,76,.06), transparent 38%);
+  padding-left:18px;padding-right:18px;
+}
+#tab-log, #tab-log input, #tab-log select, #tab-log textarea, #tab-log button{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+}
+#tab-log .card{box-shadow:var(--sh);}
+#tab-log .card:first-child{
+  position:relative;overflow:hidden;padding:20px 22px;
+  background:linear-gradient(135deg,var(--sf) 0%,var(--sf2) 100%);
+}
+#tab-log .card:first-child::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,#1a7a6e,#d4a24c);
+}
+#tab-log .card:first-child .ctitle{
+  font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--ac);display:flex;align-items:center;gap:9px;margin-bottom:8px;
+}
+#tab-log .card:first-child .ctitle::before{
+  content:'';width:7px;height:7px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,#1a7a6e,#145f55);box-shadow:0 0 0 4px rgba(31,143,127,.16);
+}
+#tab-log .card:first-child > div:last-child{font-size:13.5px;color:var(--tx);opacity:.75;max-width:640px;}
+
+/* KPIs */
+#log-kpi-cards{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!important;}
+#tab-log .sum-kpi-card, #tab-log #log-kpi-cards>div, #tab-log #an-gen-cards>div{
+  transition:transform .12s ease,border-color .12s ease;
+}
+#tab-log .sum-kpi-card:hover, #tab-log #an-gen-cards>div:hover{transform:translateY(-2px);border-color:var(--ac)!important;}
+
+/* Menús / acordeones — más planos y modernos */
+#tab-log .asec{border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:10px;background:var(--sf);box-shadow:var(--sh);}
+#tab-log .ashdr{background:transparent;padding:14px 16px;border-bottom:1px solid transparent;}
+#tab-log .ashdr:hover{background:rgba(31,143,127,.08);}
+#tab-log .ashdr.open{border-bottom-color:var(--bd);background:rgba(31,143,127,.05);}
+#tab-log .ashdr span:first-child{
+  font-family:'DM Mono',monospace;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--tx);font-weight:700;display:flex;align-items:center;gap:9px;
+}
+#tab-log .ashdr span:first-child::before{
+  content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,#1a7a6e,#145f55);box-shadow:0 0 0 3px rgba(31,143,127,.14);
+}
+#tab-log .ashdr .ach{color:var(--ac);}
+#tab-log .asbdy{background:var(--bg);padding:16px;}
+
+/* Botones */
+#tab-log .btn{border-radius:11px;}
+#tab-log .btn.bp{background:linear-gradient(135deg,#1a7a6e,#145f55);color:#fff;box-shadow:var(--sh);font-weight:700;}
+#tab-log .btn.bp:hover{opacity:.92;}
+#tab-log .btn.bg{background:var(--sf2);border-color:var(--bd);color:var(--mt);}
+#tab-log .btn.bg:hover{color:var(--ac);border-color:var(--ac);background:rgba(31,143,127,.08);}
+
+/* Pills de sub-secciones (Semanas / Transferencias / Generar análisis) */
+#tab-log .an-subtab{border-radius:20px!important;font-family:'DM Mono',monospace;font-size:11px!important;letter-spacing:.03em;}
+#tab-log .an-subtab.active{background:linear-gradient(135deg,#1a7a6e,#145f55)!important;color:#fff!important;border-color:transparent!important;}
+
+/* Inputs */
+#tab-log .fc{background:var(--sf2);border-radius:10px;}
+#tab-log .fc:focus{border-color:var(--ac);}
+#tab-log .fg label{font-family:'DM Mono',monospace;letter-spacing:.05em;}
+
+/* Filas / chips */
+#tab-log .sumrow, #tab-log .litem{border-radius:12px;}
+#tab-log .sumchip, #tab-log .provchip, #tab-log .lbadge{border-radius:20px;}
+
+/* Tabla de análisis */
+#tab-log #an-gen-tablewrap table{border-collapse:separate;border-spacing:0;border-radius:12px;overflow:hidden;}
+#tab-log #an-gen-tablewrap th{font-family:'DM Mono',monospace!important;font-size:10.5px!important;letter-spacing:.06em;text-transform:uppercase;position:sticky;top:0;}
+#tab-log #an-gen-tablewrap tr:hover td{background:rgba(31,143,127,.06);}
+
+@media(max-width:900px){
+  #tab-log{max-width:100%;padding-left:12px;padding-right:12px;}
 }
 </style>
 </head>
@@ -896,8 +989,9 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
   <div class="cnt" id="tab-log" style="display:none">
 
     <div class="card">
-      <div class="ctitle">📦 Control Logístico</div>
-      <div style="font-size:12.5px;color:var(--mt)">Registro y confirmación de mercancía recibida de proveedores. Cada envío queda vinculado al usuario que lo recibe, con fecha y hora automáticas.</div>
+      <div class="ctitle">Westland · Grupo Primavera Holding · Automatizado</div>
+      <div style="font-size:clamp(19px,3.4vw,25px);font-weight:800;letter-spacing:-.01em;color:var(--tx);margin-bottom:7px">📦 Control Logístico</div>
+      <div style="font-size:13.5px;color:var(--mt)">Registro y confirmación de mercancía recibida de proveedores. Cada envío queda vinculado al usuario que lo recibe, con fecha y hora automáticas.</div>
     </div>
 
     <!-- 📈 KPIs (siempre visibles, arriba) -->
