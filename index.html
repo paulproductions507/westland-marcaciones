@@ -231,7 +231,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 }
 
 /* Sidebar + panel de contenido (reemplaza el layout de 2 columnas) */
-.log-shell{display:flex;align-items:flex-start;gap:14px;}
+.log-shell{display:flex;align-items:stretch;gap:14px;}
 .log-sidebar{
   position:sticky;top:74px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;
   width:224px;background:var(--sf);border:1px solid var(--bd);border-radius:16px;padding:10px;box-shadow:var(--sh);
@@ -1703,7 +1703,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import{getAuth,signInWithEmailAndPassword,signOut,EmailAuthProvider,reauthenticateWithCredential,updatePassword}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
-import{getDatabase,ref as R,set,push,get,onValue,remove}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+import{getDatabase,ref as R,set,push,get,onValue,remove,update}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 const FB={apiKey:"AIzaSyCn7bUx8PdK-1TCmOnffWJYLouC5vdGMIE",authDomain:"westland-marcaciones.firebaseapp.com",projectId:"westland-marcaciones",storageBucket:"westland-marcaciones.appspot.com",messagingSenderId:"477907187320",appId:"1:477907187320:web:c04ef5b3b8ff5773b99f8d",databaseURL:"https://westland-marcaciones-default-rtdb.firebaseio.com"};
 const app=initializeApp(FB),auth=getAuth(app),db=getDatabase(app);
@@ -2914,13 +2914,31 @@ document.querySelectorAll('.ashdr').forEach(h=>{
 // Sidebar de Control Logístico: navegación tipo flyout, sectorizada (una sola sección visible)
 function logShowSection(sectionId,acId){
   document.querySelectorAll('#tab-log .log-sec').forEach(s=>s.classList.remove('log-active'));
+  // Restablece cualquier aislamiento previo (por si una navegación anterior dejó ocultos otros bloques)
+  document.querySelectorAll('#tab-log .log-sec .asec').forEach(a=>{a.style.display='';});
   const target=document.getElementById(sectionId);
   if(!target)return;
   target.classList.add('log-active');
   if(acId){
     const hdr=document.querySelector(`[data-ac="${acId}"]`);
-    if(hdr && !hdr.classList.contains('open'))hdr.click();
-    if(hdr)setTimeout(()=>hdr.scrollIntoView({behavior:'smooth',block:'start'}),40);
+    if(hdr){
+      // Abre toda la cadena de acordeones ancestros hasta llegar al bloque pedido (ej. dentro de "Suministro")
+      let anc=hdr.closest('.asec');
+      const chain=[];
+      while(anc){chain.unshift(anc);anc=anc.parentElement?.closest('.asec')||null;}
+      chain.forEach(a=>{
+        const h=a.querySelector(':scope > .ashdr');
+        const b=h?document.getElementById(h.dataset.ac):null;
+        if(h)h.classList.add('open');
+        if(b)b.classList.add('open');
+      });
+      // Aísla: en cada nivel de la cadena, oculta los bloques "hermanos" — así un submenú como
+      // "Catálogos de suministro" se ve solo, sin el resto de Suministro alrededor.
+      chain.forEach(a=>{
+        if(a.parentElement)a.parentElement.querySelectorAll(':scope > .asec').forEach(sib=>{if(sib!==a)sib.style.display='none';});
+      });
+      setTimeout(()=>hdr.scrollIntoView({behavior:'smooth',block:'start'}),40);
+    }
   }else{
     const hdr=target.querySelector('.ashdr');
     if(hdr && !hdr.classList.contains('open'))hdr.click();
@@ -6258,20 +6276,25 @@ function parseTransferWorkbook(wb){
 function parseProformaWorkbook(wb){
   const ws=wb.Sheets[wb.SheetNames[0]];
   const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
-  let numero='',cliente='',nota='',fecha='',vendedor='',headerRow=-1;
+  let numero='',clienteCodigo='',nota='',fecha='',vendedor='',referencia='',headerRow=-1;
   for(let i=0;i<rows.length;i++){
     const r=rows[i]||[];
     const txt=r.map(c=>c==null?'':String(c));
     let idx=txt.findIndex(t=>t.includes('Proforma Nº'));
     if(idx>=0&&r[idx+1]!=null)numero=String(r[idx+1]).trim();
+    // "Cliente : " solo trae el código (ej. "01"), NO el nombre — el nombre no viene en una celda
+    // separada en este formato, así que se usa como código y la "Nota" como referencia visible.
     idx=txt.findIndex(t=>t.trim().replace(/\s+/g,' ').startsWith('Cliente'));
-    if(idx>=0&&r[idx+1]!=null)cliente=String(r[idx+1]).trim();
+    if(idx>=0&&r[idx+1]!=null)clienteCodigo=String(r[idx+1]).trim();
     idx=txt.findIndex(t=>t.trim().startsWith('Fecha'));
     if(idx>=0&&r[idx+1]!=null)fecha=r[idx+1];
     idx=txt.findIndex(t=>t.trim().startsWith('Vendedor'));
     if(idx>=0&&r[idx+1]!=null)vendedor=String(r[idx+1]).trim();
     idx=txt.findIndex(t=>t.trim().startsWith('Nota'));
     if(idx>=0&&r[idx+1]!=null)nota=String(r[idx+1]).trim();
+    // Línea de referencia del pedido (ej. "ORDEN DE PEDIDO FERIA 2026"): una fila con un solo texto largo,
+    // justo debajo de "PROFORMA DE FACTURA" y antes de los datos de cliente/RUC.
+    if(!referencia&&i>0&&txt.filter(t=>t.trim()!=='').length===1&&txt[0].trim().length>6&&!/proforma de factura/i.test(txt[0]))referencia=txt[0].trim();
     if(txt.some(t=>t.trim()==='Producto')&&txt.some(t=>t.trim()==='Descripción'))headerRow=i;
   }
   const items=[];
@@ -6297,7 +6320,7 @@ function parseProformaWorkbook(wb){
       });
     }
   }
-  return{numero,cliente,nota,fecha,vendedor,items};
+  return{numero,clienteCodigo,nota,referencia,fecha,vendedor,items};
 }
 
 el('btn-an-proforma-cargar')?.addEventListener('click',async()=>{
@@ -6308,13 +6331,18 @@ el('btn-an-proforma-cargar')?.addEventListener('click',async()=>{
   try{
     toast('Leyendo proforma...','',2500);
     const buf=await f.arrayBuffer();
-    const wb=XLSX.read(buf,{type:'array'});
+    // cellDates:true → las celdas con formato de fecha llegan como Date real, no como el número de serie de Excel
+    const wb=XLSX.read(buf,{type:'array',cellDates:true});
     const data=parseProformaWorkbook(wb);
     if(!data.items.length){toast('❌ No se encontraron productos en la proforma. Verifica que sea el formato VTA005L Proforma Normal.','err',5000);return;}
     const r=push(R(db,LOGAN_TRANS+'/'+weekId));
-    await set(r,{tipo:'cristal',numero:data.numero,origen:'BODEGA',destino:'CRISTAL',cliente:data.cliente,
-      nota:data.nota,vendedor:data.vendedor,fechaDespacho:data.fecha,items:data.items,
-      uploadedAt:Date.now(),uploadedBy:CU||'',archivo:f.name});
+    // "cliente" (lo que se muestra) = Nota si existe, si no la referencia del pedido, si no el código.
+    // clienteCodigo se guarda aparte para no perder el dato aunque no sea el nombre.
+    const clienteMostrar=data.nota||data.referencia||('Código '+data.clienteCodigo);
+    await set(r,{tipo:'cristal',numero:data.numero,origen:'BODEGA',destino:'CRISTAL',
+      cliente:clienteMostrar,clienteCodigo:data.clienteCodigo,referencia:data.referencia,
+      nota:data.nota,vendedor:data.vendedor,fechaDespacho:data.fecha instanceof Date?data.fecha.getTime():data.fecha,
+      items:data.items,uploadedAt:Date.now(),uploadedBy:CU||'',archivo:f.name});
     toast(`Proforma guardada ✓ (${data.items.length} productos · Cristal)`,'ok');
     el('an-proforma-file').value='';
     loadAnTrans(weekId);
@@ -6413,14 +6441,34 @@ function renderAnTrans(weekId){
     const t=AN_TRANS[k];
     const totalDesp=(t.items||[]).reduce((a,it)=>a+(it.despachado||0),0);
     if(t.tipo==='cristal'){
-      return `<div class="sumrow"><span>💎 <b>Cristal</b> · Proforma #${t.numero||'—'}${t.cliente?(' · Cliente '+t.cliente):''}${t.nota?(' · '+t.nota):''}<br><span style="font-size:11px;color:var(--mt)">${(t.items||[]).length} productos · ${fmtNum(totalDesp)} pzs · ${t.archivo||''}</span></span><button data-k="${k}" class="btn bg bsm an-del-trans" style="width:auto;padding:3px 8px;color:var(--dn)">✕</button></div>`;
+      return `<div class="sumrow"><span>💎 <b>Cristal</b> · Proforma #${t.numero||'—'}${t.cliente?(' · '+t.cliente):''}<br><span style="font-size:11px;color:var(--mt)">${(t.items||[]).length} productos · ${fmtNum(totalDesp)} pzs · ${t.archivo||''}</span></span><span style="display:flex;gap:4px"><button data-k="${k}" class="btn bg bsm an-edit-trans" style="width:auto;padding:3px 8px">✏️</button><button data-k="${k}" class="btn bg bsm an-del-trans" style="width:auto;padding:3px 8px;color:var(--dn)">✕</button></span></div>`;
     }
-    return `<div class="sumrow"><span><b>#${t.numero||'—'}</b> ${t.origen||''} → ${t.destino||''}<br><span style="font-size:11px;color:var(--mt)">${(t.items||[]).length} productos · ${fmtNum(totalDesp)} pzs despachadas · ${t.archivo||''}</span></span><button data-k="${k}" class="btn bg bsm an-del-trans" style="width:auto;padding:3px 8px;color:var(--dn)">✕</button></div>`;
+    return `<div class="sumrow"><span><b>#${t.numero||'—'}</b> ${t.origen||''} → ${t.destino||''}<br><span style="font-size:11px;color:var(--mt)">${(t.items||[]).length} productos · ${fmtNum(totalDesp)} pzs despachadas · ${t.archivo||''}</span></span><span style="display:flex;gap:4px"><button data-k="${k}" class="btn bg bsm an-edit-trans" style="width:auto;padding:3px 8px">✏️</button><button data-k="${k}" class="btn bg bsm an-del-trans" style="width:auto;padding:3px 8px;color:var(--dn)">✕</button></span></div>`;
   }).join('');
   c.querySelectorAll('.an-del-trans').forEach(b=>b.addEventListener('click',async()=>{
     if(!confirm('¿Eliminar esta transferencia?'))return;
     try{await remove(R(db,LOGAN_TRANS+'/'+weekId+'/'+b.dataset.k));toast('Eliminada','ok');loadAnTrans(weekId);}
     catch(e){toast('Error al eliminar: '+(e.message||e),'err');}
+  }));
+  // Edición rápida: corrige número, destino/tienda y cliente-nota sin tener que volver a subir el archivo
+  c.querySelectorAll('.an-edit-trans').forEach(b=>b.addEventListener('click',async()=>{
+    const t=AN_TRANS[b.dataset.k];if(!t)return;
+    const numero=prompt('Número de documento:',t.numero||'');
+    if(numero===null)return;
+    let destino=t.destino,cliente=t.cliente;
+    if(t.tipo==='cristal'){
+      cliente=prompt('Cliente / nota:',t.cliente||'');
+      if(cliente===null)return;
+    }else{
+      destino=prompt('Destino (tienda):',t.destino||'');
+      if(destino===null)return;
+    }
+    try{
+      const upd={numero};
+      if(t.tipo==='cristal')upd.cliente=cliente;else upd.destino=destino;
+      await update(R(db,LOGAN_TRANS+'/'+weekId+'/'+b.dataset.k),upd);
+      toast('Actualizado ✓','ok');loadAnTrans(weekId);
+    }catch(e){toast('Error al actualizar: '+(e.message||e),'err');}
   }));
 }
 
