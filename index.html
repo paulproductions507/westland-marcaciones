@@ -1112,18 +1112,9 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         </div>
       </div>
       <div class="log-nav-item" data-group="sum">
-        <button type="button" class="log-side-btn" title="Suministro"><span class="log-ico">📦</span><span class="log-lbl">Suministro</span><span class="log-chev">▾</span></button>
+        <button type="button" class="log-side-btn" title="Suministro"><span class="log-ico">📦</span><span class="log-lbl">Suministro</span></button>
         <div class="log-flyout">
-          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-req">📥 Solicitudes por atender</button>
-          <button type="button" class="log-flyout-item log-flyout-resp" data-jump="log-sum-jump" data-ac="log-ac-sum-resp" style="display:none">👤 Responsable de Suministro</button>
-          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-cat">🗂️ Catálogos de suministro</button>
-          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-reg">➕ Registrar entrada / salida</button>
-          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-stock">🏬 Bodega de Consumo Interno</button>
-          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-porcolab">👥 Consumo por colaborador/área</button>
-          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-consumo-hist">🧾 Historial de consumo</button>
-          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-acuses">📄 Acuses de despacho</button>
-          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-reporte">📧 Reporte de suministro</button>
-          <button type="button" class="log-flyout-item" data-jump="log-sum-jump" data-ac="log-ac-sum-mov">🕓 Últimos movimientos</button>
+          <button type="button" class="log-flyout-item" data-jump="log-sum-jump">📦 Suministro</button>
         </div>
       </div>
       <div class="log-nav-item" data-group="an">
@@ -1433,6 +1424,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
           <button class="btn bg bsm" id="btn-sum-inv-clearfilter" style="width:auto;display:none;color:var(--dn)">✕ Quitar filtro</button>
         </div>
         <div id="log-sum-filter-label" style="font-size:12px;color:var(--ac);margin-bottom:8px;display:none"></div>
+        <div class="fg" style="margin-bottom:10px"><input class="fc" id="log-sum-buscar" placeholder="🔎 Buscar suministro por nombre, referencia o ubicación..."></div>
         <div id="log-sum-stock-list" style="overflow-x:auto"><div style="color:var(--mt);font-size:12px">Sin existencias registradas aún</div></div>
 
         <div id="log-sum-asignar-box" style="display:none;margin-top:12px;border:1px solid var(--ac);border-radius:var(--rs);padding:10px 12px;background:var(--sf)">
@@ -5151,7 +5143,7 @@ function renderLogSumStock(){
   let keys=Object.keys(agg).filter(k=>agg[k].stock!==0||agg[k].transito!==0||agg[k].enTransito!==0||agg[k].consumido!==0);
   LOGSUM_STOCK_AGG=agg;
   if(SUM_ACTIVE_FILTER==='bodega')keys=keys.filter(k=>agg[k].stock>0);
-  else if(SUM_ACTIVE_FILTER==='transito')keys=keys.filter(k=>agg[k].transito>0);
+  else if(SUM_ACTIVE_FILTER==='transito')keys=keys.filter(k=>agg[k].transito>0||agg[k].enTransito>0);
   else if(SUM_ACTIVE_FILTER==='asignado')keys=keys.filter(k=>agg[k].enTransito>0);
   else if(SUM_ACTIVE_FILTER==='consumido')keys=keys.filter(k=>agg[k].consumido>0);
   else if(SUM_ACTIVE_FILTER==='alerta'){
@@ -5160,43 +5152,35 @@ function renderLogSumStock(){
     keys=keys.filter(k=>pctMap[k]!=null&&pctMap[k]<=umbral);
   }
   keys=keys.sort((a,b)=>agg[a].nombre.localeCompare(agg[b].nombre));
-  if(!keys.length){c.innerHTML=`<div style="color:var(--mt);font-size:12px">${SUM_ACTIVE_FILTER==='all'?'Sin existencias registradas aún':'Ningún ítem coincide con este filtro'}</div>`;renderSumReporteCorreo();renderLogSumKPIs();return;}
-  // Tarjetas apiladas (no tabla ancha): evita que columnas/botones se desborden en pantallas de celular
+  const q=(el('log-sum-buscar')?.value||'').trim().toLowerCase();
+  if(q)keys=keys.filter(k=>{
+    const v=agg[k];
+    return (v.nombre||'').toLowerCase().includes(q)||(v.tamNombre||'').toLowerCase().includes(q)||
+      (v.ubicacion||'').toLowerCase().includes(q)||(v.refProv||'').toLowerCase().includes(q)||(v.codigoInterno||'').toLowerCase().includes(q);
+  });
+  if(!keys.length){c.innerHTML=`<div style="color:var(--mt);font-size:12px">${q?'Ningún suministro coincide con la búsqueda':(SUM_ACTIVE_FILTER==='all'?'Sin existencias registradas aún':'Ningún ítem coincide con este filtro')}</div>`;renderSumReporteCorreo();renderLogSumKPIs();return;}
+  // Filas compactas de una sola línea (nombre + mini-stats + botón Asignar), en vez de tarjetas grandes apiladas
   c.innerHTML=keys.map(k=>{
     const v=agg[k];
     const nom=v.tamNombre?`${v.nombre} — ${v.tamNombre}`:v.nombre;
-    return `<div style="border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px;background:var(--sf)">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
-        <div style="font-weight:700;font-size:13.5px">${nom}</div>
+    const meta=[v.ubicacion?`📍 ${v.ubicacion}`:'',v.refProv?`🔖 ${v.refProv}`:'',v.codigoInterno?`🏷️ ${v.codigoInterno}`:''].filter(Boolean).join(' · ');
+    const mini=(val,label,color)=>`<div style="min-width:44px;text-align:center"><div style="font-size:13px;font-weight:800;${color?'color:'+color+';':''}">${fmtNum(val)}</div><div style="font-size:8px;color:var(--mt);text-transform:uppercase;letter-spacing:.3px;line-height:1.1">${label}</div></div>`;
+    return `<div style="border:1px solid var(--bd);border-radius:8px;padding:7px 10px;margin-bottom:6px;background:var(--sf);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="flex:1;min-width:140px">
+        <div style="font-weight:700;font-size:13px;line-height:1.2">${nom}</div>
+        ${meta?`<div style="font-size:10px;color:var(--mt);margin-top:1px">${meta}</div>`:''}
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${mini(v.stock,'Bodega')}
+        ${mini(v.transito,'Tránsito','#48b8e0')}
+        ${mini(v.enTransito,'Asignado','var(--wn)')}
+        ${mini(v.consumido,'Consumido')}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;flex:0 0 auto">
+        ${v.stock>0?`<button class="btn bp bsm" style="width:auto;padding:5px 10px;font-size:11.5px" data-k="${k}">📤 Asignar</button>`:''}
+        ${v.transito>0?`<button class="btn bg bsm" style="width:auto;padding:5px 10px;font-size:11.5px" data-pasar="${k}">🔁</button>`:''}
+        ${v.enTransito>0?`<button class="btn bg bsm" style="width:auto;padding:5px 10px;font-size:11.5px" data-ver-asig="${k}">👁️</button>`:''}
         <button type="button" data-detalle="${k}" title="Ver detalle" style="flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:1px solid var(--bd);background:var(--bg);color:var(--ac);font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center">ⓘ</button>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--mt);margin-bottom:8px">
-        ${v.ubicacion?`<span>📍 ${v.ubicacion}</span>`:''}
-        ${v.refProv?`<span>🔖 Ref: ${v.refProv}</span>`:''}
-        ${v.codigoInterno?`<span>🏷️ ${v.codigoInterno}</span>`:''}
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px">
-        <div style="flex:1;min-width:76px;background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">
-          <div style="font-size:16px;font-weight:800">${fmtNum(v.stock)}</div>
-          <div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.4px">Bodega</div>
-        </div>
-        <div style="flex:1;min-width:76px;background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">
-          <div style="font-size:16px;font-weight:800;color:#48b8e0">${fmtNum(v.transito)}</div>
-          <div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.4px">Bod. tránsito</div>
-        </div>
-        <div style="flex:1;min-width:76px;background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">
-          <div style="font-size:16px;font-weight:800;color:var(--wn)">${fmtNum(v.enTransito)}</div>
-          <div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.4px">Asignado</div>
-        </div>
-        <div style="flex:1;min-width:76px;background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">
-          <div style="font-size:16px;font-weight:800;color:var(--mt)">${fmtNum(v.consumido)}</div>
-          <div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.4px">Consumido</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${v.stock>0?`<button class="btn bp bsm" style="width:auto" data-k="${k}">📤 Asignar</button>`:''}
-        ${v.transito>0?`<button class="btn bg bsm" style="width:auto" data-pasar="${k}">🔁 Pasar a bodega</button>`:''}
-        ${v.enTransito>0?`<button class="btn bg bsm" style="width:auto" data-ver-asig="${k}">👁️ Ver asignaciones</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -5207,6 +5191,14 @@ function renderLogSumStock(){
   renderSumReporteCorreo();
   renderLogSumKPIs();
 }
+let LOGSUM_BUSCAR_WIRED=false;
+function wireLogSumBuscar(){
+  if(LOGSUM_BUSCAR_WIRED)return;
+  const inp=el('log-sum-buscar');if(!inp)return;
+  LOGSUM_BUSCAR_WIRED=true;
+  inp.addEventListener('input',()=>renderLogSumStock());
+}
+wireLogSumBuscar();
 
 async function trasladarATransito(key){
   const v=LOGSUM_STOCK_AGG[key];if(!v)return;
@@ -5703,7 +5695,7 @@ function renderLogSumKPIs(){
   const items=Object.values(LOGSUM_STOCK_AGG);
   const totalItems=items.length;
   const totalDisponible=items.reduce((s,v)=>s+(v.stock>0?v.stock:0),0);
-  const totalTransitoBodega=items.reduce((s,v)=>s+(v.transito>0?v.transito:0),0);
+  const totalTransitoBodega=items.reduce((s,v)=>s+(v.transito>0?v.transito:0),0)+items.reduce((s,v)=>s+(v.enTransito||0),0);
   const totalAsignado=items.reduce((s,v)=>s+(v.enTransito||0),0);
   const totalConsumido=items.reduce((s,v)=>s+(v.consumido||0),0);
   const umbral=parseFloat(el('log-sumrep-umbral')?.value)||25;
@@ -5740,7 +5732,7 @@ function applySumKpiFilter(f){
   }
   SUM_ACTIVE_FILTER=f;
   renderLogSumStock();
-  const labels={all:'',bodega:'🔎 Filtrado: ítems con piezas en bodega',transito:'🔎 Filtrado: ítems con piezas en bodega de tránsito',asignado:'🔎 Filtrado: ítems con piezas asignadas — toca "👁️ Ver asignaciones" en cada uno para ver el detalle por persona',consumido:'🔎 Filtrado: ítems con consumo registrado',alerta:'🔎 Filtrado: ítems en alerta de stock bajo'};
+  const labels={all:'',bodega:'🔎 Filtrado: ítems con piezas en bodega',transito:'🔎 Filtrado: ítems en bodega de tránsito o asignados pendientes de consumir',asignado:'🔎 Filtrado: ítems con piezas asignadas — toca "👁️ Ver asignaciones" en cada uno para ver el detalle por persona',consumido:'🔎 Filtrado: ítems con consumo registrado',alerta:'🔎 Filtrado: ítems en alerta de stock bajo'};
   const lbl=el('log-sum-filter-label');
   if(lbl){lbl.style.display=f==='all'?'none':'block';lbl.textContent=labels[f]||'';}
   const btn=el('btn-sum-inv-clearfilter');
