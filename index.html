@@ -1093,6 +1093,13 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
           <button type="button" class="log-flyout-item" data-jump="log-nuevo-jump">📤 Nuevo formulario de envío</button>
         </div>
       </div>
+      <div class="log-nav-item" data-group="camion">
+        <button type="button" class="log-side-btn" title="Consolidado de camión"><span class="log-ico">🚛</span><span class="log-lbl">Camión</span></button>
+        <div class="log-flyout">
+          <button type="button" class="log-flyout-item" data-jump="log-camnuevo-jump">🚛 Consolidar recibos de un camión</button>
+          <button type="button" class="log-flyout-item" data-jump="log-camrec-jump">✅ Camiones por recibir</button>
+        </div>
+      </div>
       <div class="log-nav-item" data-group="rec">
         <button type="button" class="log-side-btn" title="Formularios recibidos"><span class="log-ico">📥</span><span class="log-lbl">Recepción</span></button>
         <div class="log-flyout">
@@ -1211,6 +1218,57 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         <button class="btn bp bsm" id="btn-log-nv-enviar" style="width:auto">📤 Enviar formulario a bodega</button>
       </div></div>
     </div>
+    </div>
+    <div id="log-camnuevo-jump" class="log-sec">
+<div id="log-camnuevo-card" style="display:none">
+      <div class="asec"><div class="ashdr" data-ac="log-ac-camnuevo"><span>🚛 Consolidar recibos de un camión</span><span class="ach">▾</span></div>
+      <div class="asbdy" id="log-ac-camnuevo">
+        <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Selecciona los recibos que llegan juntos en esta carga. El resumen de bultos y pallets se calcula automáticamente (las piezas no aplican a nivel global). Esta selección es solo informativa para quien recibe: la mercancía se separa después, y quien confirma cada recibo por separado es el chequeador asignado.</div>
+        <div id="log-cam-resumen" style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:11px 13px;margin-bottom:12px;font-size:12.5px"><span style="color:var(--mt)">Selecciona los recibos de este camión para ver el resumen.</span></div>
+        <div class="fg"><label>Agente / Corredor</label>
+          <input class="fc" id="log-cam-agente-search" list="log-agente-datalist" placeholder="Ej: CIF Express, Sababa..." autocomplete="off">
+          <datalist id="log-agente-datalist"></datalist>
+        </div>
+        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">🚢 Información del equipo</div>
+          <div class="fg"><label>Tipo de equipo</label>
+            <select class="fc" id="log-cam-tipoequipo">
+              <option value="">Seleccionar...</option>
+              <optgroup label="🚛 Camión / Furgón"><option value="Camión">Camión</option><option value="Furgón">Furgón</option><option value="Furgón refrigerado">Furgón refrigerado</option></optgroup>
+              <optgroup label="📦 Contenedor Estándar"><option value="Contenedor 20' Std">Contenedor 20' Estándar</option><option value="Contenedor 40' Std">Contenedor 40' Estándar</option><option value="Contenedor 45' Std">Contenedor 45' Estándar</option></optgroup>
+              <optgroup label="📦 High Cube"><option value="Contenedor 20' HC">Contenedor 20' HC</option><option value="Contenedor 40' HC">Contenedor 40' HC</option><option value="Contenedor 45' HC">Contenedor 45' HC</option></optgroup>
+              <optgroup label="📦 Especiales"><option value="Contenedor Open Top 20'">Open Top 20'</option><option value="Contenedor Open Top 40'">Open Top 40'</option><option value="Contenedor Flat Rack 20'">Flat Rack 20'</option><option value="Contenedor Flat Rack 40'">Flat Rack 40'</option><option value="Contenedor Reefer 20'">Reefer 20'</option><option value="Contenedor Reefer 40'">Reefer 40'</option></optgroup>
+              <optgroup label="📋 Otros"><option value="Pallet suelto">Pallet suelto</option><option value="Otro">Otro</option></optgroup>
+            </select>
+          </div>
+          <div id="log-cam-naviera-box" style="display:none" class="fg"><label>Naviera / Línea</label>
+            <select class="fc" id="log-cam-naviera">
+              <option value="">Seleccionar...</option>
+              <option value="MSC">MSC</option><option value="Maersk">Maersk</option><option value="CMA CGM">CMA CGM</option><option value="COSCO">COSCO</option><option value="Hapag-Lloyd">Hapag-Lloyd</option><option value="ONE">ONE</option><option value="Evergreen">Evergreen</option><option value="Yang Ming">Yang Ming</option><option value="HMM">HMM (Hyundai)</option><option value="ZIM">ZIM</option><option value="PIL">PIL</option><option value="OOCL">OOCL</option><option value="APL">APL</option><option value="Wan Hai">Wan Hai</option><option value="Otra">Otra</option>
+            </select>
+          </div>
+          <div id="log-cam-equipos-box" style="display:none">
+            <div class="fg"><label id="log-cam-cantequipos-lbl">Cantidad de equipos</label><input type="number" min="1" class="fc" id="log-cam-cantequipos" value="1"></div>
+            <div id="log-cam-equipos-inputs" style="margin-top:6px"></div>
+            <div id="log-cam-equipos-hint" style="font-size:11px;color:var(--mt);margin-top:4px"></div>
+          </div>
+        </div>
+        <div style="margin-bottom:8px">
+          <label style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px">Recibos incluidos en esta carga (informativo)</label>
+          <div id="log-cam-recibos-check" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+        <div class="fg"><label>👤 Asignar recepción a colaborador</label><select class="fc" id="log-cam-asignado"><option value="">Seleccionar colaborador...</option></select></div>
+        <div class="fg"><label>Nota (opcional)</label><textarea class="fc" id="log-cam-nota" rows="2" style="resize:vertical"></textarea></div>
+        <button class="btn bp bsm" id="btn-log-cam-crear" style="width:auto">🚛 Crear consolidado</button>
+      </div></div>
+    </div>
+    </div>
+    <div id="log-camrec-jump" class="log-sec">
+<div class="asec"><div class="ashdr" data-ac="log-ac-camrec"><span>✅ Camiones por recibir</span><span class="ach">▾</span></div>
+    <div class="asbdy" id="log-ac-camrec">
+      <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Aquí ves la carga completa (proveedores, recibos y bultos incluidos) solo de forma informativa. El estado de cada recibo (✓ recibido) lo marca el chequeador asignado desde "Recepción" — no se puede cambiar desde aquí.</div>
+      <div id="log-cam-lista"><div style="color:var(--mt);font-size:12px">Cargando...</div></div>
+    </div></div>
     </div>
     <div id="log-rec-jump" class="log-sec">
 <div class="asec"><div class="ashdr" data-ac="log-ac-rec"><span>📥 Formularios recibidos — confirmar recepción</span><span class="ach">▾</span></div>
@@ -1702,7 +1760,7 @@ const app=initializeApp(FB),auth=getAuth(app),db=getDatabase(app);
 
 // PATHS
 const META="meta_v1",USERS="users_v1",HIST="historial_v1",PLOG="prolog_v1",FER="feriados_v1",APR="approvals_v1";
-const LOGPROV="logistica_proveedores_v1",LOGREC="logistica_recibos_v1",LOGDEPTO="logistica_deptos_v1";
+const LOGPROV="logistica_proveedores_v1",LOGREC="logistica_recibos_v1",LOGDEPTO="logistica_deptos_v1",LOGCAM="logistica_camiones_v1";
 const LOGSUM="logistica_suministro_v1",LOGSUM_MOV=LOGSUM+"/movimientos",LOGSUM_TAM=LOGSUM+"/tamanos",LOGSUM_CAT=LOGSUM+"/catalogo",LOGSUM_RESP=LOGSUM+"/responsables",LOGSUM_REQ=LOGSUM+"/solicitudes",LOGSUM_AREA=LOGSUM+"/areas",LOGSUM_ACUSE=LOGSUM+"/acuses";
 const LOGAN="logistica_analisis_v1",LOGAN_SEM=LOGAN+"/semanas",LOGAN_TRANS=LOGAN+"/transferencias",LOGAN_NOTAS=LOGAN+"/notas";
 const SUM_BASE_NOMBRES=["Lápices","Bolígrafos","Exactos","Hojas para exacto","Papel de embalaje (plástico)","Etiquetas","Tinta / rollo para impresora (Zebra)","Papel toalla","Papel higiénico","Cartucho pequeño","Cartucho mediano","Cartucho grande","Cartucho extra pequeño","Rema hoja carta","Rema hoja legal","Escoba","Trapeador","Cloro","Jabón","Detergente","Desinfectante","Tape transparente","Cartapacio"];
@@ -2284,7 +2342,8 @@ async function openApp(user){
   el('sec-usuarios').style.display=isSA?'':'none';
   el('log-config-card').style.display=isAdm?'block':'none';
   el('log-nuevo-card').style.display=isAdm?'block':'none';
-  tabSwitch('reloj');renderLogProveedores();renderLogPendientes();loadLogDeptos();fillLogAsignadoSelect();listenLogistica();loadLogSumMov();loadLogSumTam();loadLogSumCat();loadLogSumResp();loadLogSumReq();loadLogSumAreas();loadLogSumAcuses();loadAnSemanas();
+  el('log-camnuevo-card').style.display=isAdm?'block':'none';
+  tabSwitch('reloj');renderLogProveedores();renderLogPendientes();loadLogDeptos();fillLogAsignadoSelect();fillLogCamAsignadoSelect();renderLogCamNuevoChecklist();renderLogCamRec();listenLogistica();loadLogSumMov();loadLogSumTam();loadLogSumCat();loadLogSumResp();loadLogSumReq();loadLogSumAreas();loadLogSumAcuses();loadAnSemanas();
   // Gerente: hide buttons they shouldn't see
   if(isGer){
     ['btn-limpiar'].forEach(id=>{if(el(id))el(id).style.display='none';});
@@ -4406,7 +4465,7 @@ el('btn-mi-rpt').addEventListener('click',async()=>{
 function dlBlob(c,m,n){const b=new Blob([c],{type:m+';charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;a.click();URL.revokeObjectURL(a.href);}
 
 // ══════════════ CONTROL LOGÍSTICO ══════════════
-let LOGP={},LOGR={},logListening=false;
+let LOGP={},LOGR={},LOGCAMS={},logListening=false;
 
 function tabSwitch(tab){
   const isLog=tab==='log';
@@ -4520,6 +4579,236 @@ async function fillLogAsignadoSelect(){
   const colab=Object.values(users).filter(u=>!GERENTES.includes(u.user));
   sel.innerHTML='<option value="todos">📢 Notificar a todos</option>'
     +colab.map(u=>`<option value="${u.user}">${u.nombre}</option>`).join('');
+}
+
+// ── CONSOLIDADO DE CAMIÓN (varios recibos en una misma carga) ─────────────
+async function fillLogCamAsignadoSelect(){
+  const sel=el('log-cam-asignado');if(!sel)return;
+  const cur=sel.value;
+  const users=await getUsers();
+  const colab=Object.values(users).filter(u=>!GERENTES.includes(u.user));
+  sel.innerHTML='<option value="">Seleccionar colaborador...</option>'+colab.map(u=>`<option value="${u.user}">${u.nombre}</option>`).join('');
+  if(cur)sel.value=cur;
+}
+function fillLogAgenteDatalist(){
+  const dl=el('log-agente-datalist');if(!dl)return;
+  const agentes=[...new Set(Object.values(LOGCAMS||{}).map(c=>c.agente).filter(Boolean))];
+  dl.innerHTML=agentes.map(a=>`<option value="${a.replace(/"/g,'&quot;')}">`).join('');
+}
+function recalcLogCamResumen(){
+  const box=el('log-cam-resumen');if(!box)return;
+  const checks=[...document.querySelectorAll('.log-cam-chk:checked')];
+  if(!checks.length){box.innerHTML='<span style="color:var(--mt)">Selecciona los recibos de este camión para ver el resumen.</span>';return;}
+  let bultos=0,pallets=0;const provs=new Set();
+  checks.forEach(chk=>{
+    const v=LOGR[chk.dataset.k];if(!v)return;
+    bultos+=Number(v.bultosEsperados)||0;
+    pallets+=Number(v.palletsEsperados)||0;
+    if(v.proveedor)provs.add(v.proveedor);
+  });
+  const row=(a,b)=>`<div style="display:flex;justify-content:space-between;padding:3px 0;gap:10px"><span style="color:var(--mt)">${a}</span><span>${b}</span></div>`;
+  box.innerHTML=row('Recibos seleccionados','<b>'+checks.length+'</b>')
+    +row('Bultos totales','<b>'+bultos+'</b>')
+    +(pallets?row('Pallets totales','<b>'+pallets+'</b>'):'')
+    +row('Proveedores',[...provs].join(', ')||'—');
+}
+function renderLogCamNuevoChecklist(){
+  const c=el('log-cam-recibos-check');if(!c)return;
+  const prevChecked=new Set([...c.querySelectorAll('.log-cam-chk:checked')].map(i=>i.dataset.k));
+  const pend=Object.entries(LOGR||{}).filter(([,v])=>v.estado==='pendiente'&&!v.camionId);
+  if(!pend.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">No hay recibos pendientes sin consolidar.</div>';recalcLogCamResumen();return;}
+  c.innerHTML=pend.map(([k,v])=>`<label style="display:flex;align-items:center;gap:8px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;cursor:pointer;font-size:13px">
+      <input type="checkbox" class="log-cam-chk" data-k="${k}" ${prevChecked.has(k)?'checked':''} style="width:auto;accent-color:var(--ac)">
+      <span style="flex:1">#${v.numeroRecibo} — ${v.proveedor} — ${v.bultosEsperados} bultos${v.palletsEsperados?(' · '+v.palletsEsperados+' pallets'):''}</span>
+    </label>`).join('');
+  recalcLogCamResumen();
+}
+document.addEventListener('change',e=>{
+  if(e.target&&e.target.classList.contains('log-cam-chk'))recalcLogCamResumen();
+});
+
+// Campos de equipo del consolidado: Camión/Furgón → chofer+placa por unidad; Contenedor → chofer+n°contenedor+sello por unidad
+function esContenedorCam(tipo){return tipo&&tipo.toLowerCase().includes('contenedor');}
+function esCamionOFurgonCam(tipo){return tipo&&(tipo.toLowerCase().includes('camión')||tipo.toLowerCase().includes('furgón'));}
+function renderLogCamEquipoBox(){
+  const tipo=el('log-cam-tipoequipo')?.value;
+  const navBox=el('log-cam-naviera-box');
+  const eqBox=el('log-cam-equipos-box');
+  const lbl=el('log-cam-cantequipos-lbl');
+  const hint=el('log-cam-equipos-hint');
+  if(!eqBox)return;
+  if(esContenedorCam(tipo)){
+    if(navBox)navBox.style.display='block';
+    eqBox.style.display='block';
+    if(lbl)lbl.textContent='Cantidad de contenedores';
+    if(hint)hint.textContent='Un chofer por contenedor. Formato de contenedor: TCKU1234567.';
+  }else if(esCamionOFurgonCam(tipo)){
+    if(navBox)navBox.style.display='none';
+    eqBox.style.display='block';
+    if(lbl)lbl.textContent='Cantidad de camiones';
+    if(hint)hint.textContent='Un chofer por camión (si vienen dos equipos con choferes distintos, agrégalos por separado).';
+  }else{
+    if(navBox)navBox.style.display='none';
+    eqBox.style.display='none';
+    if(el('log-cam-equipos-inputs'))el('log-cam-equipos-inputs').innerHTML='';
+    return;
+  }
+  renderLogCamEquipoInputs();
+}
+function renderLogCamEquipoInputs(){
+  const tipo=el('log-cam-tipoequipo')?.value;
+  const cant=parseInt(el('log-cam-cantequipos')?.value)||1;
+  const cont=el('log-cam-equipos-inputs');if(!cont)return;
+  const prevChofer=[...cont.querySelectorAll('.cam-eq-chofer')].map(i=>i.value);
+  const prevB=[...cont.querySelectorAll('.cam-eq-campob')].map(i=>i.value);
+  const prevC=[...cont.querySelectorAll('.cam-eq-campoc')].map(i=>i.value);
+  const esConten=esContenedorCam(tipo);
+  cont.innerHTML='';
+  for(let i=0;i<cant;i++){
+    const div=document.createElement('div');
+    div.style.cssText='background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:8px';
+    if(esConten){
+      div.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--ac);margin-bottom:6px">Contenedor ${i+1}</div>`
+        +`<div class="fg2">`
+        +`<div class="fg"><label style="font-size:11px">N° de contenedor</label><input class="fc cam-eq-campob" placeholder="TCKU1234567" value="${prevB[i]||''}" style="font-family:monospace;letter-spacing:1px"></div>`
+        +`<div class="fg"><label style="font-size:11px">N° de sello</label><input class="fc cam-eq-campoc" placeholder="Ej: 0045821" value="${prevC[i]||''}"></div>`
+        +`</div>`
+        +`<div class="fg"><label style="font-size:11px">Chofer</label><input class="fc cam-eq-chofer" placeholder="Nombre del chofer" value="${prevChofer[i]||''}"></div>`;
+    }else{
+      div.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--ac);margin-bottom:6px">Camión ${i+1}</div>`
+        +`<div class="fg2">`
+        +`<div class="fg"><label style="font-size:11px">Chofer</label><input class="fc cam-eq-chofer" placeholder="Nombre del chofer" value="${prevChofer[i]||''}"></div>`
+        +`<div class="fg"><label style="font-size:11px">Placa</label><input class="fc cam-eq-campob" placeholder="Ej: AB1234" value="${prevB[i]||''}"></div>`
+        +`</div>`;
+    }
+    cont.appendChild(div);
+  }
+}
+function getLogCamEquiposFromForm(){
+  const tipo=el('log-cam-tipoequipo')?.value;
+  const esConten=esContenedorCam(tipo);
+  const choferes=[...document.querySelectorAll('.cam-eq-chofer')].map(i=>i.value.trim());
+  const camposB=[...document.querySelectorAll('.cam-eq-campob')].map(i=>i.value.trim());
+  const camposC=[...document.querySelectorAll('.cam-eq-campoc')].map(i=>i.value.trim());
+  return choferes.map((chofer,i)=>esConten
+    ?{chofer,numContenedor:camposB[i]||'',sello:camposC[i]||''}
+    :{chofer,placa:camposB[i]||''});
+}
+el('log-cam-tipoequipo')?.addEventListener('change',renderLogCamEquipoBox);
+el('log-cam-cantequipos')?.addEventListener('input',renderLogCamEquipoInputs);
+el('log-cam-cantequipos')?.addEventListener('change',renderLogCamEquipoInputs);
+
+el('btn-log-cam-crear')?.addEventListener('click',async()=>{
+  const agente=el('log-cam-agente-search').value.trim();
+  if(!agente){toast('Ingresa el agente o corredor','err');return;}
+  const checks=[...document.querySelectorAll('.log-cam-chk:checked')];
+  if(!checks.length){toast('Selecciona al menos un recibo','err');return;}
+  const asignado=el('log-cam-asignado').value;
+  if(!asignado){toast('Selecciona quién recibirá el camión','err');return;}
+  let bultosTotal=0,palletsTotal=0;const provs=new Set();const recibosMap={};
+  checks.forEach(chk=>{
+    const k=chk.dataset.k,v=LOGR[k];if(!v)return;
+    bultosTotal+=Number(v.bultosEsperados)||0;
+    palletsTotal+=Number(v.palletsEsperados)||0;
+    if(v.proveedor)provs.add(v.proveedor);
+    recibosMap[k]=true;
+  });
+  const tipoEquipo=el('log-cam-tipoequipo')?.value||null;
+  const naviera=esContenedorCam(tipoEquipo)?(el('log-cam-naviera')?.value||null):null;
+  const equipos=(tipoEquipo&&(esContenedorCam(tipoEquipo)||esCamionOFurgonCam(tipoEquipo)))?getLogCamEquiposFromForm():[];
+  const now=new Date();
+  const data={
+    agente,
+    recibos:recibosMap,
+    bultosTotal,palletsTotal,
+    proveedores:[...provs],
+    tipoEquipo,naviera,equipos,
+    asignadoA:asignado,
+    creadoPor:CU,
+    fecha:isoD(now),hora:fmtT(now),
+    estado:'pendiente',
+    nota:el('log-cam-nota').value.trim()||null,
+    bitacora:[{accion:'Creado',por:CU,ts:new Date().toISOString(),motivo:''}]
+  };
+  const r=push(R(db,LOGCAM));
+  await set(r,data);
+  const updates={};
+  Object.keys(recibosMap).forEach(k=>{updates[k+'/camionId']=r.key;});
+  await update(R(db,LOGREC),updates);
+  await sendNotif(CU,asignado,'🚛 Camión asignado','Agente: '+agente+' — '+checks.length+' recibo(s) — '+bultosTotal+' bultos');
+  el('log-cam-agente-search').value='';
+  el('log-cam-nota').value='';
+  el('log-cam-asignado').value='';
+  el('log-cam-tipoequipo').value='';
+  el('log-cam-cantequipos').value='1';
+  renderLogCamEquipoBox();
+  toast('Consolidado creado ✓','ok');
+  renderLogCamNuevoChecklist();
+});
+
+// Vista de recepción: informativa. El estado real (✓ recibido) de cada recibo lo marca el chequeador
+// desde "Recepción" (log-rec-jump); aquí solo se refleja, no se puede editar.
+async function renderLogCamRec(){
+  const s=await get(R(db,LOGCAM));LOGCAMS=s.exists()?s.val():{};
+  fillLogAgenteDatalist();
+  const c=el('log-cam-lista');if(!c)return;
+  const isAdm=ADMINS.includes(CU)||GERENTES.includes(CU);
+  // Admins ven todo el ciclo (pendientes y completados); el colaborador asignado solo ve lo suyo mientras esté pendiente
+  const items=Object.entries(LOGCAMS).filter(([,v])=>isAdm||(v.asignadoA===CU&&v.estado!=='completo'));
+  if(!items.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">No hay camiones por recibir.</div>';return;}
+  items.sort((a,b)=>((b[1].fecha||'')+(b[1].hora||'')).localeCompare((a[1].fecha||'')+(a[1].hora||'')));
+  c.innerHTML=items.map(([camK,cam])=>{
+    const recKeys=Object.keys(cam.recibos||{});
+    const checkedCount=recKeys.filter(rk=>LOGR[rk]&&LOGR[rk].estado==='recibido').length;
+    const equipoLine=(cam.equipos&&cam.equipos.length)?cam.equipos.map(eq=>eq.numContenedor
+        ?`📦 ${eq.numContenedor}${eq.sello?(' · Sello '+eq.sello):''}${eq.chofer?(' · '+eq.chofer):''}`
+        :`🚛 ${eq.placa||'—'}${eq.chofer?(' · '+eq.chofer):''}`
+      ).join(' &nbsp;|&nbsp; '):'';
+    const rows=recKeys.map(rk=>{
+      const v=LOGR[rk];
+      if(!v)return '';
+      const recibido=v.estado==='recibido';
+      const estBadge=recibido?' <span style="color:var(--ac)">✓ recibido</span>':(v.estado==='parcial'?' <span style="color:var(--wn)">⏳ parcial</span>':' <span style="color:var(--mt)">pendiente</span>');
+      return `<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;font-size:13px;margin-bottom:6px;opacity:${recibido?1:.85}">
+          <input type="checkbox" disabled ${recibido?'checked':''} title="Informativo — lo marca el chequeador en Recepción" style="width:auto;accent-color:var(--mt);opacity:.55">
+          <span style="flex:1">#${v.numeroRecibo} — ${v.proveedor} — ${v.bultosEsperados} bultos${estBadge}</span>
+          <button type="button" class="btn bg bsm log-camrec-detalle" data-rec="${rk}" style="width:auto;padding:3px 8px;font-size:11px">📋 Ir al chequeo</button>
+        </div>`;
+    }).join('');
+    const doneTag=cam.estado==='completo'?' <span style="color:var(--ac);font-weight:700">✓ completo</span>':'';
+    return `<div class="card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+        <div>
+          <div style="font-weight:800;font-size:14px">🚛 ${cam.agente}${doneTag}</div>
+          <div style="font-size:11px;color:var(--mt)">${cam.fecha||''} ${cam.hora||''} · ${cam.bultosTotal} bultos${cam.palletsTotal?(' · '+cam.palletsTotal+' pallets'):''} · ${recKeys.length} recibo(s)${cam.proveedores&&cam.proveedores.length?(' · '+cam.proveedores.join(', ')):''}</div>
+          ${equipoLine?`<div style="font-size:11px;color:var(--mt);margin-top:2px">${equipoLine}</div>`:''}
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--ac)">${checkedCount}/${recKeys.length} ✓</div>
+      </div>
+      ${rows}
+    </div>`;
+  }).join('');
+}
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('.log-camrec-detalle');if(!btn)return;
+  const rk=btn.dataset.rec;
+  logShowSection('log-rec-jump','log-ac-rec');
+  const sel=el('log-rec-select');
+  if(sel){sel.value=rk;sel.dispatchEvent(new Event('change'));}
+});
+// Si todos los recibos de un camión quedan con estado 'recibido', el camión se marca completo automáticamente
+async function checkLogCamAutoCompletar(camionId){
+  if(!camionId)return;
+  const s=await get(R(db,LOGCAM+'/'+camionId));
+  if(!s.exists())return;
+  const cam=s.val();
+  const recKeys=Object.keys(cam.recibos||{});
+  if(!recKeys.length)return;
+  const rs=await get(R(db,LOGREC));
+  const allRec=rs.exists()?rs.val():{};
+  const todosRecibidos=recKeys.every(rk=>allRec[rk]&&allRec[rk].estado==='recibido');
+  const nuevoEstado=todosRecibidos?'completo':'pendiente';
+  if(cam.estado!==nuevoEstado)await set(R(db,LOGCAM+'/'+camionId+'/estado'),nuevoEstado);
 }
 
 // Botón agregar recibo extra
@@ -4676,7 +4965,7 @@ async function renderLogPendientes(){
   const sel=el('log-rec-select');if(!sel)return;
   const cur=sel.value;
   const pend=Object.entries(LOGR).filter(([,v])=>v.estado==='pendiente'||v.estado==='parcial');
-  sel.innerHTML='<option value="">Seleccione un recibo...</option>'+pend.map(([k,v])=>`<option value="${k}">#${v.numeroRecibo} — ${v.proveedor} — ${v.bultosEsperados} bultos</option>`).join('');
+  sel.innerHTML='<option value="">Seleccione un recibo...</option>'+pend.map(([k,v])=>`<option value="${k}">#${v.numeroRecibo} — ${v.proveedor} — ${v.bultosEsperados} bultos${v.camionId?' 🚛':''}</option>`).join('');
   if(cur&&LOGR[cur]&&LOGR[cur].estado==='pendiente')sel.value=cur;
   else el('log-rec-form').style.display='none';
 }
@@ -4766,6 +5055,7 @@ el('btn-log-rec-confirmar')?.addEventListener('click',async()=>{
     historialRecepciones:histRec
   };
   await set(R(db,LOGREC+'/'+k),updates);
+  if(v.camionId)checkLogCamAutoCompletar(v.camionId);
 
   if(nuevoEstado==='parcial'){
     await sendNotif(CU,v.creadoPor||'todos_admin',
@@ -6693,7 +6983,8 @@ el('btn-an-exportar')?.addEventListener('click',()=>{
 function listenLogistica(){
   if(logListening)return;logListening=true;
   onValue(R(db,LOGPROV),()=>{if(CU)renderLogProveedores();});
-  onValue(R(db,LOGREC),()=>{if(CU){renderLogPendientes();if(el('log-hist-wrap')&&el('log-hist-wrap').style.display==='block')renderLogHistorial();updateLogBadge();if(el('tab-log')&&el('tab-log').style.display!=='none')renderLogKPIs();}});
+  onValue(R(db,LOGREC),()=>{if(CU){renderLogPendientes();renderLogCamNuevoChecklist();renderLogCamRec();if(el('log-hist-wrap')&&el('log-hist-wrap').style.display==='block')renderLogHistorial();updateLogBadge();if(el('tab-log')&&el('tab-log').style.display!=='none')renderLogKPIs();}});
+  onValue(R(db,LOGCAM),()=>{if(CU)renderLogCamRec();});
   onValue(R(db,LOGDEPTO),()=>{if(CU){loadLogDeptos();}});
   onValue(R(db,LOGSUM_MOV),()=>{if(CU)loadLogSumMov();},(e)=>{console.error('onValue LOGSUM_MOV',e);toast('Suministro: '+(e.message||e),'err');});
   onValue(R(db,LOGSUM_TAM),()=>{if(CU)loadLogSumTam();},(e)=>{console.error('onValue LOGSUM_TAM',e);toast('Tamaños: '+(e.message||e),'err');});
