@@ -1734,6 +1734,16 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
   </div>
 </div>
 
+<!-- MODAL DETALLE DE CAMIÓN / CARGA (recibos, camiones físicos, pallets) -->
+<div id="m-camdet" class="mbd">
+  <div class="mbox" style="max-width:640px">
+    <div id="camdet-body"></div>
+    <div class="mfoot">
+      <button class="btn bg" id="camdet-cerrar" style="width:auto">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL FOTO -->
 <div id="m-foto" class="mbd">
   <div class="mbox">
@@ -4549,6 +4559,7 @@ function dlBlob(c,m,n){const b=new Blob([c],{type:m+';charset=utf-8'});const a=d
 
 // ══════════════ CONTROL LOGÍSTICO ══════════════
 let LOGP={},LOGR={},LOGCAMS={},logListening=false;
+let CAMDET_OPEN_K=null;
 
 function tabSwitch(tab){
   const isLog=tab==='log';
@@ -4865,9 +4876,18 @@ async function renderLogCamRec(){
   const visibles=Object.entries(LOGCAMS).filter(([,v])=>isAdm||v.asignadoA===CU);
   const items=visibles.filter(([,v])=>v.estado!=='completo');
   const itemsComp=visibles.filter(([,v])=>v.estado==='completo');
-  items.sort((a,b)=>((b[1].fecha||'')+(b[1].hora||'')).localeCompare((a[1].fecha||'')+(a[1].hora||'')));
-  itemsComp.sort((a,b)=>((b[1].fecha||'')+(b[1].hora||'')).localeCompare((a[1].fecha||'')+(a[1].hora||'')));
-  const buildCard=([camK,cam])=>{
+  // Orden: las cargas reabiertas (tienen reabiertoTs) suben arriba de todo, como si fueran la más reciente.
+  // El resto se ordena por fecha/hora de creación, más reciente primero.
+  const camSortCmp=(a,b)=>{
+    const aR=!!a[1].reabiertoTs,bR=!!b[1].reabiertoTs;
+    if(aR&&!bR)return -1;
+    if(bR&&!aR)return 1;
+    if(aR&&bR)return (b[1].reabiertoTs||'').localeCompare(a[1].reabiertoTs||'');
+    return ((b[1].fecha||'')+(b[1].hora||'')).localeCompare((a[1].fecha||'')+(a[1].hora||''));
+  };
+  items.sort(camSortCmp);
+  itemsComp.sort(camSortCmp);
+  const buildCamPieces=([camK,cam])=>{
     const recKeys=Object.keys(cam.recibos||{});
     const checkedCount=recKeys.filter(rk=>LOGR[rk]&&LOGR[rk].estado==='recibido').length;
     const equipoLine=(cam.equipos&&cam.equipos.length)?cam.equipos.map(eq=>eq.numContenedor
@@ -4941,10 +4961,11 @@ async function renderLogCamRec(){
     }).join('');
     const abrirBtnTxt=fisEntries.length?'➕ Abrir camión adicional':'🚚 Recibir camión';
     const abrirBtn=!hayAbierto?`<button type="button" class="btn bp bsm log-camfis-abrir" data-cam="${camK}" style="width:auto;padding:7px 14px;font-size:12.5px">${abrirBtnTxt}</button>`:'<div style="font-size:11px;color:var(--wn)">Cierra el camión abierto antes de abrir uno nuevo.</div>';
-    return `<div class="card" style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+    const reabiertoTag=cam.reabiertoTs?` <span style="color:var(--wn);font-weight:700">↩️ reabierto${cam.reabiertoPor?(' por '+cam.reabiertoPor):''}</span>`:'';
+    const limpiarBtn=(isAdm&&hayRecepcion&&cam.estado!=='completo')?`<button type="button" class="btn bg bsm log-cam-limpiar" data-cam="${camK}" title="Borra los camiones físicos y pallets recibidos, para empezar de cero" style="width:auto;padding:7px 12px;font-size:12.5px;color:var(--dn)">🧹 Limpiar recepción</button>`:'';
+    const header=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
         <div>
-          <div style="font-weight:800;font-size:14px">🚛 ${cam.agente}${doneTag}</div>
+          <div style="font-weight:800;font-size:14px">🚛 ${cam.agente}${doneTag}${reabiertoTag}</div>
           <div style="font-size:11px;color:var(--mt)">${cam.fecha||''} ${cam.hora||''} · ${cam.bultosTotal} bultos${cam.palletsTotal?(' · '+cam.palletsTotal+' pallets'):''} · ${recKeys.length} recibo(s)${cam.proveedores&&cam.proveedores.length?(' · '+cam.proveedores.join(', ')):''}</div>
           ${cam.asignadoA?`<div style="font-size:11px;color:var(--mt);margin-top:2px">👤 Asignado a: ${cam.asignadoA}</div>`:''}
           ${equipoLine?`<div style="font-size:11px;color:var(--mt);margin-top:2px">${equipoLine}</div>`:''}
@@ -4953,8 +4974,8 @@ async function renderLogCamRec(){
           <div style="font-size:12px;font-weight:700;color:var(--ac)">${checkedCount}/${recKeys.length} ✓</div>
           ${isAdm?`<button type="button" class="btn bg bsm log-editcam-btn" data-cam="${camK}" style="width:auto;padding:2px 8px;font-size:11px">✏️ Editar</button>`:''}
         </div>
-      </div>
-      ${rows}
+      </div>`;
+    const body=`${rows}
       <div style="margin-top:10px;border-top:1px solid var(--bd);padding-top:8px">
         ${isAdm?resumenGlobal:''}
         <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🚛 Camiones físicos recibidos</div>
@@ -4967,13 +4988,56 @@ async function renderLogCamRec(){
           :`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
               ${abrirBtn}
               ${(!hayAbierto&&hayRecepcion)?`<button type="button" class="btn bp bsm log-cam-completar" data-cam="${camK}" style="width:auto;padding:7px 14px;font-size:12.5px;background:var(--ac)">✅ Completar</button>`:''}
+              ${limpiarBtn}
             </div>`}
+      </div>`;
+    return {header,body};
+  };
+  // Tarjeta colapsada para la lista: solo encabezado + botón "Abrir" que despliega el detalle en un modal.
+  const buildCollapsed=(entry)=>{
+    const camK=entry[0];
+    const {header}=buildCamPieces(entry);
+    return `<div class="card log-cam-collapsed" style="margin-bottom:10px">
+      ${header}
+      <div style="text-align:right;margin-top:4px">
+        <button type="button" class="btn bp bsm log-cam-abrir-modal" data-cam="${camK}" style="width:auto;padding:6px 14px;font-size:12.5px">🔍 Abrir</button>
       </div>
     </div>`;
   };
-  c.innerHTML=items.length?items.map(buildCard).join(''):'<div style="color:var(--mt);font-size:12px">No hay camiones por recibir.</div>';
-  if(cComp)cComp.innerHTML=itemsComp.length?itemsComp.map(buildCard).join(''):'<div style="color:var(--mt);font-size:12px">Aún no hay camiones completados.</div>';
+  c.innerHTML=items.length?items.map(buildCollapsed).join(''):'<div style="color:var(--mt);font-size:12px">No hay camiones por recibir.</div>';
+  if(cComp)cComp.innerHTML=itemsComp.length?itemsComp.map(buildCollapsed).join(''):'<div style="color:var(--mt);font-size:12px">Aún no hay camiones completados.</div>';
+  // Si el modal de detalle está abierto, refrescar su contenido con los datos recién cargados.
+  if(CAMDET_OPEN_K){
+    if(LOGCAMS[CAMDET_OPEN_K]){
+      const {header,body}=buildCamPieces([CAMDET_OPEN_K,LOGCAMS[CAMDET_OPEN_K]]);
+      const bodyEl=el('camdet-body');
+      if(bodyEl)bodyEl.innerHTML=header+body;
+    }else{
+      el('m-camdet')?.classList.remove('open');
+      CAMDET_OPEN_K=null;
+    }
+  }
 }
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('.log-cam-abrir-modal');if(!btn)return;
+  const camK=btn.dataset.cam;
+  if(!LOGCAMS[camK]){toast('Carga no encontrada','err');return;}
+  CAMDET_OPEN_K=camK;
+  el('m-camdet').classList.add('open');
+  renderLogCamRec(); // refresca y llena #camdet-body con el detalle de esta carga
+});
+el('camdet-cerrar')?.addEventListener('click',()=>{
+  el('m-camdet').classList.remove('open');
+  CAMDET_OPEN_K=null;
+});
+document.addEventListener('click',async e=>{
+  const btn=e.target.closest('.log-cam-limpiar');if(!btn)return;
+  if(!confirm('¿Borrar toda la recepción física (camiones, pallets y bultos recibidos) de esta carga? Los recibos y su estado de chequeo NO se tocan. Podrás volver a recibir desde cero.'))return;
+  const camK=btn.dataset.cam;
+  await remove(R(db,`${LOGCAM}/${camK}/camionesFisicos`));
+  toast('🧹 Recepción física borrada — puedes empezar de nuevo','ok');
+  renderLogCamRec();
+});
 document.addEventListener('click',async e=>{
   const btn=e.target.closest('.log-camfis-abrir');if(!btn)return;
   const camK=btn.dataset.cam;
