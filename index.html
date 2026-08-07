@@ -1160,7 +1160,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
           <input type="file" accept="application/pdf" class="fc" id="log-nv-pdf-input" style="padding:8px;margin-top:4px">
           <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
             <input type="checkbox" id="log-nv-prov-si" checked style="width:auto;accent-color:var(--ac)">
-            <label for="log-nv-prov-si" style="margin:0;font-size:11.5px;font-weight:500">Priorizar proveedor S.I- (hijo) sobre el proveedor padre, si existe</label>
+            <label for="log-nv-prov-si" style="margin:0;font-size:11.5px;font-weight:500">Priorizar proveedor S.I- (hijo) sobre el padre — si el proveedor ya se usó antes en la app, ese nombre siempre tiene prioridad</label>
           </div>
           <div id="log-nv-pdf-status" style="font-size:11px;color:var(--mt);margin-top:6px">Sube el recibo en PDF y el sistema intenta detectar los campos. Siempre revisa antes de enviar.</div>
         </div>
@@ -1664,6 +1664,52 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
       <button class="btn bp bsm" id="detitem-asignar" style="width:auto;display:none">📤 Asignar</button>
       <button class="btn bg bsm" id="detitem-pasar" style="width:auto;display:none">🔁 Pasar a bodega</button>
       <button class="btn bg bsm" id="detitem-verasig" style="width:auto;display:none">👁️ Ver asignaciones</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR RECIBO (bultos/pallets/piezas/items, reasignar chequeador, recepción ya confirmada) -->
+<div id="m-editrec" class="mbd">
+  <div class="mbox">
+    <h3>✏️ Editar recibo <span id="editrec-num" style="color:var(--ac)"></span></h3>
+    <div class="fg" style="margin-top:8px"><label>👤 Reasignar a colaborador</label><select class="fc" id="editrec-asignado"></select></div>
+    <div class="fg2">
+      <div class="fg"><label>Bultos esperados</label><input type="number" min="0" class="fc" id="editrec-bultosesp"></div>
+      <div class="fg"><label>Pallets esperados</label><input type="number" min="0" class="fc" id="editrec-palletsesp"></div>
+    </div>
+    <div class="fg2">
+      <div class="fg"><label>Piezas esperadas</label><input type="number" min="0" class="fc" id="editrec-piezasesp"></div>
+      <div class="fg"><label>Ítems esperados</label><input type="number" min="0" class="fc" id="editrec-itemsesp"></div>
+    </div>
+    <div id="editrec-recibido-box" style="display:none">
+      <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin:10px 0 6px">Ya confirmado como recibido</div>
+      <div class="fg2">
+        <div class="fg"><label>Bultos recibidos</label><input type="number" min="0" class="fc" id="editrec-bultosrec"></div>
+        <div class="fg"><label>Pallets recibidos</label><input type="number" min="0" class="fc" id="editrec-palletsrec"></div>
+      </div>
+      <div class="fg2">
+        <div class="fg"><label>Piezas recibidas</label><input type="number" min="0" class="fc" id="editrec-piezasrec"></div>
+        <div class="fg"><label>Ítems recibidos</label><input type="number" min="0" class="fc" id="editrec-itemsrec"></div>
+      </div>
+    </div>
+    <div class="fg" style="margin-top:6px"><label>Motivo del cambio (queda en bitácora)</label><input class="fc" id="editrec-motivo" placeholder="Ej: corrección tras conteo físico"></div>
+    <div class="mfoot">
+      <button class="btn bg" id="editrec-cancelar">Cancelar</button>
+      <button class="btn bp" id="editrec-guardar" style="width:auto">💾 Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR CONSOLIDADO DE CAMIÓN (reasignar colaborador, agente, nota) -->
+<div id="m-editcam" class="mbd">
+  <div class="mbox">
+    <h3>✏️ Editar consolidado</h3>
+    <div class="fg" style="margin-top:8px"><label>Agente / corredor</label><input class="fc" id="editcam-agente"></div>
+    <div class="fg"><label>👤 Reasignar recepción a colaborador</label><select class="fc" id="editcam-asignado"></select></div>
+    <div class="fg"><label>Nota</label><textarea class="fc" id="editcam-nota" rows="2" style="resize:vertical"></textarea></div>
+    <div class="mfoot">
+      <button class="btn bg" id="editcam-cancelar">Cancelar</button>
+      <button class="btn bp" id="editcam-guardar" style="width:auto">💾 Guardar cambios</button>
     </div>
   </div>
 </div>
@@ -4688,51 +4734,64 @@ el('log-cam-cantequipos')?.addEventListener('input',renderLogCamEquipoInputs);
 el('log-cam-cantequipos')?.addEventListener('change',renderLogCamEquipoInputs);
 
 el('btn-log-cam-crear')?.addEventListener('click',async()=>{
-  const agente=el('log-cam-agente-search').value.trim();
-  if(!agente){toast('Ingresa el agente o corredor','err');return;}
-  const checks=[...document.querySelectorAll('.log-cam-chk:checked')];
-  if(!checks.length){toast('Selecciona al menos un recibo','err');return;}
-  const asignado=el('log-cam-asignado').value;
-  if(!asignado){toast('Selecciona quién recibirá el camión','err');return;}
-  let bultosTotal=0,palletsTotal=0;const provs=new Set();const recibosMap={};
-  checks.forEach(chk=>{
-    const k=chk.dataset.k,v=LOGR[k];if(!v)return;
-    bultosTotal+=Number(v.bultosEsperados)||0;
-    palletsTotal+=Number(v.palletsEsperados)||0;
-    if(v.proveedor)provs.add(v.proveedor);
-    recibosMap[k]=true;
-  });
-  const tipoEquipo=el('log-cam-tipoequipo')?.value||null;
-  const naviera=esContenedorCam(tipoEquipo)?(el('log-cam-naviera')?.value||null):null;
-  const equipos=(tipoEquipo&&(esContenedorCam(tipoEquipo)||esCamionOFurgonCam(tipoEquipo)))?getLogCamEquiposFromForm():[];
-  const now=new Date();
-  const data={
-    agente,
-    recibos:recibosMap,
-    bultosTotal,palletsTotal,
-    proveedores:[...provs],
-    tipoEquipo,naviera,equipos,
-    asignadoA:asignado,
-    creadoPor:CU,
-    fecha:isoD(now),hora:fmtT(now),
-    estado:'pendiente',
-    nota:el('log-cam-nota').value.trim()||null,
-    bitacora:[{accion:'Creado',por:CU,ts:new Date().toISOString(),motivo:''}]
-  };
-  const r=push(R(db,LOGCAM));
-  await set(r,data);
-  const updates={};
-  Object.keys(recibosMap).forEach(k=>{updates[k+'/camionId']=r.key;});
-  await update(R(db,LOGREC),updates);
-  await sendNotif(CU,asignado,'🚛 Camión asignado','Agente: '+agente+' — '+checks.length+' recibo(s) — '+bultosTotal+' bultos');
-  el('log-cam-agente-search').value='';
-  el('log-cam-nota').value='';
-  el('log-cam-asignado').value='';
-  el('log-cam-tipoequipo').value='';
-  el('log-cam-cantequipos').value='1';
-  renderLogCamEquipoBox();
-  toast('Consolidado creado ✓','ok');
-  renderLogCamNuevoChecklist();
+  const btnCrear=el('btn-log-cam-crear');
+  try{
+    const agente=el('log-cam-agente-search').value.trim();
+    if(!agente){toast('Ingresa el agente o corredor','err');return;}
+    const checks=[...document.querySelectorAll('.log-cam-chk:checked')];
+    if(!checks.length){toast('Selecciona al menos un recibo','err');return;}
+    const asignado=el('log-cam-asignado').value;
+    if(!asignado){toast('Selecciona quién recibirá el camión','err');return;}
+    let bultosTotal=0,palletsTotal=0;const provs=new Set();const recibosMap={};
+    checks.forEach(chk=>{
+      const k=chk.dataset.k,v=LOGR[k];if(!v)return;
+      bultosTotal+=Number(v.bultosEsperados)||0;
+      palletsTotal+=Number(v.palletsEsperados)||0;
+      if(v.proveedor)provs.add(v.proveedor);
+      recibosMap[k]=true;
+    });
+    if(!Object.keys(recibosMap).length){toast('Los recibos seleccionados ya no existen. Recarga la lista.','err');return;}
+    const tipoEquipo=el('log-cam-tipoequipo')?.value||null;
+    const naviera=esContenedorCam(tipoEquipo)?(el('log-cam-naviera')?.value||null):null;
+    const equipos=(tipoEquipo&&(esContenedorCam(tipoEquipo)||esCamionOFurgonCam(tipoEquipo)))?getLogCamEquiposFromForm():[];
+    const now=new Date();
+    const data={
+      agente,
+      recibos:recibosMap,
+      bultosTotal,palletsTotal,
+      proveedores:[...provs],
+      tipoEquipo,naviera,
+      equipos:equipos&&equipos.length?equipos:null,
+      asignadoA:asignado,
+      creadoPor:CU,
+      fecha:isoD(now),hora:fmtT(now),
+      estado:'pendiente',
+      nota:el('log-cam-nota').value.trim()||null,
+      bitacora:[{accion:'Creado',por:CU,ts:new Date().toISOString(),motivo:''}]
+    };
+    btnCrear.disabled=true;
+    const r=push(R(db,LOGCAM));
+    await set(r,data);
+    const updates={};
+    Object.keys(recibosMap).forEach(k=>{updates[k+'/camionId']=r.key;});
+    await update(R(db,LOGREC),updates);
+    try{
+      await sendNotif(CU,asignado,'🚛 Camión asignado','Agente: '+agente+' — '+checks.length+' recibo(s) — '+bultosTotal+' bultos');
+    }catch(notifErr){console.error('sendNotif falló pero el consolidado sí se creó',notifErr);}
+    el('log-cam-agente-search').value='';
+    el('log-cam-nota').value='';
+    el('log-cam-asignado').value='';
+    el('log-cam-tipoequipo').value='';
+    el('log-cam-cantequipos').value='1';
+    renderLogCamEquipoBox();
+    toast('Consolidado creado ✓','ok');
+    renderLogCamNuevoChecklist();
+  }catch(e){
+    console.error('Error creando consolidado:',e);
+    toast('❌ No se pudo crear el consolidado: '+(e&&e.message?e.message:e),'err',6000);
+  }finally{
+    btnCrear.disabled=false;
+  }
 });
 
 // Vista de recepción: informativa. El estado real (✓ recibido) de cada recibo lo marca el chequeador
@@ -4777,9 +4836,13 @@ async function renderLogCamRec(){
         <div>
           <div style="font-weight:800;font-size:14px">🚛 ${cam.agente}${doneTag}</div>
           <div style="font-size:11px;color:var(--mt)">${cam.fecha||''} ${cam.hora||''} · ${cam.bultosTotal} bultos${cam.palletsTotal?(' · '+cam.palletsTotal+' pallets'):''} · ${recKeys.length} recibo(s)${cam.proveedores&&cam.proveedores.length?(' · '+cam.proveedores.join(', ')):''}</div>
+          ${cam.asignadoA?`<div style="font-size:11px;color:var(--mt);margin-top:2px">👤 Asignado a: ${cam.asignadoA}</div>`:''}
           ${equipoLine?`<div style="font-size:11px;color:var(--mt);margin-top:2px">${equipoLine}</div>`:''}
         </div>
-        <div style="font-size:12px;font-weight:700;color:var(--ac)">${checkedCount}/${recKeys.length} ✓</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <div style="font-size:12px;font-weight:700;color:var(--ac)">${checkedCount}/${recKeys.length} ✓</div>
+          ${isAdm?`<button type="button" class="btn bg bsm log-editcam-btn" data-cam="${camK}" style="width:auto;padding:2px 8px;font-size:11px">✏️ Editar</button>`:''}
+        </div>
       </div>
       ${rows}
       <div style="margin-top:10px;border-top:1px solid var(--bd);padding-top:8px">
@@ -4826,6 +4889,10 @@ document.addEventListener('click',async e=>{
   if(!confirm('¿Quitar este camión recibido?'))return;
   await remove(R(db,`${LOGCAM}/${btn.dataset.cam}/recepcionEquipos/${btn.dataset.eq}`));
   renderLogCamRec();
+});
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('.log-editcam-btn');if(!btn)return;
+  abrirEditCam(btn.dataset.cam);
 });
 document.addEventListener('click',e=>{
   const btn=e.target.closest('.log-camrec-detalle');if(!btn)return;
@@ -4894,6 +4961,10 @@ function extraerDatosRecibo(text){
   if(filas.length){
     out.piezas=filas.reduce((a,b)=>a+b,0);
     out.items=filas.length;
+  }else{
+    // Este formato de recibo no usa el patrón "N PZA(1)" por renglón — no se puede
+    // contar piezas/ítems de forma confiable. Se avisa en vez de mostrar un número inventado.
+    out.itemsNoDetectados=true;
   }
   // Recepción: si el PDF menciona "Westland" en algún lado, se asume esa bodega; si no, CDF por defecto.
   out.recepcion=/westland/i.test(text)?'Westland':'CDF';
@@ -4904,11 +4975,26 @@ function resolverProveedorMaestro(nombreDetectado,priorizarSI){
   if(!nombreDetectado)return{matched:false};
   const norm=s=>s.toUpperCase().replace(/^S\.I\s*-\s*/,'').trim();
   const target=norm(nombreDetectado);
-  const candidatos=PROVEEDORES_MAESTRO.filter(p=>{
+  let candidatos=PROVEEDORES_MAESTRO.filter(p=>{
     const pn=norm(p.n);
     return pn===target||pn.includes(target)||target.includes(pn);
   });
   if(!candidatos.length)return{matched:false};
+  // 1) Si hay coincidencia EXACTA de nombre, quedarse solo con esas (evita que "REGAL" traiga
+  //    de vuelta cualquier proveedor cuyo nombre solo contenga la palabra "REGAL")
+  const exactos=candidatos.filter(p=>norm(p.n)===target);
+  if(exactos.length)candidatos=exactos;
+  // 2) Si sigue habiendo más de un candidato posible, priorizar el que YA se ha usado antes
+  //    en esta app (nombre tal cual quedó guardado en recibos anteriores) — ese es el que el
+  //    equipo confirmó como correcto, por encima de S.I- o de cualquier otro criterio
+  if(candidatos.length>1){
+    try{
+      const usados=new Set(Object.values(LOGR||{}).map(v=>v.proveedor).filter(Boolean));
+      const yaUsado=candidatos.find(p=>usados.has(p.n));
+      if(yaUsado)return{matched:true,nombre:yaUsado.n};
+    }catch(e){}
+  }
+  // 3) Si no hay historial que lo resuelva, caer al criterio anterior: S.I- (hijo) vs. padre
   const hijo=candidatos.find(p=>p.n.toUpperCase().startsWith('S.I'));
   const padre=candidatos.find(p=>!p.n.toUpperCase().startsWith('S.I'));
   if(priorizarSI&&hijo)return{matched:true,nombre:hijo.n};
@@ -4954,8 +5040,11 @@ el('log-nv-pdf-input')?.addEventListener('change',async(e)=>{
     const c=extraerDatosRecibo(text);
     aplicarDatosRecibo(c);
     const provTxt=c.proveedorResuelto||(c.proveedorDetectado?`"${c.proveedorDetectado}" — no se encontró en el listado`:'no detectado');
-    if(status)status.textContent=`✓ Detectado: recibo ${c.numeroRecibo||'?'} · ${provTxt} · ${c.bultos||'?'} bultos · ${c.piezas?c.piezas.toLocaleString('en-US'):'?'} piezas · ${c.items||'?'} ítems · recepción: ${c.recepcion} — revisa los campos antes de enviar.`;
-    toast('Datos del PDF cargados — revisa los campos','ok');
+    const piezasItemsTxt=c.itemsNoDetectados
+      ? '⚠️ este formato de PDF no permitió contar piezas/ítems automáticamente — complétalos a mano'
+      : `${c.piezas?c.piezas.toLocaleString('en-US'):'?'} piezas · ${c.items||'?'} ítems`;
+    if(status)status.textContent=`✓ Detectado: recibo ${c.numeroRecibo||'?'} · ${provTxt} · ${c.bultos||'?'} bultos (páginas leídas: ${pdf.numPages}) · ${piezasItemsTxt} · recepción: ${c.recepcion} — revisa los campos antes de enviar.`;
+    toast(c.itemsNoDetectados?'PDF leído, pero revisa piezas/ítems manualmente':'Datos del PDF cargados — revisa los campos','ok');
   }catch(err){
     console.error(err);
     if(status)status.textContent='No se pudo leer ese PDF automáticamente. Completa los campos manualmente.';
@@ -5220,7 +5309,8 @@ async function renderLogHistorial(){
     return logItemHTML(k,v)+(isAdm?`<div style="padding:6px 10px 8px 10px;border-top:1px solid var(--bd)">`
       +(bitaStr?`<div style="margin-bottom:6px">${bitaStr}</div>`:'')
       +`<div style="display:flex;gap:6px;flex-wrap:wrap">`
-      +`<button data-mod="${k}" class="btn bg bsm" style="font-size:11px;padding:4px 8px;width:auto">✏️ Modificar</button>`
+      +`<button data-editrec="${k}" class="btn bg bsm" style="font-size:11px;padding:4px 8px;width:auto">✏️ Editar recibo</button>`
+      +`<button data-mod="${k}" class="btn bg bsm" style="font-size:11px;padding:4px 8px;width:auto">📅 Fecha</button>`
       +`<button data-print="${k}" class="btn bg bsm" style="font-size:11px;padding:4px 8px;width:auto">🖨️ Imprimir PDF</button>`
       +(isAdm&&(v.estado==='pendiente'||v.estado==='parcial')?`<button data-del="${k}" class="btn bg bsm" style="font-size:11px;padding:4px 8px;width:auto;color:var(--dn)">🗑 Eliminar</button>`:'')
       +`</div></div>`:'');
@@ -5229,6 +5319,9 @@ async function renderLogHistorial(){
   list.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',async(e)=>{
     e.stopPropagation();if(!confirm('¿Eliminar este registro?'))return;
     await remove(R(db,LOGREC+'/'+b.dataset.del));toast('Eliminado','ok');renderLogHistorial();renderLogPendientes();
+  }));
+  list.querySelectorAll('[data-editrec]').forEach(b=>b.addEventListener('click',(e)=>{
+    e.stopPropagation();abrirEditRec(b.dataset.editrec);
   }));
   list.querySelectorAll('[data-mod]').forEach(b=>b.addEventListener('click',async(e)=>{
     e.stopPropagation();const k=b.dataset.mod;const v=LOGR[k];
@@ -5260,6 +5353,99 @@ async function renderLogHistorial(){
     win.document.close();
   }));
 }
+
+// Selector genérico de colaboradores (usado para reasignar chequeador en recibos y consolidados)
+async function fillColabSelectGeneric(sel,curVal){
+  if(!sel)return;
+  const users=await getUsers();
+  const colab=Object.values(users).filter(u=>!GERENTES.includes(u.user));
+  sel.innerHTML='<option value="">Seleccionar colaborador...</option>'+colab.map(u=>`<option value="${u.user}">${u.nombre}</option>`).join('');
+  if(curVal)sel.value=curVal;
+}
+
+// ── EDITAR RECIBO (bultos/pallets/piezas/items + reasignar chequeador) ────
+let EDITREC_K=null;
+async function abrirEditRec(k){
+  const v=LOGR[k];if(!v){toast('Recibo no encontrado','err');return;}
+  EDITREC_K=k;
+  el('editrec-num').textContent='#'+v.numeroRecibo+' — '+v.proveedor;
+  await fillColabSelectGeneric(el('editrec-asignado'),v.asignadoA);
+  el('editrec-bultosesp').value=v.bultosEsperados||'';
+  el('editrec-palletsesp').value=v.palletsEsperados||'';
+  el('editrec-piezasesp').value=v.piezasEsperadas||'';
+  el('editrec-itemsesp').value=v.itemsEsperados||'';
+  const esRecibido=v.estado==='recibido'||v.estado==='parcial';
+  el('editrec-recibido-box').style.display=esRecibido?'block':'none';
+  el('editrec-bultosrec').value=v.bultosRecibidos||'';
+  el('editrec-palletsrec').value=v.palletsRecibidos||'';
+  el('editrec-piezasrec').value=v.piezasRecibidas||'';
+  el('editrec-itemsrec').value=v.itemsRecibidos||'';
+  el('editrec-motivo').value='';
+  el('m-editrec').classList.add('open');
+}
+el('editrec-cancelar')?.addEventListener('click',()=>el('m-editrec').classList.remove('open'));
+el('editrec-guardar')?.addEventListener('click',async()=>{
+  try{
+    const k=EDITREC_K;if(!k||!LOGR[k]){toast('Recibo no encontrado','err');return;}
+    const v=LOGR[k];
+    const motivo=el('editrec-motivo').value.trim();
+    if(!motivo){toast('Ingresa un motivo del cambio','err');return;}
+    const nuevoAsignado=el('editrec-asignado').value;
+    const cambios={
+      bultosEsperados:parseInt(el('editrec-bultosesp').value)||0,
+      palletsEsperados:el('editrec-palletsesp').value?parseInt(el('editrec-palletsesp').value):null,
+      piezasEsperadas:el('editrec-piezasesp').value?parseInt(el('editrec-piezasesp').value):null,
+      itemsEsperados:el('editrec-itemsesp').value?parseInt(el('editrec-itemsesp').value):null,
+      asignadoA:nuevoAsignado||v.asignadoA
+    };
+    const esRecibido=v.estado==='recibido'||v.estado==='parcial';
+    if(esRecibido){
+      cambios.bultosRecibidos=el('editrec-bultosrec').value?parseInt(el('editrec-bultosrec').value):v.bultosRecibidos;
+      cambios.palletsRecibidos=el('editrec-palletsrec').value?parseInt(el('editrec-palletsrec').value):v.palletsRecibidos;
+      cambios.piezasRecibidas=el('editrec-piezasrec').value?parseInt(el('editrec-piezasrec').value):v.piezasRecibidas;
+      cambios.itemsRecibidos=el('editrec-itemsrec').value?parseInt(el('editrec-itemsrec').value):v.itemsRecibidos;
+    }
+    const reasignado=nuevoAsignado&&nuevoAsignado!==v.asignadoA;
+    const bitEntry={accion:'Recibo editado'+(reasignado?' · reasignado de '+(v.asignadoA||'—')+' a '+nuevoAsignado:''),por:CU,ts:new Date().toISOString(),motivo};
+    const bita=v.bitacora?[...Object.values(v.bitacora),bitEntry]:[bitEntry];
+    await set(R(db,LOGREC+'/'+k),{...v,...cambios,bitacora:bita});
+    if(reasignado)await sendNotif(CU,nuevoAsignado,'📦 Recibo reasignado','Recibo #'+v.numeroRecibo+' — '+v.proveedor+' — ahora asignado a ti');
+    toast('Recibo actualizado ✓','ok');
+    el('m-editrec').classList.remove('open');
+    renderLogHistorial();renderLogPendientes();renderLogKPIs();
+  }catch(e){console.error('editRec',e);toast('❌ No se pudo guardar: '+(e.message||e),'err');}
+});
+
+// ── EDITAR CONSOLIDADO DE CAMIÓN (agente/nota + reasignar colaborador) ────
+let EDITCAM_K=null;
+async function abrirEditCam(camK){
+  const v=LOGCAMS[camK];if(!v){toast('Consolidado no encontrado','err');return;}
+  EDITCAM_K=camK;
+  el('editcam-agente').value=v.agente||'';
+  await fillColabSelectGeneric(el('editcam-asignado'),v.asignadoA);
+  el('editcam-nota').value=v.nota||'';
+  el('m-editcam').classList.add('open');
+}
+el('editcam-cancelar')?.addEventListener('click',()=>el('m-editcam').classList.remove('open'));
+el('editcam-guardar')?.addEventListener('click',async()=>{
+  try{
+    const camK=EDITCAM_K;if(!camK||!LOGCAMS[camK]){toast('Consolidado no encontrado','err');return;}
+    const v=LOGCAMS[camK];
+    const agente=el('editcam-agente').value.trim();
+    if(!agente){toast('Ingresa el agente o corredor','err');return;}
+    const nuevoAsignado=el('editcam-asignado').value||v.asignadoA;
+    const nota=el('editcam-nota').value.trim()||null;
+    const reasignado=nuevoAsignado&&nuevoAsignado!==v.asignadoA;
+    const bitEntry={accion:'Consolidado editado'+(reasignado?' · reasignado de '+(v.asignadoA||'—')+' a '+nuevoAsignado:''),por:CU,ts:new Date().toISOString(),motivo:''};
+    const bita=v.bitacora?[...Object.values(v.bitacora),bitEntry]:[bitEntry];
+    await set(R(db,LOGCAM+'/'+camK),{...v,agente,asignadoA:nuevoAsignado,nota,bitacora:bita});
+    if(reasignado)await sendNotif(CU,nuevoAsignado,'🚛 Camión reasignado','Agente: '+agente+' — ahora asignado a ti');
+    toast('Consolidado actualizado ✓','ok');
+    el('m-editcam').classList.remove('open');
+    renderLogCamRec();
+  }catch(e){console.error('editCam',e);toast('❌ No se pudo guardar: '+(e.message||e),'err');}
+});
+
 el('log-hist-tog')?.addEventListener('click',()=>{
   const w=el('log-ac-hist'),ch=el('log-hist-ch');
   const open=w.style.display!=='none'&&w.style.display!=='';
