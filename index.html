@@ -1027,6 +1027,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
       ".read": "auth != null",
       ".write": "auth != null"
     },
+    "logistica_camiones_v1": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
     "logistica_deptos_v1": {
       ".read": "auth != null",
       ".write": "auth != null"
@@ -1789,6 +1793,24 @@ import{getDatabase,ref as R,set,push,get,onValue,remove,update}from"https://www.
 
 const FB={apiKey:"AIzaSyCn7bUx8PdK-1TCmOnffWJYLouC5vdGMIE",authDomain:"westland-marcaciones.firebaseapp.com",projectId:"westland-marcaciones",storageBucket:"westland-marcaciones.appspot.com",messagingSenderId:"477907187320",appId:"1:477907187320:web:c04ef5b3b8ff5773b99f8d",databaseURL:"https://westland-marcaciones-default-rtdb.firebaseio.com"};
 const app=initializeApp(FB),auth=getAuth(app),db=getDatabase(app);
+// ── ESTADO DE CONEXIÓN EN TIEMPO REAL ──────────────────────────────────────
+// Los navegadores móviles (sobre todo con ahorro de batería activo) suspenden el socket
+// de Firebase cuando la pestaña queda en segundo plano. Al volver, el SDK a veces tarda
+// en darse cuenta de que la conexión murió y reconectar solo, causando pantallas
+// "Cargando..." pegadas o listas vacías por minutos. Aquí se detecta ese estado y se
+// fuerza una recarga inmediata de los datos en pantalla en cuanto la conexión vuelve.
+let FB_CONNECTED=true,fbWasDown=false;
+onValue(R(db,'.info/connected'),(snap)=>{
+  FB_CONNECTED=snap.val()===true;
+  if(!FB_CONNECTED){fbWasDown=true;}
+  else if(fbWasDown){
+    fbWasDown=false;
+    if(CU){
+      toast('🔄 Conexión restablecida, actualizando...','ok',2500);
+      renderLogPendientes();renderLogCamNuevoChecklist();renderLogCamRec();refreshUI();
+    }
+  }
+});
 
 // PATHS
 const META="meta_v1",USERS="users_v1",HIST="historial_v1",PLOG="prolog_v1",FER="feriados_v1",APR="approvals_v1";
@@ -1891,7 +1913,14 @@ window.resetSess=resetSess;
 });
 // Handle app coming back from background
 document.addEventListener('visibilitychange',()=>{
-  if(!document.hidden&&CU){lastActive=Date.now();}
+  if(!document.hidden&&CU){
+    lastActive=Date.now();
+    // Si el navegador suspendió la pestaña (ahorro de batería, pantalla bloqueada), el socket
+    // de Firebase puede haber quedado colgado sin que .info/connected se entere todavía.
+    // Forzamos una recarga de los datos visibles apenas la pantalla vuelve a foreground,
+    // en vez de esperar a que el SDK detecte por sí solo que la conexión murió.
+    renderLogPendientes();renderLogCamNuevoChecklist();renderLogCamRec();
+  }
 });
 
 // DB HELPERS
@@ -1920,17 +1949,19 @@ async function checkGPS(){
 
 // DEFAULTS
 async function ensureDefaults(){
-  const rs=await get(R(db,RULES));if(!rs.exists())await set(R(db,RULES),{entrada:"09:00",salida:"18:00",almInicio:"12:00",almFin:"13:00",tolerancia:10});
-  const hs=await get(R(db,HOR));if(!hs.exists())await set(R(db,HOR),{dia:"todos",inicio:"09:00",fin:"18:00",duracionAlm:60});
-  const fs=await get(R(db,FER));if(!fs.exists())await set(R(db,FER),{});
-  const us=await get(R(db,USERS));
-  if(!us.exists())await set(R(db,USERS),{
+  // Lecturas independientes en paralelo (antes eran 5 viajes secuenciales a Firebase)
+  const[rs,hs,fs,us,ps]=await Promise.all([get(R(db,RULES)),get(R(db,HOR)),get(R(db,FER)),get(R(db,USERS)),get(R(db,LOGPROV))]);
+  const writes=[];
+  if(!rs.exists())writes.push(set(R(db,RULES),{entrada:"09:00",salida:"18:00",almInicio:"12:00",almFin:"13:00",tolerancia:10}));
+  if(!hs.exists())writes.push(set(R(db,HOR),{dia:"todos",inicio:"09:00",fin:"18:00",duracionAlm:60}));
+  if(!fs.exists())writes.push(set(R(db,FER),{}));
+  if(!us.exists())writes.push(set(R(db,USERS),{
     provira:{nombre:"Paul Rovira",cedula:"8-859-12",user:"provira",email:u2e("provira"),rol:"Administrador",tarifa:{regular:20,domingo:25,feriado:30,especial:46.15},profileUrl:""},
     aalvarado:{nombre:"Armando Alvarado",cedula:"8-514-658",user:"aalvarado",email:u2e("aalvarado"),rol:"Administrador",tarifa:{regular:20,domingo:25,feriado:35,especial:46.15},profileUrl:""},
     jdecerega:{nombre:"Javier Decerega",cedula:"",user:"jdecerega",email:"jdecerega@saks.com.pa",rol:"Gerente",tarifa:{regular:0,domingo:0,feriado:0,especial:0},profileUrl:""}
-  });
-  const ps=await get(R(db,LOGPROV));
-  if(!ps.exists())await set(R(db,LOGPROV),{p1:{nombre:"NASA Zona Libre",tipo:"Zona Libre"}});
+  }));
+  if(!ps.exists())writes.push(set(R(db,LOGPROV),{p1:{nombre:"NASA Zona Libre",tipo:"Zona Libre"}}));
+  if(writes.length)await Promise.all(writes);
 }
 
 // ── JORNADA DEL DÍA (flexible, por usuario, una vez por día) ──────────────
@@ -1941,19 +1972,23 @@ async function getHorarioBaseDe(user,fecha){
   const DAY=['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
   const d=fecha?new Date(fecha+'T00:00:00'):new Date();
   const dn=DAY[d.getDay()];
+  // Todas las lecturas son independientes entre sí: se piden en paralelo (antes eran 4 viajes
+  // secuenciales a Firebase, lo cual con señal débil sumaba varios segundos cada uno).
+  const [csR,hsR,dsR,rsR]=await Promise.all([
+    get(R(db,`${HORCOL}/${user}/${dn}`)).catch(()=>null),
+    get(R(db,HOR)),
+    get(R(db,HDIAS)),
+    get(R(db,RULES))
+  ]);
+  const hor=hsR.exists()?hsR.val():{inicio:"09:00",fin:"18:00",duracionAlm:60};
   // Prioridad 1: horario específico del colaborador (HORCOL)
-  try{
-    const cs=await get(R(db,`${HORCOL}/${user}/${dn}`));
-    if(cs.exists()&&cs.val().inicio){
-      const ch=cs.val();
-      const hs=await get(R(db,HOR));const hor=hs.exists()?hs.val():{};
-      return{inicio:ch.inicio,fin:ch.fin||hor.fin||"18:00",almInicio:hor.almInicio||"12:00",duracionAlm:parseInt(hor.duracionAlm||60)};
-    }
-  }catch(e){}
+  if(csR&&csR.exists()&&csR.val().inicio){
+    const ch=csR.val();
+    return{inicio:ch.inicio,fin:ch.fin||hor.fin||"18:00",almInicio:hor.almInicio||"12:00",duracionAlm:parseInt(hor.duracionAlm||60)};
+  }
   // Prioridad 2: horario por día general (HDIAS)
-  const hs=await get(R(db,HOR));const hor=hs.exists()?hs.val():{inicio:"09:00",fin:"18:00",duracionAlm:60};
-  const ds=await get(R(db,HDIAS));const hdias=ds.exists()?ds.val():{};
-  const rs=await get(R(db,RULES));const rul=rs.exists()?rs.val():{};
+  const hdias=dsR.exists()?dsR.val():{};
+  const rul=rsR.exists()?rsR.val():{};
   const base=hdias[dn]||hor;
   return{inicio:base.inicio||"09:00",fin:base.fin||"18:00",almInicio:base.almInicio||rul.almInicio||"12:00",duracionAlm:parseInt(base.duracionAlm!==undefined?base.duracionAlm:60)};
 }
