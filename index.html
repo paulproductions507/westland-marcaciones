@@ -2375,7 +2375,7 @@ async function openApp(user){
   el('log-config-card').style.display=isAdm?'block':'none';
   el('log-nuevo-card').style.display=isAdm?'block':'none';
   el('log-camnuevo-card').style.display=isAdm?'block':'none';
-  tabSwitch('reloj');renderLogProveedores();renderLogPendientes();loadLogDeptos();fillLogAsignadoSelect();fillLogCamAsignadoSelect();renderLogCamNuevoChecklist();renderLogCamRec();listenLogistica();loadLogSumMov();loadLogSumTam();loadLogSumCat();loadLogSumResp();loadLogSumReq();loadLogSumAreas();loadLogSumAcuses();loadAnSemanas();
+  tabSwitch('reloj');renderLogProveedores();await renderLogPendientes();loadLogDeptos();fillLogAsignadoSelect();fillLogCamAsignadoSelect();renderLogCamNuevoChecklist();renderLogCamRec();listenLogistica();loadLogSumMov();loadLogSumTam();loadLogSumCat();loadLogSumResp();loadLogSumReq();loadLogSumAreas();loadLogSumAcuses();loadAnSemanas();
   // Gerente: hide buttons they shouldn't see
   if(isGer){
     ['btn-limpiar'].forEach(id=>{if(el(id))el(id).style.display='none';});
@@ -4797,9 +4797,17 @@ el('btn-log-cam-crear')?.addEventListener('click',async()=>{
 // Vista de recepción: informativa. El estado real (✓ recibido) de cada recibo lo marca el chequeador
 // desde "Recepción" (log-rec-jump); aquí solo se refleja, no se puede editar.
 async function renderLogCamRec(){
-  const s=await get(R(db,LOGCAM));LOGCAMS=s.exists()?s.val():{};
+  const c=el('log-cam-lista');
+  try{
+    const s=await get(R(db,LOGCAM));LOGCAMS=s.exists()?s.val():{};
+  }catch(e){
+    console.error('renderLogCamRec: fallo al leer LOGCAM',e);
+    if(c)c.innerHTML='<div style="color:var(--dn);font-size:12px">❌ No se pudo cargar la lista de camiones: '+(e&&e.message?e.message:e)+'</div>';
+    toast('❌ Error cargando camiones: '+(e&&e.message?e.message:e),'err',6000);
+    return;
+  }
   fillLogAgenteDatalist();
-  const c=el('log-cam-lista');if(!c)return;
+  if(!c)return;
   const isAdm=ADMINS.includes(CU)||GERENTES.includes(CU);
   // Admins ven todo el ciclo (pendientes y completados); el colaborador asignado solo ve lo suyo mientras esté pendiente
   const items=Object.entries(LOGCAMS).filter(([,v])=>isAdm||(v.asignadoA===CU&&v.estado!=='completo'));
@@ -5106,7 +5114,13 @@ el('btn-log-nv-enviar')?.addEventListener('click',async()=>{
 });
 
 async function renderLogPendientes(){
-  const s=await get(R(db,LOGREC));LOGR=s.exists()?s.val():{};
+  try{
+    const s=await get(R(db,LOGREC));LOGR=s.exists()?s.val():{};
+  }catch(e){
+    console.error('renderLogPendientes: fallo al leer LOGREC',e);
+    toast('❌ Error cargando recibos: '+(e&&e.message?e.message:e),'err',6000);
+    return;
+  }
   const sel=el('log-rec-select');if(!sel)return;
   const cur=sel.value;
   const pend=Object.entries(LOGR).filter(([,v])=>v.estado==='pendiente'||v.estado==='parcial');
@@ -7225,7 +7239,7 @@ el('btn-an-exportar')?.addEventListener('click',()=>{
 function listenLogistica(){
   if(logListening)return;logListening=true;
   onValue(R(db,LOGPROV),()=>{if(CU)renderLogProveedores();});
-  onValue(R(db,LOGREC),()=>{if(CU){renderLogPendientes();renderLogCamNuevoChecklist();renderLogCamRec();if(el('log-hist-wrap')&&el('log-hist-wrap').style.display==='block')renderLogHistorial();updateLogBadge();if(el('tab-log')&&el('tab-log').style.display!=='none')renderLogKPIs();}});
+  onValue(R(db,LOGREC),(snap)=>{if(CU){LOGR=snap.exists()?snap.val():{};renderLogPendientes();renderLogCamNuevoChecklist();renderLogCamRec();if(el('log-hist-wrap')&&el('log-hist-wrap').style.display==='block')renderLogHistorial();updateLogBadge();if(el('tab-log')&&el('tab-log').style.display!=='none')renderLogKPIs();}});
   onValue(R(db,LOGCAM),()=>{if(CU)renderLogCamRec();});
   onValue(R(db,LOGDEPTO),()=>{if(CU){loadLogDeptos();}});
   onValue(R(db,LOGSUM_MOV),()=>{if(CU)loadLogSumMov();},(e)=>{console.error('onValue LOGSUM_MOV',e);toast('Suministro: '+(e.message||e),'err');});
