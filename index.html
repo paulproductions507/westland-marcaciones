@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <!-- PWA -->
 <meta name="theme-color" content="#00252e">
@@ -1154,6 +1155,11 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 <div id="log-nuevo-card" style="display:none">
       <div class="asec"><div class="ashdr" data-ac="log-ac-nuevo"><span>📤 Nuevo formulario de envío</span><span class="ach">▾</span></div>
       <div class="asbdy" id="log-ac-nuevo">
+        <div class="fg" style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px">
+          <label>📄 Cargar PDF del recibo (opcional) — autocompleta proveedor, bultos, piezas e ítems</label>
+          <input type="file" accept="application/pdf" class="fc" id="log-nv-pdf-input" style="padding:8px;margin-top:4px">
+          <div id="log-nv-pdf-status" style="font-size:11px;color:var(--mt);margin-top:6px">Sube el recibo en PDF y el sistema intenta detectar los campos. Siempre revisa antes de enviar.</div>
+        </div>
         <div class="fg2">
           <div class="fg"><label>Proveedor</label>
             <input class="fc" id="log-nv-prov-search" list="log-prov-datalist" placeholder="Escribe para buscar..." autocomplete="off">
@@ -1182,36 +1188,6 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         <div class="fg2">
           <div class="fg"><label>Piezas esperadas (opcional)</label><input type="number" min="0" class="fc" id="log-nv-piezas"></div>
           <div class="fg"><label>Cantidad de ítems (opcional)</label><input type="number" min="0" class="fc" id="log-nv-items"></div>
-        </div>
-        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px">
-          <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">🚢 Información del equipo</div>
-          <div class="fg"><label>Tipo de equipo</label>
-            <select class="fc" id="log-nv-tipoequipo">
-              <option value="">Seleccionar...</option>
-              <optgroup label="🚛 Camión / Furgón"><option value="Camión">Camión</option><option value="Furgón">Furgón</option><option value="Furgón refrigerado">Furgón refrigerado</option></optgroup>
-              <optgroup label="📦 Contenedor Estándar"><option value="Contenedor 20' Std">Contenedor 20' Estándar</option><option value="Contenedor 40' Std">Contenedor 40' Estándar</option><option value="Contenedor 45' Std">Contenedor 45' Estándar</option></optgroup>
-              <optgroup label="📦 High Cube"><option value="Contenedor 20' HC">Contenedor 20' HC</option><option value="Contenedor 40' HC">Contenedor 40' HC</option><option value="Contenedor 45' HC">Contenedor 45' HC</option></optgroup>
-              <optgroup label="📦 Especiales"><option value="Contenedor Open Top 20'">Open Top 20'</option><option value="Contenedor Open Top 40'">Open Top 40'</option><option value="Contenedor Flat Rack 20'">Flat Rack 20'</option><option value="Contenedor Flat Rack 40'">Flat Rack 40'</option><option value="Contenedor Reefer 20'">Reefer 20'</option><option value="Contenedor Reefer 40'">Reefer 40'</option></optgroup>
-              <optgroup label="✈️ Aéreo"><option value="Courier">Courier</option><option value="Carga aérea">Carga aérea</option></optgroup>
-              <optgroup label="📋 Otros"><option value="Pallet suelto">Pallet suelto</option><option value="Otro">Otro</option></optgroup>
-            </select>
-          </div>
-          <div id="log-naviera-box" style="display:none" class="fg"><label>Naviera / Línea</label>
-            <select class="fc" id="log-nv-naviera">
-              <option value="">Seleccionar...</option>
-              <option value="MSC">MSC</option><option value="Maersk">Maersk</option><option value="CMA CGM">CMA CGM</option><option value="COSCO">COSCO</option><option value="Hapag-Lloyd">Hapag-Lloyd</option><option value="ONE">ONE</option><option value="Evergreen">Evergreen</option><option value="Yang Ming">Yang Ming</option><option value="HMM">HMM (Hyundai)</option><option value="ZIM">ZIM</option><option value="PIL">PIL</option><option value="OOCL">OOCL</option><option value="APL">APL</option><option value="Wan Hai">Wan Hai</option><option value="Otra">Otra</option>
-            </select>
-          </div>
-          <div id="log-contenedor-box" style="display:none">
-            <div class="fg"><label>Cantidad de equipos</label><input type="number" min="1" class="fc" id="log-nv-cantequipos" value="1"></div>
-            <div id="log-contenedor-inputs" style="margin-top:6px"></div>
-            <div style="font-size:11px;color:var(--mt);margin-top:4px">Formato: TCKU1234567</div>
-          </div>
-          <div id="log-camion-cant-box" style="display:none" class="fg"><label>Cantidad de equipos</label><input type="number" min="1" class="fc" id="log-nv-cantequipos-camion" value="1"></div>
-        </div>
-        <div class="fg2">
-          <div class="fg"><label>Chofer (opcional)</label><input class="fc" id="log-nv-chofer"></div>
-          <div class="fg"><label>Placa (opcional)</label><input class="fc" id="log-nv-placa"></div>
         </div>
         <div class="fg"><label>Nota (opcional)</label><textarea class="fc" id="log-nv-nota" rows="2" style="resize:vertical"></textarea></div>
         <div class="fg"><label>👤 Asignar a colaborador</label><select class="fc" id="log-nv-asignado"><option value="todos">📢 Notificar a todos</option></select></div>
@@ -4586,7 +4562,10 @@ async function fillLogCamAsignadoSelect(){
   const sel=el('log-cam-asignado');if(!sel)return;
   const cur=sel.value;
   const users=await getUsers();
-  const colab=Object.values(users).filter(u=>!GERENTES.includes(u.user));
+  const semActivos=await loadSemActivos();
+  let colab=Object.values(users).filter(u=>!GERENTES.includes(u.user));
+  // SINCRONIZAR CON VISTA SEMANAL: solo mostrar colaboradores habilitados en sem_activos (vacío = todos)
+  if(semActivos.length>0)colab=colab.filter(u=>semActivos.includes(u.user));
   sel.innerHTML='<option value="">Seleccionar colaborador...</option>'+colab.map(u=>`<option value="${u.user}">${u.nombre}</option>`).join('');
   if(cur)sel.value=cur;
 }
@@ -4776,6 +4755,13 @@ async function renderLogCamRec(){
         </div>`;
     }).join('');
     const doneTag=cam.estado==='completo'?' <span style="color:var(--ac);font-weight:700">✓ completo</span>':'';
+    const recEq=cam.recepcionEquipos||{};
+    const recEqEntries=Object.entries(recEq);
+    const bultosRecConf=recEqEntries.reduce((a,[,e])=>a+(Number(e.bultos)||0),0);
+    const equiposRecRows=recEqEntries.map(([ek,e])=>`<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:6px 10px;font-size:12.5px;margin-bottom:5px">
+        <span style="flex:1">🚛 ${e.bultos||0} bultos${e.chofer?(' · '+e.chofer):''}${e.placa?(' · '+e.placa):''}${e.nota?(' · '+e.nota):''}</span>
+        <button type="button" class="btn bg bsm log-camrec-rm-equipo" data-cam="${camK}" data-eq="${ek}" style="width:auto;padding:2px 7px;font-size:11px;color:var(--dn)">✕</button>
+      </div>`).join('');
     return `<div class="card" style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
         <div>
@@ -4786,9 +4772,51 @@ async function renderLogCamRec(){
         <div style="font-size:12px;font-weight:700;color:var(--ac)">${checkedCount}/${recKeys.length} ✓</div>
       </div>
       ${rows}
+      <div style="margin-top:10px;border-top:1px solid var(--bd);padding-top:8px">
+        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🚛 Camiones recibidos (opcional)${recEqEntries.length?(' · '+bultosRecConf+' bultos confirmados'):''}</div>
+        ${equiposRecRows}
+        <div class="log-camrec-eqform" id="log-camrec-eqform-${camK}" style="display:none;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;margin:6px 0">
+          <div class="fg2">
+            <div class="fg"><label style="font-size:11px">Bultos recibidos</label><input type="number" min="0" class="fc log-camrec-eq-bultos" style="padding:6px 8px"></div>
+            <div class="fg"><label style="font-size:11px">Placa (opcional)</label><input class="fc log-camrec-eq-placa" style="padding:6px 8px"></div>
+          </div>
+          <div class="fg"><label style="font-size:11px">Chofer (opcional)</label><input class="fc log-camrec-eq-chofer" style="padding:6px 8px"></div>
+          <div style="display:flex;gap:6px;margin-top:4px">
+            <button type="button" class="btn bp bsm log-camrec-guardar-equipo" data-cam="${camK}" style="width:auto;padding:5px 10px;font-size:12px">Guardar</button>
+            <button type="button" class="btn bg bsm log-camrec-cancel-equipo" data-cam="${camK}" style="width:auto;padding:5px 10px;font-size:12px">Cancelar</button>
+          </div>
+        </div>
+        <button type="button" class="btn bg bsm log-camrec-add-equipo" data-cam="${camK}" style="width:auto;font-size:11px;padding:4px 10px">➕ Agregar camión recibido</button>
+      </div>
     </div>`;
   }).join('');
 }
+document.addEventListener('click',e=>{
+  const add=e.target.closest('.log-camrec-add-equipo');
+  if(add){const box=el('log-camrec-eqform-'+add.dataset.cam);if(box)box.style.display='block';return;}
+  const cancel=e.target.closest('.log-camrec-cancel-equipo');
+  if(cancel){const box=el('log-camrec-eqform-'+cancel.dataset.cam);if(box)box.style.display='none';return;}
+});
+document.addEventListener('click',async e=>{
+  const btn=e.target.closest('.log-camrec-guardar-equipo');if(!btn)return;
+  const camK=btn.dataset.cam;
+  const box=el('log-camrec-eqform-'+camK);if(!box)return;
+  const bultos=box.querySelector('.log-camrec-eq-bultos')?.value;
+  if(!bultos){toast('Ingresa los bultos recibidos','err');return;}
+  const chofer=box.querySelector('.log-camrec-eq-chofer')?.value.trim()||null;
+  const placa=box.querySelector('.log-camrec-eq-placa')?.value.trim()||null;
+  const now=new Date();
+  const r=push(R(db,`${LOGCAM}/${camK}/recepcionEquipos`));
+  await set(r,{bultos:parseInt(bultos),chofer,placa,por:CU,ts:new Date().toISOString()});
+  toast('Camión recibido agregado ✓','ok');
+  renderLogCamRec();
+});
+document.addEventListener('click',async e=>{
+  const btn=e.target.closest('.log-camrec-rm-equipo');if(!btn)return;
+  if(!confirm('¿Quitar este camión recibido?'))return;
+  await remove(R(db,`${LOGCAM}/${btn.dataset.cam}/recepcionEquipos/${btn.dataset.eq}`));
+  renderLogCamRec();
+});
 document.addEventListener('click',e=>{
   const btn=e.target.closest('.log-camrec-detalle');if(!btn)return;
   const rk=btn.dataset.rec;
@@ -4837,65 +4865,63 @@ function getRecibosFromForm(){
   return [...document.querySelectorAll('.log-nv-recibo-input')].map(i=>i.value.trim()).filter(Boolean);
 }
 
-// Campos dinámicos de contenedor con ETA por cada uno
-function esContenedor(tipo){return tipo&&tipo.toLowerCase().includes('contenedor');}
-function esCamionOFurgon(tipo){return tipo&&(tipo.toLowerCase().includes('camión')||tipo.toLowerCase().includes('furgón'));}
+// (El detalle de equipo/chofer/placa ahora se captura únicamente al consolidar el camión — ver sección "Consolidar recibos de un camión")
 
-function renderContenedorInputs(){
-  const tipo=el('log-nv-tipoequipo').value;
-  const navBox=el('log-naviera-box');
-  const contBox=el('log-contenedor-box');
-  const camBox=el('log-camion-cant-box');
-  if(!contBox)return;
-  if(esContenedor(tipo)){
-    if(navBox)navBox.style.display='block';
-    contBox.style.display='block';
-    if(camBox)camBox.style.display='none';
-    renderContFields();
-  }else if(esCamionOFurgon(tipo)){
-    if(navBox)navBox.style.display='none';
-    contBox.style.display='none';
-    if(camBox)camBox.style.display='block';
-  }else{
-    if(navBox)navBox.style.display='none';
-    contBox.style.display='none';
-    if(camBox)camBox.style.display='none';
-  }
+// ── EXTRACCIÓN AUTOMÁTICA DE DATOS DESDE PDF DEL RECIBO (autocompletar, siempre revisable) ──
+if(typeof pdfjsLib!=='undefined'){
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 }
-
-function renderContFields(){
-  const cant=parseInt(el('log-nv-cantequipos')?.value)||1;
-  const cont=el('log-contenedor-inputs');if(!cont)return;
-  const prev=[...cont.querySelectorAll('.cont-num-input')].map(i=>i.value);
-  const prevEta=[...cont.querySelectorAll('.cont-eta-input')].map(i=>i.value);
-  cont.innerHTML='';
-  for(let i=0;i<cant;i++){
-    const div=document.createElement('div');
-    div.style.cssText='background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:8px';
-    div.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--ac);margin-bottom:6px">Contenedor ${i+1}</div>`
-      +`<div class="fg2">`
-      +`<div class="fg"><label style="font-size:11px">N° de contenedor</label><input class="fc cont-num-input" id="log-cont-num-${i}" placeholder="TCKU1234567" value="${prev[i]||''}" style="font-family:monospace;letter-spacing:1px"></div>`
-      +`<div class="fg"><label style="font-size:11px">Fecha ETA</label><input type="date" class="fc cont-eta-input" id="log-cont-eta-${i}" value="${prevEta[i]||''}"></div>`
-      +`</div>`;
-    cont.appendChild(div);
-  }
+function extraerDatosRecibo(text){
+  const out={};
+  let m=text.match(/Recibo\s*No\.?\s*(\d+)/i);
+  if(m)out.numeroRecibo=m[1];
+  // Ej: "Método de Arribo: WESTLAND - ONIX TRADING - 14 CTNS"  →  proveedor + cartones/bultos
+  m=text.match(/M[eé]todo de Arribo:\s*[^-]+-\s*(.+?)\s*-\s*(\d+)\s*CTNS/i);
+  if(m){out.proveedor=m[1].trim();out.bultos=parseInt(m[2]);}
+  // Ej: "Gran Total: 0   670   0"  →  el número del medio es el total de piezas
+  m=text.match(/Gran Total:\s*[\d.,]+\s+([\d.,]+)\s+[\d.,]+/i);
+  if(m)out.piezas=parseInt(m[1].replace(/[.,]/g,''))||undefined;
+  // Cuenta líneas de ítem (cada renglón de producto trae "PZA(1)" u similar al final)
+  const items=(text.match(/PZA\(\d+\)/gi)||[]).length;
+  if(items)out.items=items;
+  return out;
 }
-
-el('log-nv-tipoequipo')?.addEventListener('change',renderContenedorInputs);
-el('log-nv-cantequipos')?.addEventListener('input',renderContFields);
-el('log-nv-cantequipos')?.addEventListener('change',renderContFields);
-
-function getContenedoresFromForm(){
-  const cant=parseInt(el('log-nv-cantequipos')?.value)||1;
-  const result=[];
-  for(let i=0;i<cant;i++){
-    result.push({
-      num:el(`log-cont-num-${i}`)?.value.trim()||'',
-      eta:el(`log-cont-eta-${i}`)?.value||''
-    });
+function aplicarDatosRecibo(c){
+  if(c.numeroRecibo){
+    const first=document.querySelector('.log-nv-recibo-input');
+    if(first)first.value=c.numeroRecibo;
   }
-  return result;
+  if(c.proveedor){
+    if(el('log-nv-prov-search'))el('log-nv-prov-search').value=c.proveedor;
+    if(el('log-nv-prov'))el('log-nv-prov').value='';
+  }
+  if(c.bultos&&el('log-nv-bultos'))el('log-nv-bultos').value=c.bultos;
+  if(c.piezas&&el('log-nv-piezas'))el('log-nv-piezas').value=c.piezas;
+  if(c.items&&el('log-nv-items'))el('log-nv-items').value=c.items;
 }
+el('log-nv-pdf-input')?.addEventListener('change',async(e)=>{
+  const file=e.target.files[0];if(!file)return;
+  const status=el('log-nv-pdf-status');
+  if(status)status.textContent='Leyendo PDF...';
+  try{
+    const buf=await file.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+    let text='';
+    for(let p=1;p<=pdf.numPages;p++){
+      const page=await pdf.getPage(p);
+      const content=await page.getTextContent();
+      text+=content.items.map(i=>i.str).join(' ')+'\n';
+    }
+    const c=extraerDatosRecibo(text);
+    aplicarDatosRecibo(c);
+    if(status)status.textContent=`✓ Detectado: recibo ${c.numeroRecibo||'?'} · ${c.proveedor||'proveedor no detectado'} · ${c.bultos||'?'} bultos · ${c.piezas||'?'} piezas · ${c.items||'?'} ítems — revisa los campos antes de enviar.`;
+    toast('Datos del PDF cargados — revisa los campos','ok');
+  }catch(err){
+    console.error(err);
+    if(status)status.textContent='No se pudo leer ese PDF automáticamente. Completa los campos manualmente.';
+    toast('No se pudo leer el PDF','err');
+  }
+});
 
 el('btn-log-nv-enviar')?.addEventListener('click',async()=>{
   const provNombre=el('log-nv-prov').value||el('log-nv-prov-search').value.trim();
@@ -4906,11 +4932,6 @@ el('btn-log-nv-enviar')?.addEventListener('click',async()=>{
   const depto=el('log-nv-depto').value;
   if(!bultos){toast('Ingrese la cantidad de bultos esperados','err');return;}
   if(!depto){toast('Seleccione un departamento','err');return;}
-  const tipo=el('log-nv-tipoequipo').value;
-  const esConten=esContenedor(tipo);
-  const esCam=esCamionOFurgon(tipo);
-  const cantEq=esConten?(parseInt(el('log-nv-cantequipos')?.value)||1):(esCam?(parseInt(el('log-nv-cantequipos-camion')?.value)||1):1);
-  const contenedores=esConten?getContenedoresFromForm():[];
   const asignado=el('log-nv-asignado').value;
   const now=new Date();
   // Crear un registro por cada recibo
@@ -4925,13 +4946,6 @@ el('btn-log-nv-enviar')?.addEventListener('click',async()=>{
       palletsEsperados:el('log-nv-pallets').value?parseInt(el('log-nv-pallets').value):null,
       piezasEsperadas:el('log-nv-piezas').value?parseInt(el('log-nv-piezas').value):null,
       itemsEsperados:el('log-nv-items').value?parseInt(el('log-nv-items').value):null,
-      tipoEquipo:tipo||null,
-      naviera:esConten?(el('log-nv-naviera')?.value||null):null,
-      cantEquipos:cantEq,
-      contenedores:contenedores, // [{num, eta}]
-      numerosContenedor:contenedores.map(c=>c.num).filter(Boolean),
-      chofer:el('log-nv-chofer').value.trim()||null,
-      placa:el('log-nv-placa').value.trim()||null,
       notaEnvio:el('log-nv-nota').value.trim()||null,
       asignadoA:asignado,
       creadoPor:CU,
@@ -4948,14 +4962,10 @@ el('btn-log-nv-enviar')?.addEventListener('click',async()=>{
   // Limpiar formulario
   document.querySelectorAll('.log-nv-recibo-input').forEach((inp,i)=>{if(i>0)inp.closest('.log-recibo-row').remove();else inp.value='';});
   document.querySelector('.btn-rm-recibo').style.display='none';
-  ['log-nv-bultos','log-nv-pallets','log-nv-piezas','log-nv-items','log-nv-chofer','log-nv-placa','log-nv-nota'].forEach(id=>{if(el(id))el(id).value='';});
-  el('log-nv-tipoequipo').value='';
-  if(el('log-nv-cantequipos'))el('log-nv-cantequipos').value='1';
-  if(el('log-contenedor-box'))el('log-contenedor-box').style.display='none';
-  if(el('log-naviera-box'))el('log-naviera-box').style.display='none';
-  if(el('log-camion-cant-box'))el('log-camion-cant-box').style.display='none';
-  if(el('log-contenedor-inputs'))el('log-contenedor-inputs').innerHTML='';
+  ['log-nv-bultos','log-nv-pallets','log-nv-piezas','log-nv-items','log-nv-nota'].forEach(id=>{if(el(id))el(id).value='';});
   el('log-nv-depto').value='';el('log-nv-prov-search').value='';el('log-nv-prov').value='';
+  if(el('log-nv-pdf-input'))el('log-nv-pdf-input').value='';
+  if(el('log-nv-pdf-status'))el('log-nv-pdf-status').textContent='Sube el recibo en PDF y el sistema intenta detectar los campos. Siempre revisa antes de enviar.';
   toast(recibos.length>1?`${recibos.length} recibos enviados a bodega ✓`:'Formulario enviado a bodega ✓','ok');
   renderLogPendientes();
 });
