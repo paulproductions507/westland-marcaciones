@@ -1031,6 +1031,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
       ".read": "auth != null",
       ".write": "auth != null"
     },
+    "logistica_camiones_v1": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
     "logistica_deptos_v1": {
       ".read": "auth != null",
       ".write": "auth != null"
@@ -1048,6 +1052,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
       ".write": "auth != null"
     },
     "logistica_analisis_v1": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "horario_colab_v1": {
       ".read": "auth != null",
       ".write": "auth != null"
     }
@@ -4870,8 +4878,23 @@ async function renderLogCamRec(){
     const recEq=cam.recepcionEquipos||{};
     const recEqEntries=Object.entries(recEq);
     const bultosRecConf=recEqEntries.reduce((a,[,e])=>a+(Number(e.bultos)||0),0);
+    const palletsRecConf=recEqEntries.reduce((a,[,e])=>a+(Number(e.pallets)||0),0);
+    const bultosCons=Number(cam.bultosTotal)||0,palletsCons=Number(cam.palletsTotal)||0;
+    const diffBultos=bultosRecConf-bultosCons,diffPallets=palletsRecConf-palletsCons;
+    const hayRecepcion=recEqEntries.length>0;
+    const bultosOk=hayRecepcion&&diffBultos===0,palletsOk=!palletsCons||(hayRecepcion&&diffPallets===0);
+    const matchTotal=hayRecepcion&&bultosOk&&palletsOk;
+    const diffTxt=(n)=>n===0?'':(n>0?` (+${n} sobrante)`:` (${n} falta)`);
+    const resumenGlobal=`<div style="background:${!hayRecepcion?'var(--bg)':(matchTotal?'rgba(0,201,167,.08)':'rgba(255,165,2,.08)')};border:1px solid ${!hayRecepcion?'var(--bd)':(matchTotal?'var(--ac)':'var(--wn)')};border-radius:var(--rs);padding:10px 12px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📦 Recepción global — conciliación</div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--mt)">Consolidado</span><span><b>${bultosCons}</b> bultos${palletsCons?(' · <b>'+palletsCons+'</b> pallets'):''}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--mt)">Recibido (global)</span><span><b>${bultosRecConf}</b> bultos${diffTxt(diffBultos)}${palletsCons?(' · <b>'+palletsRecConf+'</b> pallets'+diffTxt(diffPallets)):''}</span></div>
+        <div style="margin-top:6px;font-size:12.5px;font-weight:700;color:${!hayRecepcion?'var(--mt)':(matchTotal?'var(--ac)':'var(--wn)')}">
+          ${!hayRecepcion?'⏳ Aún sin recepción global registrada':(matchTotal?'✓ Coincide con lo consolidado':'⚠️ No coincide con lo consolidado — revisar')}
+        </div>
+      </div>`;
     const equiposRecRows=recEqEntries.map(([ek,e])=>`<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:6px 10px;font-size:12.5px;margin-bottom:5px">
-        <span style="flex:1">🚛 ${e.bultos||0} bultos${e.chofer?(' · '+e.chofer):''}${e.placa?(' · '+e.placa):''}${e.nota?(' · '+e.nota):''}</span>
+        <span style="flex:1">🚛 ${e.bultos||0} bultos${e.pallets?(' · '+e.pallets+' pallets'):''}${e.chofer?(' · '+e.chofer):''}${e.placa?(' · '+e.placa):''}${e.nota?(' · '+e.nota):''}</span>
         <button type="button" class="btn bg bsm log-camrec-rm-equipo" data-cam="${camK}" data-eq="${ek}" style="width:auto;padding:2px 7px;font-size:11px;color:var(--dn)">✕</button>
       </div>`).join('');
     return `<div class="card" style="margin-bottom:10px">
@@ -4889,14 +4912,18 @@ async function renderLogCamRec(){
       </div>
       ${rows}
       <div style="margin-top:10px;border-top:1px solid var(--bd);padding-top:8px">
-        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🚛 Camiones recibidos (opcional)${recEqEntries.length?(' · '+bultosRecConf+' bultos confirmados'):''}</div>
+        ${resumenGlobal}
+        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🚛 Detalle por camión/equipo recibido${recEqEntries.length?(' · '+bultosRecConf+' bultos confirmados'):''}</div>
         ${equiposRecRows}
         <div class="log-camrec-eqform" id="log-camrec-eqform-${camK}" style="display:none;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;margin:6px 0">
           <div class="fg2">
             <div class="fg"><label style="font-size:11px">Bultos recibidos</label><input type="number" min="0" class="fc log-camrec-eq-bultos" style="padding:6px 8px"></div>
-            <div class="fg"><label style="font-size:11px">Placa (opcional)</label><input class="fc log-camrec-eq-placa" style="padding:6px 8px"></div>
+            <div class="fg"><label style="font-size:11px">Pallets recibidos</label><input type="number" min="0" class="fc log-camrec-eq-pallets" style="padding:6px 8px"></div>
           </div>
-          <div class="fg"><label style="font-size:11px">Chofer (opcional)</label><input class="fc log-camrec-eq-chofer" style="padding:6px 8px"></div>
+          <div class="fg2">
+            <div class="fg"><label style="font-size:11px">Placa (opcional)</label><input class="fc log-camrec-eq-placa" style="padding:6px 8px"></div>
+            <div class="fg"><label style="font-size:11px">Chofer (opcional)</label><input class="fc log-camrec-eq-chofer" style="padding:6px 8px"></div>
+          </div>
           <div style="display:flex;gap:6px;margin-top:4px">
             <button type="button" class="btn bp bsm log-camrec-guardar-equipo" data-cam="${camK}" style="width:auto;padding:5px 10px;font-size:12px">Guardar</button>
             <button type="button" class="btn bg bsm log-camrec-cancel-equipo" data-cam="${camK}" style="width:auto;padding:5px 10px;font-size:12px">Cancelar</button>
@@ -4919,11 +4946,12 @@ document.addEventListener('click',async e=>{
   const box=el('log-camrec-eqform-'+camK);if(!box)return;
   const bultos=box.querySelector('.log-camrec-eq-bultos')?.value;
   if(!bultos){toast('Ingresa los bultos recibidos','err');return;}
+  const pallets=box.querySelector('.log-camrec-eq-pallets')?.value;
   const chofer=box.querySelector('.log-camrec-eq-chofer')?.value.trim()||null;
   const placa=box.querySelector('.log-camrec-eq-placa')?.value.trim()||null;
   const now=new Date();
   const r=push(R(db,`${LOGCAM}/${camK}/recepcionEquipos`));
-  await set(r,{bultos:parseInt(bultos),chofer,placa,por:CU,ts:new Date().toISOString()});
+  await set(r,{bultos:parseInt(bultos),pallets:pallets?parseInt(pallets):0,chofer,placa,por:CU,ts:new Date().toISOString()});
   toast('Camión recibido agregado ✓','ok');
   renderLogCamRec();
 });
