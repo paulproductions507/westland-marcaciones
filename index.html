@@ -4875,28 +4875,57 @@ async function renderLogCamRec(){
         </div>`;
     }).join('');
     const doneTag=cam.estado==='completo'?' <span style="color:var(--ac);font-weight:700">✓ completo</span>':'';
-    const recEq=cam.recepcionEquipos||{};
-    const recEqEntries=Object.entries(recEq);
-    const bultosRecConf=recEqEntries.reduce((a,[,e])=>a+(Number(e.bultos)||0),0);
-    const palletsRecConf=recEqEntries.reduce((a,[,e])=>a+(Number(e.pallets)||0),0);
-    const bultosCons=Number(cam.bultosTotal)||0,palletsCons=Number(cam.palletsTotal)||0;
-    const diffBultos=bultosRecConf-bultosCons,diffPallets=palletsRecConf-palletsCons;
-    const hayRecepcion=recEqEntries.length>0;
-    const bultosOk=hayRecepcion&&diffBultos===0,palletsOk=!palletsCons||(hayRecepcion&&diffPallets===0);
-    const matchTotal=hayRecepcion&&bultosOk&&palletsOk;
-    const diffTxt=(n)=>n===0?'':(n>0?` (+${n} sobrante)`:` (${n} falta)`);
+    const fisicos=cam.camionesFisicos||{};
+    const fisEntries=Object.entries(fisicos).sort((a,b)=>(a[1].numero||0)-(b[1].numero||0));
+    const hayAbierto=fisEntries.some(([,f])=>f.estado==='abierto');
+    let bultosRecTotal=0,palletsRecTotal=0;
+    fisEntries.forEach(([,f])=>{
+      const pals=Object.values(f.pallets||{});
+      bultosRecTotal+=pals.reduce((a,p)=>a+(Number(p.bultos)||0),0);
+      palletsRecTotal+=pals.length;
+    });
+    const bultosCons=Number(cam.bultosTotal)||0,palletsConsEsp=Number(cam.palletsTotal)||0;
+    const diffBultos=bultosRecTotal-bultosCons;
+    const hayRecepcion=fisEntries.length>0;
+    const bultosOk=hayRecepcion&&diffBultos===0;
+    const matchTotal=hayRecepcion&&bultosOk;
+    const diffTxt=(n)=>n===0?'':(n>0?` (+${n} sobrante)`:` (${Math.abs(n)} falta)`);
     const resumenGlobal=`<div style="background:${!hayRecepcion?'var(--bg)':(matchTotal?'rgba(0,201,167,.08)':'rgba(255,165,2,.08)')};border:1px solid ${!hayRecepcion?'var(--bd)':(matchTotal?'var(--ac)':'var(--wn)')};border-radius:var(--rs);padding:10px 12px;margin-bottom:10px">
         <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📦 Recepción global — conciliación</div>
-        <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--mt)">Consolidado</span><span><b>${bultosCons}</b> bultos${palletsCons?(' · <b>'+palletsCons+'</b> pallets'):''}</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--mt)">Recibido (global)</span><span><b>${bultosRecConf}</b> bultos${diffTxt(diffBultos)}${palletsCons?(' · <b>'+palletsRecConf+'</b> pallets'+diffTxt(diffPallets)):''}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--mt)">Consolidado (esperado)</span><span><b>${bultosCons}</b> bultos${palletsConsEsp?(' · <b>'+palletsConsEsp+'</b> pallets est.'):''}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--mt)">Recibido (real, por pallet)</span><span><b>${bultosRecTotal}</b> bultos${diffTxt(diffBultos)} · <b>${palletsRecTotal}</b> pallets en ${fisEntries.length} camión${fisEntries.length!==1?'es':''}</span></div>
         <div style="margin-top:6px;font-size:12.5px;font-weight:700;color:${!hayRecepcion?'var(--mt)':(matchTotal?'var(--ac)':'var(--wn)')}">
-          ${!hayRecepcion?'⏳ Aún sin recepción global registrada':(matchTotal?'✓ Coincide con lo consolidado':'⚠️ No coincide con lo consolidado — revisar')}
+          ${!hayRecepcion?'⏳ Aún no se ha recibido ningún camión de esta carga':(matchTotal?'✓ Coincide con lo consolidado':'⚠️ No coincide con lo consolidado — revisar')}
         </div>
       </div>`;
-    const equiposRecRows=recEqEntries.map(([ek,e])=>`<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:6px 10px;font-size:12.5px;margin-bottom:5px">
-        <span style="flex:1">🚛 ${e.bultos||0} bultos${e.pallets?(' · '+e.pallets+' pallets'):''}${e.chofer?(' · '+e.chofer):''}${e.placa?(' · '+e.placa):''}${e.nota?(' · '+e.nota):''}</span>
-        <button type="button" class="btn bg bsm log-camrec-rm-equipo" data-cam="${camK}" data-eq="${ek}" style="width:auto;padding:2px 7px;font-size:11px;color:var(--dn)">✕</button>
-      </div>`).join('');
+    const camionesHTML=fisEntries.map(([fk,f])=>{
+      const pals=Object.entries(f.pallets||{});
+      const subBultos=pals.reduce((a,[,p])=>a+(Number(p.bultos)||0),0);
+      const abierto=f.estado==='abierto';
+      const palRows=pals.map(([pk,p],i)=>`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:4px 8px;font-size:12px;margin-bottom:3px">
+          <span>Pallet ${i+1} — <b>${p.bultos}</b> bultos${p.nota?(' · '+p.nota):''}</span>
+          ${abierto?`<button type="button" class="btn bg bsm log-camfis-rm-pallet" data-cam="${camK}" data-fis="${fk}" data-pal="${pk}" style="width:auto;padding:1px 6px;font-size:10px;color:var(--dn)">✕</button>`:''}
+        </div>`).join('');
+      return `<div style="border:1px solid ${abierto?'var(--ac)':'var(--bd)'};border-radius:var(--rs);padding:8px 10px;margin-bottom:8px;background:${abierto?'rgba(0,201,167,.05)':'var(--sf)'}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:4px">
+            <b style="font-size:12.5px">🚛 Camión ${f.numero}${f.placa?(' · '+f.placa):''}${f.chofer?(' · '+f.chofer):''}</b>
+            <span style="font-size:11px;font-weight:700;color:${abierto?'var(--wn)':'var(--ac)'}">${abierto?'⏳ abierto':'🔒 cerrado'}</span>
+          </div>
+          ${palRows||'<div style="font-size:11.5px;color:var(--mt)">Sin pallets agregados aún</div>'}
+          <div style="font-size:12px;font-weight:700;margin-top:4px">Subtotal camión ${f.numero}: ${subBultos} bultos · ${pals.length} pallets</div>
+          ${abierto?`
+          <div class="fg2" style="margin-top:8px">
+            <div class="fg"><label style="font-size:11px">Bultos en este pallet</label><input type="number" min="0" class="fc log-camfis-pal-bultos" id="log-camfis-pal-bultos-${fk}" style="padding:6px 8px"></div>
+            <div class="fg"><label style="font-size:11px">Nota (opcional)</label><input class="fc" id="log-camfis-pal-nota-${fk}" style="padding:6px 8px"></div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
+            <button type="button" class="btn bp bsm log-camfis-add-pallet" data-cam="${camK}" data-fis="${fk}" style="width:auto;padding:5px 10px;font-size:12px">➕ Agregar pallet</button>
+            <button type="button" class="btn bg bsm log-camfis-cerrar" data-cam="${camK}" data-fis="${fk}" style="width:auto;padding:5px 10px;font-size:12px">🔒 Cerrar este camión</button>
+          </div>`:(isAdm?`<button type="button" class="btn bg bsm log-camfis-reabrir" data-cam="${camK}" data-fis="${fk}" style="width:auto;padding:4px 9px;font-size:11px;margin-top:6px;color:var(--wn)">↩️ Deshacer / reabrir (admin)</button>`:'')}
+        </div>`;
+    }).join('');
+    const abrirBtnTxt=fisEntries.length?'➕ Abrir camión adicional':'🚚 Recibir camión';
+    const abrirBtn=!hayAbierto?`<button type="button" class="btn bp bsm log-camfis-abrir" data-cam="${camK}" style="width:auto;padding:7px 14px;font-size:12.5px">${abrirBtnTxt}</button>`:'<div style="font-size:11px;color:var(--wn)">Cierra el camión abierto antes de abrir uno nuevo.</div>';
     return `<div class="card" style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
         <div>
@@ -4913,52 +4942,63 @@ async function renderLogCamRec(){
       ${rows}
       <div style="margin-top:10px;border-top:1px solid var(--bd);padding-top:8px">
         ${resumenGlobal}
-        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🚛 Detalle por camión/equipo recibido${recEqEntries.length?(' · '+bultosRecConf+' bultos confirmados'):''}</div>
-        ${equiposRecRows}
-        <div class="log-camrec-eqform" id="log-camrec-eqform-${camK}" style="display:none;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;margin:6px 0">
-          <div class="fg2">
-            <div class="fg"><label style="font-size:11px">Bultos recibidos</label><input type="number" min="0" class="fc log-camrec-eq-bultos" style="padding:6px 8px"></div>
-            <div class="fg"><label style="font-size:11px">Pallets recibidos</label><input type="number" min="0" class="fc log-camrec-eq-pallets" style="padding:6px 8px"></div>
-          </div>
-          <div class="fg2">
-            <div class="fg"><label style="font-size:11px">Placa (opcional)</label><input class="fc log-camrec-eq-placa" style="padding:6px 8px"></div>
-            <div class="fg"><label style="font-size:11px">Chofer (opcional)</label><input class="fc log-camrec-eq-chofer" style="padding:6px 8px"></div>
-          </div>
-          <div style="display:flex;gap:6px;margin-top:4px">
-            <button type="button" class="btn bp bsm log-camrec-guardar-equipo" data-cam="${camK}" style="width:auto;padding:5px 10px;font-size:12px">Guardar</button>
-            <button type="button" class="btn bg bsm log-camrec-cancel-equipo" data-cam="${camK}" style="width:auto;padding:5px 10px;font-size:12px">Cancelar</button>
-          </div>
-        </div>
-        <button type="button" class="btn bg bsm log-camrec-add-equipo" data-cam="${camK}" style="width:auto;font-size:11px;padding:4px 10px">➕ Agregar camión recibido</button>
+        <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🚛 Camiones físicos recibidos</div>
+        ${camionesHTML}
+        ${abrirBtn}
       </div>
     </div>`;
   }).join('');
 }
-document.addEventListener('click',e=>{
-  const add=e.target.closest('.log-camrec-add-equipo');
-  if(add){const box=el('log-camrec-eqform-'+add.dataset.cam);if(box)box.style.display='block';return;}
-  const cancel=e.target.closest('.log-camrec-cancel-equipo');
-  if(cancel){const box=el('log-camrec-eqform-'+cancel.dataset.cam);if(box)box.style.display='none';return;}
-});
 document.addEventListener('click',async e=>{
-  const btn=e.target.closest('.log-camrec-guardar-equipo');if(!btn)return;
+  const btn=e.target.closest('.log-camfis-abrir');if(!btn)return;
   const camK=btn.dataset.cam;
-  const box=el('log-camrec-eqform-'+camK);if(!box)return;
-  const bultos=box.querySelector('.log-camrec-eq-bultos')?.value;
-  if(!bultos){toast('Ingresa los bultos recibidos','err');return;}
-  const pallets=box.querySelector('.log-camrec-eq-pallets')?.value;
-  const chofer=box.querySelector('.log-camrec-eq-chofer')?.value.trim()||null;
-  const placa=box.querySelector('.log-camrec-eq-placa')?.value.trim()||null;
-  const now=new Date();
-  const r=push(R(db,`${LOGCAM}/${camK}/recepcionEquipos`));
-  await set(r,{bultos:parseInt(bultos),pallets:pallets?parseInt(pallets):0,chofer,placa,por:CU,ts:new Date().toISOString()});
-  toast('Camión recibido agregado ✓','ok');
+  const s=await get(R(db,`${LOGCAM}/${camK}/camionesFisicos`));
+  const existentes=s.exists()?s.val():{};
+  const numero=Object.keys(existentes).length+1;
+  const r=push(R(db,`${LOGCAM}/${camK}/camionesFisicos`));
+  await set(r,{numero,estado:'abierto',pallets:{},abiertoPor:CU,abiertoTs:new Date().toISOString()});
+  toast('🚚 Camión '+numero+' abierto — agrega los pallets','ok');
   renderLogCamRec();
 });
 document.addEventListener('click',async e=>{
-  const btn=e.target.closest('.log-camrec-rm-equipo');if(!btn)return;
-  if(!confirm('¿Quitar este camión recibido?'))return;
-  await remove(R(db,`${LOGCAM}/${btn.dataset.cam}/recepcionEquipos/${btn.dataset.eq}`));
+  const btn=e.target.closest('.log-camfis-add-pallet');if(!btn)return;
+  const camK=btn.dataset.cam,fk=btn.dataset.fis;
+  const bultosEl=el('log-camfis-pal-bultos-'+fk),notaEl=el('log-camfis-pal-nota-'+fk);
+  const bultos=bultosEl?bultosEl.value:'';
+  if(!bultos||Number(bultos)<=0){toast('Ingresa los bultos de este pallet','err');return;}
+  const nota=notaEl?notaEl.value.trim():'';
+  const r=push(R(db,`${LOGCAM}/${camK}/camionesFisicos/${fk}/pallets`));
+  await set(r,{bultos:parseInt(bultos),nota:nota||null,por:CU,ts:new Date().toISOString()});
+  toast('Pallet agregado ✓','ok',1500);
+  renderLogCamRec();
+});
+document.addEventListener('click',async e=>{
+  const btn=e.target.closest('.log-camfis-rm-pallet');if(!btn)return;
+  if(!confirm('¿Quitar este pallet?'))return;
+  await remove(R(db,`${LOGCAM}/${btn.dataset.cam}/camionesFisicos/${btn.dataset.fis}/pallets/${btn.dataset.pal}`));
+  renderLogCamRec();
+});
+document.addEventListener('click',async e=>{
+  const btn=e.target.closest('.log-camfis-cerrar');if(!btn)return;
+  const camK=btn.dataset.cam,fk=btn.dataset.fis;
+  const s=await get(R(db,`${LOGCAM}/${camK}/camionesFisicos/${fk}/pallets`));
+  const pals=s.exists()?Object.values(s.val()):[];
+  if(!pals.length&&!confirm('Este camión no tiene pallets agregados. ¿Cerrarlo igual?'))return;
+  await set(R(db,`${LOGCAM}/${camK}/camionesFisicos/${fk}/estado`),'cerrado');
+  await set(R(db,`${LOGCAM}/${camK}/camionesFisicos/${fk}/cerradoPor`),CU);
+  await set(R(db,`${LOGCAM}/${camK}/camionesFisicos/${fk}/cerradoTs`),new Date().toISOString());
+  toast('🔒 Camión cerrado','ok');
+  renderLogCamRec();
+});
+document.addEventListener('click',async e=>{
+  const btn=e.target.closest('.log-camfis-reabrir');if(!btn)return;
+  if(!ADMINS.includes(CU)&&!GERENTES.includes(CU)){toast('Solo un administrador puede deshacer esto','err');return;}
+  if(!confirm('¿Reabrir este camión? Volverá a estado "abierto" y podrás editar sus pallets.'))return;
+  const camK=btn.dataset.cam,fk=btn.dataset.fis;
+  await set(R(db,`${LOGCAM}/${camK}/camionesFisicos/${fk}/estado`),'abierto');
+  await set(R(db,`${LOGCAM}/${camK}/camionesFisicos/${fk}/reabiertoPor`),CU);
+  await set(R(db,`${LOGCAM}/${camK}/camionesFisicos/${fk}/reabiertoTs`),new Date().toISOString());
+  toast('↩️ Camión reabierto','ok');
   renderLogCamRec();
 });
 document.addEventListener('click',e=>{
