@@ -1158,6 +1158,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         <div class="fg" style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px">
           <label>📄 Cargar PDF del recibo (opcional) — autocompleta proveedor, bultos, piezas e ítems</label>
           <input type="file" accept="application/pdf" class="fc" id="log-nv-pdf-input" style="padding:8px;margin-top:4px">
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <input type="checkbox" id="log-nv-prov-si" checked style="width:auto;accent-color:var(--ac)">
+            <label for="log-nv-prov-si" style="margin:0;font-size:11.5px;font-weight:500">Priorizar proveedor S.I- (hijo) sobre el proveedor padre, si existe</label>
+          </div>
           <div id="log-nv-pdf-status" style="font-size:11px;color:var(--mt);margin-top:6px">Sube el recibo en PDF y el sistema intenta detectar los campos. Siempre revisa antes de enviar.</div>
         </div>
         <div class="fg2">
@@ -1169,6 +1173,12 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
           <div class="fg"><label>Origen</label>
             <select class="fc" id="log-nv-tipo"><option value="Importación">Importación</option><option value="Zona Libre">Zona Libre</option></select>
           </div>
+        </div>
+        <div class="fg"><label>📍 Recepción (dónde se recibe)</label>
+          <select class="fc" id="log-nv-recepcion">
+            <option value="CDF" selected>CDF</option>
+            <option value="Westland">Westland</option>
+          </select>
         </div>
         <div style="margin-bottom:8px">
           <label style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px">N° de recibo(s)</label>
@@ -1186,7 +1196,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
           <div class="fg"><label>Pallets (opcional)</label><input type="number" min="0" class="fc" id="log-nv-pallets"></div>
         </div>
         <div class="fg2">
-          <div class="fg"><label>Piezas esperadas (opcional)</label><input type="number" min="0" class="fc" id="log-nv-piezas"></div>
+          <div class="fg"><label>Piezas esperadas (opcional)</label><input type="text" inputmode="numeric" class="fc" id="log-nv-piezas" placeholder="Ej: 1,250"></div>
           <div class="fg"><label>Cantidad de ítems (opcional)</label><input type="number" min="0" class="fc" id="log-nv-items"></div>
         </div>
         <div class="fg"><label>Nota (opcional)</label><textarea class="fc" id="log-nv-nota" rows="2" style="resize:vertical"></textarea></div>
@@ -4875,29 +4885,58 @@ function extraerDatosRecibo(text){
   const out={};
   let m=text.match(/Recibo\s*No\.?\s*(\d+)/i);
   if(m)out.numeroRecibo=m[1];
-  // Ej: "Método de Arribo: WESTLAND - ONIX TRADING - 14 CTNS"  →  proveedor + cartones/bultos
+  // Ej: "Método de Arribo: WESTLAND - ONIX TRADING - 14 CTNS"  →  proveedor detectado + cartones/bultos
   m=text.match(/M[eé]todo de Arribo:\s*[^-]+-\s*(.+?)\s*-\s*(\d+)\s*CTNS/i);
-  if(m){out.proveedor=m[1].trim();out.bultos=parseInt(m[2]);}
-  // Ej: "Gran Total: 0   670   0"  →  el número del medio es el total de piezas
-  m=text.match(/Gran Total:\s*[\d.,]+\s+([\d.,]+)\s+[\d.,]+/i);
-  if(m)out.piezas=parseInt(m[1].replace(/[.,]/g,''))||undefined;
-  // Cuenta líneas de ítem (cada renglón de producto trae "PZA(1)" u similar al final)
-  const items=(text.match(/PZA\(\d+\)/gi)||[]).length;
-  if(items)out.items=items;
+  if(m){out.proveedorDetectado=m[1].trim();out.bultos=parseInt(m[2]);}
+  // Piezas: se suma el número que precede a cada "PZA(1)" — más confiable que la línea "Gran Total",
+  // cuyo orden de columnas puede salir desordenado al extraer texto del PDF.
+  const filas=[...text.matchAll(/(\d+)\s+PZA\(\d+\)/g)].map(x=>parseInt(x[1]));
+  if(filas.length){
+    out.piezas=filas.reduce((a,b)=>a+b,0);
+    out.items=filas.length;
+  }
+  // Recepción: si el PDF menciona "Westland" en algún lado, se asume esa bodega; si no, CDF por defecto.
+  out.recepcion=/westland/i.test(text)?'Westland':'CDF';
   return out;
+}
+// Resuelve el nombre detectado contra el maestro de proveedores, priorizando el "hijo" S.I- si existe y está marcado el check
+function resolverProveedorMaestro(nombreDetectado,priorizarSI){
+  if(!nombreDetectado)return{matched:false};
+  const norm=s=>s.toUpperCase().replace(/^S\.I\s*-\s*/,'').trim();
+  const target=norm(nombreDetectado);
+  const candidatos=PROVEEDORES_MAESTRO.filter(p=>{
+    const pn=norm(p.n);
+    return pn===target||pn.includes(target)||target.includes(pn);
+  });
+  if(!candidatos.length)return{matched:false};
+  const hijo=candidatos.find(p=>p.n.toUpperCase().startsWith('S.I'));
+  const padre=candidatos.find(p=>!p.n.toUpperCase().startsWith('S.I'));
+  if(priorizarSI&&hijo)return{matched:true,nombre:hijo.n};
+  if(padre)return{matched:true,nombre:padre.n};
+  if(hijo)return{matched:true,nombre:hijo.n};
+  return{matched:true,nombre:candidatos[0].n};
 }
 function aplicarDatosRecibo(c){
   if(c.numeroRecibo){
     const first=document.querySelector('.log-nv-recibo-input');
     if(first)first.value=c.numeroRecibo;
   }
-  if(c.proveedor){
-    if(el('log-nv-prov-search'))el('log-nv-prov-search').value=c.proveedor;
-    if(el('log-nv-prov'))el('log-nv-prov').value='';
+  const priorizarSI=el('log-nv-prov-si')?.checked!==false;
+  const resuelto=resolverProveedorMaestro(c.proveedorDetectado,priorizarSI);
+  c.proveedorResuelto=resuelto.matched?resuelto.nombre:null;
+  if(el('log-nv-prov-search')){
+    if(resuelto.matched){
+      el('log-nv-prov-search').value=resuelto.nombre;
+      if(el('log-nv-prov'))el('log-nv-prov').value=resuelto.nombre;
+    }else{
+      el('log-nv-prov-search').value='';
+      if(el('log-nv-prov'))el('log-nv-prov').value='';
+    }
   }
   if(c.bultos&&el('log-nv-bultos'))el('log-nv-bultos').value=c.bultos;
-  if(c.piezas&&el('log-nv-piezas'))el('log-nv-piezas').value=c.piezas;
+  if(c.piezas&&el('log-nv-piezas'))el('log-nv-piezas').value=c.piezas.toLocaleString('en-US');
   if(c.items&&el('log-nv-items'))el('log-nv-items').value=c.items;
+  if(el('log-nv-recepcion'))el('log-nv-recepcion').value=c.recepcion||'CDF';
 }
 el('log-nv-pdf-input')?.addEventListener('change',async(e)=>{
   const file=e.target.files[0];if(!file)return;
@@ -4914,7 +4953,8 @@ el('log-nv-pdf-input')?.addEventListener('change',async(e)=>{
     }
     const c=extraerDatosRecibo(text);
     aplicarDatosRecibo(c);
-    if(status)status.textContent=`✓ Detectado: recibo ${c.numeroRecibo||'?'} · ${c.proveedor||'proveedor no detectado'} · ${c.bultos||'?'} bultos · ${c.piezas||'?'} piezas · ${c.items||'?'} ítems — revisa los campos antes de enviar.`;
+    const provTxt=c.proveedorResuelto||(c.proveedorDetectado?`"${c.proveedorDetectado}" — no se encontró en el listado`:'no detectado');
+    if(status)status.textContent=`✓ Detectado: recibo ${c.numeroRecibo||'?'} · ${provTxt} · ${c.bultos||'?'} bultos · ${c.piezas?c.piezas.toLocaleString('en-US'):'?'} piezas · ${c.items||'?'} ítems · recepción: ${c.recepcion} — revisa los campos antes de enviar.`;
     toast('Datos del PDF cargados — revisa los campos','ok');
   }catch(err){
     console.error(err);
@@ -4923,6 +4963,10 @@ el('log-nv-pdf-input')?.addEventListener('change',async(e)=>{
   }
 });
 
+el('log-nv-piezas')?.addEventListener('blur',function(){
+  const n=parseInt(this.value.replace(/,/g,''));
+  this.value=isNaN(n)?'':n.toLocaleString('en-US');
+});
 el('btn-log-nv-enviar')?.addEventListener('click',async()=>{
   const provNombre=el('log-nv-prov').value||el('log-nv-prov-search').value.trim();
   if(!provNombre){toast('Seleccione o escriba un proveedor','err');return;}
@@ -4944,8 +4988,9 @@ el('btn-log-nv-enviar')?.addEventListener('click',async()=>{
       departamento:depto,
       bultosEsperados:bultos,
       palletsEsperados:el('log-nv-pallets').value?parseInt(el('log-nv-pallets').value):null,
-      piezasEsperadas:el('log-nv-piezas').value?parseInt(el('log-nv-piezas').value):null,
+      piezasEsperadas:el('log-nv-piezas').value?parseInt(el('log-nv-piezas').value.replace(/,/g,'')):null,
       itemsEsperados:el('log-nv-items').value?parseInt(el('log-nv-items').value):null,
+      recepcion:el('log-nv-recepcion')?.value||'CDF',
       notaEnvio:el('log-nv-nota').value.trim()||null,
       asignadoA:asignado,
       creadoPor:CU,
@@ -4964,6 +5009,7 @@ el('btn-log-nv-enviar')?.addEventListener('click',async()=>{
   document.querySelector('.btn-rm-recibo').style.display='none';
   ['log-nv-bultos','log-nv-pallets','log-nv-piezas','log-nv-items','log-nv-nota'].forEach(id=>{if(el(id))el(id).value='';});
   el('log-nv-depto').value='';el('log-nv-prov-search').value='';el('log-nv-prov').value='';
+  if(el('log-nv-recepcion'))el('log-nv-recepcion').value='CDF';
   if(el('log-nv-pdf-input'))el('log-nv-pdf-input').value='';
   if(el('log-nv-pdf-status'))el('log-nv-pdf-status').textContent='Sube el recibo en PDF y el sistema intenta detectar los campos. Siempre revisa antes de enviar.';
   toast(recibos.length>1?`${recibos.length} recibos enviados a bodega ✓`:'Formulario enviado a bodega ✓','ok');
