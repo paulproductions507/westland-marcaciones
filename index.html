@@ -483,6 +483,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         </div>
         <div class="mlbl">Toque para marcar — máx. 4 por día</div>
         <div id="mnext" class="mnext">Próxima: Entrada</div>
+        <div id="lunch-countdown" style="display:none;margin-top:10px;padding:10px 14px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);text-align:center;font-size:14px;line-height:1.5"></div>
         <div style="margin-top:10px">
           <button class="btn bg bsm" id="btn-mark-facial">🙂 Marcar con rostro</button>
         </div>
@@ -2011,6 +2012,7 @@ async function syncPendMarks(){
     try{
       await persistMarkDedup(m.key,m);
       removePendByCid(m.cid);
+      confirmMarkInCache(m);
       markSyncedUI(m.cid);
       sincronizadas++;
     }catch(e){/* sigue pendiente, se reintenta solo */}
@@ -2032,12 +2034,23 @@ async function persistMarkDedup(key,obj){
   await addLog(`Marcación: ${obj.user} — ${obj.tipo} — ${key} ${obj.hora}`);
 }
 function removePendByCid(cid){setPendMarks(getPendMarks().filter(m=>m.cid!==cid));}
+// CRÍTICO: cuando una marcación termina de sincronizar, hay que sumarla como confirmada al
+// caché de "hoy" del usuario activo. Sin esto, la marcación se sincroniza pero desaparece de
+// la cuenta local — la siguiente marcación no la ve, recalcula mal la secuencia (Entrada,
+// Salida Alm., etc.) y ya no puede aplicar el bloqueo de 15 min contra ella.
+function confirmMarkInCache(obj){
+  if(!CU||obj.user!==CU)return;
+  const clean={tipo:obj.tipo,hora:obj.hora,stamp:obj.stamp,user:obj.user};
+  const yaEsta=LAST_HIST_TODAY.some(m=>m.tipo===clean.tipo&&m.stamp===clean.stamp&&m.user===clean.user);
+  if(!yaEsta){LAST_HIST_TODAY=[...LAST_HIST_TODAY,clean];setHoyCache(CU,LAST_HIST_TODAY);}
+}
 // Intenta subir una marcación recién capturada en segundo plano, sin bloquear la pantalla:
 // el usuario ya la vio reflejada al instante desde registrar().
 async function attemptSyncOne(key,obj){
   try{
     await withTimeout(persistMarkDedup(key,obj),8000);
     removePendByCid(obj.cid);
+    confirmMarkInCache(obj);
     markSyncedUI(obj.cid);
   }catch(e){/* queda en la cola: el listener de reconexión y el poller la reintentan */}
   updateConnBadge();
@@ -2074,7 +2087,7 @@ async function forceSyncNow(){
   if(!pend.length){await renderHistToday();updateConnBadge();toast('✓ Actualizado','ok',1500);if(btn)btn.disabled=false;return;}
   let sincronizadas=0;
   for(const m of pend){
-    try{await withTimeout(persistMarkDedup(m.key,m),8000);removePendByCid(m.cid);markSyncedUI(m.cid);sincronizadas++;}
+    try{await withTimeout(persistMarkDedup(m.key,m),8000);removePendByCid(m.cid);confirmMarkInCache(m);markSyncedUI(m.cid);sincronizadas++;}
     catch(e){/* sigue sin responder */}
   }
   updateConnBadge();refreshPendingIcons();
@@ -2509,6 +2522,8 @@ const _origGetHorarioBase=null; // referencia legacy, no usar
 async function openApp(user){
   el('login-scr').style.display='none';el('app').style.display='block';CU=user;
   renderHistToday(); // se dispara de inmediato, en paralelo — no espera al resto de la carga
+  getEffectiveSchedule(user).catch(()=>{}); // cachea el horario localmente mientras hay señal
+  startLunchCountdown();
   el('tb-date').textContent=new Date().toLocaleDateString('es',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const all=await getUsers();
   const meta=Object.values(all).find(m=>m.user===user)||{nombre:user,user,cedula:'',rol:'Colaborador'};
@@ -2696,7 +2711,7 @@ function paintHistToday(arr){
     const oa=TIPO_ORD[a.tipo]??99, ob=TIPO_ORD[b.tipo]??99;
     return oa!==ob?oa-ob:a.hora.localeCompare(b.hora);
   });
-  if(!mine.length){c.innerHTML='<div style="color:var(--mt);font-size:13px;text-align:center;padding:8px">Sin marcaciones hoy</div>';updNext(0);return;}
+  if(!mine.length){c.innerHTML='<div style="color:var(--mt);font-size:13px;text-align:center;padding:8px">Sin marcaciones hoy</div>';updNext(0);updateLunchWidget();return;}
   c.innerHTML='';
   const pendCids=new Set(getPendMarks().map(m=>m.cid));
   mine.slice(0,4).forEach(it=>{
@@ -2712,6 +2727,7 @@ function paintHistToday(arr){
     c.appendChild(d);
   });
   updNext(mine.length);
+  updateLunchWidget();
 }
 async function renderHistToday(preList){
   const today=isoD(new Date()),c=el('hlist');
@@ -2730,6 +2746,54 @@ async function renderHistToday(preList){
   const pendHoyFresh=getPendMarks().filter(m=>m.key===today&&m.user===CU);
   paintHistToday([...LAST_HIST_TODAY,...pendHoyFresh]);
 }
+// ── CONTADOR DE TIEMPO DE ALMUERZO ─────────────────────────────────────────
+let LUNCH_DUR_CACHE=null; // {user,date,duracionAlm}
+let lunchCountdownInt=null;
+async function getLunchDuracion(user){
+  const today=isoD(new Date());
+  if(LUNCH_DUR_CACHE&&LUNCH_DUR_CACHE.user===user&&LUNCH_DUR_CACHE.date===today)return LUNCH_DUR_CACHE.duracionAlm;
+  try{
+    const [jor,base]=await Promise.all([getJornadaHoy(user),getHorarioBaseDe(user)]);
+    let dur=base.duracionAlm!==undefined?base.duracionAlm:60;
+    if(jor&&jor.almInicio&&jor.almFin){
+      const [ih,im]=jor.almInicio.split(':').map(Number),[fh,fm]=jor.almFin.split(':').map(Number);
+      const d=(fh*60+fm)-(ih*60+im);
+      if(d>0)dur=d;
+    }
+    LUNCH_DUR_CACHE={user,date:today,duracionAlm:dur};
+    return dur;
+  }catch(e){return 60;}
+}
+function findMarkHoy(list,user,tipo){return (list||[]).find(x=>x.user===user&&x.tipo===tipo);}
+async function updateLunchWidget(){
+  const box=el('lunch-countdown');if(!box||!CU)return;
+  const key=isoD(new Date());
+  const pendHoy=getPendMarks().filter(m=>m.key===key&&m.user===CU);
+  const combinado=[...LAST_HIST_TODAY,...pendHoy];
+  const salAlm=findMarkHoy(combinado,CU,'Salida Alm.');
+  const regAlm=findMarkHoy(combinado,CU,'Regreso Alm.');
+  if(!salAlm||regAlm){box.style.display='none';return;}
+  const dur=await getLunchDuracion(CU);
+  const deadline=new Date(salAlm.stamp).getTime()+dur*60000;
+  const remainMs=deadline-Date.now();
+  const deadlineStr=new Date(deadline).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
+  box.style.display='block';
+  if(remainMs>0){
+    const m=Math.floor(remainMs/60000),s=Math.floor((remainMs%60000)/1000);
+    box.style.borderColor='';box.style.color='';
+    box.innerHTML=`⏱ Tiempo de almuerzo restante: <strong>${m}:${String(s).padStart(2,'0')}</strong><br><span style="font-size:12px;color:var(--mt)">Regresa antes de las ${deadlineStr}</span>`;
+  }else{
+    const over=-remainMs,m=Math.floor(over/60000),s=Math.floor((over%60000)/1000);
+    box.style.borderColor='var(--dn)';box.style.color='var(--dn)';
+    box.innerHTML=`⚠️ Tiempo de almuerzo excedido por <strong>${m}:${String(s).padStart(2,'0')}</strong><br><span style="font-size:12px">Debiste regresar a las ${deadlineStr}</span>`;
+  }
+}
+function startLunchCountdown(){
+  if(lunchCountdownInt)clearInterval(lunchCountdownInt);
+  updateLunchWidget();
+  lunchCountdownInt=setInterval(updateLunchWidget,1000);
+}
+
 function updNext(n){const l=el('mnext');if(n>=4){l.textContent='✅ Jornada completa';l.style.background='rgba(0,201,167,.15)';}else{l.textContent=`Próxima: ${TIPOS[n]}`;l.style.background='rgba(0,201,167,.1)';}}
 
 // LOG
@@ -3479,7 +3543,37 @@ async function canMark(date,user,preList){
   const key=isoD(date),list=preList||await getHist(key),mine=(list||[]).filter(x=>x.user===user);
   if(mine.length>=4)return{ok:false,msg:'Límite: ya tienes 4 marcaciones hoy.'};
   if(mine.length>0){const sorted=[...mine].sort((a,b)=>a.stamp.localeCompare(b.stamp));const diff=(date-new Date(sorted[sorted.length-1].stamp))/60000;if(diff<15)return{ok:false,msg:`Espera ${Math.ceil(15-diff)} min más.`};}
+  // Regla: no se puede marcar Salida Final más de 10 min después del horario de salida
+  // programado. El horario se guarda localmente (localStorage) apenas se confirma una vez
+  // (típicamente al iniciar sesión), así que aunque la señal falle justo al momento de marcar,
+  // el bloqueo se evalúa contra el horario ya guardado en el dispositivo — no depende de la
+  // red en ese instante. Solo se deja pasar si NUNCA se logró cargar el horario ni una vez.
+  if(mine.length===3&&!ADMINS.includes(user)){
+    let sch=null;
+    try{sch=await withTimeout(getEffectiveSchedule(user),4000);}
+    catch(e){sch=getHorarioCache(user);}
+    if(sch&&sch.fin){
+      const [fh,fm]=sch.fin.split(':').map(Number);
+      const finMin=fh*60+fm, nowMin=date.getHours()*60+date.getMinutes();
+      if(nowMin>finMin+10){
+        return{ok:false,msg:`No puedes marcar Salida Final: pasaron más de 10 min de tu horario de salida (${sch.fin}). Contacta al encargado.`};
+      }
+    }
+  }
   return{ok:true};
+}
+function horarioCacheKey(user){return `wl_horario_cache_${user}`;}
+function getHorarioCache(user){
+  try{const raw=localStorage.getItem(horarioCacheKey(user));if(!raw)return null;
+    const o=JSON.parse(raw);return o.date===isoD(new Date())?{inicio:o.inicio,fin:o.fin}:null;
+  }catch(e){return null;}
+}
+function setHorarioCache(user,sch){try{localStorage.setItem(horarioCacheKey(user),JSON.stringify({date:isoD(new Date()),inicio:sch.inicio,fin:sch.fin}));}catch(e){}}
+async function getEffectiveSchedule(user){
+  const [jor,base]=await Promise.all([getJornadaHoy(user),getHorarioBaseDe(user)]);
+  const sch=(jor&&jor.entrada&&jor.salida)?{inicio:jor.entrada,fin:jor.salida}:{inicio:base.inicio,fin:base.fin};
+  setHorarioCache(user,sch); // se guarda localmente cada vez que se confirma, para poder usarlo sin red
+  return sch;
 }
 async function registrar(date=new Date(),user=CU,tipoForzado=null){
   if(!user){toast('Inicie sesión','err');return;}
