@@ -96,6 +96,11 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .mbtn:active{transform:scale(.97)}
 .mbtn img{width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
 .mbtn.pulse{animation:pulse .9s ease-out}
+.hsync{font-size:13px;line-height:1;display:inline-block}
+.hsync-spin{animation:wlspin .9s linear infinite}
+.hsync-ok{animation:hsyncFade 1.6s ease forwards}
+@keyframes wlspin{to{transform:rotate(360deg)}}
+@keyframes hsyncFade{0%{opacity:1;transform:scale(1)}70%{opacity:1}100%{opacity:0;transform:scale(.7)}}
 @keyframes pulse{0%{box-shadow:0 0 0 8px rgba(0,201,167,.08),0 12px 40px rgba(0,0,0,.5)}50%{box-shadow:0 0 0 24px rgba(0,201,167,.22),0 12px 40px rgba(0,0,0,.5)}100%{box-shadow:0 0 0 8px rgba(0,201,167,.08),0 12px 40px rgba(0,0,0,.5)}}
 .mbtn.blocked{border-color:rgba(255,71,87,.4);box-shadow:0 0 0 8px rgba(255,71,87,.08),0 12px 40px rgba(0,0,0,.5)}
 .mlbl{margin-top:10px;color:var(--mt);font-size:13px}
@@ -460,6 +465,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         <h3 id="pnombre">—</h3>
         <div class="pmeta"><span id="pcedula">Cédula: —</span><span id="prole" class="rbadge">Colaborador</span></div>
         <div id="gps-status" class="gps">🟢 En línea</div>
+        <button id="btn-reintentar-conn" class="btn bg bsm" style="display:none;margin-top:6px;font-size:11px;padding:4px 10px;width:auto">🔄 Actualizar / Reintentar</button>
       </div>
     </div>
 
@@ -1837,7 +1843,7 @@ onValue(R(db,'.info/connected'),(snap)=>{
       syncPendMarks();
     }
   }
-  updateConnBadge();
+  updateConnBadge();refreshPendingIcons();
 });
 
 // PATHS
@@ -1981,6 +1987,9 @@ async function checkGPS(){
 // eso: detectamos la falla, guardamos la marcación en localStorage con un timeout corto,
 // avisamos claro al usuario, y la sincronizamos sola en cuanto vuelve la señal.
 const PEND_KEY='wl_marks_pendientes';
+function hoyCacheKey(user){return `wl_hoy_cache_${user}`;}
+function getHoyCache(user){try{const raw=localStorage.getItem(hoyCacheKey(user));if(!raw)return null;const o=JSON.parse(raw);return o.date===isoD(new Date())?o.list:null;}catch(e){return null;}}
+function setHoyCache(user,list){try{localStorage.setItem(hoyCacheKey(user),JSON.stringify({date:isoD(new Date()),list}));}catch(e){}}
 let LAST_HIST_TODAY=[];
 function getPendMarks(){try{return JSON.parse(localStorage.getItem(PEND_KEY)||'[]');}catch(e){return[];}}
 function setPendMarks(arr){try{localStorage.setItem(PEND_KEY,JSON.stringify(arr));}catch(e){}}
@@ -1988,46 +1997,92 @@ function pendCountForUser(user){return getPendMarks().filter(m=>m.user===user).l
 function withTimeout(promise,ms){return Promise.race([promise,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);}
 function updateConnBadge(){
   const b=el('gps-status');if(!b)return;
+  const btn=el('btn-reintentar-conn');
   const pend=CU?pendCountForUser(CU):0;
-  if(!FB_CONNECTED){b.textContent=pend>0?`🔴 Señal débil · ${pend} pendiente${pend>1?'s':''}`:'🔴 Sin conexión';b.style.color='#ff6b6b';}
-  else if(pend>0){b.textContent=`🟡 Sincronizando ${pend}...`;b.style.color='#ffb020';}
-  else{b.textContent='🟢 En línea';b.style.color='';}
+  if(!FB_CONNECTED){b.textContent=pend>0?`🔴 Señal débil · ${pend} pendiente${pend>1?'s':''}`:'🔴 Sin conexión';b.style.color='#ff6b6b';if(btn)btn.style.display='inline-block';}
+  else if(pend>0){b.textContent=`🟡 Sincronizando ${pend}...`;b.style.color='#ffb020';if(btn)btn.style.display='inline-block';}
+  else{b.textContent='🟢 En línea';b.style.color='';if(btn)btn.style.display='none';}
 }
 async function syncPendMarks(){
   const pend=getPendMarks();
   if(!pend.length||!FB_CONNECTED)return;
-  const restantes=[];let sincronizadas=0;
+  let sincronizadas=0;
   for(const m of pend){
     try{
-      const list=await getHist(m.key);
-      const nuevaLista=[...(list||[]),{tipo:m.tipo,hora:m.hora,stamp:m.stamp,user:m.user}];
-      await saveHist(m.key,nuevaLista);
-      await addLog(`Marcación (offline sincronizada): ${m.user} — ${m.tipo} — ${m.key} ${m.hora}`);
+      await persistMarkDedup(m.key,m);
+      removePendByCid(m.cid);
+      markSyncedUI(m.cid);
       sincronizadas++;
-    }catch(e){restantes.push(m);}
+    }catch(e){/* sigue pendiente, se reintenta solo */}
   }
-  setPendMarks(restantes);updateConnBadge();
-  if(sincronizadas>0){
-    toast(`🔄 ${sincronizadas} marcación${sincronizadas>1?'es':''} sincronizada${sincronizadas>1?'s':''}`,'ok',3000);
-    if(CU)renderHistToday();
-  }
-}
-// Marca localmente cuando la red falla o está caída. Usa lo último visto en pantalla +
-// lo que ya esté pendiente de sincronizar, para no perder la cuenta de "cuántas van hoy".
-async function marcarOffline(date,user,tipoForzado){
-  const key=isoD(date);
-  const pend=getPendMarks().filter(m=>m.key===key&&m.user===user).map(m=>({tipo:m.tipo,hora:m.hora,stamp:m.stamp,user:m.user}));
-  const combinado=[...LAST_HIST_TODAY,...pend];
-  if(!tipoForzado){const chk=await canMark(date,user,combinado);if(!chk.ok){flashBtn(chk.msg);return;}}
-  const mine=combinado.filter(x=>x.user===user);
-  const tipo=tipoForzado||TIPOS[mine.length]||'Marcación';
-  const obj={key,tipo,hora:fmtT(date),stamp:date.toISOString(),user};
-  const arr=getPendMarks();arr.push(obj);setPendMarks(arr);
-  renderHistToday([...combinado,obj]);
-  el('mbtn').classList.add('pulse');setTimeout(()=>el('mbtn').classList.remove('pulse'),900);
   updateConnBadge();
-  toast(`📴 Señal débil — ${tipo} guardada, se enviará sola al volver la conexión`,'err',4500);
+  if(sincronizadas>0&&CU){
+    toast(`🔄 ${sincronizadas} marcación${sincronizadas>1?'es':''} sincronizada${sincronizadas>1?'s':''}`,'ok',3000);
+  }
 }
+// Escribe la marcación en Firebase, pero antes revisa si ya existe una del mismo
+// usuario/tipo a menos de 2 min de diferencia — evita duplicados si por alguna
+// razón la misma marcación pendiente se intentó subir más de una vez.
+async function persistMarkDedup(key,obj){
+  const list=await getHist(key);
+  const yaExiste=(list||[]).some(m=>m.user===obj.user&&m.tipo===obj.tipo&&Math.abs(new Date(m.stamp)-new Date(obj.stamp))<120000);
+  if(yaExiste)return;
+  const nuevaLista=[...(list||[]),{tipo:obj.tipo,hora:obj.hora,stamp:obj.stamp,user:obj.user}];
+  await saveHist(key,nuevaLista);
+  await addLog(`Marcación: ${obj.user} — ${obj.tipo} — ${key} ${obj.hora}`);
+}
+function removePendByCid(cid){setPendMarks(getPendMarks().filter(m=>m.cid!==cid));}
+// Intenta subir una marcación recién capturada en segundo plano, sin bloquear la pantalla:
+// el usuario ya la vio reflejada al instante desde registrar().
+async function attemptSyncOne(key,obj){
+  try{
+    await withTimeout(persistMarkDedup(key,obj),8000);
+    removePendByCid(obj.cid);
+    markSyncedUI(obj.cid);
+  }catch(e){/* queda en la cola: el listener de reconexión y el poller la reintentan */}
+  updateConnBadge();
+}
+// Reemplaza el icono ⏳/📴 de una marcación por un ✅ que se desvanece solo, sin re-renderizar
+// toda la lista (así no se pierde la animación en curso).
+function markSyncedUI(cid){
+  const node=document.querySelector(`#hlist [data-cid="${cid}"] .hsync`);
+  if(!node)return;
+  node.textContent='✅';node.title='Sincronizado';node.classList.remove('hsync-spin');node.classList.add('hsync-ok');
+  setTimeout(()=>{if(node&&node.parentNode)node.remove();},1600);
+}
+// Actualiza en vivo el icono ⏳↔📴 de las marcaciones que siguen pendientes cuando cambia
+// el estado de conexión, sin esperar al próximo render completo.
+function refreshPendingIcons(){
+  const pendCids=new Set(getPendMarks().map(m=>m.cid));
+  document.querySelectorAll('#hlist .hitem[data-cid]').forEach(d=>{
+    const cid=d.dataset.cid;
+    if(!pendCids.has(cid)){markSyncedUI(cid);return;}
+    const span=d.querySelector('.hsync');if(!span)return;
+    if(FB_CONNECTED){span.textContent='⟳';span.title='Sincronizando...';span.classList.add('hsync-spin');}
+    else{span.textContent='📴';span.title='Sin conexión — pendiente de enviar';span.classList.remove('hsync-spin');}
+  });
+}
+// Reintento periódico de respaldo: por si quedó algo pendiente aunque la conexión ya
+// figure como restablecida (ej. un solo intento falló por una caída puntual).
+setInterval(()=>{if(FB_CONNECTED&&getPendMarks().length)syncPendMarks();},20000);
+// Botón "Actualizar / Reintentar": fuerza el intento ya mismo, sin esperar a que el listener
+// de Firebase se entere solo de que la señal volvió (a veces tarda unos segundos de más).
+async function forceSyncNow(){
+  const btn=el('btn-reintentar-conn');if(btn)btn.disabled=true;
+  toast('🔄 Verificando conexión...','ok',1500);
+  const pend=getPendMarks();
+  if(!pend.length){await renderHistToday();updateConnBadge();toast('✓ Actualizado','ok',1500);if(btn)btn.disabled=false;return;}
+  let sincronizadas=0;
+  for(const m of pend){
+    try{await withTimeout(persistMarkDedup(m.key,m),8000);removePendByCid(m.cid);markSyncedUI(m.cid);sincronizadas++;}
+    catch(e){/* sigue sin responder */}
+  }
+  updateConnBadge();refreshPendingIcons();
+  if(sincronizadas>0)toast(`🔄 ${sincronizadas} marcación${sincronizadas>1?'es':''} sincronizada${sincronizadas>1?'s':''}`,'ok',3000);
+  else toast('⚠ Sigue sin conexión. Se reintentará solo.','err',3000);
+  if(btn)btn.disabled=false;
+}
+el('btn-reintentar-conn').addEventListener('click',forceSyncNow);
 
 // DEFAULTS
 async function ensureDefaults(){
@@ -2453,6 +2508,7 @@ const _origGetHorarioBase=null; // referencia legacy, no usar
 // OPEN APP
 async function openApp(user){
   el('login-scr').style.display='none';el('app').style.display='block';CU=user;
+  renderHistToday(); // se dispara de inmediato, en paralelo — no espera al resto de la carga
   el('tb-date').textContent=new Date().toLocaleDateString('es',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const all=await getUsers();
   const meta=Object.values(all).find(m=>m.user===user)||{nombre:user,user,cedula:'',rol:'Colaborador'};
@@ -2631,11 +2687,8 @@ function fillSelects(obj){
 
 // HISTORIAL HOY
 const TIPOS=['Entrada','Salida Alm.','Regreso Alm.','Salida Final'];
-async function renderHistToday(preList){
-  const today=isoD(new Date()),c=el('hlist');c.innerHTML='';
-  if(!CU){c.innerHTML='<div style="color:var(--mt);font-size:13px;text-align:center;padding:8px">Sin sesión</div>';return;}
-  const arr=preList||await getHist(today);
-  LAST_HIST_TODAY=arr||[];
+function paintHistToday(arr){
+  const c=el('hlist');
   const mine=(arr||[]).filter(x=>x.user===CU);
   // Orden fijo por tipo de marcación, no por hora
   const TIPO_ORD={'Entrada':0,'Salida Alm.':1,'Regreso Alm.':2,'Salida Final':3};
@@ -2644,8 +2697,38 @@ async function renderHistToday(preList){
     return oa!==ob?oa-ob:a.hora.localeCompare(b.hora);
   });
   if(!mine.length){c.innerHTML='<div style="color:var(--mt);font-size:13px;text-align:center;padding:8px">Sin marcaciones hoy</div>';updNext(0);return;}
-  mine.slice(0,4).forEach(it=>{const d=document.createElement('div');d.className='hitem';d.innerHTML=`<span class="hchip">${it.tipo}</span><span class="hhora">${it.hora}</span>`;c.appendChild(d);});
+  c.innerHTML='';
+  const pendCids=new Set(getPendMarks().map(m=>m.cid));
+  mine.slice(0,4).forEach(it=>{
+    const d=document.createElement('div');d.className='hitem';
+    if(it.cid)d.dataset.cid=it.cid;
+    let statusHtml='';
+    if(it.cid&&pendCids.has(it.cid)){
+      statusHtml=FB_CONNECTED
+        ?`<span class="hsync hsync-spin" title="Sincronizando...">⟳</span>`
+        :`<span class="hsync" title="Sin conexión — pendiente de enviar">📴</span>`;
+    }
+    d.innerHTML=`<span class="hchip">${it.tipo}</span><span style="display:flex;align-items:center;gap:6px"><span class="hhora">${it.hora}</span>${statusHtml}</span>`;
+    c.appendChild(d);
+  });
   updNext(mine.length);
+}
+async function renderHistToday(preList){
+  const today=isoD(new Date()),c=el('hlist');
+  if(!CU){c.innerHTML='<div style="color:var(--mt);font-size:13px;text-align:center;padding:8px">Sin sesión</div>';return;}
+  if(preList){LAST_HIST_TODAY=(preList||[]).filter(x=>!x.cid);paintHistToday(preList);return;}
+  // Pintamos DE INMEDIATO con lo último que sabemos (caché local + cola pendiente), sin
+  // esperar ninguna llamada de red — el usuario nunca ve la pantalla en blanco esperando.
+  const cached=getHoyCache(CU);
+  const pendHoy=getPendMarks().filter(m=>m.key===today&&m.user===CU);
+  if(cached||pendHoy.length)paintHistToday([...(cached||[]),...pendHoy]);
+  else c.innerHTML='<div style="color:var(--mt);font-size:13px;text-align:center;padding:8px">Cargando...</div>';
+  // Y en paralelo, sin bloquear lo que ya se ve, se trae el dato real del servidor y se repinta.
+  const arr=await getHist(today);
+  LAST_HIST_TODAY=(arr||[]).filter(x=>!x.cid);
+  setHoyCache(CU,LAST_HIST_TODAY);
+  const pendHoyFresh=getPendMarks().filter(m=>m.key===today&&m.user===CU);
+  paintHistToday([...LAST_HIST_TODAY,...pendHoyFresh]);
 }
 function updNext(n){const l=el('mnext');if(n>=4){l.textContent='✅ Jornada completa';l.style.background='rgba(0,201,167,.15)';}else{l.textContent=`Próxima: ${TIPOS[n]}`;l.style.background='rgba(0,201,167,.1)';}}
 
@@ -3401,22 +3484,38 @@ async function canMark(date,user,preList){
 async function registrar(date=new Date(),user=CU,tipoForzado=null){
   if(!user){toast('Inicie sesión','err');return;}
   const key=isoD(date);
-  // Si ya sabemos que no hay conexión, no perdemos tiempo golpeando la red: directo a modo offline
-  if(!FB_CONNECTED)return marcarOffline(date,user,tipoForzado);
-  let list;
-  try{
-    // Se piden en paralelo (no en serie) para no acumular latencia de red, con un límite
-    // de 7s: si la señal está débil y no responde, no dejamos al botón colgado
-    const [habilitadoOk,histList]=await withTimeout(Promise.all([
-      ADMINS.includes(user)?Promise.resolve(true):isHabilitado(user),
-      getHist(key)
-    ]),7000);
-    list=histList||[];
-    if(!ADMINS.includes(user)&&!habilitadoOk){flashBtn('No estás habilitado hoy. Contacta al encargado.');return;}
-  }catch(e){return marcarOffline(date,user,tipoForzado);}
-  if(!tipoForzado){const chk=await canMark(date,user,list);if(!chk.ok){flashBtn(chk.msg);return;}}
-  try{await withTimeout(doMark(date,user,tipoForzado,list),7000);}
-  catch(e){return marcarOffline(date,user,tipoForzado);}
+  // Chequeo de habilitación: best-effort con límite corto (2s) para NO demorar el marcaje.
+  // Si no responde a tiempo, se deja pasar (ya quedará el registro para revisar si hiciera falta).
+  if(!ADMINS.includes(user)&&FB_CONNECTED){
+    try{const ok=await withTimeout(isHabilitado(user),2000);if(!ok){flashBtn('No estás habilitado hoy. Contacta al encargado.');return;}}
+    catch(e){/* sin respuesta a tiempo: seguimos, no bloqueamos el marcaje por esto */}
+  }
+  // Se valida y se arma la marcación con lo que YA tenemos en memoria cuando es el propio
+  // usuario marcando (así el botón responde al instante). Si es un admin marcando manualmente
+  // a nombre de otro usuario, sí conviene traer la lista real del servidor: ahí no urge la
+  // velocidad y preferimos exactitud sobre la cuenta de marcaciones de esa persona.
+  const esPropio=(user===CU);
+  const pendHoy=getPendMarks().filter(m=>m.key===key&&m.user===user).map(m=>({tipo:m.tipo,hora:m.hora,stamp:m.stamp,user:m.user}));
+  let base;
+  if(esPropio)base=LAST_HIST_TODAY;
+  else{try{base=await withTimeout(getHist(key),5000)||[];}catch(e){base=[];}}
+  const combinado=[...base,...pendHoy];
+  if(!tipoForzado){const chk=await canMark(date,user,combinado);if(!chk.ok){flashBtn(chk.msg);return;}}
+  const mine=combinado.filter(x=>x.user===user);
+  const tipo=tipoForzado||TIPOS[mine.length]||'Marcación';
+  const cid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():`c${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+  const obj={tipo,hora:fmtT(date),stamp:date.toISOString(),user,cid};
+
+  // Se guarda ya mismo en la cola local — esta hora capturada AHORA es la que se sube
+  // a Firebase cuando sincronice, no la hora en que finalmente logre conectar.
+  const arr=getPendMarks();arr.push({...obj,key});setPendMarks(arr);
+  if(esPropio)renderHistToday([...combinado,obj]);
+  el('mbtn').classList.add('pulse');setTimeout(()=>el('mbtn').classList.remove('pulse'),900);
+  toast(`✅ ${tipo} — ${obj.hora}`,'ok',2200);
+  updateConnBadge();
+
+  // Intento de subida en segundo plano — la pantalla ya no espera por esto.
+  attemptSyncOne(key,obj);
 }
 async function doMark(date,user,tipoForzado=null,preList=null){
   try{
@@ -4186,6 +4285,8 @@ el('btn-cargar-ed').addEventListener('click',async()=>{
   try{
     const arr=await getHist(fecha);
     const filtered=(arr||[]).map((m,i)=>({...m,_i:i})).filter(m=>m.user===user);
+    const TIPO_ORD={'Entrada':0,'Salida Alm.':1,'Regreso Alm.':2,'Salida Final':3};
+    filtered.sort((a,b)=>{const oa=TIPO_ORD[a.tipo]??99,ob=TIPO_ORD[b.tipo]??99;return oa!==ob?oa-ob:(a.hora||'').localeCompare(b.hora||'');});
     c.innerHTML='';
     if(!filtered.length){c.innerHTML='<div style="color:var(--mt);font-size:13px">Sin marcaciones para este usuario en esta fecha.</div>';return;}
     filtered.forEach(m=>{
