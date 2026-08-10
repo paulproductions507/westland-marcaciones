@@ -1314,10 +1314,6 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
           <div class="fg"><label>Piezas recibidas (opcional)</label><input type="number" min="0" class="fc" id="log-rec-piezas"></div>
           <div class="fg"><label>Ítems recibidos (opcional)</label><input type="number" min="0" class="fc" id="log-rec-items"></div>
         </div>
-        <div class="fg2">
-          <div class="fg"><label>Chofer (opcional)</label><input class="fc" id="log-rec-chofer"></div>
-          <div class="fg"><label>Placa (opcional)</label><input class="fc" id="log-rec-placa"></div>
-        </div>
         <div class="fg"><label>Nota / reclamo</label><textarea class="fc" id="log-rec-nota" rows="2" style="resize:vertical"></textarea></div>
         <div class="fg"><label>N° nota de crédito (opcional)</label><input class="fc" id="log-rec-notacredito"></div>
         <div style="font-size:11.5px;color:var(--mt);margin-bottom:10px">Se registra automáticamente: usuario, fecha y hora.</div>
@@ -1833,6 +1829,13 @@ const app=initializeApp(FB),auth=getAuth(app),db=getDatabase(app);
 // "Cargando..." pegadas o listas vacías por minutos. Aquí se detecta ese estado y se
 // fuerza una recarga inmediata de los datos en pantalla en cuanto la conexión vuelve.
 let FB_CONNECTED=true,fbWasDown=false;
+// Listeners que requieren sesión (logística, notificaciones, aprobaciones) se registran aquí
+// para poder desconectarlos al cerrar sesión. Sin esto, quedaban escuchando después del
+// signOut() y cada cambio de datos disparaba un error "permission_denied" (las reglas piden
+// auth != null), incluso estando ya en la pantalla de login.
+let ACTIVE_DB_LISTENERS=[];
+function trackedOnValue(path,cb,errCb){const unsub=onValue(path,cb,errCb);ACTIVE_DB_LISTENERS.push(unsub);return unsub;}
+function detachTrackedListeners(){ACTIVE_DB_LISTENERS.forEach(u=>{try{u();}catch(e){}});ACTIVE_DB_LISTENERS=[];}
 onValue(R(db,'.info/connected'),(snap)=>{
   FB_CONNECTED=snap.val()===true;
   if(!FB_CONNECTED){fbWasDown=true;}
@@ -1913,9 +1916,10 @@ async function checkNotifs(){
   }catch(e){}
 }
 // Listen for new notifs in real time
+let notifListening=false;
 function listenNotifs(){
-  if(!CU)return;
-  onValue(R(db,NOTIF),async snap=>{
+  if(!CU||notifListening)return;notifListening=true;
+  trackedOnValue(R(db,NOTIF),async snap=>{
     if(!snap.exists())return;
     const now=Date.now();
     Object.entries(snap.val()).forEach(([k,v])=>{
@@ -1967,7 +1971,7 @@ const saveHist=async(k,a)=>set(R(db,`${HIST}/${k}`),a);
 
 // AUTH
 const u2e=u=>`westlandoutletjugueterianivel+${String(u).toLowerCase()}@gmail.com`;
-const doLogout=()=>{clearInterval(sTimer);clearInterval(autoSchedInt);return signOut(auth).then(closeApp);};
+const doLogout=()=>{clearInterval(sTimer);clearInterval(autoSchedInt);detachTrackedListeners();logListening=false;notifListening=false;approvalsListening=false;return signOut(auth).then(closeApp);};
 function closeApp(){el('app').style.display='none';el('login-scr').style.display='flex';el('lu').value='';el('lp').value='';CU=null;CUM=null;el('sess-bar').style.display='none';if(el('tab-reloj')){el('tab-reloj').style.display='block';el('tab-log').style.display='none';el('tabbtn-reloj').classList.add('active');el('tabbtn-log').classList.remove('active');}}
 
 // GPS
@@ -3962,8 +3966,10 @@ async function depositarEnBandeja(userKey,bancoData){
 }
 
 // APPROVALS
+let approvalsListening=false;
 function listenApprovals(){
-  onValue(R(db,APR),async snap=>{
+  if(approvalsListening)return;approvalsListening=true;
+  trackedOnValue(R(db,APR),async snap=>{
     const c=el('aprov-list');c.innerHTML='';
     if(!snap.exists()){c.innerHTML='<div style="color:var(--mt);font-size:13px">Sin solicitudes</div>';el('pbadge').textContent='0';return;}
     const entries=Object.entries(snap.val()).filter(([,v])=>v.status==='pending');
@@ -5300,8 +5306,10 @@ document.addEventListener('click',async e=>{
   const s=await get(R(db,`${LOGCAM}/${camK}/camionesFisicos`));
   const existentes=s.exists()?s.val():{};
   const numero=Object.keys(existentes).length+1;
+  const chofer=(prompt('Chofer que trae este camión (opcional):')||'').trim();
+  const placa=(prompt('Placa del camión (opcional):')||'').trim();
   const r=push(R(db,`${LOGCAM}/${camK}/camionesFisicos`));
-  await set(r,{numero,estado:'abierto',pallets:{},abiertoPor:CU,abiertoTs:new Date().toISOString()});
+  await set(r,{numero,estado:'abierto',pallets:{},abiertoPor:CU,abiertoTs:new Date().toISOString(),chofer:chofer||null,placa:placa||null});
   toast('🚚 Camión '+numero+' abierto — agrega los pallets','ok');
   renderLogCamRec();
 });
@@ -5363,14 +5371,70 @@ document.addEventListener('click',async e=>{
   const fisEntries=Object.entries(cam.camionesFisicos||{});
   if(fisEntries.some(([,f])=>f.estado==='abierto')){toast('Cierra todos los camiones abiertos antes de completar','err');return;}
   const bultosCons=Number(cam.bultosTotal)||0;
-  let bultosRec=0;fisEntries.forEach(([,f])=>{bultosRec+=Object.values(f.pallets||{}).reduce((a,p)=>a+(Number(p.bultos)||0),0);});
+  let bultosRec=0,palletsRec=0;
+  fisEntries.forEach(([,f])=>{const pals=Object.values(f.pallets||{});bultosRec+=pals.reduce((a,p)=>a+(Number(p.bultos)||0),0);palletsRec+=pals.length;});
   if(bultosRec!==bultosCons&&!confirm(`Lo recibido (${bultosRec} bultos) no coincide con lo consolidado (${bultosCons} bultos). ¿Completar de todas formas?`))return;
   await set(R(db,`${LOGCAM}/${camK}/estado`),'completo');
   await set(R(db,`${LOGCAM}/${camK}/completadoPor`),CU);
   await set(R(db,`${LOGCAM}/${camK}/completadoTs`),new Date().toISOString());
   toast('✅ Carga marcada como completada','ok');
   renderLogCamRec();
+  try{await sendConsolidadoCompletadoEmail(camK,cam,fisEntries,bultosRec,palletsRec);}
+  catch(emErr){console.error('No se pudo enviar el correo de consolidado completado',emErr);}
 });
+// Envía el resumen del consolidado completado por correo (EmailJS ya configurado en el
+// Panel Administrativo — misma cuenta que se usa para los reportes de marcaciones).
+async function sendConsolidadoCompletadoEmail(camK,cam,fisEntries,bultosRec,palletsRec){
+  let cfg=getEJSCfg();
+  if(!cfg||!cfg.serviceId||!cfg.templateId||!cfg.publicKey){
+    try{const s=await get(R(db,EMCFG));if(s.exists())cfg=s.val();}catch(e){}
+  }
+  if(!cfg||!cfg.serviceId||!cfg.templateId||!cfg.publicKey){console.warn('Correo de consolidado completado no enviado: EmailJS no está configurado');return;}
+  const destino='provira@saks.com.pa';
+  const bultosCons=Number(cam.bultosTotal)||0,palletsCons=Number(cam.palletsTotal)||0;
+  const proveedores=(cam.proveedores||[]).join(', ')||'—';
+  const equipoLine=(cam.equipos&&cam.equipos.length)?cam.equipos.map(eq=>eq.numContenedor
+      ?`📦 ${eq.numContenedor}${eq.sello?(' · Sello '+eq.sello):''}${eq.chofer?(' · '+eq.chofer):''}`
+      :`🚛 ${eq.placa||'—'}${eq.chofer?(' · '+eq.chofer):''}`
+    ).join('<br>'):'—';
+  const camionesRows=fisEntries.map(([,f])=>{
+    const pals=Object.values(f.pallets||{});
+    const subBultos=pals.reduce((a,p)=>a+(Number(p.bultos)||0),0);
+    return `<tr><td>Camión ${f.numero}</td><td>${f.placa||'—'}</td><td>${f.chofer||'—'}</td><td>${subBultos}</td><td>${pals.length}</td></tr>`;
+  }).join('');
+  const diff=bultosRec-bultosCons;
+  const diffTxt=diff===0?'✓ Coincide con lo consolidado':(diff>0?`+${diff} sobrante`:`${Math.abs(diff)} bultos faltantes`);
+  const html=`
+    <h3>🚛 Consolidado completado</h3>
+    <p><b>Agente:</b> ${cam.agente||'—'}<br>
+    <b>Completado por:</b> ${CU}<br>
+    <b>Fecha:</b> ${isoD(new Date())} ${fmtT(new Date())}</p>
+    <p><b>Proveedores:</b> ${proveedores}</p>
+    <p><b>Equipo consolidado (planificado):</b><br>${equipoLine}</p>
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
+      <tr style="background:#f0f0f0"><th>Camión</th><th>Placa</th><th>Chofer</th><th>Bultos</th><th>Pallets</th></tr>
+      ${camionesRows}
+    </table>
+    <p style="margin-top:10px">
+      <b>Bultos consolidado (esperado):</b> ${bultosCons}${palletsCons?(' · '+palletsCons+' pallets est.'):''}<br>
+      <b>Bultos recibidos (real):</b> ${bultosRec}${palletsRec?(' · '+palletsRec+' pallets'):''}<br>
+      <b>Diferencia:</b> ${diffTxt}
+    </p>
+    ${cam.nota?`<p><b>Nota:</b> ${cam.nota}</p>`:''}
+  `;
+  const subject=`✅ Consolidado completado — ${cam.agente||'—'} — ${bultosRec} bultos`;
+  const tParams={to_email:destino,cc_email:'',subject,html_content:html,message:html,saludo:'',periodo:isoD(new Date()),timestamp:new Date().toLocaleString('es')};
+  let sent=false;
+  try{
+    const resp=await fetch('https://api.emailjs.com/api/v1.0/email/send',{method:'POST',headers:{'Content-Type':'application/json','origin':'https://westland-marcaciones.firebaseapp.com'},body:JSON.stringify({service_id:cfg.serviceId,template_id:cfg.templateId,user_id:cfg.publicKey,template_params:tParams})});
+    if(resp.ok||resp.status===200)sent=true;
+  }catch(fe){console.warn('REST fallback consolidado:',fe);}
+  if(!sent&&typeof emailjs!=='undefined'){
+    try{emailjs.init(cfg.publicKey);await emailjs.send(cfg.serviceId,cfg.templateId,tParams);sent=true;}catch(se){console.error('EmailJS consolidado falló',se);}
+  }
+  if(sent){toast('📧 Correo de consolidado enviado a '+destino,'ok',4000);await addLog('Correo consolidado completado enviado a '+destino+' — '+(cam.agente||''));}
+  else{console.error('No se pudo enviar el correo de consolidado completado');}
+}
 document.addEventListener('click',async e=>{
   const btn=e.target.closest('.log-cam-reabrir-carga');if(!btn)return;
   if(!ADMINS.includes(CU)&&!GERENTES.includes(CU)){toast('Solo un administrador puede deshacer esto','err');return;}
@@ -5640,6 +5704,7 @@ el('log-rec-select')?.addEventListener('change',()=>{
     (v.palletsEsperados?`<div class="ldrow"><span>Pallets esperados</span><span>${v.palletsEsperados}</span></div>`:'')+
     (eqRec>0?`<div class="ldrow" style="color:var(--wn)"><span>Equipos ya recibidos</span><span>${eqRec} de ${cantEq}</span></div>`:'')+
     (v.chofer?`<div class="ldrow"><span>Chofer</span><span>${v.chofer}</span></div>`:'')+
+    (v.placa&&v.placa!=='Null'&&v.placa!=='null'?`<div class="ldrow"><span>Placa</span><span>${v.placa}</span></div>`:'')+
     (v.notaEnvio?`<div class="ldrow"><span>Nota</span><span>${v.notaEnvio}</span></div>`:'');
   // Preseleccionar parcial si ya hay recepciones previas
   if(eqRec>0&&eqRec<cantEq){
@@ -5651,7 +5716,6 @@ el('log-rec-select')?.addEventListener('change',()=>{
   }
   el('log-rec-bultos').value='';el('log-rec-pallets').value='';el('log-rec-piezas').value='';
   if(el('log-rec-items'))el('log-rec-items').value='';
-  el('log-rec-chofer').value=v.chofer||'';el('log-rec-placa').value=v.placa||'';
   el('log-rec-nota').value='';el('log-rec-notacredito').value='';
 });
 
@@ -5689,8 +5753,8 @@ el('btn-log-rec-confirmar')?.addEventListener('click',async()=>{
     palletsRecibidos:el('log-rec-pallets').value?parseInt(el('log-rec-pallets').value):null,
     piezasRecibidas:el('log-rec-piezas').value?parseInt(el('log-rec-piezas').value):null,
     itemsRecibidos:el('log-rec-items')?.value?parseInt(el('log-rec-items').value):null,
-    choferRecibido:el('log-rec-chofer').value.trim()||null,
-    placaRecibida:el('log-rec-placa').value.trim()||null,
+    choferRecibido:v.chofer||null,
+    placaRecibida:v.placa||null,
     notaRecepcion:el('log-rec-nota').value.trim()||null,
     notaCredito:el('log-rec-notacredito').value.trim()||null,
     discrepanciaBultos:disc,
@@ -7722,18 +7786,18 @@ el('btn-an-exportar')?.addEventListener('click',()=>{
 
 function listenLogistica(){
   if(logListening)return;logListening=true;
-  onValue(R(db,LOGPROV),()=>{if(CU)renderLogProveedores();});
-  onValue(R(db,LOGREC),(snap)=>{if(CU){LOGR=snap.exists()?snap.val():{};renderLogPendientes();renderLogCamNuevoChecklist();renderLogCamRec();if(el('log-hist-wrap')&&el('log-hist-wrap').style.display==='block')renderLogHistorial();updateLogBadge();if(el('tab-log')&&el('tab-log').style.display!=='none')renderLogKPIs();}});
-  onValue(R(db,LOGCAM),()=>{if(CU)renderLogCamRec();});
-  onValue(R(db,LOGDEPTO),()=>{if(CU){loadLogDeptos();}});
-  onValue(R(db,LOGSUM_MOV),()=>{if(CU)loadLogSumMov();},(e)=>{console.error('onValue LOGSUM_MOV',e);toast('Suministro: '+(e.message||e),'err');});
-  onValue(R(db,LOGSUM_TAM),()=>{if(CU)loadLogSumTam();},(e)=>{console.error('onValue LOGSUM_TAM',e);toast('Tamaños: '+(e.message||e),'err');});
-  onValue(R(db,LOGSUM_CAT),()=>{if(CU)loadLogSumCat();},(e)=>{console.error('onValue LOGSUM_CAT',e);toast('Catálogo: '+(e.message||e),'err');});
-  onValue(R(db,LOGSUM_RESP),()=>{if(CU)loadLogSumResp();},(e)=>{console.error('onValue LOGSUM_RESP',e);toast('Responsables: '+(e.message||e),'err');});
-  onValue(R(db,LOGSUM_REQ),()=>{if(CU)loadLogSumReq();},(e)=>{console.error('onValue LOGSUM_REQ',e);toast('Solicitudes: '+(e.message||e),'err');});
-  onValue(R(db,LOGSUM_AREA),()=>{if(CU)loadLogSumAreas();},(e)=>{console.error('onValue LOGSUM_AREA',e);toast('Áreas: '+(e.message||e),'err');});
-  onValue(R(db,LOGSUM_ACUSE),()=>{if(CU)loadLogSumAcuses();},(e)=>{console.error('onValue LOGSUM_ACUSE',e);toast('Acuses: '+(e.message||e),'err');});
-  onValue(R(db,LOGAN_SEM),()=>{if(CU)loadAnSemanas();},(e)=>{console.error('onValue LOGAN_SEM',e);toast('Análisis semanas: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGPROV),()=>{if(CU)renderLogProveedores();});
+  trackedOnValue(R(db,LOGREC),(snap)=>{if(CU){LOGR=snap.exists()?snap.val():{};renderLogPendientes();renderLogCamNuevoChecklist();renderLogCamRec();if(el('log-hist-wrap')&&el('log-hist-wrap').style.display==='block')renderLogHistorial();updateLogBadge();if(el('tab-log')&&el('tab-log').style.display!=='none')renderLogKPIs();}});
+  trackedOnValue(R(db,LOGCAM),()=>{if(CU)renderLogCamRec();});
+  trackedOnValue(R(db,LOGDEPTO),()=>{if(CU){loadLogDeptos();}});
+  trackedOnValue(R(db,LOGSUM_MOV),()=>{if(CU)loadLogSumMov();},(e)=>{if(!CU)return;console.error('onValue LOGSUM_MOV',e);toast('Suministro: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGSUM_TAM),()=>{if(CU)loadLogSumTam();},(e)=>{if(!CU)return;console.error('onValue LOGSUM_TAM',e);toast('Tamaños: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGSUM_CAT),()=>{if(CU)loadLogSumCat();},(e)=>{if(!CU)return;console.error('onValue LOGSUM_CAT',e);toast('Catálogo: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGSUM_RESP),()=>{if(CU)loadLogSumResp();},(e)=>{if(!CU)return;console.error('onValue LOGSUM_RESP',e);toast('Responsables: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGSUM_REQ),()=>{if(CU)loadLogSumReq();},(e)=>{if(!CU)return;console.error('onValue LOGSUM_REQ',e);toast('Solicitudes: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGSUM_AREA),()=>{if(CU)loadLogSumAreas();},(e)=>{if(!CU)return;console.error('onValue LOGSUM_AREA',e);toast('Áreas: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGSUM_ACUSE),()=>{if(CU)loadLogSumAcuses();},(e)=>{if(!CU)return;console.error('onValue LOGSUM_ACUSE',e);toast('Acuses: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGAN_SEM),()=>{if(CU)loadAnSemanas();},(e)=>{if(!CU)return;console.error('onValue LOGAN_SEM',e);toast('Análisis semanas: '+(e.message||e),'err');});
 }
 
 // BOOTSTRAP
