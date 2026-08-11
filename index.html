@@ -706,7 +706,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               <div class="fg"><label>Nombre</label><input class="fc" id="u-nombre"></div>
               <div class="fg"><label>Usuario (login)</label><input class="fc" id="u-user"></div>
               <div class="fg"><label>Cédula</label><input class="fc" id="u-ced"></div>
-              <div class="fg"><label>Email</label><input class="fc" id="u-email"></div>
+              <div class="fg"><label>Email (opcional, solo referencia admin)</label><input class="fc" id="u-email" placeholder="Déjalo en blanco — el colaborador guarda su correo real en su Perfil"></div>
               <div class="fg"><label>Rol</label><select class="fc" id="u-rol"><option value="Colaborador">Colaborador</option><option value="Administrador">Administrador</option></select></div>
               <div class="fg"><label>📅 Fecha de inicio</label><input type="date" class="fc" id="u-finicio" title="Fecha en que ingresó a trabajar"></div>
               <div class="fg"><label>Tarifa regular (USD/día)</label><input class="fc" id="u-tr" type="number"></div>
@@ -931,6 +931,12 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               <button class="btn bg bsm" id="btn-sem-ver" style="width:auto">🔍 Ver</button>
             </div>
             <div id="sem-tabla" style="overflow-x:auto;margin-top:4px"></div>
+            <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:12px">
+              <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">📤 Distribuir marcaciones a cada colaborador</div>
+              <div style="font-size:12px;color:var(--mt);margin-bottom:8px">Envía a CADA colaborador, a su correo personal, un correo individual con SOLO sus marcaciones y su pago de este período (usa el rango de "Semana" de arriba). Solo llega a quienes ya guardaron su correo personal en su Perfil.</div>
+              <button class="btn bp bsm" id="btn-sem-distribuir" style="width:auto">📤 Distribuir marcaciones ahora</button>
+              <div id="sem-distribuir-status" style="font-size:12px;color:var(--mt);margin-top:8px"></div>
+            </div>
           </div></div>
 
           <div class="asec"><div class="ashdr" data-ac="ac-man"><span>✍ Marcación manual</span><span class="ach">▾</span></div>
@@ -2081,7 +2087,7 @@ function refreshPendingIcons(){
 }
 // Reintento periódico de respaldo: por si quedó algo pendiente aunque la conexión ya
 // figure como restablecida (ej. un solo intento falló por una caída puntual).
-setInterval(()=>{if(FB_CONNECTED&&getPendMarks().length)syncPendMarks();},20000);
+setInterval(()=>{if(FB_CONNECTED&&getPendMarks().length)syncPendMarks();},8000);
 // Botón "Actualizar / Reintentar": fuerza el intento ya mismo, sin esperar a que el listener
 // de Firebase se entere solo de que la señal volvió (a veces tarda unos segundos de más).
 async function forceSyncNow(){
@@ -2706,6 +2712,22 @@ function fillSelects(obj){
 
 // HISTORIAL HOY
 const TIPOS=['Entrada','Salida Alm.','Regreso Alm.','Salida Final'];
+// Determina el rubro por LEY/TIPO YA EXISTENTE ese día, no por la posición/cantidad de marcas.
+// Esto evita que una marca fantasma, duplicada o perdida (por caída de conexión) desplace el
+// conteo y le asigne el rubro equivocado (ej: "Salida Alm." cuando en realidad es la "Entrada").
+function tipoPorReglas(marksHoy){
+  const yaEntrada=(marksHoy||[]).some(m=>m.tipo==='Entrada');
+  const yaSalidaAlm=(marksHoy||[]).some(m=>m.tipo==='Salida Alm.');
+  const yaRegresoAlm=(marksHoy||[]).some(m=>m.tipo==='Regreso Alm.');
+  if(!yaEntrada)return'Entrada';
+  if(!yaSalidaAlm)return'Salida Alm.';
+  if(!yaRegresoAlm)return'Regreso Alm.'; // por ley, la 3ra marca del día siempre es Regreso Alm.
+  return'Salida Final'; // por ley, la 4ta marca del día siempre es Salida Final
+}
+// Corte fijo de mediodía para validar la 2da marca del día (Salida Alm.): no puede registrarse
+// antes de las 11:55am. Tolerancia de 5 min porque algunos colaboradores salen a almorzar un
+// poco antes de las 12:00 — eso es normal. Antes de las 11:55 casi seguro es un error de secuencia.
+const CORTE_SALIDA_ALM_MIN=11*60+55; // 11:55am
 function paintHistToday(arr){
   const c=el('hlist');
   const mine=(arr||[]).filter(x=>x.user===CU);
@@ -3457,7 +3479,7 @@ el('btn-confirmar-envio-banco').addEventListener('click',async function(){
   const banco=metodo==='ach'?el('banco-nombre-banco').value:el('banco-yappy-banco').value;
   const cuenta=metodo==='ach'?el('banco-cuenta').value.trim():'';
   const tel=metodo==='yappy'?el('banco-yappy-tel').value.trim():'';
-  const ejs=ejsCfg();
+  const ejs=getEJSCfg();
   if(!ejs.serviceId||!ejs.publicKey||!ejs.templateId){
     toast('Configura EmailJS en el Panel Administrativo primero','err',5000);return;
   }
@@ -3547,12 +3569,23 @@ async function canMark(date,user,preList){
   const key=isoD(date),list=preList||await getHist(key),mine=(list||[]).filter(x=>x.user===user);
   if(mine.length>=4)return{ok:false,msg:'Límite: ya tienes 4 marcaciones hoy.'};
   if(mine.length>0){const sorted=[...mine].sort((a,b)=>a.stamp.localeCompare(b.stamp));const diff=(date-new Date(sorted[sorted.length-1].stamp))/60000;if(diff<15)return{ok:false,msg:`Espera ${Math.ceil(15-diff)} min más.`};}
+  // Regla enérgica de rubros: el próximo rubro se calcula por TIPO ya existente ese día (no por
+  // posición), y si el próximo rubro sería "Salida Alm." se exige que sea a partir de las 11:55am.
+  // Esto evita que una marca fantasma/perdida por caída de conexión asigne "Salida Alm." cuando
+  // en realidad corresponde "Entrada".
+  const proximoTipo=tipoPorReglas(mine);
+  if(proximoTipo==='Salida Alm.'&&!ADMINS.includes(user)){
+    const nowMin=date.getHours()*60+date.getMinutes();
+    if(nowMin<CORTE_SALIDA_ALM_MIN){
+      return{ok:false,msg:'Aún no es hora de Salida Alm. (antes de las 11:55am). Si tu Entrada no quedó registrada, contacta al administrador antes de marcar de nuevo.'};
+    }
+  }
   // Regla: no se puede marcar Salida Final más de 10 min después del horario de salida
   // programado. El horario se guarda localmente (localStorage) apenas se confirma una vez
   // (típicamente al iniciar sesión), así que aunque la señal falle justo al momento de marcar,
   // el bloqueo se evalúa contra el horario ya guardado en el dispositivo — no depende de la
   // red en ese instante. Solo se deja pasar si NUNCA se logró cargar el horario ni una vez.
-  if(mine.length===3&&!ADMINS.includes(user)){
+  if(proximoTipo==='Salida Final'&&!ADMINS.includes(user)){
     let sch=null;
     try{sch=await withTimeout(getEffectiveSchedule(user),4000);}
     catch(e){sch=getHorarioCache(user);}
@@ -3600,7 +3633,7 @@ async function registrar(date=new Date(),user=CU,tipoForzado=null){
   const combinado=[...base,...pendHoy];
   if(!tipoForzado){const chk=await canMark(date,user,combinado);if(!chk.ok){flashBtn(chk.msg);return;}}
   const mine=combinado.filter(x=>x.user===user);
-  const tipo=tipoForzado||TIPOS[mine.length]||'Marcación';
+  const tipo=tipoForzado||tipoPorReglas(mine);
   const cid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():`c${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
   const obj={tipo,hora:fmtT(date),stamp:date.toISOString(),user,cid};
 
@@ -3619,7 +3652,7 @@ async function doMark(date,user,tipoForzado=null,preList=null){
   try{
     const key=isoD(date),list=preList||await getHist(key);
     const mine=(list||[]).filter(x=>x.user===user);
-    const tipo=tipoForzado||TIPOS[mine.length]||'Marcación';
+    const tipo=tipoForzado||tipoPorReglas(mine);
     const obj={tipo,hora:fmtT(date),stamp:date.toISOString(),user};
     const nuevaLista=[...list,obj];
     await saveHist(key,nuevaLista);await addLog(`Marcación: ${user} — ${tipo} — ${key} ${obj.hora}`);
@@ -3901,7 +3934,7 @@ el('btn-bandeja-sel-todos')?.addEventListener('click',()=>{
 el('btn-bandeja-enviar')?.addEventListener('click',async()=>{
   const selChecks=[...document.querySelectorAll('.bandeja-check:checked')];
   if(!selChecks.length){toast('Selecciona al menos un colaborador','err');return;}
-  const ejs=ejsCfg();
+  const ejs=getEJSCfg();
   if(!ejs.serviceId||!ejs.publicKey||!ejs.templateId){toast('Configura EmailJS primero','err');return;}
   const s=await get(R(db,BANCO_BANDEJA_PATH));
   if(!s.exists())return;
@@ -4156,6 +4189,7 @@ async function renderVistaSemanal(refDate){
   // Build table
   const periodoStr=`${isoList[0]} al ${isoList[isoList.length-1]}`;
   let html=`<div style="font-size:12px;color:var(--ac);font-weight:700;margin-bottom:4px">📆 Semana: ${periodoStr}</div>`;
+  if(isoList.includes(isoD(new Date())))html+=`<div style="font-size:11px;color:var(--wn);margin-bottom:8px">⚠ Incluye el día de hoy: marcaciones muy recientes pueden tardar unos segundos en sincronizar. Si algo se ve incompleto, toca "Actualizar" en unos segundos.</div>`;
   if(!userList.length){
     c.innerHTML=html+'<div style="color:var(--mt);font-size:13px;padding:10px 0">Sin marcaciones registradas para esta semana.</div>';
     return;
@@ -4287,7 +4321,23 @@ el('btn-man').addEventListener('click',async()=>{
   if(d.getSeconds()===0&&segManual!==''&&!isNaN(parseInt(segManual))){
     d.setSeconds(Math.max(0,Math.min(59,parseInt(segManual))));
   }
-  try{await registrar(d,user,tipoSel||null);el('man-seg').value='0';el('man-tipo').value='';}catch(e){toast('Error','err');}
+  // Chequeo enérgico: antes de registrar una marcación manual, revisamos si ese usuario YA
+  // tiene una marcación de ese mismo rubro (o del rubro que le tocaría automáticamente) ese
+  // mismo día. Si ya existe, se pide confirmación explícita en vez de agregarla en silencio —
+  // así se evitan duplicados como el que pasó (marcación manual a las 8:56am cuando el usuario
+  // ya se había marcado a las 8:59am, sin que ninguna de las dos disparara ninguna alerta).
+  try{
+    const key=isoD(d);
+    const listaDia=await getHist(key);
+    const mine=(listaDia||[]).filter(x=>x.user===user);
+    const tipoAUsar=tipoSel||tipoPorReglas(mine);
+    const existente=mine.find(m=>m.tipo===tipoAUsar);
+    if(existente){
+      const seguir=confirm(`Ya existe una marcación de "${tipoAUsar}" para ${user} el ${key} a las ${existente.hora}.\n\n¿Deseas registrar OTRA marcación de "${tipoAUsar}" de todas formas?\n\nAceptar = continuar y agregarla igual.\nCancelar = no registrar nada.`);
+      if(!seguir){toast('Marcación manual cancelada','err');return;}
+    }
+    await registrar(d,user,tipoSel||null);el('man-seg').value='0';el('man-tipo').value='';
+  }catch(e){console.error('man mark',e);toast('Error al verificar/registrar','err');}
 });
 
 // USUARIOS
@@ -4298,7 +4348,7 @@ el('btn-save-user').addEventListener('click',async()=>{
   const existentes=await getUsers();const prev=existentes[user]||{};
   const especialOn=el('u-te-on').checked;
   const finicio=el('u-finicio').value||'';
-  const meta={...prev,nombre,user,cedula:el('u-ced').value.trim()||'',email:el('u-email').value.trim()||u2e(user),rol:el('u-rol').value||'Colaborador',
+  const meta={...prev,nombre,user,cedula:el('u-ced').value.trim()||'',email:el('u-email').value.trim()||prev.email||'',rol:el('u-rol').value||'Colaborador',
     tarifa:{regular:parseFloat(el('u-tr').value||20)||20,domingo:parseFloat(el('u-td').value||25)||25,feriado:parseFloat(el('u-tf').value||30)||30,especial:especialOn?(parseFloat(el('u-te').value||0)||0):0},
     profileUrl:prev.profileUrl||'',fechaInicio:finicio};
   await setUser(user,meta);toast('Usuario guardado ✓','ok');['u-nombre','u-user','u-ced','u-email','u-tr','u-td','u-tf','u-te','u-finicio'].forEach(id=>el(id).value='');el('u-te-on').checked=false;el('u-te-row').style.display='none';refreshUI();
@@ -4693,6 +4743,84 @@ function buildDetalladoHTML(usersArr,desde,hasta,rowsByUser,summs){
   <\/script></body></html>`;
 }
 
+// ── DISTRIBUCIÓN INDIVIDUAL DE MARCACIONES ──────────────────────────────
+// A diferencia del correo semanal/resumen (que va completo a RRHH/gerencia), esto le manda a
+// CADA colaborador, a su correo PERSONAL (el que él mismo guardó en su Perfil — nunca al correo
+// genérico que se usa solo para el login), un correo con SOLO sus propias marcaciones y su pago
+// de ese período. Así ellos ven en el día lo que se les está pagando y no hay sorpresas.
+function emailPersonalDe(u){
+  return(u&&((u.perfil&&u.perfil.email)||u.emailPersonal)||'').trim();
+}
+function buildResumenIndividualHTML(u,desde,hasta,s){
+  const dias=Object.keys(s.det||{}).sort();
+  let filas='';
+  dias.forEach(d=>{
+    const dd=s.det[d],cnt=dd.marcCount||0;
+    const estado=cnt<4?`⏳ ${cnt}/4`:'✅ Completo';
+    const mks=(dd.marcaciones||[]).map(m=>`${m.tipo}: <strong>${m.hora}</strong>`).join(' &nbsp;|&nbsp; ')||'—';
+    filas+=`<tr><td style="padding:7px 10px;border:1px solid #ccc">📅 ${d}</td><td style="padding:7px 10px;border:1px solid #ccc;font-size:12px">${mks}</td><td style="padding:7px 10px;border:1px solid #ccc;text-align:center">${estado}</td><td style="padding:7px 10px;border:1px solid #ccc;text-align:right">$${Number(dd.saldoParcial||dd.bruto||0).toFixed(2)}</td></tr>`;
+  });
+  return`<!doctype html><html><head><meta charset="utf-8"><title>Tus marcaciones</title></head>
+  <body style="font-family:Arial,Helvetica,sans-serif;color:#022;padding:20px;max-width:640px;margin:0 auto">
+    <h2 style="color:#00313C;margin-bottom:4px">Hola ${s.nombre||u.nombre||u.user} 👋</h2>
+    <p style="color:#555;margin-bottom:14px">Este es tu resumen personal de marcaciones y pago del período <strong>${desde}</strong> al <strong>${hasta}</strong>.</p>
+    <table style="border-collapse:collapse;width:100%">
+      <tr><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C;text-align:left">Día</th><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C;text-align:left">Marcaciones</th><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C">Estado</th><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C">Monto del día</th></tr>
+      ${filas||'<tr><td colspan="4" style="padding:10px;border:1px solid #ccc;color:#888">Sin marcaciones registradas en este período.</td></tr>'}
+      <tr style="font-weight:800;background:#f0f4f5"><td colspan="3" style="padding:8px;border:1px solid #ccc">TOTAL DEL PERÍODO</td><td style="padding:8px;border:1px solid #ccc;text-align:right">$${Number(s.neto||0).toFixed(2)}</td></tr>
+    </table>
+    <p style="font-size:12px;color:#888;margin-top:14px">Días trabajados: <strong>${s.dias||0}</strong> · Horas: <strong>${s.horas||0}</strong></p>
+    <p style="font-size:12px;color:#888">Si algo no coincide con lo que registraste, avísale a tu supervisor antes del cierre de planilla.</p>
+    <footer style="margin-top:20px;border-top:2px solid #00313C;padding-top:10px;color:#00313C;font-weight:700;font-size:13px">Juguetería Westland · Nivel 300</footer>
+  </body></html>`;
+}
+async function distribuirMarcacionesIndividual(desde,hasta){
+  const status=el('sem-distribuir-status');
+  const setStatus=(msg,color)=>{if(status){status.textContent=msg;status.style.color=color||'var(--mt)';}};
+  let cfg=null;
+  try{const s=await get(R(db,EMCFG));if(s.exists())cfg=s.val();}catch(e){/* sigue */}
+  if(!cfg||!cfg.publicKey||!cfg.serviceId||!cfg.templateId){setStatus('⚠ Configura EmailJS en el Panel Administrativo primero.','var(--dn)');return;}
+  setStatus('Generando y enviando correos individuales...','var(--wn)');
+  try{
+    const summ=await buildSummary(desde,hasta,false);
+    const users=await getUsers();
+    const colab=Object.values(users).filter(u=>!GERENTES.includes(u.user));
+    let enviados=0,fallidos=0;const sinCorreo=[];
+    for(const u of colab){
+      const s=summ[u.user];
+      if(!s||!s.dias)continue; // sin marcaciones ese período, no le mandamos nada
+      const correo=emailPersonalDe(u);
+      if(!correo){sinCorreo.push(u.nombre||u.user);continue;}
+      const html=buildResumenIndividualHTML(u,desde,hasta,s);
+      const subject=`Tus marcaciones — ${desde} al ${hasta} — Juguetería Westland`;
+      const tParams={to_email:correo,cc_email:'',subject,html_content:html,message:html,saludo:'Hola',periodo:desde+' al '+hasta,timestamp:new Date().toLocaleString('es')};
+      let sent=false;
+      try{
+        const resp=await fetch('https://api.emailjs.com/api/v1.0/email/send',{method:'POST',headers:{'Content-Type':'application/json','origin':'https://westland-marcaciones.firebaseapp.com'},body:JSON.stringify({service_id:cfg.serviceId,template_id:cfg.templateId,user_id:cfg.publicKey,template_params:tParams})});
+        if(resp.ok||resp.status===200)sent=true;
+      }catch(fe){/* intentamos con el SDK abajo */}
+      if(!sent&&typeof emailjs!=='undefined'){
+        try{emailjs.init(cfg.publicKey);await emailjs.send(cfg.serviceId,cfg.templateId,tParams);sent=true;}catch(se){console.warn('distribuir individual falló',u.user,se);}
+      }
+      if(sent)enviados++;else fallidos++;
+    }
+    const partes=[`✅ ${enviados} enviado${enviados!==1?'s':''}`];
+    if(sinCorreo.length)partes.push(`⚠ ${sinCorreo.length} sin correo personal guardado (${sinCorreo.join(', ')})`);
+    if(fallidos)partes.push(`❌ ${fallidos} fallido${fallidos!==1?'s':''}`);
+    setStatus(partes.join(' · '),sinCorreo.length||fallidos?'var(--wn)':'var(--ac)');
+    await addLog(`Distribución individual de marcaciones ${desde}→${hasta}: ${enviados} enviados, ${sinCorreo.length} sin correo, ${fallidos} fallidos`);
+    toast(`Distribución: ${enviados} enviados`+(sinCorreo.length?`, ${sinCorreo.length} sin correo`:''),enviados>0?'ok':'err',6000);
+  }catch(e){console.error('distribuirMarcacionesIndividual',e);setStatus('❌ Error al distribuir: '+(e.message||e),'var(--dn)');}
+}
+el('btn-sem-distribuir')?.addEventListener('click',()=>{
+  const cur=el('sem-desde').value||isoD(new Date());
+  const lun=getLunesDeSemana(cur);
+  const dias=Array.from({length:7},(_,i)=>isoDateAdd(lun,i));
+  const desde=isoD(dias[0]),hasta=isoD(dias[dias.length-1]);
+  if(!confirm(`¿Enviar a cada colaborador (a su correo personal) su resumen individual de marcaciones del ${desde} al ${hasta}?\n\nSolo les llega a quienes ya guardaron su correo personal en su Perfil.`))return;
+  distribuirMarcacionesIndividual(desde,hasta);
+});
+
 function showResumen(desde,hasta,sumObj){
   const preview=el('rep-preview');preview.style.display='block';
   const sorted=Object.keys(sumObj).filter(u=>sumObj[u].dias>0).sort((a,b)=>{const d=sumObj[b].dias-sumObj[a].dias;return d!==0?d:sumObj[a].nombre.localeCompare(sumObj[b].nombre,'es');});
@@ -4714,7 +4842,8 @@ function showResumen(desde,hasta,sumObj){
   const Tpend=sorted.reduce((a,u)=>a+Object.values(sumObj[u].det||{}).reduce((b,dd)=>b+(dd.pendiente||0),0),0);
   const fullHTML=buildResumenHTML(desde,hasta,sumObj);
 
-  preview.innerHTML=`<div class="rcard"><h4 style="color:#00313C;margin-bottom:8px">📊 Resumen: ${desde} → ${hasta}</h4><p style="font-size:12px;color:#888;margin-bottom:9px">💡 Toca fila para ver detalle. <strong style="color:#cc6600">Pendiente</strong> = informativo.</p><div class="dlbar"><button class="btn bg bsm" id="rpt-open">📋 Abrir / Correo</button><button class="btn bg bsm" id="rpt-csv">⬇ CSV</button><button class="btn bg bsm" id="rpt-xls">⬇ Excel</button><button class="btn bg bsm" id="rpt-html">⬇ HTML</button></div><table><tr><th>#</th><th style="min-width:140px">Empleado</th><th>Días</th><th>Horas</th><th>Bruto</th><th style="color:#cc6600">Pend.</th><th>Neto</th></tr>${rows}<tr style="font-weight:800;background:#f0f4f5"><td colspan="2">TOTAL</td><td style="text-align:center">${T.dias}</td><td style="text-align:center">${T.horas.toFixed(2)}</td><td style="text-align:right">$${T.bruto.toFixed(2)}</td><td style="text-align:right;color:#cc6600;font-weight:800">$${Tpend.toFixed(2)}</td><td class="neto" style="text-align:right">$${T.neto.toFixed(2)}</td></tr></table></div>`;
+  const avisoHoy=getDateRange(desde,hasta).includes(isoD(new Date()))?'<p style="font-size:12px;color:#cc6600;margin-bottom:9px">⚠ Este período incluye el día de hoy: marcaciones muy recientes pueden tardar unos segundos en sincronizar. Si ves "Pendiente" en alguien que ya marcó las 4, espera un momento y vuelve a generar el reporte.</p>':'';
+  preview.innerHTML=`<div class="rcard"><h4 style="color:#00313C;margin-bottom:8px">📊 Resumen: ${desde} → ${hasta}</h4><p style="font-size:12px;color:#888;margin-bottom:9px">💡 Toca fila para ver detalle. <strong style="color:#cc6600">Pendiente</strong> = informativo.</p>${avisoHoy}<div class="dlbar"><button class="btn bg bsm" id="rpt-open">📋 Abrir / Correo</button><button class="btn bg bsm" id="rpt-csv">⬇ CSV</button><button class="btn bg bsm" id="rpt-xls">⬇ Excel</button><button class="btn bg bsm" id="rpt-html">⬇ HTML</button></div><table><tr><th>#</th><th style="min-width:140px">Empleado</th><th>Días</th><th>Horas</th><th>Bruto</th><th style="color:#cc6600">Pend.</th><th>Neto</th></tr>${rows}<tr style="font-weight:800;background:#f0f4f5"><td colspan="2">TOTAL</td><td style="text-align:center">${T.dias}</td><td style="text-align:center">${T.horas.toFixed(2)}</td><td style="text-align:right">$${T.bruto.toFixed(2)}</td><td style="text-align:right;color:#cc6600;font-weight:800">$${Tpend.toFixed(2)}</td><td class="neto" style="text-align:right">$${T.neto.toFixed(2)}</td></tr></table></div>`;
 
   el('rpt-open').addEventListener('click',()=>openRptWin(fullHTML));
   el('rpt-html').addEventListener('click',()=>dlBlob(fullHTML,'text/html',`resumen_${desde}_${hasta}.html`));
