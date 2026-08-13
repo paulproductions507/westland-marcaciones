@@ -96,6 +96,8 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .mbtn:active{transform:scale(.97)}
 .mbtn img{width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
 .mbtn.pulse{animation:pulse .9s ease-out}
+#pend-banner.pulse{animation:pendpulse 1.4s ease-in-out infinite}
+@keyframes pendpulse{0%,100%{opacity:1}50%{opacity:.55}}
 .hsync{font-size:13px;line-height:1;display:inline-block}
 .hsync-spin{animation:wlspin .9s linear infinite}
 .hsync-ok{animation:hsyncFade 1.6s ease forwards}
@@ -468,6 +470,11 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         <button id="btn-reintentar-conn" class="btn bg bsm" style="display:none;margin-top:6px;font-size:11px;padding:4px 10px;width:auto">🔄 Actualizar / Reintentar</button>
       </div>
     </div>
+
+    <!-- BANNER DE MARCACIONES SIN SINCRONIZAR — visible, no se puede pasar por alto como el
+         badge chiquito de arriba. Aparece solo si hay algo pendiente y sube de urgencia
+         (amarillo → rojo) mientras más tiempo lleve atascado. -->
+    <div id="pend-banner" style="display:none;margin:0 0 12px;padding:10px 14px;border-radius:var(--rs);font-size:13px;font-weight:600;text-align:center;line-height:1.4"></div>
 
     <!-- ACCESO HOY (solo colaboradores — muestra si están habilitados) -->
     <div id="acceso-card" class="card" style="display:none">
@@ -2013,7 +2020,45 @@ function updateConnBadge(){
   if(!FB_CONNECTED){b.textContent=pend>0?`🔴 Señal débil · ${pend} pendiente${pend>1?'s':''}`:'🔴 Sin conexión';b.style.color='#ff6b6b';if(btn)btn.style.display='inline-block';}
   else if(pend>0){b.textContent=`🟡 Sincronizando ${pend}...`;b.style.color='#ffb020';if(btn)btn.style.display='inline-block';}
   else{b.textContent='🟢 En línea';b.style.color='';if(btn)btn.style.display='none';}
+  updatePendBanner();
 }
+// Banner grande y difícil de ignorar mientras queden marcaciones sin confirmar en Firebase.
+// Sube de urgencia (amarillo → rojo + pulso) si algo lleva atascado más de 2 minutos, para que
+// el colaborador sepa que debe quedarse en la app / tocar "Actualizar" en vez de irse.
+function updatePendBanner(){
+  const banner=el('pend-banner');if(!banner)return;
+  const pend=CU?getPendMarks().filter(m=>m.user===CU):[];
+  if(!pend.length){banner.style.display='none';banner.classList.remove('pulse');return;}
+  const masViejaMin=Math.max(...pend.map(m=>(Date.now()-new Date(m.stamp).getTime())/60000));
+  const urgente=masViejaMin>2;
+  banner.style.display='block';
+  banner.style.background=urgente?'rgba(255,71,87,.15)':'rgba(255,176,32,.15)';
+  banner.style.border=`1px solid ${urgente?'#ff4757':'#ffb020'}`;
+  banner.style.color=urgente?'#ff6b6b':'#ffb020';
+  banner.classList.toggle('pulse',urgente);
+  banner.textContent=urgente
+    ? `⚠️ ${pend.length} marcación${pend.length>1?'es':''} sin sincronizar hace ${Math.round(masViejaMin)} min. No cierres la app — toca "🔄 Actualizar / Reintentar" arriba.`
+    : `⏳ Sincronizando ${pend.length} marcación${pend.length>1?'es':''}... no cierres la app todavía.`;
+}
+// Al volver a primer plano (el usuario reabre la app o vuelve de otra app) reintentamos de
+// inmediato: no esperamos a que el poller de 8s se dé cuenta, que en móviles a veces tarda
+// más de lo esperado porque el navegador limita los timers en segundo plano.
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&getPendMarks().length){syncPendMarks();updatePendBanner();}
+});
+window.addEventListener('pageshow',()=>{if(getPendMarks().length){syncPendMarks();updatePendBanner();}});
+// Aviso al intentar cerrar/recargar con marcaciones aún sin confirmar — la mayoría de navegadores
+// móviles ignoran el texto pero sí muestran su propio diálogo de confirmación genérico.
+window.addEventListener('beforeunload',(e)=>{
+  if(CU&&pendCountForUser(CU)>0){e.preventDefault();e.returnValue='';return'';}
+});
+// Refresco del banner cada 20s aunque no cambie el estado de conexión, para que el contador de
+// minutos "atascado" avance y suba de urgencia sin necesitar un evento externo.
+setInterval(updatePendBanner,20000);
+// Almacenamiento persistente: le pide al navegador que NO borre localStorage/IndexedDB de este
+// sitio bajo presión de espacio. Sin esto, en algunos Android/iOS el sistema puede limpiar el
+// storage de una PWA poco usada y perder marcaciones que quedaron pendientes de subir.
+if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(()=>{});}
 async function syncPendMarks(){
   const pend=getPendMarks();
   if(!pend.length||!FB_CONNECTED)return;
@@ -2723,6 +2768,64 @@ function tipoPorReglas(marksHoy){
   if(!yaSalidaAlm)return'Salida Alm.';
   if(!yaRegresoAlm)return'Regreso Alm.'; // por ley, la 3ra marca del día siempre es Regreso Alm.
   return'Salida Final'; // por ley, la 4ta marca del día siempre es Salida Final
+}
+// Detecta huecos en la secuencia del día: si existe un rubro "tardío" (ej. Regreso Alm.) pero
+// falta uno "temprano" (ej. Salida Alm.), es señal de que esa marca quedó atascada en el
+// teléfono de alguien (o nunca se tocó). Se usa en la vista semanal del administrador para
+// avisar en vez de solo mostrar las marcas que sí llegaron.
+function detectarHuecoSecuencia(marks){
+  const presentes=new Set((marks||[]).map(m=>m.tipo));
+  const idxMax=Math.max(...[...presentes].map(t=>TIPOS.indexOf(t)).filter(i=>i>=0),-1);
+  if(idxMax<0)return[];
+  return TIPOS.slice(0,idxMax+1).filter(t=>!presentes.has(t));
+}
+// Variación aleatoria en minutos/segundos para que una marca auto-generada no se vea con una
+// hora "redonda y sospechosa" — un humano nunca marca exacto a las 12:00:00.
+function jitterMinSeg(rangoMin){
+  const signo=Math.random()<0.5?-1:1;
+  return{min:Math.round(Math.random()*rangoMin)*signo,seg:Math.floor(Math.random()*60)};
+}
+// Sugiere una hora para rellenar un hueco de ALMUERZO (Salida Alm. o Regreso Alm.), anclada al
+// horario configurado del colaborador ese día, y siempre acotada por marcas REALES que sí
+// existen (nunca antes de la Entrada real, nunca después del Regreso/Salida Final real).
+// Deliberadamente NO cubre huecos de "Entrada" o "Salida Final": sin una marca real de un lado
+// no hay ancla de la que partir, y ahí sí se necesita revisión humana (Editar marcaciones).
+async function sugerirHoraAutomatica(tipoFaltante,dia,user,marksReales){
+  if(tipoFaltante!=='Salida Alm.'&&tipoFaltante!=='Regreso Alm.')return null;
+  const entradaMark=marksReales.find(m=>m.tipo==='Entrada');
+  if(!entradaMark)return null; // sin ancla de inicio del día, no se inventa nada
+  const regresoMark=marksReales.find(m=>m.tipo==='Regreso Alm.');
+  const salidaFinalMark=marksReales.find(m=>m.tipo==='Salida Final');
+  let horBase;try{horBase=await getHorarioBaseDe(user,dia);}catch(e){return null;}
+  if(!horBase)return null;
+  const [aih,aim]=(horBase.almInicio||'12:00').split(':').map(Number);
+  const dur=horBase.duracionAlm||60;
+  let baseMin=tipoFaltante==='Salida Alm.'?(aih*60+aim):(aih*60+aim+dur);
+  const{min:jm,seg:js}=jitterMinSeg(3);
+  baseMin+=jm;
+  const d=new Date(dia+'T00:00:00');d.setHours(Math.floor(baseMin/60),((baseMin%60)+60)%60,js,0);
+  const cotaInf=new Date(entradaMark.stamp).getTime()+2*60000;
+  const cotaSupCand=[regresoMark,salidaFinalMark].filter(Boolean).map(m=>new Date(m.stamp).getTime()-2*60000);
+  const cotaSup=cotaSupCand.length?Math.min(...cotaSupCand):null;
+  let t=d.getTime();
+  if(t<cotaInf)t=cotaInf+Math.floor(Math.random()*120)*1000;
+  if(cotaSup!==null&&t>cotaSup)t=cotaSup-Math.floor(Math.random()*120)*1000;
+  if(cotaSup!==null&&t<=cotaInf)return null; // no cabe un hueco válido entre las marcas reales
+  return new Date(t);
+}
+// Inserta la marca auto-generada en Firebase, marcada de forma permanente como generada por el
+// sistema (generadoPorSistema:true + quién y cuándo la aprobó) — nunca se ve igual a un toque
+// real, ni en la vista semanal ni en el historial del colaborador. Requiere que un administrador
+// lo dispare a propósito (botón "🤖 Generar"); nunca ocurre solo, porque esto afecta el pago.
+async function generarMarcaAutomatica(user,dia,tipoFaltante){
+  const marks=await getHist(dia)||[];
+  const marksUser=marks.filter(m=>m.user===user);
+  const horaSug=await sugerirHoraAutomatica(tipoFaltante,dia,user,marksUser);
+  if(!horaSug)return{ok:false,msg:'No se pudo generar: falta una marca de referencia real (ej. Entrada) para anclar la hora, o no cabe un hueco válido entre las marcas existentes. Usa "Editar marcaciones" para revisarlo a mano.'};
+  const obj={tipo:tipoFaltante,hora:fmtT(horaSug),stamp:horaSug.toISOString(),user,generadoPorSistema:true,generadoPor:CU,generadoTs:new Date().toISOString()};
+  await saveHist(dia,[...marks,obj]);
+  await addLog(`Marcación AUTO-GENERADA por ${CU}: ${user} — ${tipoFaltante} — ${dia} ${obj.hora} (hueco de secuencia de almuerzo)`);
+  return{ok:true,hora:obj.hora};
 }
 // Corte fijo de mediodía para validar la 2da marca del día (Salida Alm.): no puede registrarse
 // antes de las 11:55am. Tolerancia de 5 min porque algunos colaboradores salen a almorzar un
@@ -4234,9 +4337,20 @@ async function renderVistaSemanal(refDate){
         const hrsParcial=cnt<4?computeHrsParcial(dayMarks):hrs;
         const monto=completo?tar:+((Math.min(hrsParcial,8)/8)*tar).toFixed(2);
         totalPorDia[vi].colab++;totalPorDia[vi].monto+=monto;totalSemana+=monto;
-        const mLines=dayMarks.map(m=>`<div style="white-space:nowrap;line-height:1.6"><span style="color:var(--mt);font-size:10px">${tipoLabel(m.tipo)}</span><br><span style="color:var(--ac);font-family:'DM Mono',monospace;font-size:11px">${m.hora.slice(0,8)}</span></div>`).join('');
+        const mLines=dayMarks.map(m=>`<div style="white-space:nowrap;line-height:1.6"><span style="color:var(--mt);font-size:10px">${tipoLabel(m.tipo)}${m.generadoPorSistema?' <span title="Generada por el sistema — no fue un toque real" style="color:#ffb020">🤖</span>':''}</span><br><span style="color:var(--ac);font-family:'DM Mono',monospace;font-size:11px">${m.hora.slice(0,8)}</span></div>`).join('');
         const badge=completo?`<div style="color:#00c9a7;font-size:10px;font-weight:700;margin-top:2px">✅ $${monto.toFixed(2)}</div>`:`<div style="color:var(--wn);font-size:10px;margin-top:2px">⏳ ${cnt}/4 · $${monto.toFixed(2)}</div>`;
-        html+=`<td style="padding:5px 6px;border:1px solid var(--bd);background:${bgBase};vertical-align:top">${mLines}${badge}</td>`;
+        // Hueco de secuencia: ej. tiene Regreso Alm. pero no Salida Alm. — esa marca probablemente
+        // sigue atascada en el teléfono del colaborador. Se avisa aparte de "incompleto" (4/4
+        // normal cuando aún no termina el día) para no generar falsas alarmas.
+        const hueco=detectarHuecoSecuencia(dayMarks);
+        // El botón "🤖 Generar" solo aparece si el hueco es de almuerzo Y hay una Entrada real
+        // para anclar la hora — huecos de Entrada/Salida Final requieren revisión manual.
+        const huecoAlmGenerable=hueco.length===1&&(hueco[0]==='Salida Alm.'||hueco[0]==='Regreso Alm.')&&dayMarks.some(m=>m.tipo==='Entrada');
+        const huecoHtml=hueco.length?`<div style="color:#ff6b6b;font-size:9px;font-weight:700;margin-top:3px;line-height:1.3">⚠ Falta: ${hueco.map(tipoLabel).join(', ')}<br>`
+          +`<button type="button" class="btn-avisar-hueco" data-user="${u.user}" data-dia="${k}" data-falta="${hueco.join('|')}" style="margin-top:2px;font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid #ff6b6b;background:transparent;color:#ff6b6b;cursor:pointer">🔔 Avisar</button>`
+          +(huecoAlmGenerable?` <button type="button" class="btn-generar-hueco" data-user="${u.user}" data-dia="${k}" data-falta="${hueco[0]}" style="margin-top:2px;font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid #ffb020;background:transparent;color:#ffb020;cursor:pointer">🤖 Generar</button>`:'')
+          +`</div>`:'';
+        html+=`<td style="padding:5px 6px;border:1px solid var(--bd);background:${bgBase};vertical-align:top">${mLines}${badge}${huecoHtml}</td>`;
       }
     });
     html+=`</tr>`;
@@ -4258,6 +4372,34 @@ async function renderVistaSemanal(refDate){
   html+=`</table>`;
   c.innerHTML=html;
 }
+
+// Botón "🤖 Generar" en un hueco de almuerzo: crea la marca faltante con hora estimada (basada
+// en el horario del colaborador + variación aleatoria de minutos/segundos) y la deja marcada
+// para siempre como generada por el sistema. Pide confirmación porque esto sí afecta el pago
+// calculado — nunca ocurre sin que un administrador lo apruete a propósito.
+document.addEventListener('click',async(e)=>{
+  const btn=e.target.closest('.btn-generar-hueco');if(!btn)return;
+  const user=btn.dataset.user,dia=btn.dataset.dia,tipoFaltante=btn.dataset.falta;
+  if(!confirm(`¿Generar automáticamente "${tipoLabel(tipoFaltante)}" para ${user} el ${dia}?\n\nSe calcula una hora estimada según su horario de almuerzo (con variación de minutos), quedará marcada como generada por el sistema, y afectará el pago calculado de ese día. Esta acción queda registrada en el log.`))return;
+  btn.disabled=true;btn.textContent='Generando...';
+  const r=await generarMarcaAutomatica(user,dia,tipoFaltante);
+  if(r.ok){btn.textContent=`✓ ${r.hora}`;btn.style.opacity='.6';const v=el('sem-desde').value;setTimeout(()=>renderVistaSemanal(v||null),900);}
+  else{toast(r.msg,'err',6000);btn.textContent='🤖 Generar';btn.disabled=false;}
+});
+
+// Botón "🔔 Avisar" en un hueco de secuencia detectado en la vista semanal: le manda una
+// notificación directa al colaborador (usa el mismo sistema de notificaciones ya existente)
+// pidiéndole que abra la app para que la marcación atascada en su teléfono termine de subir.
+document.addEventListener('click',async(e)=>{
+  const btn=e.target.closest('.btn-avisar-hueco');if(!btn)return;
+  btn.disabled=true;btn.textContent='Enviando...';
+  const user=btn.dataset.user,dia=btn.dataset.dia,falta=(btn.dataset.falta||'').split('|').filter(Boolean);
+  try{
+    await sendNotif(CU,user,'⚠️ Marcación pendiente por sincronizar',
+      `El ${dia} parece faltar tu marcación de "${falta.join(', ')}". Es probable que quedó guardada en tu teléfono pero no ha subido. Abre la app de marcaciones (no hace falta volver a tocar) para que se sincronice sola, o toca "🔄 Actualizar / Reintentar" si la ves ahí.`);
+    btn.textContent='✓ Avisado';btn.style.opacity='.6';
+  }catch(err){btn.textContent='Error — reintentar';btn.disabled=false;}
+});
 
 // Semana actual por defecto al iniciar
 (function(){
