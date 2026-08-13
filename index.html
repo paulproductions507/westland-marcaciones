@@ -1979,7 +1979,44 @@ document.addEventListener('visibilitychange',()=>{
 const getUsers=async()=>{const s=await get(R(db,USERS));return s.exists()?s.val():{};};
 const setUser=async(k,v)=>set(R(db,`${USERS}/${k}`),v);
 const addLog=async t=>{try{const r=push(R(db,PLOG));await set(r,{text:t,when:new Date().toISOString(),by:CU||'system'});}catch(e){}};
-const getHist=async k=>{try{const s=await get(R(db,`${HIST}/${k}`));return s.exists()?s.val():[];}catch(e){return[];}};
+// AUTO-DEPURACIÓN DE RUBROS DUPLICADOS: por regla, cada rubro (Entrada / Salida Alm. / Regreso
+// Alm. / Salida Final) solo puede existir UNA vez por usuario y por día. persistMarkDedup ya
+// bloquea que se CREEN duplicados nuevos, pero esto limpia los que ya hubieran quedado guardados
+// en Firebase de antes (por ejemplo, mientras no existía ese bloqueo). Se ejecuta automáticamente
+// dentro de getHist(), es decir, cada vez que CUALQUIER pantalla/usuario/admin carga los datos de
+// un día — no depende de que alguien lo dispare a mano. Ante un duplicado se conserva SIEMPRE la
+// marca más temprana de ese rubro (la real) y se elimina la(s) posterior(es), dejando constancia
+// en la bitácora para que quede auditado.
+async function autoLimpiarDuplicados(key,list){
+  if(!list||!list.length)return list;
+  const porUsuario={};
+  list.forEach((m,i)=>{const u=m.user;(porUsuario[u]=porUsuario[u]||[]).push({...m,idx:i});});
+  const aEliminar=new Set();let huboDuplicado=false;
+  Object.values(porUsuario).forEach(marks=>{
+    const porTipo={};
+    marks.forEach(m=>{(porTipo[m.tipo]=porTipo[m.tipo]||[]).push(m);});
+    Object.values(porTipo).forEach(grupo=>{
+      if(grupo.length>1){
+        huboDuplicado=true;
+        const ordenado=[...grupo].sort((a,b)=>(a.stamp||'').localeCompare(b.stamp||''));
+        ordenado.slice(1).forEach(m=>aEliminar.add(m.idx)); // se conserva el primero (más temprano), se descarta el resto
+      }
+    });
+  });
+  if(!huboDuplicado)return list;
+  const limpio=list.filter((m,i)=>!aEliminar.has(i));
+  try{
+    await saveHist(key,limpio);
+    for(let i=0;i<list.length;i++){
+      if(aEliminar.has(i)){
+        const m=list[i];
+        await addLog(`🧹 Auto-depuración: eliminada marcación DUPLICADA — ${m.user} — ${m.tipo} — ${key} ${m.hora} (se conservó la más temprana de ese rubro)`);
+      }
+    }
+  }catch(e){/* si falla el guardado, igual devolvemos la lista limpia para esta vista; se reintentará en la próxima carga */}
+  return limpio;
+}
+const getHist=async k=>{try{const s=await get(R(db,`${HIST}/${k}`));const list=s.exists()?s.val():[];return await autoLimpiarDuplicados(k,list);}catch(e){return[];}};
 const saveHist=async(k,a)=>set(R(db,`${HIST}/${k}`),a);
 
 // AUTH
@@ -2012,6 +2049,32 @@ let LAST_HIST_TODAY=[];
 function getPendMarks(){try{return JSON.parse(localStorage.getItem(PEND_KEY)||'[]');}catch(e){return[];}}
 function setPendMarks(arr){try{localStorage.setItem(PEND_KEY,JSON.stringify(arr));}catch(e){}}
 function pendCountForUser(user){return getPendMarks().filter(m=>m.user===user).length;}
+// BANDEJA LOCAL DE INTENTOS RECHAZADOS: cuando alguien toca el botón de marcar pero la regla de
+// negocio (canMark) lo bloquea (límite de 4 al día, espera de 20 min, etc.), esa marca NUNCA
+// llega a la bandeja de pendientes (PEND_KEY) porque no se debe subir. Pero para que el
+// administrador pueda saber DESPUÉS qué pasó en ese teléfono en vez de quedarse a ciegas
+// ("tocó el botón y no pasó nada"), el intento rechazado se guarda aquí, en el mismo
+// dispositivo, y se sube a la bitácora de Firebase apenas vuelva la conexión — igual que se
+// hace con las marcaciones pendientes.
+const INTENTOS_KEY='wl_intentos_rechazados';
+function getIntentosRechazados(){try{return JSON.parse(localStorage.getItem(INTENTOS_KEY)||'[]');}catch(e){return[];}}
+function setIntentosRechazados(arr){try{localStorage.setItem(INTENTOS_KEY,JSON.stringify(arr.slice(-20)));}catch(e){}} // se guardan como máximo los últimos 20, para no crecer sin límite
+function registrarIntentoRechazado(user,msg){
+  const arr=getIntentosRechazados();
+  arr.push({user,msg,ts:new Date().toISOString()});
+  setIntentosRechazados(arr);
+}
+async function flushIntentosRechazados(){
+  const arr=getIntentosRechazados();
+  if(!arr.length||!FB_CONNECTED)return 0;
+  let subidos=0;
+  for(const it of arr){
+    try{await addLog(`⛔ Intento de marcación RECHAZADO (quedó registrado localmente en su teléfono): ${it.user} — "${it.msg}" — ${it.ts}`);subidos++;}
+    catch(e){/* se reintenta en la próxima */}
+  }
+  if(subidos===arr.length)setIntentosRechazados([]); // ya se subieron todos, se limpia la bandeja local
+  return subidos;
+}
 function withTimeout(promise,ms){return Promise.race([promise,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);}
 function updateConnBadge(){
   const b=el('gps-status');if(!b)return;
@@ -2048,9 +2111,15 @@ function updatePendBanner(){
 // inmediato: no esperamos a que el poller de 8s se dé cuenta, que en móviles a veces tarda
 // más de lo esperado porque el navegador limita los timers en segundo plano.
 document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible'&&getPendMarks().length){syncPendMarks();updatePendBanner();}
+  if(document.visibilityState==='visible'){
+    if(getPendMarks().length){syncPendMarks();updatePendBanner();}
+    if(getIntentosRechazados().length)flushIntentosRechazados();
+  }
 });
-window.addEventListener('pageshow',()=>{if(getPendMarks().length){syncPendMarks();updatePendBanner();}});
+window.addEventListener('pageshow',()=>{
+  if(getPendMarks().length){syncPendMarks();updatePendBanner();}
+  if(getIntentosRechazados().length)flushIntentosRechazados();
+});
 // Aviso al intentar cerrar/recargar con marcaciones aún sin confirmar — la mayoría de navegadores
 // móviles ignoran el texto pero sí muestran su propio diálogo de confirmación genérico.
 window.addEventListener('beforeunload',(e)=>{
@@ -2163,7 +2232,7 @@ function refreshPendingIcons(){
 }
 // Reintento periódico de respaldo: por si quedó algo pendiente aunque la conexión ya
 // figure como restablecida (ej. un solo intento falló por una caída puntual).
-setInterval(()=>{if(FB_CONNECTED&&getPendMarks().length)syncPendMarks();},8000);
+setInterval(()=>{if(FB_CONNECTED&&getPendMarks().length)syncPendMarks();if(FB_CONNECTED&&getIntentosRechazados().length)flushIntentosRechazados();},8000);
 // Botón "Actualizar / Reintentar": fuerza el intento ya mismo, sin esperar a que el listener
 // de Firebase se entere solo de que la señal volvió (a veces tarda unos segundos de más).
 // Este es el botón de DEPURACIÓN MANUAL: busca en este teléfono (localStorage) las marcaciones
@@ -2175,7 +2244,20 @@ async function forceSyncNow(){
   const btn=el('btn-reintentar-conn');if(btn)btn.disabled=true;
   toast('🔄 Verificando conexión...','ok',1500);
   const pend=getPendMarks();
-  if(!pend.length){await renderHistToday();updateConnBadge();toast('✓ Actualizado','ok',1500);if(btn)btn.disabled=false;return;}
+  const intentos=getIntentosRechazados();
+  const subidosIntentos=await flushIntentosRechazados();
+  if(!pend.length){
+    await renderHistToday();updateConnBadge();
+    // Mensaje honesto: si no había NADA pendiente en este teléfono, hay que decirlo tal cual —
+    // así el administrador sabe que el problema no es de sincronización (no hay nada que subir
+    // aquí), sino que la marca nunca llegó a guardarse en este dispositivo para empezar.
+    if(intentos.length){
+      toast(`✓ Sin marcaciones pendientes en este teléfono. Sí había ${intentos.length} intento${intentos.length>1?'s':''} rechazado${intentos.length>1?'s':''} — revisa la bitácora.`,'err',5500);
+    }else{
+      toast('✓ Sin marcaciones pendientes en este teléfono.','ok',2000);
+    }
+    if(btn)btn.disabled=false;return;
+  }
   let sincronizadas=0,bloqueadas=0;
   for(const m of pend){
     try{
@@ -2190,6 +2272,7 @@ async function forceSyncNow(){
   updateConnBadge();refreshPendingIcons();
   if(sincronizadas>0)toast(`🔄 ${sincronizadas} marcación${sincronizadas>1?'es':''} sincronizada${sincronizadas>1?'s':''}`,'ok',3000);
   if(bloqueadas>0)toast(`⚠️ ${bloqueadas} marcación${bloqueadas>1?'es':''} duplicada${bloqueadas>1?'s':''} descartada${bloqueadas>1?'s':''} (rubro ya existía)`,'err',4500);
+  if(subidosIntentos>0)toast(`⛔ ${subidosIntentos} intento${subidosIntentos>1?'s':''} rechazado${subidosIntentos>1?'s':''} anteriormente — revisa la bitácora`,'err',4500);
   if(sincronizadas===0&&bloqueadas===0)toast('⚠ Sigue sin conexión. Se reintentará solo.','err',3000);
   if(btn)btn.disabled=false;
 }
@@ -3764,7 +3847,7 @@ async function registrar(date=new Date(),user=CU,tipoForzado=null){
   // Chequeo de habilitación: best-effort con límite corto (2s) para NO demorar el marcaje.
   // Si no responde a tiempo, se deja pasar (ya quedará el registro para revisar si hiciera falta).
   if(!ADMINS.includes(user)&&FB_CONNECTED){
-    try{const ok=await withTimeout(isHabilitado(user),2000);if(!ok){flashBtn('No estás habilitado hoy. Contacta al encargado.');return;}}
+    try{const ok=await withTimeout(isHabilitado(user),2000);if(!ok){registrarIntentoRechazado(user,'No estaba habilitado ese día');flashBtn('No estás habilitado hoy. Contacta al encargado.');return;}}
     catch(e){/* sin respuesta a tiempo: seguimos, no bloqueamos el marcaje por esto */}
   }
   // Se valida y se arma la marcación con lo que YA tenemos en memoria cuando es el propio
@@ -3777,7 +3860,7 @@ async function registrar(date=new Date(),user=CU,tipoForzado=null){
   if(esPropio)base=LAST_HIST_TODAY;
   else{try{base=await withTimeout(getHist(key),5000)||[];}catch(e){base=[];}}
   const combinado=[...base,...pendHoy];
-  if(!tipoForzado){const chk=await canMark(date,user,combinado);if(!chk.ok){flashBtn(chk.msg);return;}}
+  if(!tipoForzado){const chk=await canMark(date,user,combinado);if(!chk.ok){registrarIntentoRechazado(user,chk.msg);flashBtn(chk.msg);return;}}
   const mine=combinado.filter(x=>x.user===user);
   const tipo=tipoForzado||tipoPorReglas(mine);
   const cid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():`c${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
