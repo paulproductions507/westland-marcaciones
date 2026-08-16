@@ -751,6 +751,24 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
                 <input class="fc" id="u-te" type="number" placeholder="Ej: 46.15">
               </div>
             </div>
+            <div style="margin-top:10px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 11px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <input type="checkbox" id="u-pf-on" style="width:auto">
+                <label for="u-pf-on" style="font-size:13px;font-weight:700;color:var(--mt);text-transform:none;letter-spacing:0">💰 Pago fijo / Salario base (sin marcación)</label>
+              </div>
+              <div id="u-pf-row" style="display:none">
+                <div style="font-size:11px;color:var(--mt);margin-bottom:7px">En los días marcados, este usuario recibe el pago completo automáticamente en la Vista Semanal (tabla y correo), sin necesidad de marcar reloj. Se usa la tarifa especial si está activa arriba; si no, la tarifa regular/domingo/feriado según corresponda al día.</div>
+                <div style="display:flex;gap:9px;flex-wrap:wrap">
+                  <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" class="u-pf-dia" value="1" style="width:auto">Lun</label>
+                  <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" class="u-pf-dia" value="2" style="width:auto">Mar</label>
+                  <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" class="u-pf-dia" value="3" style="width:auto">Mié</label>
+                  <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" class="u-pf-dia" value="4" style="width:auto">Jue</label>
+                  <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" class="u-pf-dia" value="5" style="width:auto">Vie</label>
+                  <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" class="u-pf-dia" value="6" style="width:auto">Sáb</label>
+                  <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" class="u-pf-dia" value="0" style="width:auto">Dom</label>
+                </div>
+              </div>
+            </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
               <button class="btn bp bsm" id="btn-save-user" style="width:auto">💾 Guardar</button>
               <button class="btn bg bsm" id="btn-exp-users">⬇ CSV</button>
@@ -2853,6 +2871,9 @@ window.editUser=async function(userKey){
     el('u-te-on').checked=tieneEspecial;el('u-te').value=u.tarifa.especial||'';
     el('u-te-row').style.display=tieneEspecial?'block':'none';
   }
+  const pf=u.pagoFijo||{};const pfOn=!!(pf.activo&&Array.isArray(pf.dias)&&pf.dias.length);
+  el('u-pf-on').checked=pfOn;el('u-pf-row').style.display=pfOn?'block':'none';
+  document.querySelectorAll('.u-pf-dia').forEach(cb=>{cb.checked=pfOn&&pf.dias.includes(parseInt(cb.value));});
   // Open the usuarios accordion
   const b=el('ac-us');if(!b.classList.contains('open'))b.classList.add('open');
   const panel=el('admin-body');if(panel.style.display!=='block')panel.style.display='block';
@@ -3320,10 +3341,14 @@ async function buildEmailSemanal(desde,hasta){
   const fs=await get(R(db,FER));const feriados=fs.exists()?Object.values(fs.val()).map(f=>f.fecha):[];
   const histByDay={};
   for(const k of isoList){histByDay[k]=await getHist(k);}
-  const userList=todosColab.filter(u=>isoList.some(k=>(histByDay[k]||[]).some(m=>m.user===u.user)));
-  // Solo columnas donde al menos un colaborador tiene marcación
+  // Incluye usuarios con marcación en la semana, o con pago fijo configurado para algún
+  // día de esta semana (ej. Super Admin con salario base los sábados, sin marcar reloj)
+  const userList=todosColab.filter(u=>isoList.some(k=>(histByDay[k]||[]).some(m=>m.user===u.user))
+    ||(u.pagoFijo?.activo&&isoList.some((k,i)=>u.pagoFijo.dias?.includes(dias[i].getDay()))));
+  // Solo columnas donde al menos un colaborador tiene marcación o pago fijo ese día
   const diasVis=isoList.map((k,i)=>({k,i,d:dias[i],etq:etiq[i]}))
-    .filter(({k})=>userList.some(u=>(histByDay[k]||[]).some(m=>m.user===u.user)));
+    .filter(({k,d})=>userList.some(u=>(histByDay[k]||[]).some(m=>m.user===u.user)
+      ||(u.pagoFijo?.activo&&u.pagoFijo.dias?.includes(d.getDay()))));
   const TH='background:#00313C;color:#fff;padding:7px 6px;font-size:11px;border:1px solid #00313C;text-align:center';
   const TD='padding:5px 6px;border:1px solid #ccc;font-size:11px;vertical-align:top';
   let thDias='<th style="'+TH+';text-align:left;min-width:110px">Empleado</th>';
@@ -3337,10 +3362,19 @@ async function buildEmailSemanal(desde,hasta){
     diasVis.forEach(({k,d},vi)=>{
       const marks=(histByDay[k]||[]).filter(m=>m.user===u.user);
       const dowNum=d.getDay();
+      const isFer=feriados.includes(k);
+      const pf=pagoFijoDelDia(uObj,dowNum,isFer);
+      if(pf){
+        totalPorDia[vi].colab++;totalPorDia[vi].monto+=pf.monto;totalSemana+=pf.monto;
+        tds+=`<td style="${TD};text-align:center">`
+          +`<div style="color:#007a5e;font-size:10px;font-weight:700">💰 Salario Base</div>`
+          +`<div style="color:#007a5e;font-size:12px;font-weight:800;margin-top:2px">$${pf.monto.toFixed(2)}</div>`
+          +`<div style="color:#888;font-size:9px;margin-top:1px">Pago completo</div></td>`;
+        return;
+      }
       if(!marks.length){tds+=`<td style="${TD};text-align:center;color:#cc3333;font-size:10px">Ausente</td>`;}
       else{
         const cnt=marks.length;const completo=cnt>=4;
-        const isFer=feriados.includes(k);
         const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
         const hrs=computeHrs(marks);
         const hrsParcial=cnt<4?computeHrsParcial(marks):hrs;
@@ -4344,6 +4378,18 @@ function computeHrsParcial(marks){
   return +(raw/60);
 }
 
+// PAGO FIJO / SALARIO BASE — para usuarios (ej. Super Admin) que no deben marcar reloj pero
+// sí deben recibir su pago íntegro en la Vista Semanal para los días configurados en su perfil.
+// Usa la tarifa especial del usuario si está activa; si no, la tarifa regular/domingo/feriado
+// que corresponda al día. Devuelve null si el día no aplica pago fijo para ese usuario.
+function pagoFijoDelDia(uObj,dowNum,isFer){
+  const pf=uObj&&uObj.pagoFijo;
+  if(!pf||!pf.activo||!Array.isArray(pf.dias)||!pf.dias.includes(dowNum))return null;
+  const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
+  const monto=(uObj.tarifa?.especial&&uObj.tarifa.especial>0)?uObj.tarifa.especial:tar;
+  return{monto};
+}
+
 // USUARIOS ACTIVOS PARA VISTA SEMANAL (guardado en localStorage + Firebase meta)
 const SEM_KEY='wl_sem_activos';
 function getSemActivos(){try{const v=localStorage.getItem(SEM_KEY);return v?JSON.parse(v):[];}catch(e){return[];}}
@@ -4408,13 +4454,16 @@ async function renderVistaSemanal(refDate){
   // Load historial for each day
   const histByDay={};
   for(const k of isoList){histByDay[k]=await getHist(k);}
-  // AUTO-FILTER: solo incluir usuarios que tienen AL MENOS UNA marcación en la semana
-  const userList=todosColab.filter(u=>isoList.some(k=>(histByDay[k]||[]).some(m=>m.user===u.user)));
+  // AUTO-FILTER: incluir usuarios con AL MENOS UNA marcación en la semana, o con pago fijo
+  // configurado para algún día de esta semana (ej. Super Admin con salario base los sábados)
+  const userList=todosColab.filter(u=>isoList.some(k=>(histByDay[k]||[]).some(m=>m.user===u.user))
+    ||(u.pagoFijo?.activo&&isoList.some((k,i)=>u.pagoFijo.dias?.includes(dias[i].getDay()))));
   // Cargar feriados para calcular tarifa correcta
   const fs=await get(R(db,FER));const feriados=fs.exists()?Object.values(fs.val()).map(f=>f.fecha):[];
-  // OCULTAR columnas donde NINGÚN colaborador tiene marcación ese día
+  // OCULTAR columnas donde NINGÚN colaborador tiene marcación ni pago fijo ese día
   const diasVisibles=isoList.map((k,i)=>({k,i,d:dias[i],etq:etiquetas[i]}))
-    .filter(({k})=>userList.some(u=>(histByDay[k]||[]).some(m=>m.user===u.user)));
+    .filter(({k,d})=>userList.some(u=>(histByDay[k]||[]).some(m=>m.user===u.user)
+      ||(u.pagoFijo?.activo&&u.pagoFijo.dias?.includes(d.getDay()))));
   // Build table
   const periodoStr=`${isoList[0]} al ${isoList[isoList.length-1]}`;
   let html=`<div style="font-size:12px;color:var(--ac);font-weight:700;margin-bottom:4px">📆 Semana: ${periodoStr}</div>`;
@@ -4453,11 +4502,20 @@ async function renderVistaSemanal(refDate){
       const isToday=k===isoD(new Date());
       const isWeekend=dowNum===0||dowNum===6;
       const bgBase=isToday?'rgba(0,85,112,.35)':isWeekend?'rgba(0,201,167,.04)':'var(--bg)';
+      const isFer=feriados.includes(k);
+      const pf=pagoFijoDelDia(uObj,dowNum,isFer);
+      if(pf){
+        totalPorDia[vi].colab++;totalPorDia[vi].monto+=pf.monto;totalSemana+=pf.monto;
+        html+=`<td style="padding:5px 5px;border:1px solid var(--bd);background:${bgBase};text-align:center;vertical-align:middle">`
+          +`<div style="color:#00c9a7;font-size:10px;font-weight:700">💰 Salario Base</div>`
+          +`<div style="color:#00c9a7;font-size:12px;font-weight:800;margin-top:2px">$${pf.monto.toFixed(2)}</div>`
+          +`<div style="color:var(--mt);font-size:9px;margin-top:1px">Pago completo</div></td>`;
+        return;
+      }
       if(!dayMarks.length){
         html+=`<td style="padding:5px 5px;border:1px solid var(--bd);background:${bgBase};text-align:center;vertical-align:middle"><span style="color:var(--dn);font-size:10px;font-weight:700">Ausente</span></td>`;
       }else{
         const cnt=dayMarks.length;const completo=cnt>=4;
-        const isFer=feriados.includes(k);
         const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
         const hrs=computeHrs(dayMarks);
         const hrsParcial=cnt<4?computeHrsParcial(dayMarks):hrs;
@@ -4610,16 +4668,20 @@ el('btn-man').addEventListener('click',async()=>{
 
 // USUARIOS
 el('u-te-on').addEventListener('change',()=>{el('u-te-row').style.display=el('u-te-on').checked?'block':'none';if(!el('u-te-on').checked)el('u-te').value='';});
+el('u-pf-on').addEventListener('change',()=>{el('u-pf-row').style.display=el('u-pf-on').checked?'block':'none';if(!el('u-pf-on').checked)document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);});
 el('btn-save-user').addEventListener('click',async()=>{
   const nombre=el('u-nombre').value.trim(),user=el('u-user').value.trim();
   if(!nombre||!user){toast('Nombre y usuario obligatorios','err');return;}
   const existentes=await getUsers();const prev=existentes[user]||{};
   const especialOn=el('u-te-on').checked;
   const finicio=el('u-finicio').value||'';
+  const pfOn=el('u-pf-on').checked;
+  const pfDias=pfOn?Array.from(document.querySelectorAll('.u-pf-dia:checked')).map(cb=>parseInt(cb.value)):[];
   const meta={...prev,nombre,user,cedula:el('u-ced').value.trim()||'',email:el('u-email').value.trim()||prev.email||'',rol:el('u-rol').value||'Colaborador',
     tarifa:{regular:parseFloat(el('u-tr').value||20)||20,domingo:parseFloat(el('u-td').value||25)||25,feriado:parseFloat(el('u-tf').value||30)||30,especial:especialOn?(parseFloat(el('u-te').value||0)||0):0},
+    pagoFijo:{activo:pfOn&&pfDias.length>0,dias:pfDias},
     profileUrl:prev.profileUrl||'',fechaInicio:finicio};
-  await setUser(user,meta);toast('Usuario guardado ✓','ok');['u-nombre','u-user','u-ced','u-email','u-tr','u-td','u-tf','u-te','u-finicio'].forEach(id=>el(id).value='');el('u-te-on').checked=false;el('u-te-row').style.display='none';refreshUI();
+  await setUser(user,meta);toast('Usuario guardado ✓','ok');['u-nombre','u-user','u-ced','u-email','u-tr','u-td','u-tf','u-te','u-finicio'].forEach(id=>el(id).value='');el('u-te-on').checked=false;el('u-te-row').style.display='none';el('u-pf-on').checked=false;el('u-pf-row').style.display='none';document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);refreshUI();
 });
 
 // ── BITÁCORA DE PERÍODOS LABORALES ──────────────────────────────────────
