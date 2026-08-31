@@ -1923,6 +1923,28 @@ let lastActive=Date.now();
 
 // NOTIFICATIONS
 const NOTIF='notif_v1';
+// AHORRO DE TRÁFICO: notif_v1 y approvals_v1 tienen listeners onValue permanentes que
+// descargan el nodo COMPLETO en cada cambio. Como nunca se borraba nada, esos nodos solo
+// crecían con el tiempo. Esto poda lo ya procesado/leído para mantenerlos pequeños.
+// Se ejecuta una vez por sesión de admin (ver openApp), no en un intervalo.
+async function prunePersistentNodes(){
+  try{
+    const nSnap=await get(R(db,NOTIF));
+    if(nSnap.exists()){
+      const v=nSnap.val(),cutoff=Date.now()-7*86400000,dels=[];
+      Object.entries(v).forEach(([k,n])=>{if(n.leido&&new Date(n.ts).getTime()<cutoff)dels.push(remove(R(db,NOTIF+'/'+k)));});
+      if(dels.length)await Promise.all(dels);
+    }
+  }catch(e){console.warn('prune notif:',e);}
+  try{
+    const aSnap=await get(R(db,APR));
+    if(aSnap.exists()){
+      const v=aSnap.val(),cutoff=Date.now()-30*86400000,dels=[];
+      Object.entries(v).forEach(([k,a])=>{if(a.status&&a.status!=='pending'&&new Date(a.stamp||a.ts||0).getTime()<cutoff)dels.push(remove(R(db,APR+'/'+k)));});
+      if(dels.length)await Promise.all(dels);
+    }
+  }catch(e){console.warn('prune approvals:',e);}
+}
 async function sendNotif(from,to,titulo,mensaje){
   try{
     const key='notif_'+Date.now();
@@ -1994,8 +2016,19 @@ document.addEventListener('visibilitychange',()=>{
 });
 
 // DB HELPERS
-const getUsers=async()=>{const s=await get(R(db,USERS));return s.exists()?s.val():{};};
-const setUser=async(k,v)=>set(R(db,`${USERS}/${k}`),v);
+// AHORRO DE TRÁFICO: users_v1 incluye la foto de perfil de cada colaborador en base64,
+// así que descargarlo completo en cada llamada (había 35 puntos del código que lo hacían)
+// era el principal responsable del consumo excesivo de Firebase. Ahora se cachea en memoria
+// y solo se vuelve a descargar cuando el propio código modifica ese nodo (ver invalidateUsersCache).
+let USERS_CACHE=null;
+function invalidateUsersCache(){USERS_CACHE=null;}
+const getUsers=async()=>{
+  if(USERS_CACHE)return USERS_CACHE;
+  const s=await get(R(db,USERS));
+  USERS_CACHE=s.exists()?s.val():{};
+  return USERS_CACHE;
+};
+const setUser=async(k,v)=>{await set(R(db,`${USERS}/${k}`),v);invalidateUsersCache();};
 const addLog=async t=>{try{const r=push(R(db,PLOG));await set(r,{text:t,when:new Date().toISOString(),by:CU||'system'});}catch(e){}};
 // AUTO-DEPURACIÓN DE RUBROS DUPLICADOS: por regla, cada rubro (Entrada / Salida Alm. / Regreso
 // Alm. / Salida Final) solo puede existir UNA vez por usuario y por día. persistMarkDedup ya
@@ -2310,7 +2343,7 @@ async function ensureDefaults(){
     jdecerega:{nombre:"Javier Decerega",cedula:"",user:"jdecerega",email:"jdecerega@saks.com.pa",rol:"Gerente",tarifa:{regular:0,domingo:0,feriado:0,especial:0},profileUrl:""}
   }));
   if(!ps.exists())writes.push(set(R(db,LOGPROV),{p1:{nombre:"NASA Zona Libre",tipo:"Zona Libre"}}));
-  if(writes.length)await Promise.all(writes);
+  if(writes.length){await Promise.all(writes);invalidateUsersCache();}
 }
 
 // ── JORNADA DEL DÍA (flexible, por usuario, una vez por día) ──────────────
@@ -2771,7 +2804,7 @@ async function openApp(user){
     el('gerente-banco-panel').style.display='none';
   }
   startSess();await refreshUI();updateConnBadge();listenNotifs();
-  if(isAdm){if(isSA)listenApprovals();loadEmailCfg();renderAsistencia();}
+  if(isAdm){if(isSA){prunePersistentNodes();listenApprovals();}loadEmailCfg();renderAsistencia();}
   else if(isGer){loadEmailCfg();await renderDatosBancariosGerente();}
   else{await checkAccesoColab();}
   await checkJornadaInicio(user);
@@ -2887,6 +2920,7 @@ window.deleteUser=async function(userKey,nombre){
   if(!confirm('¿Eliminar usuario '+nombre+' ('+userKey+')? Esta acción no se puede deshacer.'))return;
   try{
     await remove(R(db,USERS+'/'+userKey));
+    invalidateUsersCache();
     await addLog('Usuario eliminado: '+userKey+' por '+CU);
     toast('Usuario '+nombre+' eliminado ✓','ok');
     refreshUI();
@@ -3499,7 +3533,7 @@ async function startAutoEnable(){
         }
       }
     }catch(e){console.warn('auto-enable:',e);}
-  },10000);
+  },30000); // AHORRO DE TRÁFICO: antes 10000ms (cada 10s); con 30s sigue cayendo dentro del mismo minuto objetivo
 }
 
 // LOGIN
