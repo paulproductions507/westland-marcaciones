@@ -3387,36 +3387,59 @@ function buildResumenSeguro(desde,hasta,summ){
   return{html,nivel:3}; // ya al máximo de compresión soportada
 }
 
-// Genera el HTML de vista semanal para enviar por correo (con totales por día, sin columnas vacías)
-async function buildEmailSemanal(desde,hasta){
-  const TIPO_LBL={'Entrada':'Inicio de Jornada','Salida Alm.':'Salida a Almuerzo','Regreso Alm.':'Regreso de Almuerzo','Salida Final':'Fin de Jornada'};
-  const lun=new Date(desde+'T00:00:00');
-  const dias=Array.from({length:7},(_,i)=>{const d=new Date(lun);d.setDate(lun.getDate()+i);return d;});
-  const etiq=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+// Genera el HTML de vista semanal para enviar por correo — respeta el rango EXACTO
+// Desde→Hasta (no fuerza 7 días) y soporta niveles de compresión progresivos (0-3)
+// para no exceder el límite de tamaño de EmailJS. El detalle completo siempre queda
+// disponible dentro de la app, en "Vista semanal de marcaciones".
+async function buildEmailSemanal(desde,hasta,nivel){
+  nivel=nivel||0;
+  const TIPO_ABR={'Entrada':'Ent','Salida Alm.':'SAlm','Regreso Alm.':'RAlm','Salida Final':'SFin'};
+  const ETQ_DOW=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const ini=new Date(desde+'T00:00:00');
+  const fin=new Date(hasta+'T00:00:00');
+  const dias=[];
+  if(fin>=ini){for(let d=new Date(ini);d<=fin;d.setDate(d.getDate()+1))dias.push(new Date(d));}
+  else dias.push(ini);
   const isoList=dias.map(d=>isoD(d));
   const users=await getUsers();
   const todosColab=Object.values(users).filter(u=>!GERENTES.includes(u.user));
   const fs=await get(R(db,FER));const feriados=fs.exists()?Object.values(fs.val()).map(f=>f.fecha):[];
   const histByDay={};
   for(const k of isoList){histByDay[k]=await getHist(k);}
-  // Incluye usuarios con marcación en la semana, o con pago fijo configurado para algún
-  // día de esta semana (ej. Super Admin con salario base los sábados, sin marcar reloj)
+  // Incluye usuarios con marcación en el rango, o con pago fijo configurado para algún
+  // día del rango (ej. Super Admin con salario base los sábados, sin marcar reloj)
   const userList=todosColab.filter(u=>isoList.some(k=>(histByDay[k]||[]).some(m=>m.user===u.user))
     ||(u.pagoFijo?.activo&&isoList.some((k,i)=>u.pagoFijo.dias?.includes(dias[i].getDay()))));
   // Solo columnas donde al menos un colaborador tiene marcación o pago fijo ese día
-  const diasVis=isoList.map((k,i)=>({k,i,d:dias[i],etq:etiq[i]}))
+  const diasVis=isoList.map((k,i)=>({k,i,d:dias[i],etq:ETQ_DOW[dias[i].getDay()]}))
     .filter(({k,d})=>userList.some(u=>(histByDay[k]||[]).some(m=>m.user===u.user)
       ||(u.pagoFijo?.activo&&u.pagoFijo.dias?.includes(d.getDay()))));
-  const TH='background:#00313C;color:#fff;padding:7px 6px;font-size:11px;border:1px solid #00313C;text-align:center';
-  const TD='padding:5px 6px;border:1px solid #ccc;font-size:11px;vertical-align:top';
-  let thDias='<th style="'+TH+';text-align:left;min-width:110px">Empleado</th>';
-  diasVis.forEach(({d,etq,k})=>{const wd=d.getDay();const wk=wd===0||wd===6;thDias+=`<th style="${TH};${wk?'background:#005570;':''}min-width:80px">${etq}<br><span style="font-weight:400;opacity:.8;font-size:10px">${k.slice(5)}</span></th>`;});
+  // CSS compartido por CLASE (no repetido inline en cada celda) — esto es lo que reduce
+  // más el tamaño del HTML frente a la versión anterior con estilos inline por celda.
+  const css=`<style>
+    .sw{border-collapse:collapse;width:100%;font-family:Arial,Helvetica,sans-serif}
+    .sw th{background:#00313C;color:#fff;padding:6px 5px;font-size:11px;border:1px solid #00313C;text-align:center}
+    .sw th.emp{text-align:left;min-width:100px}
+    .sw th.wk{background:#005570}
+    .sw td{padding:4px 5px;border:1px solid #ccc;font-size:11px;vertical-align:top}
+    .sw td.emp{font-weight:700;background:#f5f8f9}
+    .sw .sub{font-size:10px;color:#888;font-weight:400}
+    .sw td.abs{text-align:center;color:#cc3333;font-size:10px}
+    .sw td.c{text-align:center}
+    .sw .mln{display:block;line-height:1.5}
+    .sw .mt{color:#555;font-size:10px}
+    .sw .mh{font-weight:700;color:#00313C;font-size:11px}
+    .sw .ok{color:#007a5e;font-size:10px;font-weight:700}
+    .sw .wt2{color:#cc6600;font-size:10px}
+    .sw tr.tot td{background:#d0f0e8;font-weight:800;color:#00313C}
+  </style>`;
+  let thDias=`<th class="emp">Empleado</th>`;
+  diasVis.forEach(({d,etq,k})=>{const wk=d.getDay()===0||d.getDay()===6;thDias+=`<th${wk?' class="wk"':''}>${etq}<br><span style="font-weight:400;opacity:.8;font-size:10px">${k.slice(5)}</span></th>`;});
   const totalPorDia=diasVis.map(()=>({colab:0,monto:0}));
-  let totalSemana=0;
-  let rows='';
+  let totalSemana=0,rows='';
   userList.forEach(u=>{
     const uObj=users[u.user]||{};
-    let tds=`<td style="${TD};font-weight:700;background:#f5f8f9">${u.nombre}<br><span style="font-size:10px;color:#888">${u.user}</span></td>`;
+    let tds=`<td class="emp">${u.nombre}<br><span class="sub">${u.user}</span></td>`;
     diasVis.forEach(({k,d},vi)=>{
       const marks=(histByDay[k]||[]).filter(m=>m.user===u.user);
       const dowNum=d.getDay();
@@ -3424,40 +3447,54 @@ async function buildEmailSemanal(desde,hasta){
       const pf=pagoFijoDelDia(uObj,dowNum,isFer);
       if(pf){
         totalPorDia[vi].colab++;totalPorDia[vi].monto+=pf.monto;totalSemana+=pf.monto;
-        tds+=`<td style="${TD};text-align:center">`
-          +`<div style="color:#007a5e;font-size:10px;font-weight:700">💰 Salario Base</div>`
-          +`<div style="color:#007a5e;font-size:12px;font-weight:800;margin-top:2px">$${pf.monto.toFixed(2)}</div>`
-          +`<div style="color:#888;font-size:9px;margin-top:1px">Pago completo</div></td>`;
+        tds+=`<td class="c"><div class="ok">💰 Base</div><div style="font-size:12px;font-weight:800;color:#007a5e">$${pf.monto.toFixed(2)}</div></td>`;
         return;
       }
-      if(!marks.length){tds+=`<td style="${TD};text-align:center;color:#cc3333;font-size:10px">Ausente</td>`;}
-      else{
-        const cnt=marks.length;const completo=cnt>=4;
-        const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
-        const hrs=computeHrs(marks);
-        const hrsParcial=cnt<4?computeHrsParcial(marks):hrs;
-        const monto=completo?tar:+((Math.min(hrsParcial,8)/8)*tar).toFixed(2);
-        totalPorDia[vi].colab++;totalPorDia[vi].monto+=monto;totalSemana+=monto;
-        const lines=marks.map(m=>`<div style="line-height:1.7"><span style="color:#555;font-size:10px">${TIPO_LBL[m.tipo]||m.tipo}</span><br><strong style="font-size:11px;color:#00313C">${m.hora.slice(0,8)}</strong></div>`).join('');
-        const ok=completo?`<div style="color:#007a5e;font-size:10px;font-weight:700">✅ $${monto.toFixed(2)}</div>`:`<div style="color:#cc6600;font-size:10px">⏳ ${cnt}/4 · $${monto.toFixed(2)}</div>`;
-        tds+=`<td style="${TD}">${lines}${ok}</td>`;
+      if(!marks.length){tds+=`<td class="abs">Ausente</td>`;return;}
+      const cnt=marks.length;const completo=cnt>=4;
+      const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
+      const hrs=computeHrs(marks);
+      const hrsParcial=cnt<4?computeHrsParcial(marks):hrs;
+      const monto=completo?tar:+((Math.min(hrsParcial,8)/8)*tar).toFixed(2);
+      totalPorDia[vi].colab++;totalPorDia[vi].monto+=monto;totalSemana+=monto;
+      const okHtml=completo?`<div class="ok">✅ $${monto.toFixed(2)}</div>`:`<div class="wt2">⏳ ${cnt}/4 · $${monto.toFixed(2)}</div>`;
+      if(nivel>=3&&completo){
+        // Nivel máximo: días completos y sin novedad se muestran sin desglose de horas
+        tds+=`<td class="c">${okHtml}</td>`;
+      }else if(nivel>=2){
+        // Una sola línea con todas las marcas separadas por "·" en vez de un bloque por marca
+        const line=marks.map(m=>(TIPO_ABR[m.tipo]||m.tipo)+' '+m.hora.slice(0,5)).join(' · ');
+        tds+=`<td><span class="mt">${line}</span>${okHtml}</td>`;
+      }else{
+        const abr=nivel>=1;
+        const lines=marks.map(m=>`<span class="mln"><span class="mt">${abr?(TIPO_ABR[m.tipo]||m.tipo):tipoLabel(m.tipo)}</span> <span class="mh">${m.hora.slice(0,8)}</span></span>`).join('');
+        tds+=`<td>${lines}${okHtml}</td>`;
       }
     });
     rows+=`<tr>${tds}</tr>`;
   });
-  let totalRow=`<tr style="background:#e8f7f4"><td style="${TD};background:#d0f0e8;font-weight:800;color:#00313C">TOTALES<br><span style="font-size:10px;color:#007a5e;font-weight:700">Total semana: $${totalSemana.toFixed(2)}</span></td>`;
-  diasVis.forEach((_,vi)=>{
-    const t=totalPorDia[vi];
-    totalRow+=`<td style="${TD};text-align:center;background:#d0f0e8"><div style="font-size:13px;font-weight:800;color:#00313C">$${t.monto.toFixed(2)}</div><div style="font-size:10px;color:#555">${t.colab} colab.</div></td>`;
-  });
-  totalRow+=`</tr>`;
-  return`<div style="font-family:Arial,Helvetica,sans-serif;color:#022;max-width:900px">`
-    +`<h2 style="color:#00313C;margin:0 0 6px 0">📆 Vista Semanal de Marcaciones — Juguetería Westland Nivel 300</h2>`
-    +`<p style="font-size:13px;color:#555;margin:0 0 14px 0">Período: <strong>${desde}</strong> al <strong>${hasta}</strong> · ${userList.length} colaborador${userList.length!==1?'es':''} con marcaciones · <strong style="color:#00313C">Total semana: $${totalSemana.toFixed(2)}</strong></p>`
+  let totalRow=`<tr class="tot"><td class="emp">TOTALES<br><span class="sub" style="color:#007a5e">Total: $${totalSemana.toFixed(2)}</span></td>`;
+  diasVis.forEach((_,vi)=>{const t=totalPorDia[vi];totalRow+=`<td class="c">$${t.monto.toFixed(2)}<br><span class="sub">${t.colab} colab.</span></td>`;});
+  totalRow+='</tr>';
+  const notaCompresion=nivel>0?`<p style="font-size:10px;color:#888;font-family:Arial;margin:0 0 8px 0">ℹ️ Vista compacta por tamaño del correo. El detalle completo siempre está disponible en la app, en "Vista semanal de marcaciones".</p>`:'';
+  return`<div style="font-family:Arial,Helvetica,sans-serif;color:#022;max-width:900px">${css}`
+    +`<h2 style="color:#00313C;margin:0 0 6px 0;font-size:16px">📆 Vista Semanal de Marcaciones — Juguetería Westland Nivel 300</h2>`
+    +`<p style="font-size:12px;color:#555;margin:0 0 10px 0">Período: <strong>${desde}</strong> al <strong>${hasta}</strong> · ${userList.length} colaborador${userList.length!==1?'es':''} · <strong style="color:#00313C">Total: $${totalSemana.toFixed(2)}</strong></p>`
+    +notaCompresion
     +(userList.length===0?'<p style="color:#cc3333">Sin marcaciones registradas para este período.</p>'
-      :`<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-size:11px"><thead><tr>${thDias}</tr></thead><tbody>${rows}</tbody><tfoot>${totalRow}</tfoot></table></div>`)
-    +`<p style="margin-top:14px;border-top:2px solid #00313C;padding-top:8px;color:#00313C;font-size:11px;font-weight:700">Planilla Camarón — Juguetería Westland · Nivel 300 · ${new Date().toLocaleString('es')}</p>`
+      :`<div style="overflow-x:auto"><table class="sw"><thead><tr>${thDias}</tr></thead><tbody>${rows}</tbody><tfoot>${totalRow}</tfoot></table></div>`)
+    +`<p style="margin-top:12px;border-top:2px solid #00313C;padding-top:6px;color:#00313C;font-size:10px;font-weight:700">Planilla Camarón — Juguetería Westland · Nivel 300 · ${new Date().toLocaleString('es')}</p>`
     +`</div>`;
+}
+// Intenta compactar progresivamente (niveles 0→3) hasta caber bajo el límite de EmailJS,
+// igual que buildResumenSeguro — el dato nunca se pierde, solo se compacta el texto.
+async function buildSemanalSeguro(desde,hasta){
+  for(let nivel=0;nivel<=3;nivel++){
+    const html=await buildEmailSemanal(desde,hasta,nivel);
+    if(htmlByteSize(html)<=EMAILJS_SAFE_LIMIT)return{html,nivel};
+  }
+  const html=await buildEmailSemanal(desde,hasta,3);
+  return{html,nivel:3};
 }
 
 async function sendEmailReport(tipo,periodo,cfgOverride){
@@ -3490,8 +3527,9 @@ async function sendEmailReport(tipo,periodo,cfgOverride){
     }
     let htmlTable='',nivelComp=0;
     if(tipo==='semanal'){
-      // Vista semanal: misma lógica que renderVistaSemanal pero genera HTML de email
-      htmlTable=await buildEmailSemanal(desde,hasta);
+      // Vista semanal: respeta el rango exacto desde→hasta y se comprime progresivamente
+      // (niveles 0-3) si hace falta para caber bajo el límite de tamaño de EmailJS.
+      const r=await buildSemanalSeguro(desde,hasta);htmlTable=r.html;nivelComp=r.nivel;
     }else{
       const summ=await buildSummary(desde,hasta,false);
       let usersArr=[],rbU={};
@@ -3516,7 +3554,7 @@ async function sendEmailReport(tipo,periodo,cfgOverride){
       try{emailjs.init(cfg.publicKey);await emailjs.send(cfg.serviceId,cfg.templateId,tParams);sent=true;}catch(se){throw se;}
     }
     if(sent){
-      const tag=tipo==='resumen'&&nivelComp>0?' (comprimido nivel '+nivelComp+' por tamaño)':'';
+      const tag=(tipo==='resumen'||tipo==='semanal')&&nivelComp>0?' (comprimido nivel '+nivelComp+' por tamaño)':'';
       toast('✅ Enviado a '+cfg.para+' · '+desde+'→'+hasta+tag,'ok',6000);
       await addLog('Correo '+tipo+': '+cfg.para+' '+desde+'→'+hasta+tag);
     }
