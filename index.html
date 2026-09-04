@@ -831,8 +831,16 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
                   <option value="7">Últimos 7 días</option>
                   <option value="14">Últimas 2 semanas</option>
                   <option value="30">Último mes</option>
+                  <option value="custom">📌 Fecha personalizada</option>
                 </select>
               </div>
+            </div>
+            <div class="fg2" id="auto-custom-wrap" style="display:none;margin-top:8px">
+              <div class="fg"><label>Desde (fijo)</label><input type="date" class="fc" id="auto-custom-desde"></div>
+              <div class="fg"><label>Hasta (fijo)</label><input type="date" class="fc" id="auto-custom-hasta"></div>
+            </div>
+            <div style="font-size:11px;color:var(--wn);margin:2px 0 0 0;display:none" id="auto-custom-nota">
+              ⚠️ Con "Fecha personalizada" el envío automático (recurrente) mandará SIEMPRE ese mismo rango fijo cada vez que se dispare, sin avanzar de semana. Úsalo solo si de verdad necesitas repetir el mismo período, no para el envío semanal normal.
             </div>
             <div style="font-size:12px;color:var(--mt);margin:4px 0 8px 0">
               Con "Semana actual": el reporte siempre cubre de Lunes a Sábado de la semana en curso, sin importar cuándo lo envíes.
@@ -3138,6 +3146,8 @@ async function loadEmailCfg(){
     if(v.para)el('em-para').value=v.para;if(v.cc)el('em-cc').value=v.cc;
     if(v.autoDia!==undefined)el('auto-dia').value=v.autoDia;if(v.autoHora)el('auto-hora').value=v.autoHora;
     if(v.autoTipo)el('auto-tipo').value=v.autoTipo;if(v.autoPeriodo)el('auto-periodo').value=v.autoPeriodo;
+    if(v.autoCustomDesde)el('auto-custom-desde').value=v.autoCustomDesde;if(v.autoCustomHasta)el('auto-custom-hasta').value=v.autoCustomHasta;
+    toggleAutoCustom();
     try{localStorage.setItem('wl_ejs',JSON.stringify(v));}catch(e){}
     startAutoSched(v);
   }catch(e){}
@@ -3160,10 +3170,23 @@ el('btn-add-fer').addEventListener('click',async()=>{
 el('btn-save-gps').addEventListener('click',async()=>{const lat=el('g-lat').value,lon=el('g-lon').value;if(!lat||!lon){toast('Ingrese lat/lon','err');return;}try{await set(R(db,GPS),{lat:parseFloat(lat),lon:parseFloat(lon)});toast('GPS guardado ✓','ok');checkGPS();}catch(e){toast('Error','err');}});
 el('btn-cap-gps').addEventListener('click',async()=>{toast('Obteniendo...');try{const pos=await getPos();el('g-lat').value=pos.coords.latitude.toFixed(6);el('g-lon').value=pos.coords.longitude.toFixed(6);toast('Capturado ✓','ok');}catch(e){toast('No se pudo','err');}});
 
+// Muestra/oculta los campos de fecha fija cuando el período es "Fecha personalizada"
+function toggleAutoCustom(){
+  const custom=el('auto-periodo').value==='custom';
+  el('auto-custom-wrap').style.display=custom?'':'none';
+  el('auto-custom-nota').style.display=custom?'':'none';
+}
+el('auto-periodo')?.addEventListener('change',toggleAutoCustom);
+
 // EMAIL
 el('btn-save-email').addEventListener('click',async()=>{
   const cfg={serviceId:el('ejs-sid').value.trim(),templateId:el('ejs-tid').value.trim(),publicKey:el('ejs-key').value.trim(),para:el('em-para').value.trim(),cc:el('em-cc').value.trim(),autoDia:el('auto-dia').value,autoHora:el('auto-hora').value,autoTipo:el('auto-tipo').value,autoPeriodo:el('auto-periodo').value};
   if(!cfg.serviceId||!cfg.templateId||!cfg.publicKey){toast('Completa los 3 campos de EmailJS','err');return;}
+  if(cfg.autoPeriodo==='custom'){
+    cfg.autoCustomDesde=el('auto-custom-desde').value;cfg.autoCustomHasta=el('auto-custom-hasta').value;
+    if(!cfg.autoCustomDesde||!cfg.autoCustomHasta){toast('Selecciona las fechas "Desde" y "Hasta" personalizadas','err');return;}
+    if(cfg.autoCustomHasta<cfg.autoCustomDesde){toast('"Hasta" no puede ser anterior a "Desde"','err');return;}
+  }
   try{await set(R(db,EMCFG),cfg);try{localStorage.setItem('wl_ejs',JSON.stringify(cfg));}catch(e){}toast('Configuración guardada ✓','ok');startAutoSched(cfg);}catch(e){toast('Error','err');}
 });
 el('btn-test-email').addEventListener('click',async()=>{
@@ -3448,6 +3471,11 @@ async function sendEmailReport(tipo,periodo,cfgOverride){
     if(cfg.testDesde&&cfg.testHasta){
       // Manual test with custom dates
       desde=cfg.testDesde;hasta=cfg.testHasta;
+    }else if((cfg.autoPeriodo||periodo)==='custom'){
+      // Fecha personalizada fija (guardada en configuración) — el envío automático
+      // recurrente siempre usará este mismo rango, sin desplazarse de semana en semana.
+      if(!cfg.autoCustomDesde||!cfg.autoCustomHasta){toast('Falta configurar la fecha personalizada','err');return;}
+      desde=cfg.autoCustomDesde;hasta=cfg.autoCustomHasta;
     }else if((cfg.autoPeriodo||periodo)==='semana'){
       // Current week Mon-Sun (include Sun only if there are marcaciones that day)
       const wk=curWeek();
