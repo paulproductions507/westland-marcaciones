@@ -934,12 +934,9 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 
           <div class="asec"><div class="ashdr" data-ac="ac-sem"><span>📆 Vista semanal de marcaciones</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-sem">
-            <div style="font-size:12px;color:var(--mt);margin-bottom:9px">Un renglón por usuario · columnas por día · días sin marcaciones = Ausente.</div>
+            <div style="font-size:12px;color:var(--mt);margin-bottom:9px">Un renglón por usuario · columnas por día · días sin marcaciones = Ausente. Elige cualquier rango: una semana completa, 2 días, 4 días, etc.</div>
             <div class="fg2" style="margin-bottom:8px">
-              <div class="fg"><label>Tipo de vista</label><select class="fc" id="sem-modo"><option value="semana">📆 Semana completa (Lun–Dom)</option><option value="rango">🗓 Rango de días personalizado</option></select></div>
-              <div class="fg"><label id="sem-desde-label">Semana (selecciona cualquier día)</label><input type="date" class="fc" id="sem-desde"></div>
-            </div>
-            <div class="fg2" id="sem-hasta-wrap" style="margin-bottom:8px;display:none">
+              <div class="fg"><label>Desde</label><input type="date" class="fc" id="sem-desde"></div>
               <div class="fg"><label>Hasta</label><input type="date" class="fc" id="sem-hasta"></div>
             </div>
             <!-- Selector de usuarios activos -->
@@ -4620,7 +4617,7 @@ document.addEventListener('click',async(e)=>{
   if(!confirm(`¿Generar automáticamente "${tipoLabel(tipoFaltante)}" para ${user} el ${dia}?\n\nSe calcula una hora estimada según su horario de almuerzo (con variación de minutos), quedará marcada como generada por el sistema, y afectará el pago calculado de ese día. Esta acción queda registrada en el log.`))return;
   btn.disabled=true;btn.textContent='Generando...';
   const r=await generarMarcaAutomatica(user,dia,tipoFaltante);
-  if(r.ok){btn.textContent=`✓ ${r.hora}`;btn.style.opacity='.6';const v=el('sem-desde').value;const h=el('sem-modo').value==='rango'?el('sem-hasta').value:null;setTimeout(()=>renderVistaSemanal(v||null,h||undefined),900);}
+  if(r.ok){btn.textContent=`✓ ${r.hora}`;btn.style.opacity='.6';const v=el('sem-desde').value,h=el('sem-hasta').value;setTimeout(()=>renderVistaSemanal(v||null,h||undefined),900);}
   else{toast(r.msg,'err',6000);btn.textContent='🤖 Generar';btn.disabled=false;}
 });
 
@@ -4642,6 +4639,7 @@ document.addEventListener('click',async(e)=>{
 (function(){
   const lun=getLunesDeSemana(null);
   const inp=el('sem-desde');if(inp)inp.value=isoD(lun);
+  const inpH=el('sem-hasta');if(inpH)inpH.value=isoD(isoDateAdd(lun,6));
 })();
 
 // Checkboxes de usuarios: actualizar contador al cambiar
@@ -4663,78 +4661,39 @@ el('btn-sem-guardar-sel')?.addEventListener('click',async()=>{
   await saveSemActivosRemote(arr);
   toast('Selección guardada ✓ — '+(arr.length===0?'todos los usuarios':''+arr.length+' usuarios'),'ok',4000);
   // Refrescar vista si hay tabla visible
-  const v=el('sem-desde').value;
-  const h=el('sem-modo').value==='rango'?el('sem-hasta').value:null;
+  const v=el('sem-desde').value,h=el('sem-hasta').value;
   if(el('sem-tabla').innerHTML&&el('sem-tabla').innerHTML.includes('<table'))renderVistaSemanal(v||null,h||undefined);
 });
 
-// Modo de vista: "semana" (Lun–Dom clásico) o "rango" (días sueltos elegidos por el usuario)
-el('sem-modo')?.addEventListener('change',()=>{
-  const modo=el('sem-modo').value;
-  const wrap=el('sem-hasta-wrap');
-  const lbl=el('sem-desde-label');
-  if(modo==='rango'){
-    if(wrap)wrap.style.display='';
-    if(lbl)lbl.textContent='Desde';
-    // Si no hay valor en "Hasta", sugerir la misma fecha que "Desde" como punto de partida
-    const h=el('sem-hasta');
-    if(h&&!h.value)h.value=el('sem-desde').value||isoD(new Date());
-  }else{
-    if(wrap)wrap.style.display='none';
-    if(lbl)lbl.textContent='Semana (selecciona cualquier día)';
-  }
-});
 el('btn-sem-actual')?.addEventListener('click',()=>{
-  el('sem-modo').value='semana';
-  el('sem-modo').dispatchEvent(new Event('change'));
   const lun=getLunesDeSemana(null);
   el('sem-desde').value=isoD(lun);
-  renderVistaSemanal(isoD(lun));
+  el('sem-hasta').value=isoD(isoDateAdd(lun,6));
+  renderVistaSemanal(el('sem-desde').value,el('sem-hasta').value);
 });
 el('btn-sem-ant')?.addEventListener('click',()=>{
-  if(el('sem-modo').value==='rango'){
-    const desde=el('sem-desde').value||isoD(new Date());
-    const hasta=el('sem-hasta').value||desde;
-    const dIni=new Date(desde+'T00:00:00'),dFin=new Date(hasta+'T00:00:00');
-    const dias=Math.max(1,Math.round((dFin-dIni)/86400000)+1);
-    const nIni=isoDateAdd(dIni,-dias),nFin=isoDateAdd(dFin,-dias);
-    el('sem-desde').value=isoD(nIni);el('sem-hasta').value=isoD(nFin);
-    renderVistaSemanal(isoD(nIni),isoD(nFin));
-    return;
-  }
-  const cur=el('sem-desde').value||isoD(new Date());
-  const lun=getLunesDeSemana(cur);
-  const ant=isoDateAdd(lun,-7);
-  el('sem-desde').value=isoD(ant);
-  renderVistaSemanal(isoD(ant));
+  const desde=el('sem-desde').value||isoD(new Date());
+  const hasta=el('sem-hasta').value||desde;
+  const dIni=new Date(desde+'T00:00:00'),dFin=new Date(hasta+'T00:00:00');
+  const dias=Math.max(1,Math.round((dFin-dIni)/86400000)+1);
+  const nIni=isoDateAdd(dIni,-dias),nFin=isoDateAdd(dFin,-dias);
+  el('sem-desde').value=isoD(nIni);el('sem-hasta').value=isoD(nFin);
+  renderVistaSemanal(isoD(nIni),isoD(nFin));
 });
 el('btn-sem-sig')?.addEventListener('click',()=>{
-  if(el('sem-modo').value==='rango'){
-    const desde=el('sem-desde').value||isoD(new Date());
-    const hasta=el('sem-hasta').value||desde;
-    const dIni=new Date(desde+'T00:00:00'),dFin=new Date(hasta+'T00:00:00');
-    const dias=Math.max(1,Math.round((dFin-dIni)/86400000)+1);
-    const nIni=isoDateAdd(dIni,dias),nFin=isoDateAdd(dFin,dias);
-    el('sem-desde').value=isoD(nIni);el('sem-hasta').value=isoD(nFin);
-    renderVistaSemanal(isoD(nIni),isoD(nFin));
-    return;
-  }
-  const cur=el('sem-desde').value||isoD(new Date());
-  const lun=getLunesDeSemana(cur);
-  const sig=isoDateAdd(lun,7);
-  el('sem-desde').value=isoD(sig);
-  renderVistaSemanal(isoD(sig));
+  const desde=el('sem-desde').value||isoD(new Date());
+  const hasta=el('sem-hasta').value||desde;
+  const dIni=new Date(desde+'T00:00:00'),dFin=new Date(hasta+'T00:00:00');
+  const dias=Math.max(1,Math.round((dFin-dIni)/86400000)+1);
+  const nIni=isoDateAdd(dIni,dias),nFin=isoDateAdd(dFin,dias);
+  el('sem-desde').value=isoD(nIni);el('sem-hasta').value=isoD(nFin);
+  renderVistaSemanal(isoD(nIni),isoD(nFin));
 });
 el('btn-sem-ver')?.addEventListener('click',()=>{
-  const v=el('sem-desde').value;
-  if(el('sem-modo').value==='rango'){
-    const h=el('sem-hasta').value;
-    if(!v||!h){toast('Selecciona fecha "Desde" y "Hasta"','err');return;}
-    if(h<v){toast('La fecha "Hasta" no puede ser anterior a "Desde"','err');return;}
-    renderVistaSemanal(v,h);
-    return;
-  }
-  renderVistaSemanal(v||null);
+  const v=el('sem-desde').value,h=el('sem-hasta').value;
+  if(!v||!h){toast('Selecciona fecha "Desde" y "Hasta"','err');return;}
+  if(h<v){toast('La fecha "Hasta" no puede ser anterior a "Desde"','err');return;}
+  renderVistaSemanal(v,h);
 });
 
 // MANUAL
@@ -5242,15 +5201,8 @@ async function distribuirMarcacionesIndividual(desde,hasta){
   }catch(e){console.error('distribuirMarcacionesIndividual',e);setStatus('❌ Error al distribuir: '+(e.message||e),'var(--dn)');}
 }
 el('btn-sem-distribuir')?.addEventListener('click',()=>{
-  const cur=el('sem-desde').value||isoD(new Date());
-  let desde,hasta;
-  if(el('sem-modo').value==='rango'&&el('sem-hasta').value){
-    desde=cur;hasta=el('sem-hasta').value;
-  }else{
-    const lun=getLunesDeSemana(cur);
-    const dias=Array.from({length:7},(_,i)=>isoDateAdd(lun,i));
-    desde=isoD(dias[0]);hasta=isoD(dias[dias.length-1]);
-  }
+  const desde=el('sem-desde').value||isoD(new Date());
+  const hasta=el('sem-hasta').value||desde;
   if(!confirm(`¿Enviar a cada colaborador (a su correo personal) su resumen individual de marcaciones del ${desde} al ${hasta}?\n\nSolo les llega a quienes ya guardaron su correo personal en su Perfil.`))return;
   distribuirMarcacionesIndividual(desde,hasta);
 });
