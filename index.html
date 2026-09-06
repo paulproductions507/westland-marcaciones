@@ -476,6 +476,17 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
          (amarillo → rojo) mientras más tiempo lleve atascado. -->
     <div id="pend-banner" style="display:none;margin:0 0 12px;padding:10px 14px;border-radius:var(--rs);font-size:13px;font-weight:600;text-align:center;line-height:1.4"></div>
 
+    <!-- AVISO DE POSIBLE MARCACIÓN POR RECONEXIÓN — a diferencia del banner de arriba (que es
+         mientras algo está sincronizando), este queda visible hasta que el colaborador lo lea,
+         para casos donde la marcación real (capturada en este teléfono) no se pudo guardar
+         porque, mientras no había señal, ya había quedado registrada otra marcación de ese
+         mismo rubro. Nunca se pierde el dato: el detalle completo también queda en la bitácora
+         para que el encargado lo revise y ajuste a favor del colaborador si corresponde. -->
+    <div id="aviso-marcacion-banner" style="display:none;margin:0 0 12px;padding:12px 14px;border-radius:var(--rs);font-size:12.5px;line-height:1.5;background:rgba(255,176,32,.15);border:1px solid #ffb020;color:#ffb020">
+      <div id="aviso-marcacion-txt"></div>
+      <button id="btn-aviso-marcacion-ok" class="btn bg bsm" style="width:auto;margin-top:8px;font-size:11px;padding:4px 10px">Entendido</button>
+    </div>
+
     <!-- ACCESO HOY (solo colaboradores — muestra si están habilitados) -->
     <div id="acceso-card" class="card" style="display:none">
       <div id="acceso-msg" style="text-align:center;padding:6px 0;font-size:14px;font-weight:600;color:var(--ac)">Verificando acceso...</div>
@@ -923,6 +934,18 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               </div>
               <button class="btn bd bsm" id="btn-bor" style="margin-top:6px">🗑 Borrar</button>
             </div>
+          </div></div>
+
+          <div class="asec"><div class="ashdr" data-ac="ac-extrap"><span>⏱ Hora extra pendiente</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-extrap">
+            <div style="font-size:12px;color:var(--mt);margin-bottom:8px">Para cuando un colaborador se quedó trabajando de más y esa hora no quedó marcada en el sistema. Este crédito NO crea una marcación falsa: se suma automáticamente a la hora de su PRÓXIMA "Salida Final" real (la que él mismo marque), y queda anotado en la bitácora con el motivo.</div>
+            <div class="fg2">
+              <div class="fg"><label>Usuario</label><select class="fc" id="extrap-user"></select></div>
+              <div class="fg"><label>Minutos extra</label><input type="number" class="fc" id="extrap-min" placeholder="Ej: 150"></div>
+            </div>
+            <div class="fg"><label>Motivo (obligatorio)</label><input class="fc" id="extrap-motivo" placeholder="Ej: se quedó hasta las 7:30pm el 5/sep, no marcó salida"></div>
+            <button class="btn bp bsm" id="btn-extrap-asignar" style="width:auto;margin-top:4px">➕ Asignar crédito</button>
+            <div id="extrap-list" style="margin-top:12px"></div>
           </div></div>
 
           <div class="asec"><div class="ashdr" data-ac="ac-ed"><span>🔍 Editar marcaciones</span><span class="ach">▾</span></div>
@@ -1409,6 +1432,16 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
       </div>
     </div></div>
     </div>
+    <div class="asec"><div class="ashdr" data-ac="log-ac-piezas"><span>🔎 Buscador de piezas y mano de obra</span><span class="ach">▾</span></div>
+      <div class="asbdy" id="log-ac-piezas">
+        <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Busca por N° de recibo o N° de contenedor. Verás piezas esperadas, recibidas y trabajadas juntas, y — si el recibo tiene fecha de salida de mercancía — quiénes marcaron esa semana (mano de obra) para el cálculo de mano de hora. La fecha de salida y las piezas trabajadas se cargan desde "✏️ Editar recibo".</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <input class="fc" id="log-piezas-q" placeholder="Ej: 407227 o TCKU1234567" style="flex:1">
+          <button class="btn bp bsm" id="btn-log-piezas-buscar" style="width:auto">🔍 Buscar</button>
+        </div>
+        <div id="log-piezas-resultados"><div style="color:var(--mt);font-size:12px;text-align:center;padding:10px">Escribe un N° de recibo o contenedor y presiona Buscar.</div></div>
+      </div>
+    </div>
     <div id="log-sum-jump" class="log-sec">
 <div class="asec"><div class="ashdr" data-ac="log-ac-sum"><span>📦 Suministro</span><span class="ach">▾</span></div>
     <div class="asbdy" id="log-ac-sum">
@@ -1735,7 +1768,8 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 <div id="m-editrec" class="mbd">
   <div class="mbox">
     <h3>✏️ Editar recibo <span id="editrec-num" style="color:var(--ac)"></span></h3>
-    <div class="fg" style="margin-top:8px"><label>👤 Reasignar a colaborador</label><select class="fc" id="editrec-asignado"></select></div>
+    <div class="fg" style="margin-top:8px"><label>N° de recibo</label><input class="fc" id="editrec-numero" placeholder="Ej: 407227"></div>
+    <div class="fg"><label>👤 Reasignar a colaborador</label><select class="fc" id="editrec-asignado"></select></div>
     <div class="fg2">
       <div class="fg"><label>Bultos esperados</label><input type="number" min="0" class="fc" id="editrec-bultosesp"></div>
       <div class="fg"><label>Pallets esperados</label><input type="number" min="0" class="fc" id="editrec-palletsesp"></div>
@@ -1743,6 +1777,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
     <div class="fg2">
       <div class="fg"><label>Piezas esperadas</label><input type="number" min="0" class="fc" id="editrec-piezasesp"></div>
       <div class="fg"><label>Ítems esperados</label><input type="number" min="0" class="fc" id="editrec-itemsesp"></div>
+    </div>
+    <div class="fg2">
+      <div class="fg"><label>Piezas trabajadas</label><input type="number" min="0" class="fc" id="editrec-piezastrab" placeholder="Piezas ya procesadas de este recibo"></div>
+      <div class="fg"><label>Fecha de salida de mercancía</label><input type="date" class="fc" id="editrec-fechasalida"></div>
     </div>
     <div id="editrec-recibido-box" style="display:none">
       <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin:10px 0 6px">Ya confirmado como recibido</div>
@@ -2135,6 +2173,34 @@ async function flushIntentosRechazados(){
   if(subidos===arr.length)setIntentosRechazados([]); // ya se subieron todos, se limpia la bandeja local
   return subidos;
 }
+// AVISO DE POSIBLE MARCACIÓN POR RECONEXIÓN: cuando una marcación real (capturada en este
+// teléfono, con la hora exacta en que el colaborador tocó el botón — ver doMark/registrar) no
+// logra guardarse porque, mientras no había señal, ya quedó registrada otra marcación del mismo
+// rubro ese día (ver persistMarkDedup), no basta con un toast que desaparece solo. Se guarda
+// aquí un aviso persistente y visible para el colaborador, con ambas horas, y el detalle
+// completo queda también en la bitácora para que el encargado lo revise y — si corresponde —
+// ajuste el pago SIEMPRE a favor del colaborador, nunca en su contra.
+const AVISOS_KEY='wl_avisos_marcacion';
+function getAvisosMarcacion(){try{return JSON.parse(localStorage.getItem(AVISOS_KEY)||'[]');}catch(e){return[];}}
+function setAvisosMarcacion(arr){try{localStorage.setItem(AVISOS_KEY,JSON.stringify(arr.slice(-10)));}catch(e){}} // últimos 10, no crece sin límite
+function registrarAvisoMarcacion(user,tipo,key,horaIntentada,horaExistente,diffMin){
+  const arr=getAvisosMarcacion();
+  arr.push({user,tipo,key,horaIntentada,horaExistente,diffMin,ts:new Date().toISOString(),visto:false});
+  setAvisosMarcacion(arr);
+  if(user===CU)renderAvisoMarcacionBanner();
+}
+function renderAvisoMarcacionBanner(){
+  const b=el('aviso-marcacion-banner');if(!b||!CU)return;
+  const pend=getAvisosMarcacion().filter(a=>a.user===CU&&!a.visto);
+  if(!pend.length){b.style.display='none';return;}
+  const a=pend[pend.length-1]; // muestra el más reciente; al confirmar se marcan todos como vistos
+  el('aviso-marcacion-txt').innerHTML=`⚠️ El <strong>${a.key}</strong> tu marcación de <strong>${a.tipo}</strong> a las <strong>${a.horaIntentada}</strong> no se pudo guardar porque el sistema ya tenía registrada una de ese mismo tipo a las <strong>${a.horaExistente}</strong> (posible caída de señal, ${a.diffMin} min de diferencia). Esto ya quedó anotado para que tu encargado lo revise y ajuste tu pago a tu favor si corresponde. Si no te cuadra, avísale directamente.`;
+  b.style.display='block';
+}
+el('btn-aviso-marcacion-ok')?.addEventListener('click',()=>{
+  setAvisosMarcacion(getAvisosMarcacion().map(a=>a.user===CU?{...a,visto:true}:a));
+  renderAvisoMarcacionBanner();
+});
 function withTimeout(promise,ms){return Promise.race([promise,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);}
 function updateConnBadge(){
   const b=el('gps-status');if(!b)return;
@@ -2148,6 +2214,7 @@ function updateConnBadge(){
   else if(pend>0){b.textContent=`🟡 Sincronizando ${pend}...`;b.style.color='#ffb020';}
   else{b.textContent='🟢 En línea';b.style.color='';}
   updatePendBanner();
+  renderAvisoMarcacionBanner();
 }
 // Banner grande y difícil de ignorar mientras queden marcaciones sin confirmar en Firebase.
 // Sube de urgencia (amarillo → rojo + pulso) si algo lleva atascado más de 2 minutos, para que
@@ -2233,7 +2300,11 @@ async function persistMarkDedup(key,obj){
   // administrador pueda revisar y, si hace falta corregir algo real, usar "Editar marcaciones".
   const yaExisteMismoRubro=(list||[]).some(m=>m.user===obj.user&&m.tipo===obj.tipo);
   if(yaExisteMismoRubro){
-    await addLog(`⚠️ Marcación DUPLICADA bloqueada: ${obj.user} — ${obj.tipo} — ${key} ${obj.hora} (ese rubro ya existía ese día)`);
+    const existente=(list||[]).find(m=>m.user===obj.user&&m.tipo===obj.tipo);
+    const diffMin=existente?Math.round(Math.abs(new Date(existente.stamp)-new Date(obj.stamp))/60000):0;
+    const detalle=existente?` — su intento real fue a las ${obj.hora}, ya existía uno a las ${existente.hora} (${diffMin} min de diferencia). Posible marcación afectada por caída de señal: REVISAR y ajustar el pago a favor del colaborador si corresponde.`:'';
+    await addLog(`⚠️ Marcación DUPLICADA bloqueada: ${obj.user} — ${obj.tipo} — ${key} ${obj.hora} (ese rubro ya existía ese día)${detalle}`);
+    if(existente&&diffMin>0)registrarAvisoMarcacion(obj.user,obj.tipo,key,obj.hora,existente.hora,diffMin);
     return{written:false,blocked:true};
   }
   const nuevaLista=[...(list||[]),{tipo:obj.tipo,hora:obj.hora,stamp:obj.stamp,user:obj.user}];
@@ -2690,6 +2761,51 @@ async function checkAccesoColabConCountdown(){
 
 // HORARIO PREDETERMINADO POR COLABORADOR — paths
 const HORCOL='horario_colab_v1'; // Firebase: horario_colab_v1/{user}/{diaSemana} = {inicio, fin, habilitado}
+// EXTRAP: crédito de horas extra PENDIENTE por usuario, asignado por un admin cuando el
+// colaborador se quedó trabajando de más y no alcanzó a marcar su Salida Final real (o se
+// quedó luego de su horario ya marcado). El crédito NUNCA inventa una marcación: se suma
+// automáticamente a la hora de la PRÓXIMA "Salida Final" que el colaborador marque de
+// verdad, y queda registrado en la bitácora con quién lo asignó, cuánto y por qué.
+const EXTRAP='extra_pend_v1'; // Firebase: extra_pend_v1/{user} = {min, motivo, fecha, por, ts}
+async function getExtraPend(user){try{const s=await get(R(db,`${EXTRAP}/${user}`));return s.exists()?s.val():null;}catch(e){return null;}}
+async function setExtraPend(user,min,motivo){
+  const obj={min:Number(min),motivo:motivo||'',fecha:isoD(new Date()),por:CU,ts:new Date().toISOString()};
+  await set(R(db,`${EXTRAP}/${user}`),obj);
+  await addLog(`⏱ Hora extra PENDIENTE asignada por ${CU} a ${user}: +${obj.min} min — motivo: "${obj.motivo}" (se aplicará a su próxima Salida Final real)`);
+  return obj;
+}
+async function clearExtraPend(user){try{await set(R(db,`${EXTRAP}/${user}`),null);}catch(e){}}
+async function renderExtraPendList(){
+  const c=el('extrap-list');if(!c)return;
+  c.innerHTML='<div style="color:var(--mt);font-size:12px">Cargando...</div>';
+  try{
+    const s=await get(R(db,EXTRAP));
+    const data=s.exists()?s.val():{};
+    const keys=Object.keys(data||{});
+    if(!keys.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">No hay créditos de hora extra pendientes.</div>';return;}
+    c.innerHTML=keys.map(u=>{
+      const d=data[u];const nombre=(USERS_CACHE&&USERS_CACHE[u]&&USERS_CACHE[u].nombre)||u;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--bd);font-size:12.5px">
+        <div><strong>${nombre}</strong> — +${d.min} min<br><span style="color:var(--mt)">${d.motivo||''} · asignado por ${d.por||''} · ${d.fecha||''}</span></div>
+        <button class="btn bd bsm extrap-quitar" data-user="${u}" style="width:auto;flex-shrink:0">🗑 Quitar</button>
+      </div>`;
+    }).join('');
+  }catch(e){c.innerHTML='<div style="color:var(--dn);font-size:12px">Error al cargar.</div>';}
+}
+document.addEventListener('click',async(e)=>{
+  const btn=e.target.closest('.extrap-quitar');if(!btn)return;
+  await clearExtraPend(btn.dataset.user);toast('Crédito eliminado','ok',1800);renderExtraPendList();
+});
+el('btn-extrap-asignar')?.addEventListener('click',async()=>{
+  const user=el('extrap-user').value,min=Number(el('extrap-min').value),motivo=(el('extrap-motivo').value||'').trim();
+  if(!user){toast('Selecciona un usuario','err');return;}
+  if(!min||min<=0){toast('Indica los minutos extra (mayor a 0)','err');return;}
+  if(!motivo){toast('El motivo es obligatorio (queda en la bitácora)','err');return;}
+  await setExtraPend(user,min,motivo);
+  toast(`✓ +${min} min en cola para ${user}`,'ok',2200);
+  el('extrap-min').value='';el('extrap-motivo').value='';
+  renderExtraPendList();
+});
 
 async function loadHorarioColabAdmin(){
   const c=el('horcol-list');if(!c)return;
@@ -2938,7 +3054,7 @@ window.deleteUser=async function(userKey,nombre){
 function fillSelects(obj){
   const users=Object.values(obj||{});
   const withAll=['gen-user','bor-user','rpt-users'];
-  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user'].forEach(id=>{
+  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user'].forEach(id=>{
     const s=el(id);if(!s)return;
     s.innerHTML=withAll.includes(id)?'<option value="__ALL__">— Todos —</option>':'';
     users.filter(u=>!GERENTES.includes(u.user)).forEach(u=>s.innerHTML+=`<option value="${u.user}">${u.nombre} (${u.user})</option>`);
@@ -3998,8 +4114,27 @@ async function registrar(date=new Date(),user=CU,tipoForzado=null){
   if(!tipoForzado){const chk=await canMark(date,user,combinado);if(!chk.ok){registrarIntentoRechazado(user,chk.msg);flashBtn(chk.msg);return;}}
   const mine=combinado.filter(x=>x.user===user);
   const tipo=tipoForzado||tipoPorReglas(mine);
+  // Si esta es la Salida Final REAL del colaborador y tiene un crédito de hora extra pendiente
+  // (asignado por un admin porque se quedó trabajando de más y no marcó esa hora), se le suma
+  // aquí — sobre la hora real en que está marcando ahora mismo — y se registra en la bitácora.
+  // Nunca se inserta una marcación en un momento en que el colaborador no marcó de verdad.
+  let dateFinal=date,extraAplicado=null;
+  if(tipo==='Salida Final'){
+    try{
+      const cred=await withTimeout(getExtraPend(user),3000);
+      if(cred&&cred.min>0){
+        dateFinal=new Date(date.getTime()+cred.min*60000);
+        extraAplicado=cred;
+      }
+    }catch(e){/* si falla la consulta, se marca sin el crédito y queda para revisar manualmente */}
+  }
   const cid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():`c${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
-  const obj={tipo,hora:fmtT(date),stamp:date.toISOString(),user,cid};
+  const obj={tipo,hora:fmtT(dateFinal),stamp:dateFinal.toISOString(),user,cid};
+  if(extraAplicado){
+    obj.extraAplicado={min:extraAplicado.min,motivo:extraAplicado.motivo,horaReal:fmtT(date)};
+    addLog(`⏱ Hora extra APLICADA a la Salida Final de ${user}: marcó a las ${fmtT(date)}, se le sumaron ${extraAplicado.min} min → quedó registrada ${fmtT(dateFinal)} (motivo: "${extraAplicado.motivo}", asignado por ${extraAplicado.por})`);
+    clearExtraPend(user);
+  }
 
   // Se guarda ya mismo en la cola local — esta hora capturada AHORA es la que se sube
   // a Firebase cuando sincronice, no la hora en que finalmente logre conectar.
@@ -4805,7 +4940,17 @@ el('btn-save-user').addEventListener('click',async()=>{
     tarifa:{regular:parseFloat(el('u-tr').value||20)||20,domingo:parseFloat(el('u-td').value||25)||25,feriado:parseFloat(el('u-tf').value||30)||30,especial:especialOn?(parseFloat(el('u-te').value||0)||0):0},
     pagoFijo:{activo:pfOn&&pfDias.length>0,dias:pfDias},
     profileUrl:prev.profileUrl||'',fechaInicio:finicio};
-  await setUser(user,meta);toast('Usuario guardado ✓','ok');['u-nombre','u-user','u-ced','u-email','u-tr','u-td','u-tf','u-te','u-finicio'].forEach(id=>el(id).value='');el('u-te-on').checked=false;el('u-te-row').style.display='none';el('u-pf-on').checked=false;el('u-pf-row').style.display='none';document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);refreshUI();
+  await setUser(user,meta);
+  // Si existe una selección personalizada de "colaboradores activos" (Vista semanal →
+  // seleccionar colaboradores), un usuario nuevo puede quedar excluido en silencio de
+  // la habilitación diaria, horarios y otras pantallas. Lo añadimos automáticamente.
+  try{
+    const activos=await loadSemActivos();
+    if(activos.length>0&&!activos.includes(user)){
+      await saveSemActivosRemote([...activos,user]);
+    }
+  }catch(e){}
+  toast('Usuario guardado ✓','ok');['u-nombre','u-user','u-ced','u-email','u-tr','u-td','u-tf','u-te','u-finicio'].forEach(id=>el(id).value='');el('u-te-on').checked=false;el('u-te-row').style.display='none';el('u-pf-on').checked=false;el('u-pf-row').style.display='none';document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);refreshUI();
 });
 
 // ── BITÁCORA DE PERÍODOS LABORALES ──────────────────────────────────────
@@ -6512,11 +6657,14 @@ async function abrirEditRec(k){
   const v=LOGR[k];if(!v){toast('Recibo no encontrado','err');return;}
   EDITREC_K=k;
   el('editrec-num').textContent='#'+v.numeroRecibo+' — '+v.proveedor;
+  el('editrec-numero').value=v.numeroRecibo||'';
   await fillColabSelectGeneric(el('editrec-asignado'),v.asignadoA);
   el('editrec-bultosesp').value=v.bultosEsperados||'';
   el('editrec-palletsesp').value=v.palletsEsperados||'';
   el('editrec-piezasesp').value=v.piezasEsperadas||'';
   el('editrec-itemsesp').value=v.itemsEsperados||'';
+  el('editrec-piezastrab').value=v.piezasTrabajadas||'';
+  el('editrec-fechasalida').value=v.fechaSalida||'';
   const esRecibido=v.estado==='recibido'||v.estado==='parcial';
   el('editrec-recibido-box').style.display=esRecibido?'block':'none';
   el('editrec-bultosrec').value=v.bultosRecibidos||'';
@@ -6533,12 +6681,17 @@ el('editrec-guardar')?.addEventListener('click',async()=>{
     const v=LOGR[k];
     const motivo=el('editrec-motivo').value.trim();
     if(!motivo){toast('Ingresa un motivo del cambio','err');return;}
+    const nuevoNumero=el('editrec-numero').value.trim();
+    if(!nuevoNumero){toast('El N° de recibo no puede quedar vacío','err');return;}
     const nuevoAsignado=el('editrec-asignado').value;
     const cambios={
+      numeroRecibo:nuevoNumero,
       bultosEsperados:parseInt(el('editrec-bultosesp').value)||0,
       palletsEsperados:el('editrec-palletsesp').value?parseInt(el('editrec-palletsesp').value):null,
       piezasEsperadas:el('editrec-piezasesp').value?parseInt(el('editrec-piezasesp').value):null,
       itemsEsperados:el('editrec-itemsesp').value?parseInt(el('editrec-itemsesp').value):null,
+      piezasTrabajadas:el('editrec-piezastrab').value?parseInt(el('editrec-piezastrab').value):null,
+      fechaSalida:el('editrec-fechasalida').value||null,
       asignadoA:nuevoAsignado||v.asignadoA
     };
     const esRecibido=v.estado==='recibido'||v.estado==='parcial';
@@ -6549,7 +6702,8 @@ el('editrec-guardar')?.addEventListener('click',async()=>{
       cambios.itemsRecibidos=el('editrec-itemsrec').value?parseInt(el('editrec-itemsrec').value):v.itemsRecibidos;
     }
     const reasignado=nuevoAsignado&&nuevoAsignado!==v.asignadoA;
-    const bitEntry={accion:'Recibo editado'+(reasignado?' · reasignado de '+(v.asignadoA||'—')+' a '+nuevoAsignado:''),por:CU,ts:new Date().toISOString(),motivo};
+    const renumerado=nuevoNumero!==v.numeroRecibo;
+    const bitEntry={accion:'Recibo editado'+(reasignado?' · reasignado de '+(v.asignadoA||'—')+' a '+nuevoAsignado:'')+(renumerado?' · N° cambiado de '+v.numeroRecibo+' a '+nuevoNumero:''),por:CU,ts:new Date().toISOString(),motivo};
     const bita=v.bitacora?[...Object.values(v.bitacora),bitEntry]:[bitEntry];
     await set(R(db,LOGREC+'/'+k),{...v,...cambios,bitacora:bita});
     if(reasignado)await sendNotif(CU,nuevoAsignado,'📦 Recibo reasignado','Recibo #'+v.numeroRecibo+' — '+v.proveedor+' — ahora asignado a ti');
@@ -6558,6 +6712,85 @@ el('editrec-guardar')?.addEventListener('click',async()=>{
     renderLogHistorial();renderLogPendientes();renderLogKPIs();
   }catch(e){console.error('editRec',e);toast('❌ No se pudo guardar: '+(e.message||e),'err');}
 });
+
+// ── BUSCADOR DE PIEZAS Y MANO DE OBRA (consolida esperadas/recibidas/trabajadas
+// por recibo o contenedor, y cruza la fecha de salida de mercancía con las
+// marcaciones de esa semana para estimar la mano de obra promedio) ──────────
+async function buscarRecibosPorQuery(q){
+  q=(q||'').trim().toLowerCase();
+  if(!q)return[];
+  const out=[];
+  Object.entries(LOGR||{}).forEach(([k,v])=>{
+    if((v.numeroRecibo||'').toLowerCase().includes(q))out.push({k,...v});
+  });
+  if(!out.length){
+    try{
+      const s=await get(R(db,LOGCAM));
+      const cams=s.exists()?s.val():{};
+      Object.values(cams).forEach(cam=>{
+        const match=(cam.equipos||[]).some(eq=>(eq.numContenedor||'').toLowerCase().includes(q));
+        if(match){
+          Object.keys(cam.recibos||{}).forEach(k=>{if(LOGR[k]&&!out.some(r=>r.k===k))out.push({k,...LOGR[k]});});
+        }
+      });
+    }catch(e){}
+  }
+  return out;
+}
+async function renderPiezasResultados(items){
+  const c=el('log-piezas-resultados');
+  if(!items.length){c.innerHTML='<div style="color:var(--dn);font-size:12px;text-align:center;padding:10px">Sin coincidencias. Verifica el N° de recibo o de contenedor.</div>';return;}
+  const users=await getUsers();
+  let totEsp=0,totRec=0,totTrab=0,cards='';
+  for(const v of items){
+    totEsp+=v.piezasEsperadas||0;totRec+=v.piezasRecibidas||0;totTrab+=v.piezasTrabajadas||0;
+    let manoObraHtml='<div style="color:var(--mt);font-size:11px;margin-top:6px">Sin fecha de salida registrada — no se puede cruzar con marcaciones. Agrégala en "✏️ Editar recibo".</div>';
+    if(v.fechaSalida){
+      const lun=getLunesDeSemana(v.fechaSalida);
+      const dias=Array.from({length:7},(_,i)=>isoD(isoDateAdd(lun,i)));
+      const porUser={};
+      for(const dk of dias){
+        const marks=await getHist(dk);
+        marks.forEach(m=>{if(!porUser[m.user])porUser[m.user]=new Set();porUser[m.user].add(dk);});
+      }
+      const nombres=Object.keys(porUser);
+      if(!nombres.length){
+        manoObraHtml=`<div style="color:var(--mt);font-size:11px;margin-top:6px">Semana del ${dias[0]} al ${dias[6]} — nadie marcó esa semana.</div>`;
+      }else{
+        const diasConGente=new Set();nombres.forEach(u=>porUser[u].forEach(dk=>diasConGente.add(dk)));
+        const totalPersonaDias=nombres.reduce((a,u)=>a+porUser[u].size,0);
+        const promedio=diasConGente.size?(totalPersonaDias/diasConGente.size):0;
+        const lista=nombres.sort((a,b)=>porUser[b].size-porUser[a].size)
+          .map(u=>`<span style="display:block;font-size:11px;padding:2px 0">👤 ${(users[u]?.nombre)||u} — ${porUser[u].size} día(s)</span>`).join('');
+        manoObraHtml=`<div style="margin-top:8px;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--bd)">
+          <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;margin-bottom:4px">Mano de obra · semana del ${dias[0]} al ${dias[6]}</div>
+          ${lista}
+          <div style="font-size:11px;margin-top:6px;color:var(--ac);font-weight:700">Promedio: ${promedio.toFixed(1)} persona(s)/día — para el cálculo de mano de hora</div>
+        </div>`;
+      }
+    }
+    cards+=`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:10px">
+      <div style="font-weight:700;color:var(--tx);margin-bottom:4px">#${v.numeroRecibo} — ${v.proveedor||'—'}</div>
+      <div style="display:flex;gap:14px;font-size:12px;margin-top:4px">
+        <div>Esperadas<br><strong style="font-size:15px">${v.piezasEsperadas??'—'}</strong></div>
+        <div>Recibidas<br><strong style="font-size:15px;color:var(--ac)">${v.piezasRecibidas??'—'}</strong></div>
+        <div>Trabajadas<br><strong style="font-size:15px;color:#7a3fb0">${v.piezasTrabajadas??'—'}</strong></div>
+      </div>
+      ${v.fechaSalida?`<div style="font-size:11px;color:var(--mt);margin-top:4px">Salida de mercancía: ${v.fechaSalida}</div>`:''}
+      ${manoObraHtml}
+    </div>`;
+  }
+  const resumen=items.length>1?`<div style="font-size:12px;font-weight:700;margin-bottom:10px">Total (${items.length} recibo(s)) — Esperadas: ${totEsp} · Recibidas: ${totRec} · Trabajadas: ${totTrab}</div>`:'';
+  c.innerHTML=resumen+cards;
+}
+el('btn-log-piezas-buscar')?.addEventListener('click',async()=>{
+  const q=el('log-piezas-q').value;
+  if(!q.trim()){toast('Escribe un N° de recibo o contenedor','err');return;}
+  el('log-piezas-resultados').innerHTML='<div style="color:var(--mt);font-size:12px;text-align:center;padding:10px">Buscando...</div>';
+  const items=await buscarRecibosPorQuery(q);
+  await renderPiezasResultados(items);
+});
+el('log-piezas-q')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();el('btn-log-piezas-buscar').click();}});
 
 // ── EDITAR CONSOLIDADO DE CAMIÓN (agente/nota + reasignar colaborador) ────
 let EDITCAM_K=null;
@@ -6651,6 +6884,7 @@ async function renderLogKPIs(){
 
 // Cargar KPIs cuando se abre el acordeón
 document.querySelector('[data-ac="log-ac-kpi"]')?.closest('.ashdr')?.addEventListener('click',renderLogKPIs);
+document.querySelector('[data-ac="ac-extrap"]')?.addEventListener('click',renderExtraPendList);
 
 // ── SUMINISTRO ──────────────────────────────────────────────────────
 let LOGSUMMOVS={},LOGSUMTAMS={},LOGSUMCAT={},LOGSUMRESP={},LOGSUMREQ={},LOGSUMAREAS={};
