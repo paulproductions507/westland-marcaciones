@@ -2894,6 +2894,14 @@ async function openApp(user){
   else if(isGer){rb.textContent='Gerente';rb.className='rbadge';rb.style.cssText='display:inline-block;background:rgba(138,43,226,.15);color:#b06ce0;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid rgba(138,43,226,.3);margin-left:6px';}
   else{rb.textContent='Colaborador';rb.className='rbadge';}
   el('foto-perfil').src=meta.profileUrl||DEF_AVT;
+  // Limpia los campos de "Datos bancarios" y "Perfil" ANTES de cargar los del usuario actual.
+  // Antes, si el campo nuevo usuario no tenía un dato (ej. nunca puso su banco), el <input>
+  // se quedaba con lo que había escrito el usuario ANTERIOR en ese mismo dispositivo/sesión —
+  // cada colaborador debe ver siempre SUS propios datos (vacíos si no ha llenado nada).
+  ['banco-nombre','banco-cuenta','banco-yappy-tel','perfil-email','perfil-nacimiento','perfil-tel'].forEach(id=>{if(el(id))el(id).value='';});
+  ['banco-tipo','banco-metodo','banco-nombre-banco','banco-yappy-banco','perfil-sexo'].forEach(id=>{if(el(id))el(id).selectedIndex=0;});
+  if(el('banco-archivo'))el('banco-archivo').value='';
+  if(window.toggleBancoMetodo)window.toggleBancoMetodo();
   // Load saved banco data if exists
   if(meta&&meta.banco){var b=meta.banco;if(b.titular&&el('banco-nombre'))el('banco-nombre').value=b.titular||'';if(b.tipoCuenta&&el('banco-tipo'))el('banco-tipo').value=b.tipoCuenta||'';if(b.metodo&&el('banco-metodo')){el('banco-metodo').value=b.metodo||'';}if(b.banco){if(b.metodo==='ach'&&el('banco-nombre-banco'))el('banco-nombre-banco').value=b.banco;else if(el('banco-yappy-banco'))el('banco-yappy-banco').value=b.banco;}if(b.cuenta&&el('banco-cuenta'))el('banco-cuenta').value=b.cuenta||'';if(b.yappyTel&&el('banco-yappy-tel'))el('banco-yappy-tel').value=b.yappyTel.replace('+507','').trim();if(window.toggleBancoMetodo)window.toggleBancoMetodo();}
   // Load saved perfil data
