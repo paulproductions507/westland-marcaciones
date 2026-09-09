@@ -2137,13 +2137,12 @@ const MES_LARGO=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agost
 function fmtDiaLargo(iso){const d=new Date(iso+'T12:00:00');return `${DIA_LARGO[d.getDay()]} ${d.getDate()} ${MES_LARGO[d.getMonth()]}`;}
 
 // AUTH
-// Dos formatos de correo de acceso coexisten en Firebase Authentication (confirmado por
-// captura): provira/aalvarado/aojo tienen cuenta real @saks.com.pa; el resto de los
-// colaboradores tiene su cuenta original con el formato antiguo +alias@gmail.com. u2e debe
-// calcular el que corresponda a cada quien, no uno solo para todos.
+// Todos los usuarios (incluyendo provira y aalvarado) inician sesión con el mismo formato
+// de correo de acceso del proyecto westland-marcaciones: +alias@gmail.com. Solo aojo
+// conserva su cuenta real @saks.com.pa.
 const u2e=u=>{
   const uu=String(u).toLowerCase();
-  return ['provira','aalvarado','aojo'].includes(uu)
+  return ['aojo'].includes(uu)
     ? `${uu}@saks.com.pa`
     : `westlandoutletjugueterianivel+${uu}@gmail.com`;
 };
