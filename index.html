@@ -725,7 +725,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               <div class="fg"><label>Usuario (login)</label><input class="fc" id="u-user"></div>
               <div class="fg"><label>Cédula</label><input class="fc" id="u-ced"></div>
               <div class="fg"><label>Email (opcional, solo referencia admin)</label><input class="fc" id="u-email" placeholder="Déjalo en blanco — el colaborador guarda su correo real en su Perfil"></div>
-              <div class="fg"><label>Rol</label><select class="fc" id="u-rol"><option value="Colaborador">Colaborador</option><option value="Administrador">Administrador</option></select></div>
+              <div class="fg"><label>Rol</label><select class="fc" id="u-rol"><option value="Colaborador">Colaborador</option><option value="Gerente">Gerente</option><option value="Administrador">Administrador</option></select></div>
               <div class="fg"><label>📅 Fecha de inicio</label><input type="date" class="fc" id="u-finicio" title="Fecha en que ingresó a trabajar"></div>
               <div class="fg"><label>Tarifa regular (USD/día)</label><input class="fc" id="u-tr" type="number"></div>
               <div class="fg"><label>Tarifa domingo</label><input class="fc" id="u-td" type="number"></div>
@@ -1944,7 +1944,7 @@ const JORNADA_FLEX=["provira","aalvarado","ihceballos","jthomas"];
 // ROLES
 const SUPERADMIN="provira";
 const ADMINS=["provira","aalvarado"];
-const GERENTES=["jdecerega"]; // Gerente: solo reportes + datos bancarios de colaboradores
+const GERENTES=["jdecerega","aojo"]; // Gerente: solo reportes + datos bancarios de colaboradores
 
 const DEF_AVT="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Ccircle cx='40' cy='40' r='40' fill='%23004454'/%3E%3Ccircle cx='40' cy='32' r='14' fill='%2300c9a7'/%3E%3Cellipse cx='40' cy='70' rx='22' ry='16' fill='%2300c9a7'/%3E%3C/svg%3E";
 
@@ -2073,6 +2073,19 @@ const getUsers=async()=>{
   if(USERS_CACHE)return USERS_CACHE;
   const s=await get(R(db,USERS));
   USERS_CACHE=s.exists()?s.val():{};
+  // Auto-corrige la ETIQUETA "rol" para que coincida con el permiso real (ADMINS/GERENTES son
+  // las listas que de verdad mandan). Antes, el rol quedaba grabado como "Colaborador" para
+  // cualquiera creado desde el formulario (porque esa era la única opción visible), aunque ya
+  // tuviera permisos de Gerente/Administrador por estar en esas listas — así que en las
+  // pantallas donde se muestra el rol como etiqueta (ej. "Aida Ojo — Colaborador"), se veía mal
+  // aunque el acceso real ya fuera correcto. Se corrige una sola vez por sesión, solo si hace falta.
+  for(const uu of Object.keys(USERS_CACHE)){
+    const rolReal=ADMINS.includes(uu)?'Administrador':GERENTES.includes(uu)?'Gerente':null;
+    if(rolReal&&USERS_CACHE[uu]&&USERS_CACHE[uu].rol!==rolReal){
+      USERS_CACHE[uu]={...USERS_CACHE[uu],rol:rolReal};
+      set(R(db,`${USERS}/${uu}/rol`),rolReal).catch(()=>{});
+    }
+  }
   return USERS_CACHE;
 };
 const setUser=async(k,v)=>{await set(R(db,`${USERS}/${k}`),v);invalidateUsersCache();};
@@ -2118,7 +2131,7 @@ const getHist=async k=>{try{const s=await get(R(db,`${HIST}/${k}`));const list=s
 const saveHist=async(k,a)=>set(R(db,`${HIST}/${k}`),a);
 
 // AUTH
-const u2e=u=>`westlandoutletjugueterianivel+${String(u).toLowerCase()}@gmail.com`;
+const u2e=u=>`${String(u).toLowerCase()}@saks.com.pa`;
 const doLogout=()=>{clearInterval(sTimer);clearInterval(autoSchedInt);detachTrackedListeners();logListening=false;notifListening=false;approvalsListening=false;return signOut(auth).then(closeApp);};
 function closeApp(){el('app').style.display='none';el('login-scr').style.display='flex';el('lu').value='';el('lp').value='';CU=null;CUM=null;el('sess-bar').style.display='none';if(el('tab-reloj')){el('tab-reloj').style.display='block';el('tab-log').style.display='none';el('tabbtn-reloj').classList.add('active');el('tabbtn-log').classList.remove('active');}}
 
@@ -2270,7 +2283,7 @@ async function syncPendMarks(){
       if(r.written){confirmMarkInCache(m);sincronizadas++;}
       else bloqueadas++;
       markSyncedUI(m.cid);
-    }catch(e){/* sigue pendiente, se reintenta solo */}
+    }catch(e){bumpPendFail(m.cid,e.code||e.message||String(e));/* sigue pendiente, se reintenta solo */}
   }
   updateConnBadge();
   if(sincronizadas>0&&CU){
@@ -2312,7 +2325,23 @@ async function persistMarkDedup(key,obj){
   await addLog(`Marcación: ${obj.user} — ${obj.tipo} — ${key} ${obj.hora}`);
   return{written:true,blocked:false};
 }
-function removePendByCid(cid){setPendMarks(getPendMarks().filter(m=>m.cid!==cid));}
+// Registra el error REAL cuando una marcación lleva varios intentos fallidos, en vez de
+// reintentar en silencio para siempre sin dejar ningún rastro. Antes, si el fallo no era una
+// simple caída de señal (ej. reglas de Firebase rechazando la escritura, dato corrupto), el
+// banner se quedaba diciendo "Sincronizando..." indefinidamente y nadie se enteraba del motivo.
+const PEND_FAIL_KEY='pend_fail_v1';
+function bumpPendFail(cid,errMsg){
+  let m={};try{m=JSON.parse(localStorage.getItem(PEND_FAIL_KEY)||'{}');}catch(e){}
+  const cur=m[cid]||{n:0};
+  cur.n++;cur.last=errMsg;cur.ts=Date.now();
+  m[cid]=cur;
+  try{localStorage.setItem(PEND_FAIL_KEY,JSON.stringify(m));}catch(e){}
+  if(cur.n===4){ // a partir del 4º intento fallido seguido, algo más que "sin señal" está pasando
+    addLog(`🔴 Marcación de ${CU||'?'} lleva ${cur.n} intentos fallidos de sincronizar. Último error: ${errMsg}. Revisar reglas de Firebase / conexión del dispositivo.`).catch(()=>{});
+  }
+}
+function clearPendFail(cid){let m={};try{m=JSON.parse(localStorage.getItem(PEND_FAIL_KEY)||'{}');}catch(e){}delete m[cid];try{localStorage.setItem(PEND_FAIL_KEY,JSON.stringify(m));}catch(e){}}
+function removePendByCid(cid){setPendMarks(getPendMarks().filter(m=>m.cid!==cid));clearPendFail(cid);}
 // CRÍTICO: cuando una marcación termina de sincronizar, hay que sumarla como confirmada al
 // caché de "hoy" del usuario activo. Sin esto, la marcación se sincroniza pero desaparece de
 // la cuenta local — la siguiente marcación no la ve, recalcula mal la secuencia (Entrada,
@@ -2338,7 +2367,7 @@ async function attemptSyncOne(key,obj){
       if(obj.user===CU)renderHistToday();
     }
     markSyncedUI(obj.cid);
-  }catch(e){/* queda en la cola: el listener de reconexión y el poller la reintentan */}
+  }catch(e){bumpPendFail(obj.cid,e.code||e.message||String(e));/* queda en la cola: el listener de reconexión y el poller la reintentan */}
   updateConnBadge();
 }
 // Reemplaza el icono ⏳/📴 de una marcación por un ✅ que se desvanece solo, sin re-renderizar
@@ -2420,7 +2449,8 @@ async function ensureDefaults(){
   if(!us.exists())writes.push(set(R(db,USERS),{
     provira:{nombre:"Paul Rovira",cedula:"8-859-12",user:"provira",email:u2e("provira"),rol:"Administrador",tarifa:{regular:20,domingo:25,feriado:30,especial:46.15},profileUrl:""},
     aalvarado:{nombre:"Armando Alvarado",cedula:"8-514-658",user:"aalvarado",email:u2e("aalvarado"),rol:"Administrador",tarifa:{regular:20,domingo:25,feriado:35,especial:46.15},profileUrl:""},
-    jdecerega:{nombre:"Javier Decerega",cedula:"",user:"jdecerega",email:"jdecerega@saks.com.pa",rol:"Gerente",tarifa:{regular:0,domingo:0,feriado:0,especial:0},profileUrl:""}
+    jdecerega:{nombre:"Javier Decerega",cedula:"",user:"jdecerega",email:"jdecerega@saks.com.pa",rol:"Gerente",tarifa:{regular:0,domingo:0,feriado:0,especial:0},profileUrl:""},
+    aojo:{nombre:"Aida Ojo",cedula:"",user:"aojo",email:"aojo@saks.com.pa",rol:"Gerente",tarifa:{regular:0,domingo:0,feriado:0,especial:0},profileUrl:""}
   }));
   if(!ps.exists())writes.push(set(R(db,LOGPROV),{p1:{nombre:"NASA Zona Libre",tipo:"Zona Libre"}}));
   if(writes.length){await Promise.all(writes);invalidateUsersCache();}
