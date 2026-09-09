@@ -2129,9 +2129,24 @@ async function autoLimpiarDuplicados(key,list){
 }
 const getHist=async k=>{try{const s=await get(R(db,`${HIST}/${k}`));const list=s.exists()?s.val():[];return await autoLimpiarDuplicados(k,list);}catch(e){return[];}};
 const saveHist=async(k,a)=>set(R(db,`${HIST}/${k}`),a);
+// Formato de fecha legible para colaboradores (ej. "Lunes 31 Agosto") en vez del ISO crudo
+// (ej. "2026-08-31"), que a los muchachos les costaba entender en la tabla de resumen y en
+// el correo automático.
+const DIA_LARGO=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const MES_LARGO=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+function fmtDiaLargo(iso){const d=new Date(iso+'T12:00:00');return `${DIA_LARGO[d.getDay()]} ${d.getDate()} ${MES_LARGO[d.getMonth()]}`;}
 
 // AUTH
-const u2e=u=>`${String(u).toLowerCase()}@saks.com.pa`;
+// Dos formatos de correo de acceso coexisten en Firebase Authentication (confirmado por
+// captura): provira/aalvarado/aojo tienen cuenta real @saks.com.pa; el resto de los
+// colaboradores tiene su cuenta original con el formato antiguo +alias@gmail.com. u2e debe
+// calcular el que corresponda a cada quien, no uno solo para todos.
+const u2e=u=>{
+  const uu=String(u).toLowerCase();
+  return ['provira','aalvarado','aojo'].includes(uu)
+    ? `${uu}@saks.com.pa`
+    : `westlandoutletjugueterianivel+${uu}@gmail.com`;
+};
 const doLogout=()=>{clearInterval(sTimer);clearInterval(autoSchedInt);detachTrackedListeners();logListening=false;notifListening=false;approvalsListening=false;return signOut(auth).then(closeApp);};
 function closeApp(){el('app').style.display='none';el('login-scr').style.display='flex';el('lu').value='';el('lp').value='';CU=null;CUM=null;el('sess-bar').style.display='none';if(el('tab-reloj')){el('tab-reloj').style.display='block';el('tab-log').style.display='none';el('tabbtn-reloj').classList.add('active');el('tabbtn-log').classList.remove('active');}}
 
@@ -3588,7 +3603,7 @@ async function buildEmailSemanal(desde,hasta,nivel){
     .sw tr.tot td{background:#d0f0e8;font-weight:800;color:#00313C}
   </style>`;
   let thDias=`<th class="emp">Empleado</th>`;
-  diasVis.forEach(({d,etq,k})=>{const wk=d.getDay()===0||d.getDay()===6;thDias+=`<th${wk?' class="wk"':''}>${etq}<br><span style="font-weight:400;opacity:.8;font-size:10px">${k.slice(5)}</span></th>`;});
+  diasVis.forEach(({d,etq,k})=>{const wk=d.getDay()===0||d.getDay()===6;thDias+=`<th${wk?' class="wk"':''}>${DIA_LARGO[d.getDay()]}<br><span style="font-weight:400;opacity:.8;font-size:10px">${d.getDate()} ${MES_LARGO[d.getMonth()]}</span></th>`;});
   thDias+=`<th style="background:#005570">Total</th>`;
   const totalPorDia=diasVis.map(()=>({colab:0,monto:0}));
   let totalSemana=0,rows='';
@@ -4769,7 +4784,7 @@ async function renderVistaSemanal(refDate,hastaDate){
     return;
   }
   html+=`<div style="font-size:11px;color:var(--mt);margin-bottom:8px">${userList.length} colaborador${userList.length!==1?'es':''} con marcaciones · ${diasVisibles.length} día${diasVisibles.length!==1?'s':''} con actividad</div>`;
-  html+=`<table style="border-collapse:collapse;width:100%;min-width:${diasVisibles.length*90+120}px;font-size:11px">`;
+  html+=`<table style="border-collapse:collapse;width:100%;min-width:${diasVisibles.length*106+120}px;font-size:11px">`;
   // Header row — solo días visibles
   html+=`<tr>`;
   html+=`<th style="background:var(--sf2);color:var(--tx);padding:7px 9px;text-align:left;border:1px solid var(--bd);min-width:110px;font-size:12px">Empleado</th>`;
@@ -4778,8 +4793,8 @@ async function renderVistaSemanal(refDate,hastaDate){
     const dowNum=d.getDay();const isWeekend=dowNum===0||dowNum===6;
     const bg=isToday?'#005570':isWeekend?'rgba(0,201,167,.06)':'var(--sf2)';
     const col=isToday?'var(--ac)':isWeekend?'var(--ac)':'var(--tx)';
-    html+=`<th style="background:${bg};color:${col};padding:6px 5px;text-align:center;border:1px solid var(--bd);min-width:88px">`
-      +`${etq}<br><span style="font-size:10px;font-weight:400;opacity:.75">${k.slice(5)}</span></th>`;
+    html+=`<th style="background:${bg};color:${col};padding:6px 5px;text-align:center;border:1px solid var(--bd);min-width:104px">`
+      +`${DIA_LARGO[dowNum]}<br><span style="font-size:10px;font-weight:400;opacity:.75">${d.getDate()} ${MES_LARGO[d.getMonth()]}</span></th>`;
   });
   html+=`<th style="background:#005570;color:var(--tx);padding:7px 9px;text-align:center;border:1px solid var(--bd);min-width:90px;font-size:12px">Total</th>`;
   html+=`</tr>`;
@@ -5406,7 +5421,7 @@ function buildResumenIndividualHTML(u,desde,hasta,s){
     const dd=s.det[d],cnt=dd.marcCount||0;
     const estado=cnt<4?`⏳ ${cnt}/4`:'✅ Completo';
     const mks=(dd.marcaciones||[]).map(m=>`${m.tipo}: <strong>${m.hora}</strong>`).join(' &nbsp;|&nbsp; ')||'—';
-    filas+=`<tr><td style="padding:7px 10px;border:1px solid #ccc">📅 ${d}</td><td style="padding:7px 10px;border:1px solid #ccc;font-size:12px">${mks}</td><td style="padding:7px 10px;border:1px solid #ccc;text-align:center">${estado}</td><td style="padding:7px 10px;border:1px solid #ccc;text-align:right">$${Number(dd.saldoParcial||dd.bruto||0).toFixed(2)}</td></tr>`;
+    filas+=`<tr><td style="padding:7px 10px;border:1px solid #ccc">📅 ${fmtDiaLargo(d)}</td><td style="padding:7px 10px;border:1px solid #ccc;font-size:12px">${mks}</td><td style="padding:7px 10px;border:1px solid #ccc;text-align:center">${estado}</td><td style="padding:7px 10px;border:1px solid #ccc;text-align:right">$${Number(dd.saldoParcial||dd.bruto||0).toFixed(2)}</td></tr>`;
   });
   return`<!doctype html><html><head><meta charset="utf-8"><title>Tus marcaciones</title></head>
   <body style="font-family:Arial,Helvetica,sans-serif;color:#022;padding:20px;max-width:640px;margin:0 auto">
@@ -8673,7 +8688,7 @@ function listenLogistica(){
 
 // BOOTSTRAP
 (async()=>{
-  try{await ensureDefaults();el('lu').value='provira';toast('Sistema listo ✓','ok',2000);}
+  try{await ensureDefaults();toast('Sistema listo ✓','ok',2000);}
   catch(e){console.error(e);toast('Error al inicializar','err');}
 })();
 </script>
