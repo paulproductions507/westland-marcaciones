@@ -1896,7 +1896,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import{getAuth,signInWithEmailAndPassword,signOut,EmailAuthProvider,reauthenticateWithCredential,updatePassword}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
-import{getDatabase,ref as R,set,push,get,onValue,remove,update}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+import{getDatabase,ref as R,set,push,get,onValue,remove,update,query,limitToLast}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 const FB={apiKey:"AIzaSyCn7bUx8PdK-1TCmOnffWJYLouC5vdGMIE",authDomain:"westland-marcaciones.firebaseapp.com",projectId:"westland-marcaciones",storageBucket:"westland-marcaciones.appspot.com",messagingSenderId:"477907187320",appId:"1:477907187320:web:c04ef5b3b8ff5773b99f8d",databaseURL:"https://westland-marcaciones-default-rtdb.firebaseio.com"};
 const app=initializeApp(FB),auth=getAuth(app),db=getDatabase(app);
@@ -3271,7 +3271,7 @@ function updNext(n){const l=el('mnext');if(n>=4){l.textContent='✅ Jornada comp
 
 // LOG
 async function renderLog(){
-  try{const s=await get(R(db,PLOG)),c=el('log-list');c.innerHTML='';if(!s.exists())return;Object.values(s.val()).slice(-50).reverse().forEach(l=>{const d=document.createElement('div');d.style.cssText='padding:5px 0;border-bottom:1px solid var(--bd)';d.innerHTML=`<strong style="font-size:12px">${l.text}</strong><div style="font-size:11px;color:var(--mt)">${new Date(l.when).toLocaleString()} — ${l.by}</div>`;el('log-list').appendChild(d);});}catch(e){}
+  try{const s=await get(query(R(db,PLOG),limitToLast(50))),c=el('log-list');c.innerHTML='';if(!s.exists())return;Object.values(s.val()).slice(-50).reverse().forEach(l=>{const d=document.createElement('div');d.style.cssText='padding:5px 0;border-bottom:1px solid var(--bd)';d.innerHTML=`<strong style="font-size:12px">${l.text}</strong><div style="font-size:11px;color:var(--mt)">${new Date(l.when).toLocaleString()} — ${l.by}</div>`;el('log-list').appendChild(d);});}catch(e){}
 }
 
 // LOAD CONFIGS
