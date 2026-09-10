@@ -1270,7 +1270,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <input type="hidden" id="log-nv-prov">
           </div>
           <div class="fg"><label>Origen</label>
-            <select class="fc" id="log-nv-tipo"><option value="Importación">Importación</option><option value="Zona Libre">Zona Libre</option></select>
+            <select class="fc" id="log-nv-tipo"><option value="">Seleccionar...</option><option value="Importación">Importación</option><option value="Zona Libre">Zona Libre</option></select>
           </div>
         </div>
         <div class="fg"><label>📍 Recepción (dónde se recibe)</label>
@@ -3008,53 +3008,65 @@ async function loadTurnosAdmin(){
     const ini=c.querySelector(`.turno-inp[data-id="${id}"][data-campo="inicio"]`).value;
     const fin=c.querySelector(`.turno-inp[data-id="${id}"][data-campo="fin"]`).value;
     if(!ini||!fin){toast('Completa inicio y fin','err');return;}
-    await set(R(db,`${TURNOS}/${id}/inicio`),ini);
-    await set(R(db,`${TURNOS}/${id}/fin`),fin);
-    await aplicarHorarioTurno(id,ini,fin);
-    toast('Turno actualizado y aplicado a sus colaboradores ✓','ok');
-    loadTurnosAdmin();
+    try{
+      await set(R(db,`${TURNOS}/${id}/inicio`),ini);
+      await set(R(db,`${TURNOS}/${id}/fin`),fin);
+      await aplicarHorarioTurno(id,ini,fin);
+      toast('Turno actualizado y aplicado a sus colaboradores ✓','ok');
+      loadTurnosAdmin();
+    }catch(e){toast('⛔ Error al guardar: '+(e.message||e),'err',6000);}
   }));
   c.querySelectorAll('.btn-del-turno').forEach(btn=>btn.addEventListener('click',async function(){
     const id=this.dataset.id;
     if(!confirm('¿Eliminar este turno? Los colaboradores asignados conservarán su último horario guardado.'))return;
-    await set(R(db,`${TURNOS}/${id}`),null);
-    toast('Turno eliminado','ok');
-    loadTurnosAdmin();
+    try{
+      await set(R(db,`${TURNOS}/${id}`),null);
+      toast('Turno eliminado','ok');
+      loadTurnosAdmin();
+    }catch(e){toast('⛔ Error al eliminar: '+(e.message||e),'err',6000);}
   }));
   c.querySelectorAll('.turno-quitar-user').forEach(btn=>btn.addEventListener('click',async function(){
-    await set(R(db,`${TURNOS}/${this.dataset.id}/usuarios/${this.dataset.user}`),null);
-    toast('Colaborador quitado del turno','ok');
-    loadTurnosAdmin();
+    try{
+      await set(R(db,`${TURNOS}/${this.dataset.id}/usuarios/${this.dataset.user}`),null);
+      toast('Colaborador quitado del turno','ok');
+      loadTurnosAdmin();
+    }catch(e){toast('⛔ Error: '+(e.message||e),'err',6000);}
   }));
   c.querySelectorAll('.turno-add-select').forEach(sel=>sel.addEventListener('change',async function(){
     const id=this.dataset.id,user=this.value;if(!user)return;
-    const s=await get(R(db,TURNOS));const all=s.exists()?s.val():{};
-    const writes=[];
-    Object.keys(all).forEach(otroId=>{if(otroId!==id&&all[otroId].usuarios&&all[otroId].usuarios[user])writes.push(set(R(db,`${TURNOS}/${otroId}/usuarios/${user}`),null));});
-    writes.push(set(R(db,`${TURNOS}/${id}/usuarios/${user}`),true));
-    await Promise.all(writes);
-    await aplicarHorarioTurno(id,all[id].inicio,all[id].fin,[user]);
-    toast('Colaborador asignado ✓','ok');
-    loadTurnosAdmin();
+    try{
+      const s=await get(R(db,TURNOS));const all=s.exists()?s.val():{};
+      const writes=[];
+      Object.keys(all).forEach(otroId=>{if(otroId!==id&&all[otroId].usuarios&&all[otroId].usuarios[user])writes.push(set(R(db,`${TURNOS}/${otroId}/usuarios/${user}`),null));});
+      writes.push(set(R(db,`${TURNOS}/${id}/usuarios/${user}`),true));
+      await Promise.all(writes);
+      await aplicarHorarioTurno(id,all[id].inicio,all[id].fin,[user]);
+      toast('Colaborador asignado ✓','ok');
+      loadTurnosAdmin();
+    }catch(e){toast('⛔ Error al asignar: '+(e.message||e),'err',6000);}
   }));
 }
 el('btn-crear-turno')?.addEventListener('click',async()=>{
   const nombre=(el('nt-nombre').value||'').trim(),ini=el('nt-ini').value,fin=el('nt-fin').value;
   if(!ini||!fin){toast('Indica inicio y fin del turno','err');return;}
-  const id='t'+Date.now();
-  await set(R(db,`${TURNOS}/${id}`),{nombre:nombre||`Turno ${id.slice(-4)}`,inicio:ini,fin:fin,usuarios:{}});
-  toast('Turno creado ✓','ok');
-  el('nt-nombre').value='';el('nt-ini').value='';el('nt-fin').value='';
-  loadTurnosAdmin();
+  try{
+    const id='t'+Date.now();
+    await set(R(db,`${TURNOS}/${id}`),{nombre:nombre||`Turno ${id.slice(-4)}`,inicio:ini,fin:fin,usuarios:{}});
+    toast('Turno creado ✓','ok');
+    el('nt-nombre').value='';el('nt-ini').value='';el('nt-fin').value='';
+    loadTurnosAdmin();
+  }catch(e){toast('⛔ Error al crear turno: '+(e.message||e),'err',6000);}
 });
 el('turno-domingo-default')?.addEventListener('change',async function(){
   const id=this.value;
-  await set(R(db,`${META}/turno_domingo_default`),id||null);
-  if(id){
-    const s=await get(R(db,`${TURNOS}/${id}`));
-    if(s.exists()){const t=s.val();await set(R(db,`${HDIAS}/domingo`),{dia:'domingo',inicio:t.inicio,fin:t.fin,duracionAlm:60,almInicio:null});}
-  }
-  toast('Turno de Domingo (por defecto) actualizado ✓','ok');
+  try{
+    await set(R(db,`${META}/turno_domingo_default`),id||null);
+    if(id){
+      const s=await get(R(db,`${TURNOS}/${id}`));
+      if(s.exists()){const t=s.val();await set(R(db,`${HDIAS}/domingo`),{dia:'domingo',inicio:t.inicio,fin:t.fin,duracionAlm:60,almInicio:null});}
+    }
+    toast('Turno de Domingo (por defecto) actualizado ✓','ok');
+  }catch(e){toast('⛔ Error: '+(e.message||e),'err',6000);}
 });
 
 // getHorarioBaseDe ahora también consulta HORCOL (ver función arriba)
@@ -3918,7 +3930,7 @@ async function startAutoEnable(){
 
 // LOGIN
 el('lbtn').addEventListener('click',async()=>{
-  const u=el('lu').value.trim(),p=el('lp').value;
+  const u=el('lu').value.trim().toLowerCase(),p=el('lp').value;
   if(!u||!p){toast('Ingresa usuario y contraseña','err');return;}
   el('lbtn').disabled=true;el('lbtn').textContent='Verificando...';
   try{await signInWithEmailAndPassword(auth,u2e(u),p);toast('¡Bienvenido/a! 👋','ok');await openApp(u);el('lp').value='';}
@@ -6445,9 +6457,20 @@ function extraerDatosRecibo(text){
   const out={};
   let m=text.match(/Recibo\s*No\.?\s*(\d+)/i);
   if(m)out.numeroRecibo=m[1];
-  // Ej: "Método de Arribo: WESTLAND - ONIX TRADING - 14 CTNS"  →  proveedor detectado + cartones/bultos
-  m=text.match(/M[eé]todo de Arribo:\s*[^-]+-\s*(.+?)\s*-\s*(\d+)\s*CTNS/i);
-  if(m){out.proveedorDetectado=m[1].trim();out.bultos=parseInt(m[2]);}
+  // Formato A (con guiones), ej: "Método de Arribo: WESTLAND - ONIX TRADING - 14 CTNS"
+  m=text.match(/M[eé]todo de Arribo:\s*[^-\n]+-\s*(.+?)\s*-\s*(\d+)\s*CTNS/i);
+  if(m){
+    out.proveedorDetectado=m[1].trim();out.bultos=parseInt(m[2]);
+  }else{
+    // Formato B (sin guiones), ej: "Método de Arribo: BAGUTA 228 CTNS CABALLERO WESTLAND"
+    // → proveedor + cartones + departamento + recepción, todo seguido en la misma línea
+    m=text.match(/M[eé]todo de Arribo:\s*(.+?)\s+(\d+)\s*CTNS\b(.*)$/im);
+    if(m){
+      out.proveedorDetectado=m[1].trim();
+      out.bultos=parseInt(m[2]);
+      out.deptoDetectado=m[3].replace(/westland|cdf/ig,'').trim()||null;
+    }
+  }
   // Piezas: se suma el número que precede a cada "PZA(1)" — más confiable que la línea "Gran Total",
   // cuyo orden de columnas puede salir desordenado al extraer texto del PDF.
   const filas=[...text.matchAll(/(\d+)\s+PZA\(\d+\)/g)].map(x=>parseInt(x[1]));
@@ -6459,9 +6482,31 @@ function extraerDatosRecibo(text){
     // contar piezas/ítems de forma confiable. Se avisa en vez de mostrar un número inventado.
     out.itemsNoDetectados=true;
   }
+  // Respaldo: la línea "Gran Total: <bultos> <piezas> ..." (si el PDF la trae) sirve para
+  // rellenar bultos/piezas cuando lo anterior no los detectó, o para verificar que coincidan.
+  m=text.match(/Gran Total:\s*(\d+)\s+([\d,]+)/i);
+  if(m){
+    out.granTotalBultos=parseInt(m[1]);
+    out.granTotalPiezas=parseInt(m[2].replace(/,/g,''));
+    if(!out.bultos)out.bultos=out.granTotalBultos;
+    if(!out.piezas)out.piezas=out.granTotalPiezas;
+  }
   // Recepción: si el PDF menciona "Westland" en algún lado, se asume esa bodega; si no, CDF por defecto.
   out.recepcion=/westland/i.test(text)?'Westland':'CDF';
   return out;
+}
+// Resuelve el nombre de departamento detectado contra los departamentos ya creados en la app
+// (coincidencia flexible, sin importar mayúsculas/acentos)
+function resolverDepartamentoMaestro(deptoDetectado){
+  if(!deptoDetectado)return null;
+  const norm=s=>s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  const target=norm(deptoDetectado);
+  if(!target)return null;
+  const match=Object.values(LOGD||{}).find(v=>{
+    const vn=norm(v.nombre);
+    return vn===target||vn.includes(target)||target.includes(vn);
+  });
+  return match?match.nombre:null;
 }
 // Resuelve el nombre detectado contra el maestro de proveedores, priorizando el "hijo" S.I- si existe y está marcado el check
 function resolverProveedorMaestro(nombreDetectado,priorizarSI){
@@ -6515,6 +6560,11 @@ function aplicarDatosRecibo(c){
   if(c.bultos&&el('log-nv-bultos'))el('log-nv-bultos').value=c.bultos;
   if(c.piezas&&el('log-nv-piezas'))el('log-nv-piezas').value=c.piezas.toLocaleString('en-US');
   if(c.items&&el('log-nv-items'))el('log-nv-items').value=c.items;
+  if(c.deptoDetectado&&el('log-nv-depto')){
+    const deptoResuelto=resolverDepartamentoMaestro(c.deptoDetectado);
+    c.deptoResuelto=deptoResuelto;
+    if(deptoResuelto)el('log-nv-depto').value=deptoResuelto;
+  }
   if(el('log-nv-recepcion'))el('log-nv-recepcion').value=c.recepcion||'CDF';
 }
 el('log-nv-pdf-input')?.addEventListener('change',async(e)=>{
@@ -6528,15 +6578,30 @@ el('log-nv-pdf-input')?.addEventListener('change',async(e)=>{
     for(let p=1;p<=pdf.numPages;p++){
       const page=await pdf.getPage(p);
       const content=await page.getTextContent();
-      text+=content.items.map(i=>i.str).join(' ')+'\n';
+      // Reconstruye el texto por filas usando las coordenadas X/Y de cada fragmento, en vez de
+      // concatenar en el orden interno del PDF (que en tablas suele salir por columnas y
+      // desordena "72 72 PZA(1)" o "Método de Arribo: ..." — rompiendo los patrones de abajo).
+      const filasMap=new Map();
+      content.items.forEach(it=>{
+        const y=Math.round(it.transform[5]);
+        let key=[...filasMap.keys()].find(k=>Math.abs(k-y)<=2);
+        if(key===undefined)key=y;
+        if(!filasMap.has(key))filasMap.set(key,[]);
+        filasMap.get(key).push({x:it.transform[4],str:it.str});
+      });
+      [...filasMap.entries()].sort((a,b)=>b[0]-a[0]).forEach(([,arr])=>{
+        arr.sort((a,b)=>a.x-b.x);
+        text+=arr.map(o=>o.str).join(' ')+'\n';
+      });
     }
     const c=extraerDatosRecibo(text);
     aplicarDatosRecibo(c);
     const provTxt=c.proveedorResuelto||(c.proveedorDetectado?`"${c.proveedorDetectado}" — no se encontró en el listado`:'no detectado');
+    const deptoTxt=c.deptoResuelto?`depto: ${c.deptoResuelto}`:(c.deptoDetectado?`depto "${c.deptoDetectado}" — no coincide con ninguno creado`:'depto: no detectado');
     const piezasItemsTxt=c.itemsNoDetectados
       ? '⚠️ este formato de PDF no permitió contar piezas/ítems automáticamente — complétalos a mano'
       : `${c.piezas?c.piezas.toLocaleString('en-US'):'?'} piezas · ${c.items||'?'} ítems`;
-    if(status)status.textContent=`✓ Detectado: recibo ${c.numeroRecibo||'?'} · ${provTxt} · ${c.bultos||'?'} bultos (páginas leídas: ${pdf.numPages}) · ${piezasItemsTxt} · recepción: ${c.recepcion} — revisa los campos antes de enviar.`;
+    if(status)status.textContent=`✓ Detectado: recibo ${c.numeroRecibo||'?'} · ${provTxt} · ${deptoTxt} · ${c.bultos||'?'} bultos · ${piezasItemsTxt} · recepción: ${c.recepcion} — revisa los campos antes de enviar.`;
     toast(c.itemsNoDetectados?'PDF leído, pero revisa piezas/ítems manualmente':'Datos del PDF cargados — revisa los campos','ok');
   }catch(err){
     console.error(err);
@@ -6590,7 +6655,7 @@ el('btn-log-nv-enviar')?.addEventListener('click',async()=>{
   document.querySelectorAll('.log-nv-recibo-input').forEach((inp,i)=>{if(i>0)inp.closest('.log-recibo-row').remove();else inp.value='';});
   document.querySelector('.btn-rm-recibo').style.display='none';
   ['log-nv-bultos','log-nv-pallets','log-nv-piezas','log-nv-items','log-nv-nota'].forEach(id=>{if(el(id))el(id).value='';});
-  el('log-nv-depto').value='';el('log-nv-prov-search').value='';el('log-nv-prov').value='';
+  el('log-nv-depto').value='';el('log-nv-prov-search').value='';el('log-nv-prov').value='';el('log-nv-tipo').value='';
   if(el('log-nv-recepcion'))el('log-nv-recepcion').value='CDF';
   if(el('log-nv-pdf-input'))el('log-nv-pdf-input').value='';
   if(el('log-nv-pdf-status'))el('log-nv-pdf-status').textContent='Sube el recibo en PDF y el sistema intenta detectar los campos. Siempre revisa antes de enviar.';
