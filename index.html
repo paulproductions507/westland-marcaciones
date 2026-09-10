@@ -820,6 +820,22 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="horcol-list"></div>
           </div></div>
 
+          <div class="asec"><div class="ashdr" data-ac="ac-turnos"><span>🔀 Turnos de trabajo</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-turnos">
+            <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Crea los turnos que necesites y asigna a cada colaborador el que le corresponde. Al guardar un turno, su horario (lunes a sábado) se aplica automáticamente a todos los usuarios asignados. Un colaborador solo puede estar en un turno a la vez. Los domingos usan por defecto el turno elegido abajo, salvo que un colaborador tenga su domingo configurado individualmente en "Horario predeterminado por colaborador".</div>
+            <div class="fg" style="margin-bottom:14px"><label>Turno por defecto para Domingos</label><select class="fc" id="turno-domingo-default"></select></div>
+            <div id="turnos-list"></div>
+            <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:10px">
+              <div style="font-weight:700;font-size:13px;margin-bottom:8px">+ Nuevo turno</div>
+              <div class="fg2">
+                <div class="fg"><label>Nombre</label><input class="fc" id="nt-nombre" placeholder="Ej: Turno 5"></div>
+                <div class="fg"><label>Inicio</label><input type="time" class="fc" id="nt-ini"></div>
+                <div class="fg"><label>Fin</label><input type="time" class="fc" id="nt-fin"></div>
+              </div>
+              <button class="btn bp bsm" id="btn-crear-turno" style="width:auto;margin-top:8px">➕ Crear turno</button>
+            </div>
+          </div></div>
+
           <div class="asec"><div class="ashdr" data-ac="ac-em"><span>✉ Correo automático (EmailJS)</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-em">
             <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Plan gratuito: 200 correos/mes. <a href="https://www.emailjs.com" target="_blank" style="color:var(--ac)">emailjs.com</a></div>
@@ -1943,7 +1959,7 @@ const JORNADA_FLEX=["provira","aalvarado","ihceballos","jthomas"];
 
 // ROLES
 const SUPERADMIN="provira";
-const ADMINS=["provira","aalvarado"];
+const ADMINS=["provira","aalvarado","ihceballos"];
 const GERENTES=["jdecerega","aojo"]; // Gerente: solo reportes + datos bancarios de colaboradores
 
 const DEF_AVT="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Ccircle cx='40' cy='40' r='40' fill='%23004454'/%3E%3Ccircle cx='40' cy='32' r='14' fill='%2300c9a7'/%3E%3Cellipse cx='40' cy='70' rx='22' ry='16' fill='%2300c9a7'/%3E%3C/svg%3E";
@@ -2468,6 +2484,23 @@ async function ensureDefaults(){
   }));
   if(!ps.exists())writes.push(set(R(db,LOGPROV),{p1:{nombre:"NASA Zona Libre",tipo:"Zona Libre"}}));
   if(writes.length){await Promise.all(writes);invalidateUsersCache();}
+  // Siembra única de los turnos definidos con provira (no se repite si ya los crearon/editaron)
+  try{
+    const ts=await get(R(db,TURNOS));
+    if(!ts.exists()){
+      await set(R(db,TURNOS),{
+        t1:{nombre:"Turno 1",inicio:"08:00",fin:"17:00",usuarios:{ihceballos:true}},
+        t2:{nombre:"Turno 2",inicio:"09:00",fin:"18:00",usuarios:{}},
+        t3:{nombre:"Turno 3",inicio:"10:00",fin:"18:30",usuarios:{}},
+        t4:{nombre:"Turno 4",inicio:"11:00",fin:"19:30",usuarios:{}}
+      });
+      await aplicarHorarioTurno('t1',"08:00","17:00",["ihceballos"]);
+      // Domingo por defecto: el turno que empieza más tarde (Turno 4), como pediste. Cambiable
+      // en cualquier momento desde "Turnos de trabajo" → "Turno por defecto para Domingos".
+      await set(R(db,`${META}/turno_domingo_default`),"t4");
+      await set(R(db,`${HDIAS}/domingo`),{dia:"domingo",inicio:"11:00",fin:"19:30",duracionAlm:60,almInicio:null});
+    }
+  }catch(e){}
 }
 
 // ── JORNADA DEL DÍA (flexible, por usuario, una vez por día) ──────────────
@@ -2916,6 +2949,114 @@ async function loadHorarioColabAdmin(){
   }));
 }
 
+// ── TURNOS DE TRABAJO (configurables por el Super Admin, cantidad libre) ──
+// Firebase: turnos_v1/{turnoId} = {nombre, inicio, fin, usuarios:{user:true,...}}
+// Al asignar/editar un turno, su horario (lunes a sábado) se escribe automáticamente en
+// HORCOL para cada colaborador asignado. Un colaborador pertenece a un solo turno a la vez.
+// El domingo NO se toca por turno individual: usa el turno elegido en
+// meta_v1/turno_domingo_default (se aplica a HDIAS/domingo, prioridad 2), salvo que el
+// colaborador tenga su propio domingo configurado en HORCOL (prioridad 1, gana igual).
+const TURNOS='turnos_v1';
+
+async function aplicarHorarioTurno(id,inicio,fin,soloUsers){
+  let usuarios=soloUsers;
+  if(!usuarios){const s=await get(R(db,`${TURNOS}/${id}/usuarios`));usuarios=s.exists()?Object.keys(s.val()):[];}
+  const DIAS_K=['lunes','martes','miercoles','jueves','viernes','sabado'];
+  const writes=[];
+  usuarios.forEach(u=>{DIAS_K.forEach(dia=>{writes.push(set(R(db,`${HORCOL}/${u}/${dia}`),{inicio,fin}));});});
+  await Promise.all(writes);
+}
+
+async function loadTurnosAdmin(){
+  const c=el('turnos-list'),selDom=el('turno-domingo-default');
+  if(!c||!selDom)return;
+  c.innerHTML='<div style="color:var(--mt);font-size:12px">Cargando...</div>';
+  const users=await getUsers();
+  const colab=Object.values(users).filter(u=>!GERENTES.includes(u.user));
+  let turnos;try{const s=await get(R(db,TURNOS));turnos=s.exists()?s.val():{};}catch(e){turnos={};}
+  const ids=Object.keys(turnos).sort();
+  let domDefault=null;try{const d=await get(R(db,`${META}/turno_domingo_default`));domDefault=d.exists()?d.val():null;}catch(e){}
+  selDom.innerHTML='<option value="">— Ninguno —</option>'+ids.map(id=>`<option value="${id}" ${id===domDefault?'selected':''}>${turnos[id].nombre} (${turnos[id].inicio}→${turnos[id].fin})</option>`).join('');
+  if(!ids.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">Aún no hay turnos creados. Crea el primero abajo.</div>';return;}
+  c.innerHTML='';
+  ids.forEach(id=>{
+    const t=turnos[id];
+    const asignados=Object.keys(t.usuarios||{});
+    const disponibles=colab.filter(u=>!asignados.includes(u.user));
+    const div=document.createElement('div');
+    div.style.cssText='background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:10px';
+    div.innerHTML=`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <strong style="font-size:13px">${t.nombre}</strong>
+        <input type="time" class="fc turno-inp" data-id="${id}" data-campo="inicio" value="${t.inicio}" style="width:auto;font-size:12px;padding:4px 6px">
+        <span style="font-size:11px;color:var(--mt)">→</span>
+        <input type="time" class="fc turno-inp" data-id="${id}" data-campo="fin" value="${t.fin}" style="width:auto;font-size:12px;padding:4px 6px">
+        <button class="btn bp bsm btn-save-turno" data-id="${id}" style="width:auto;font-size:11px;padding:4px 10px">💾 Guardar horas</button>
+        <button class="btn bd bsm btn-del-turno" data-id="${id}" style="width:auto;font-size:11px;padding:4px 10px;margin-left:auto">🗑 Eliminar turno</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+        ${asignados.length?asignados.map(u=>{const nom=(users[u]&&users[u].nombre)||u;return`<span style="background:var(--bg);border:1px solid var(--bd);border-radius:20px;padding:3px 10px;font-size:11.5px;display:flex;align-items:center;gap:5px">${nom}<button class="turno-quitar-user" data-id="${id}" data-user="${u}" style="border:none;background:none;color:var(--dn);cursor:pointer;font-size:12px">✕</button></span>`;}).join(''):'<span style="font-size:12px;color:var(--mt)">Sin colaboradores asignados</span>'}
+      </div>
+      <select class="fc turno-add-select" data-id="${id}" style="font-size:12px">
+        <option value="">+ agregar colaborador...</option>
+        ${disponibles.map(u=>`<option value="${u.user}">${u.nombre}</option>`).join('')}
+      </select>`;
+    c.appendChild(div);
+  });
+  c.querySelectorAll('.btn-save-turno').forEach(btn=>btn.addEventListener('click',async function(){
+    const id=this.dataset.id;
+    const ini=c.querySelector(`.turno-inp[data-id="${id}"][data-campo="inicio"]`).value;
+    const fin=c.querySelector(`.turno-inp[data-id="${id}"][data-campo="fin"]`).value;
+    if(!ini||!fin){toast('Completa inicio y fin','err');return;}
+    await set(R(db,`${TURNOS}/${id}/inicio`),ini);
+    await set(R(db,`${TURNOS}/${id}/fin`),fin);
+    await aplicarHorarioTurno(id,ini,fin);
+    toast('Turno actualizado y aplicado a sus colaboradores ✓','ok');
+    loadTurnosAdmin();
+  }));
+  c.querySelectorAll('.btn-del-turno').forEach(btn=>btn.addEventListener('click',async function(){
+    const id=this.dataset.id;
+    if(!confirm('¿Eliminar este turno? Los colaboradores asignados conservarán su último horario guardado.'))return;
+    await set(R(db,`${TURNOS}/${id}`),null);
+    toast('Turno eliminado','ok');
+    loadTurnosAdmin();
+  }));
+  c.querySelectorAll('.turno-quitar-user').forEach(btn=>btn.addEventListener('click',async function(){
+    await set(R(db,`${TURNOS}/${this.dataset.id}/usuarios/${this.dataset.user}`),null);
+    toast('Colaborador quitado del turno','ok');
+    loadTurnosAdmin();
+  }));
+  c.querySelectorAll('.turno-add-select').forEach(sel=>sel.addEventListener('change',async function(){
+    const id=this.dataset.id,user=this.value;if(!user)return;
+    const s=await get(R(db,TURNOS));const all=s.exists()?s.val():{};
+    const writes=[];
+    Object.keys(all).forEach(otroId=>{if(otroId!==id&&all[otroId].usuarios&&all[otroId].usuarios[user])writes.push(set(R(db,`${TURNOS}/${otroId}/usuarios/${user}`),null));});
+    writes.push(set(R(db,`${TURNOS}/${id}/usuarios/${user}`),true));
+    await Promise.all(writes);
+    await aplicarHorarioTurno(id,all[id].inicio,all[id].fin,[user]);
+    toast('Colaborador asignado ✓','ok');
+    loadTurnosAdmin();
+  }));
+}
+el('btn-crear-turno')?.addEventListener('click',async()=>{
+  const nombre=(el('nt-nombre').value||'').trim(),ini=el('nt-ini').value,fin=el('nt-fin').value;
+  if(!ini||!fin){toast('Indica inicio y fin del turno','err');return;}
+  const id='t'+Date.now();
+  await set(R(db,`${TURNOS}/${id}`),{nombre:nombre||`Turno ${id.slice(-4)}`,inicio:ini,fin:fin,usuarios:{}});
+  toast('Turno creado ✓','ok');
+  el('nt-nombre').value='';el('nt-ini').value='';el('nt-fin').value='';
+  loadTurnosAdmin();
+});
+el('turno-domingo-default')?.addEventListener('change',async function(){
+  const id=this.value;
+  await set(R(db,`${META}/turno_domingo_default`),id||null);
+  if(id){
+    const s=await get(R(db,`${TURNOS}/${id}`));
+    if(s.exists()){const t=s.val();await set(R(db,`${HDIAS}/domingo`),{dia:'domingo',inicio:t.inicio,fin:t.fin,duracionAlm:60,almInicio:null});}
+  }
+  toast('Turno de Domingo (por defecto) actualizado ✓','ok');
+});
+
 // getHorarioBaseDe ahora también consulta HORCOL (ver función arriba)
 const _origGetHorarioBase=null; // referencia legacy, no usar
 
@@ -3041,7 +3182,7 @@ async function renderDatosBancariosGerente(){
 async function refreshUI(){
   const u=await getUsers();renderUserList(u);fillSelects(u);
   renderHistToday();renderLog();loadRules();loadHorario();loadFeriados();loadGPSCfg();loadHorariosDias();
-  if(ADMINS.includes(CU)){renderSemUserChecks();loadBandejaBanco();loadHorarioColabAdmin();}
+  if(ADMINS.includes(CU)){renderSemUserChecks();loadBandejaBanco();loadHorarioColabAdmin();loadTurnosAdmin();}
   if(ADMINS.includes(CU)||GERENTES.includes(CU))loadBandejaBanco();
   startAstAutoRefresh();
 }
