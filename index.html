@@ -5027,7 +5027,11 @@ async function renderVistaSemanal(refDate,hastaDate){
         const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
         const hrs=computeHrs(dayMarks);
         const hrsParcial=cnt<4?computeHrsParcial(dayMarks):hrs;
-        const monto=completo?tar:+((Math.min(hrsParcial,8)/8)*tar).toFixed(2);
+        // El pago (y por lo tanto el descuento) se basa en las horas realmente trabajadas desde
+        // la fecha de corte en adelante — 4 marcas completas con menos de 8h reales (ej.
+        // almuerzo largo, entrada tarde) sí deben reflejar descuento. Antes de esa fecha se
+        // conserva el cálculo anterior para no alterar semanas ya cerradas.
+        const monto=(k>=DESCUENTO_DESDE)?+((Math.min(hrsParcial,8)/8)*tar).toFixed(2):(completo?tar:+((Math.min(hrsParcial,8)/8)*tar).toFixed(2));
         totalPorDia[vi].colab++;totalPorDia[vi].monto+=monto;totalSemana+=monto;totalUsuario+=monto;
         // Descuento prorrateado por hora (tarifa del día ÷ 8) sobre las horas que faltaron para
         // completar la jornada de 8h. No es un cálculo aparte: es exactamente la diferencia entre
