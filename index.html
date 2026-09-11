@@ -5027,11 +5027,13 @@ async function renderVistaSemanal(refDate,hastaDate){
         const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
         const hrs=computeHrs(dayMarks);
         const hrsParcial=cnt<4?computeHrsParcial(dayMarks):hrs;
-        // El pago (y por lo tanto el descuento) se basa en las horas realmente trabajadas desde
-        // la fecha de corte en adelante — 4 marcas completas con menos de 8h reales (ej.
-        // almuerzo largo, entrada tarde) sí deben reflejar descuento. Antes de esa fecha se
-        // conserva el cálculo anterior para no alterar semanas ya cerradas.
-        const monto=(k>=DESCUENTO_DESDE)?+((Math.min(hrsParcial,8)/8)*tar).toFixed(2):(completo?tar:+((Math.min(hrsParcial,8)/8)*tar).toFixed(2));
+        // SALVAGUARDA: si están las 4 marcas pero el resultado de horas es absurdo (ej. 0 o casi
+        // 0 — señal casi segura de un dato inconsistente, como un 'stamp' interno que no coincide
+        // con la hora mostrada en pantalla), NUNCA se le paga $0 a alguien que sí marcó su día
+        // completo. Se protege el pago íntegro y se marca "⚠ revisar" para que el administrador
+        // lo confirme a mano, en vez de arriesgar un descuento mal calculado.
+        const datosSospechosos=completo&&hrs<1;
+        const monto=datosSospechosos?tar:((k>=DESCUENTO_DESDE)?+((Math.min(hrsParcial,8)/8)*tar).toFixed(2):(completo?tar:+((Math.min(hrsParcial,8)/8)*tar).toFixed(2)));
         totalPorDia[vi].colab++;totalPorDia[vi].monto+=monto;totalSemana+=monto;totalUsuario+=monto;
         // Descuento prorrateado por hora (tarifa del día ÷ 8) sobre las horas que faltaron para
         // completar la jornada de 8h. No es un cálculo aparte: es exactamente la diferencia entre
@@ -5040,7 +5042,7 @@ async function renderVistaSemanal(refDate,hastaDate){
         const descuento=(k>=DESCUENTO_DESDE)?+(tar-monto).toFixed(2):0;
         totalPorDia[vi].desc=(totalPorDia[vi].desc||0)+descuento;totalDescSemana+=descuento;totalDescUsuario+=descuento;
         const mLines=dayMarks.map(m=>`<div style="white-space:nowrap;line-height:1.6"><span style="color:var(--mt);font-size:10px">${tipoLabel(m.tipo)}${m.generadoPorSistema?' <span title="Generada por el sistema — no fue un toque real" style="color:#ffb020">🤖</span>':''}</span><br><span style="color:var(--ac);font-family:'DM Mono',monospace;font-size:11px">${m.hora.slice(0,8)}</span></div>`).join('');
-        const badge=completo?`<div style="color:#00c9a7;font-size:10px;font-weight:700;margin-top:2px">✅ $${monto.toFixed(2)}</div>`:`<div style="color:var(--wn);font-size:10px;margin-top:2px">⏳ ${cnt}/4 · $${monto.toFixed(2)}</div>`;
+        const badge=completo?`<div style="color:#00c9a7;font-size:10px;font-weight:700;margin-top:2px">✅ $${monto.toFixed(2)}</div>${datosSospechosos?`<div style="color:#ffb020;font-size:9px;font-weight:700;margin-top:1px">⚠ Revisar esta marca (dato inconsistente)</div>`:''}`:`<div style="color:var(--wn);font-size:10px;margin-top:2px">⏳ ${cnt}/4 · $${monto.toFixed(2)}</div>`;
         const descHtml=descuento>0?`<div style="color:#ff6b6b;font-size:9.5px;font-weight:700;margin-top:2px">💸 Desc: -$${descuento.toFixed(2)}</div>`:'';
         // Hueco de secuencia: ej. tiene Regreso Alm. pero no Salida Alm. — esa marca probablemente
         // sigue atascada en el teléfono del colaborador. Se avisa aparte de "incompleto" (4/4
