@@ -112,6 +112,8 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 #hwrap{display:none;margin-top:10px}
 .hlist{display:flex;flex-direction:column;gap:7px}
 .hitem{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;background:var(--bg);border-radius:var(--rs);border:1px solid var(--bd)}
+@keyframes chkPop{0%{transform:scale(0);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+.chk-ok{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#00c9a7;color:#04221d;font-weight:900;font-size:10px;line-height:1;animation:chkPop .3s ease}
 .hchip{font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(0,201,167,.1);color:var(--ac);border:1px solid rgba(0,201,167,.2);font-weight:700}
 .hhora{font-family:'DM Mono',monospace;font-size:13px;color:var(--ac)}
 .cbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:13px;align-items:center}
@@ -831,6 +833,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
                 <div class="fg"><label>Nombre</label><input class="fc" id="nt-nombre" placeholder="Ej: Turno 5"></div>
                 <div class="fg"><label>Inicio</label><input type="time" class="fc" id="nt-ini"></div>
                 <div class="fg"><label>Fin</label><input type="time" class="fc" id="nt-fin"></div>
+              </div>
+              <div class="fg2">
+                <div class="fg"><label>Almuerzo desde</label><input type="time" class="fc" id="nt-alm-ini" value="12:00"></div>
+                <div class="fg"><label>Duración almuerzo (min)</label><input type="number" min="0" step="5" class="fc" id="nt-alm-dur" value="60"></div>
               </div>
               <button class="btn bp bsm" id="btn-crear-turno" style="width:auto;margin-top:8px">➕ Crear turno</button>
             </div>
@@ -2489,12 +2495,12 @@ async function ensureDefaults(){
     const ts=await get(R(db,TURNOS));
     if(!ts.exists()){
       await set(R(db,TURNOS),{
-        t1:{nombre:"Turno 1",inicio:"08:00",fin:"17:00",usuarios:{ihceballos:true}},
-        t2:{nombre:"Turno 2",inicio:"09:00",fin:"18:00",usuarios:{}},
-        t3:{nombre:"Turno 3",inicio:"10:00",fin:"18:30",usuarios:{}},
-        t4:{nombre:"Turno 4",inicio:"11:00",fin:"19:30",usuarios:{}}
+        t1:{nombre:"Turno 1",inicio:"08:00",fin:"17:00",almInicio:"12:00",duracionAlm:60,usuarios:{ihceballos:true}},
+        t2:{nombre:"Turno 2",inicio:"09:00",fin:"18:00",almInicio:"12:00",duracionAlm:60,usuarios:{}},
+        t3:{nombre:"Turno 3",inicio:"10:00",fin:"18:30",almInicio:"12:00",duracionAlm:60,usuarios:{}},
+        t4:{nombre:"Turno 4",inicio:"11:00",fin:"19:30",almInicio:"12:00",duracionAlm:60,usuarios:{}}
       });
-      await aplicarHorarioTurno('t1',"08:00","17:00",["ihceballos"]);
+      await aplicarHorarioTurno('t1',"08:00","17:00",["ihceballos"],"12:00",60);
       // Domingo por defecto: el turno que empieza más tarde (Turno 4), como pediste. Cambiable
       // en cualquier momento desde "Turnos de trabajo" → "Turno por defecto para Domingos".
       await set(R(db,`${META}/turno_domingo_default`),"t4");
@@ -2520,10 +2526,11 @@ async function getHorarioBaseDe(user,fecha){
     get(R(db,RULES))
   ]);
   const hor=hsR.exists()?hsR.val():{inicio:"09:00",fin:"18:00",duracionAlm:60};
-  // Prioridad 1: horario específico del colaborador (HORCOL)
+  // Prioridad 1: horario específico del colaborador (HORCOL) — incluye SU PROPIO almuerzo si
+  // el turno lo trae configurado; si no, usa el almuerzo general de la empresa como respaldo.
   if(csR&&csR.exists()&&csR.val().inicio){
     const ch=csR.val();
-    return{inicio:ch.inicio,fin:ch.fin||hor.fin||"18:00",almInicio:hor.almInicio||"12:00",duracionAlm:parseInt(hor.duracionAlm||60)};
+    return{inicio:ch.inicio,fin:ch.fin||hor.fin||"18:00",almInicio:ch.almInicio||hor.almInicio||"12:00",duracionAlm:parseInt(ch.duracionAlm!==undefined?ch.duracionAlm:(hor.duracionAlm!==undefined?hor.duracionAlm:60))};
   }
   // Prioridad 2: horario por día general (HDIAS)
   const hdias=dsR.exists()?dsR.val():{};
@@ -2957,13 +2964,16 @@ async function loadHorarioColabAdmin(){
 // meta_v1/turno_domingo_default (se aplica a HDIAS/domingo, prioridad 2), salvo que el
 // colaborador tenga su propio domingo configurado en HORCOL (prioridad 1, gana igual).
 const TURNOS='turnos_v1';
+// El descuento por horas faltantes solo se muestra desde esta fecha en adelante (lunes de la
+// semana en que se activó la función) — nunca retroactivo a semanas anteriores ya cerradas.
+const DESCUENTO_DESDE='2026-09-07';
 
-async function aplicarHorarioTurno(id,inicio,fin,soloUsers){
+async function aplicarHorarioTurno(id,inicio,fin,soloUsers,almInicio,duracionAlm){
   let usuarios=soloUsers;
   if(!usuarios){const s=await get(R(db,`${TURNOS}/${id}/usuarios`));usuarios=s.exists()?Object.keys(s.val()):[];}
   const DIAS_K=['lunes','martes','miercoles','jueves','viernes','sabado'];
   const writes=[];
-  usuarios.forEach(u=>{DIAS_K.forEach(dia=>{writes.push(set(R(db,`${HORCOL}/${u}/${dia}`),{inicio,fin}));});});
+  usuarios.forEach(u=>{DIAS_K.forEach(dia=>{writes.push(set(R(db,`${HORCOL}/${u}/${dia}`),{inicio,fin,almInicio:almInicio||null,duracionAlm:duracionAlm!==undefined?duracionAlm:60}));});});
   await Promise.all(writes);
 }
 
@@ -2991,8 +3001,15 @@ async function loadTurnosAdmin(){
         <input type="time" class="fc turno-inp" data-id="${id}" data-campo="inicio" value="${t.inicio}" style="width:auto;font-size:12px;padding:4px 6px">
         <span style="font-size:11px;color:var(--mt)">→</span>
         <input type="time" class="fc turno-inp" data-id="${id}" data-campo="fin" value="${t.fin}" style="width:auto;font-size:12px;padding:4px 6px">
-        <button class="btn bp bsm btn-save-turno" data-id="${id}" style="width:auto;font-size:11px;padding:4px 10px">💾 Guardar horas</button>
         <button class="btn bd bsm btn-del-turno" data-id="${id}" style="width:auto;font-size:11px;padding:4px 10px;margin-left:auto">🗑 Eliminar turno</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;font-size:11px;color:var(--mt)">
+        <span>🍽 Almuerzo desde</span>
+        <input type="time" class="fc turno-inp" data-id="${id}" data-campo="almInicio" value="${t.almInicio||'12:00'}" style="width:auto;font-size:12px;padding:4px 6px">
+        <span>Duración</span>
+        <input type="number" min="0" step="5" class="fc turno-inp" data-id="${id}" data-campo="duracionAlm" value="${t.duracionAlm!==undefined?t.duracionAlm:60}" style="width:64px;font-size:12px;padding:4px 6px">
+        <span>min</span>
+        <button class="btn bp bsm btn-save-turno" data-id="${id}" style="width:auto;font-size:11px;padding:4px 10px">💾 Guardar y aplicar</button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
         ${asignados.length?asignados.map(u=>{const nom=(users[u]&&users[u].nombre)||u;return`<span style="background:var(--bg);border:1px solid var(--bd);border-radius:20px;padding:3px 10px;font-size:11.5px;display:flex;align-items:center;gap:5px">${nom}<button class="turno-quitar-user" data-id="${id}" data-user="${u}" style="border:none;background:none;color:var(--dn);cursor:pointer;font-size:12px">✕</button></span>`;}).join(''):'<span style="font-size:12px;color:var(--mt)">Sin colaboradores asignados</span>'}
@@ -3007,11 +3024,15 @@ async function loadTurnosAdmin(){
     const id=this.dataset.id;
     const ini=c.querySelector(`.turno-inp[data-id="${id}"][data-campo="inicio"]`).value;
     const fin=c.querySelector(`.turno-inp[data-id="${id}"][data-campo="fin"]`).value;
+    const almInicio=c.querySelector(`.turno-inp[data-id="${id}"][data-campo="almInicio"]`).value||'12:00';
+    const duracionAlm=parseInt(c.querySelector(`.turno-inp[data-id="${id}"][data-campo="duracionAlm"]`).value||'60')||0;
     if(!ini||!fin){toast('Completa inicio y fin','err');return;}
     try{
       await set(R(db,`${TURNOS}/${id}/inicio`),ini);
       await set(R(db,`${TURNOS}/${id}/fin`),fin);
-      await aplicarHorarioTurno(id,ini,fin);
+      await set(R(db,`${TURNOS}/${id}/almInicio`),almInicio);
+      await set(R(db,`${TURNOS}/${id}/duracionAlm`),duracionAlm);
+      await aplicarHorarioTurno(id,ini,fin,null,almInicio,duracionAlm);
       toast('Turno actualizado y aplicado a sus colaboradores ✓','ok');
       loadTurnosAdmin();
     }catch(e){toast('⛔ Error al guardar: '+(e.message||e),'err',6000);}
@@ -3040,7 +3061,7 @@ async function loadTurnosAdmin(){
       Object.keys(all).forEach(otroId=>{if(otroId!==id&&all[otroId].usuarios&&all[otroId].usuarios[user])writes.push(set(R(db,`${TURNOS}/${otroId}/usuarios/${user}`),null));});
       writes.push(set(R(db,`${TURNOS}/${id}/usuarios/${user}`),true));
       await Promise.all(writes);
-      await aplicarHorarioTurno(id,all[id].inicio,all[id].fin,[user]);
+      await aplicarHorarioTurno(id,all[id].inicio,all[id].fin,[user],all[id].almInicio,all[id].duracionAlm);
       toast('Colaborador asignado ✓','ok');
       loadTurnosAdmin();
     }catch(e){toast('⛔ Error al asignar: '+(e.message||e),'err',6000);}
@@ -3048,12 +3069,13 @@ async function loadTurnosAdmin(){
 }
 el('btn-crear-turno')?.addEventListener('click',async()=>{
   const nombre=(el('nt-nombre').value||'').trim(),ini=el('nt-ini').value,fin=el('nt-fin').value;
+  const almInicio=el('nt-alm-ini').value||'12:00',duracionAlm=parseInt(el('nt-alm-dur').value||'60')||0;
   if(!ini||!fin){toast('Indica inicio y fin del turno','err');return;}
   try{
     const id='t'+Date.now();
-    await set(R(db,`${TURNOS}/${id}`),{nombre:nombre||`Turno ${id.slice(-4)}`,inicio:ini,fin:fin,usuarios:{}});
+    await set(R(db,`${TURNOS}/${id}`),{nombre:nombre||`Turno ${id.slice(-4)}`,inicio:ini,fin:fin,almInicio,duracionAlm,usuarios:{}});
     toast('Turno creado ✓','ok');
-    el('nt-nombre').value='';el('nt-ini').value='';el('nt-fin').value='';
+    el('nt-nombre').value='';el('nt-ini').value='';el('nt-fin').value='';el('nt-alm-ini').value='12:00';el('nt-alm-dur').value='60';
     loadTurnosAdmin();
   }catch(e){toast('⛔ Error al crear turno: '+(e.message||e),'err',6000);}
 });
@@ -3296,32 +3318,49 @@ function jitterMinSeg(rangoMin){
   const signo=Math.random()<0.5?-1:1;
   return{min:Math.round(Math.random()*rangoMin)*signo,seg:Math.floor(Math.random()*60)};
 }
-// Sugiere una hora para rellenar un hueco de ALMUERZO (Salida Alm. o Regreso Alm.), anclada al
-// horario configurado del colaborador ese día, y siempre acotada por marcas REALES que sí
-// existen (nunca antes de la Entrada real, nunca después del Regreso/Salida Final real).
-// Deliberadamente NO cubre huecos de "Entrada" o "Salida Final": sin una marca real de un lado
-// no hay ancla de la que partir, y ahí sí se necesita revisión humana (Editar marcaciones).
+// Sugiere una hora para rellenar un hueco (Entrada, Salida Alm., Regreso Alm. o Salida Final),
+// anclada al turno/horario configurado del colaborador ese día, y siempre acotada por marcas
+// REALES que sí existen (nunca fuera de orden respecto a ellas). Entrada/Salida Final usan el
+// inicio/fin del turno como ancla; Salida/Regreso Alm. necesitan una Entrada real de la que partir.
 async function sugerirHoraAutomatica(tipoFaltante,dia,user,marksReales){
-  if(tipoFaltante!=='Salida Alm.'&&tipoFaltante!=='Regreso Alm.')return null;
-  const entradaMark=marksReales.find(m=>m.tipo==='Entrada');
-  if(!entradaMark)return null; // sin ancla de inicio del día, no se inventa nada
-  const regresoMark=marksReales.find(m=>m.tipo==='Regreso Alm.');
-  const salidaFinalMark=marksReales.find(m=>m.tipo==='Salida Final');
   let horBase;try{horBase=await getHorarioBaseDe(user,dia);}catch(e){return null;}
   if(!horBase)return null;
-  const [aih,aim]=(horBase.almInicio||'12:00').split(':').map(Number);
-  const dur=horBase.duracionAlm||60;
-  let baseMin=tipoFaltante==='Salida Alm.'?(aih*60+aim):(aih*60+aim+dur);
-  const{min:jm,seg:js}=jitterMinSeg(3);
+  const ORD={'Entrada':0,'Salida Alm.':1,'Regreso Alm.':2,'Salida Final':3};
+  if(!(tipoFaltante in ORD))return null;
+  const entradaMark=marksReales.find(m=>m.tipo==='Entrada');
+  const salidaAlmMark=marksReales.find(m=>m.tipo==='Salida Alm.');
+  const regresoMark=marksReales.find(m=>m.tipo==='Regreso Alm.');
+  const salidaFinalMark=marksReales.find(m=>m.tipo==='Salida Final');
+  let baseMin;
+  if(tipoFaltante==='Entrada'){
+    const [ih,im]=(horBase.inicio||'09:00').split(':').map(Number);
+    baseMin=ih*60+im;
+  }else if(tipoFaltante==='Salida Final'){
+    const [fh,fm]=(horBase.fin||'18:00').split(':').map(Number);
+    baseMin=fh*60+fm;
+  }else{
+    // Salida Alm. / Regreso Alm. — necesitan una Entrada real de la que anclarse; no se inventa
+    // el inicio del día para calcular el almuerzo.
+    if(!entradaMark)return null;
+    const [aih,aim]=(horBase.almInicio||'12:00').split(':').map(Number);
+    const dur=horBase.duracionAlm||60;
+    baseMin=tipoFaltante==='Salida Alm.'?(aih*60+aim):(aih*60+aim+dur);
+  }
+  // Variación de ±5 minutos y segundos aleatorios, para que la marca generada nunca se vea
+  // "redonda y sospechosa" (un humano nunca marca exacto a las 08:00:00).
+  const{min:jm,seg:js}=jitterMinSeg(5);
   baseMin+=jm;
   const d=new Date(dia+'T00:00:00');d.setHours(Math.floor(baseMin/60),((baseMin%60)+60)%60,js,0);
-  const cotaInf=new Date(entradaMark.stamp).getTime()+2*60000;
-  const cotaSupCand=[regresoMark,salidaFinalMark].filter(Boolean).map(m=>new Date(m.stamp).getTime()-2*60000);
-  const cotaSup=cotaSupCand.length?Math.min(...cotaSupCand):null;
+  // La marca generada nunca puede quedar fuera de orden respecto a las marcas reales que sí
+  // existen ese día (ej. Salida Final generada no puede quedar antes que un Regreso Alm. real).
+  const antes=[entradaMark,salidaAlmMark,regresoMark].filter(Boolean).filter(m=>ORD[m.tipo]<ORD[tipoFaltante]);
+  const despues=[salidaAlmMark,regresoMark,salidaFinalMark].filter(Boolean).filter(m=>ORD[m.tipo]>ORD[tipoFaltante]);
+  const cotaInf=antes.length?Math.max(...antes.map(m=>new Date(m.stamp).getTime()))+2*60000:null;
+  const cotaSup=despues.length?Math.min(...despues.map(m=>new Date(m.stamp).getTime()))-2*60000:null;
   let t=d.getTime();
-  if(t<cotaInf)t=cotaInf+Math.floor(Math.random()*120)*1000;
+  if(cotaInf!==null&&t<cotaInf)t=cotaInf+Math.floor(Math.random()*120)*1000;
   if(cotaSup!==null&&t>cotaSup)t=cotaSup-Math.floor(Math.random()*120)*1000;
-  if(cotaSup!==null&&t<=cotaInf)return null; // no cabe un hueco válido entre las marcas reales
+  if(cotaInf!==null&&cotaSup!==null&&cotaSup<=cotaInf)return null; // no cabe un hueco válido entre las marcas reales
   return new Date(t);
 }
 // Inserta la marca auto-generada en Firebase, marcada de forma permanente como generada por el
@@ -3355,7 +3394,8 @@ function paintHistToday(arr){
   c.innerHTML='';
   const pendCids=new Set(getPendMarks().map(m=>m.cid));
   mine.slice(0,4).forEach(it=>{
-    const d=document.createElement('div');d.className='hitem';
+    const d=document.createElement('div');
+    d.style.cssText='display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:9px 13px;background:var(--bg);border-radius:var(--rs);border:1px solid var(--bd)';
     if(it.cid)d.dataset.cid=it.cid;
     let statusHtml='';
     if(it.cid&&pendCids.has(it.cid)){
@@ -3363,7 +3403,10 @@ function paintHistToday(arr){
         ?`<span class="hsync hsync-spin" title="Sincronizando...">⟳</span>`
         :`<span class="hsync" title="Sin conexión — pendiente de enviar">📴</span>`;
     }
-    d.innerHTML=`<span class="hchip">${it.tipo}</span><span style="display:flex;align-items:center;gap:6px"><span class="hhora">${it.hora}</span>${statusHtml}</span>`;
+    d.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between"><span class="hchip">${it.tipo}</span><span style="display:flex;align-items:center;gap:6px"><span class="hhora">${it.hora}</span>${statusHtml}</span></div>`
+      +(it.nota
+        ?`<div style="font-size:10.5px;color:#ffb020">📝 Nota: ${it.nota}</div>`
+        :`<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#00c9a7"><span class="chk-ok">✓</span> Marcación válida</div>`);
     c.appendChild(d);
   });
   updNext(mine.length);
@@ -4951,11 +4994,11 @@ async function renderVistaSemanal(refDate,hastaDate){
   html+=`<th style="background:#005570;color:var(--tx);padding:7px 9px;text-align:center;border:1px solid var(--bd);min-width:90px;font-size:12px">Total</th>`;
   html+=`</tr>`;
   // Acumuladores solo para días visibles
-  const totalPorDia=diasVisibles.map(()=>({colab:0,monto:0}));
-  let totalSemana=0;
+  const totalPorDia=diasVisibles.map(()=>({colab:0,monto:0,desc:0}));
+  let totalSemana=0,totalDescSemana=0;
   userList.forEach(u=>{
     const uObj=users[u.user]||{};
-    let totalUsuario=0;
+    let totalUsuario=0,totalDescUsuario=0;
     html+=`<tr>`;
     html+=`<td style="padding:6px 8px;border:1px solid var(--bd);background:var(--sf);vertical-align:top">`
       +`<div style="font-weight:700;color:var(--tx);font-size:12px">${u.nombre}</div>`
@@ -4986,23 +5029,30 @@ async function renderVistaSemanal(refDate,hastaDate){
         const hrsParcial=cnt<4?computeHrsParcial(dayMarks):hrs;
         const monto=completo?tar:+((Math.min(hrsParcial,8)/8)*tar).toFixed(2);
         totalPorDia[vi].colab++;totalPorDia[vi].monto+=monto;totalSemana+=monto;totalUsuario+=monto;
+        // Descuento prorrateado por hora (tarifa del día ÷ 8) sobre las horas que faltaron para
+        // completar la jornada de 8h. No es un cálculo aparte: es exactamente la diferencia entre
+        // la tarifa completa y lo que ya se está pagando arriba (monto) — así nunca queda
+        // descoordinado con lo que ya se le paga al colaborador ese día.
+        const descuento=(k>=DESCUENTO_DESDE)?+(tar-monto).toFixed(2):0;
+        totalPorDia[vi].desc=(totalPorDia[vi].desc||0)+descuento;totalDescSemana+=descuento;totalDescUsuario+=descuento;
         const mLines=dayMarks.map(m=>`<div style="white-space:nowrap;line-height:1.6"><span style="color:var(--mt);font-size:10px">${tipoLabel(m.tipo)}${m.generadoPorSistema?' <span title="Generada por el sistema — no fue un toque real" style="color:#ffb020">🤖</span>':''}</span><br><span style="color:var(--ac);font-family:'DM Mono',monospace;font-size:11px">${m.hora.slice(0,8)}</span></div>`).join('');
         const badge=completo?`<div style="color:#00c9a7;font-size:10px;font-weight:700;margin-top:2px">✅ $${monto.toFixed(2)}</div>`:`<div style="color:var(--wn);font-size:10px;margin-top:2px">⏳ ${cnt}/4 · $${monto.toFixed(2)}</div>`;
+        const descHtml=descuento>0?`<div style="color:#ff6b6b;font-size:9.5px;font-weight:700;margin-top:2px">💸 Desc: -$${descuento.toFixed(2)}</div>`:'';
         // Hueco de secuencia: ej. tiene Regreso Alm. pero no Salida Alm. — esa marca probablemente
         // sigue atascada en el teléfono del colaborador. Se avisa aparte de "incompleto" (4/4
         // normal cuando aún no termina el día) para no generar falsas alarmas.
         const hueco=detectarHuecoSecuencia(dayMarks);
         // El botón "🤖 Generar" solo aparece si el hueco es de almuerzo Y hay una Entrada real
         // para anclar la hora — huecos de Entrada/Salida Final requieren revisión manual.
-        const huecoAlmGenerable=hueco.length===1&&(hueco[0]==='Salida Alm.'||hueco[0]==='Regreso Alm.')&&dayMarks.some(m=>m.tipo==='Entrada');
+        const huecoAlmGenerable=hueco.length===1;
         const huecoHtml=hueco.length?`<div style="color:#ff6b6b;font-size:9px;font-weight:700;margin-top:3px;line-height:1.3">⚠ Falta: ${hueco.map(tipoLabel).join(', ')}<br>`
           +`<button type="button" class="btn-avisar-hueco" data-user="${u.user}" data-dia="${k}" data-falta="${hueco.join('|')}" style="margin-top:2px;font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid #ff6b6b;background:transparent;color:#ff6b6b;cursor:pointer">🔔 Avisar</button>`
           +(huecoAlmGenerable?` <button type="button" class="btn-generar-hueco" data-user="${u.user}" data-dia="${k}" data-falta="${hueco[0]}" style="margin-top:2px;font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid #ffb020;background:transparent;color:#ffb020;cursor:pointer">🤖 Generar</button>`:'')
           +`</div>`:'';
-        html+=`<td style="padding:5px 6px;border:1px solid var(--bd);background:${bgBase};vertical-align:top">${mLines}${badge}${huecoHtml}</td>`;
+        html+=`<td style="padding:5px 6px;border:1px solid var(--bd);background:${bgBase};vertical-align:top">${mLines}${badge}${descHtml}${huecoHtml}</td>`;
       }
     });
-    html+=`<td style="padding:6px 8px;border:1px solid var(--bd);background:rgba(0,201,167,.08);text-align:center;vertical-align:middle"><strong style="color:var(--ac);font-size:13px">$${totalUsuario.toFixed(2)}</strong></td>`;
+    html+=`<td style="padding:6px 8px;border:1px solid var(--bd);background:rgba(0,201,167,.08);text-align:center;vertical-align:middle"><strong style="color:var(--ac);font-size:13px">$${totalUsuario.toFixed(2)}</strong>${totalDescUsuario>0?`<div style="color:#ff6b6b;font-size:10px;font-weight:700;margin-top:2px">💸 -$${totalDescUsuario.toFixed(2)}</div>`:''}</td>`;
     html+=`</tr>`;
   });
   // FILA DE TOTALES — solo días visibles
@@ -5010,15 +5060,17 @@ async function renderVistaSemanal(refDate,hastaDate){
   html+=`<td style="padding:7px 9px;border:1px solid var(--bd);vertical-align:middle">`
     +`<div style="font-size:11px;font-weight:800;color:var(--ac)">TOTALES</div>`
     +`<div style="font-size:10px;color:var(--mt)">Semana: <strong style="color:var(--ac)">$${totalSemana.toFixed(2)}</strong></div>`
+    +(totalDescSemana>0?`<div style="font-size:10px;color:#ff6b6b">💸 Desc: -$${totalDescSemana.toFixed(2)}</div>`:'')
     +`</td>`;
   diasVisibles.forEach((_,vi)=>{
     const t=totalPorDia[vi];
     html+=`<td style="padding:6px 5px;border:1px solid var(--bd);background:rgba(0,201,167,.08);text-align:center;vertical-align:middle">`
       +`<div style="font-size:12px;font-weight:800;color:var(--ac)">$${t.monto.toFixed(2)}</div>`
       +`<div style="font-size:10px;color:var(--mt)">${t.colab} colab.</div>`
+      +(t.desc>0?`<div style="font-size:9.5px;color:#ff6b6b;font-weight:700">💸 -$${t.desc.toFixed(2)}</div>`:'')
       +`</td>`;
   });
-  html+=`<td style="padding:7px 9px;border:1px solid var(--bd);background:rgba(0,201,167,.14);text-align:center;vertical-align:middle"><strong style="color:var(--ac);font-size:13px">$${totalSemana.toFixed(2)}</strong></td>`;
+  html+=`<td style="padding:7px 9px;border:1px solid var(--bd);background:rgba(0,201,167,.14);text-align:center;vertical-align:middle"><strong style="color:var(--ac);font-size:13px">$${totalSemana.toFixed(2)}</strong>${totalDescSemana>0?`<div style="color:#ff6b6b;font-size:10px;font-weight:700;margin-top:2px">💸 -$${totalDescSemana.toFixed(2)}</div>`:''}</td>`;
   html+=`</tr>`;
   html+=`</table>`;
   c.innerHTML=html;
@@ -5031,7 +5083,7 @@ async function renderVistaSemanal(refDate,hastaDate){
 document.addEventListener('click',async(e)=>{
   const btn=e.target.closest('.btn-generar-hueco');if(!btn)return;
   const user=btn.dataset.user,dia=btn.dataset.dia,tipoFaltante=btn.dataset.falta;
-  if(!confirm(`¿Generar automáticamente "${tipoLabel(tipoFaltante)}" para ${user} el ${dia}?\n\nSe calcula una hora estimada según su horario de almuerzo (con variación de minutos), quedará marcada como generada por el sistema, y afectará el pago calculado de ese día. Esta acción queda registrada en el log.`))return;
+  if(!confirm(`¿Generar automáticamente "${tipoLabel(tipoFaltante)}" para ${user} el ${dia}?\n\nSe calcula una hora estimada según su turno/horario asignado (con variación de minutos y segundos), quedará marcada como generada por el sistema, y afectará el pago calculado de ese día. Esta acción queda registrada en el log.`))return;
   btn.disabled=true;btn.textContent='Generando...';
   const r=await generarMarcaAutomatica(user,dia,tipoFaltante);
   if(r.ok){btn.textContent=`✓ ${r.hora}`;btn.style.opacity='.6';const v=el('sem-desde').value,h=el('sem-hasta').value;setTimeout(()=>renderVistaSemanal(v||null,h||undefined),900);}
@@ -5287,6 +5339,7 @@ el('btn-save-ed').addEventListener('click',async()=>{
   const arr=await getHist(fecha);if(!arr||!arr.length){toast('Sin marcaciones','err');return;}
   document.querySelectorAll('.ect').forEach(s=>{
     const i=Number(s.dataset.i);if(!arr[i])return;
+    const origTipo=arr[i].tipo,origHora=arr[i].hora;
     arr[i].tipo=s.value;
     const hEl=document.querySelector(`.ech-h[data-i="${i}"]`);
     const mEl=document.querySelector(`.ech-m[data-i="${i}"]`);
@@ -5297,6 +5350,13 @@ el('btn-save-ed').addEventListener('click',async()=>{
       const ss=String(Math.max(0,Math.min(59,parseInt(sEl.value)||0))).padStart(2,'0');
       const ns=new Date(`${fecha}T${hh}:${mm}:${ss}`).toISOString();
       arr[i].stamp=ns;arr[i].hora=fmtT(new Date(ns));
+    }
+    // Solo si realmente cambió tipo u hora se etiqueta la marca con la nota — esto queda
+    // guardado en la marca misma (historial_v1), visible SOLO para el propio colaborador
+    // afectado en "Marcaciones de hoy". El correo automático (EmailJS) no lee este campo,
+    // así que el reporte a RRHH sigue exactamente igual, sin columnas nuevas.
+    if(arr[i].tipo!==origTipo||arr[i].hora!==origHora){
+      arr[i].nota=com;arr[i].editadoPor=CU;arr[i].editadoTs=new Date().toISOString();
     }
   });
   await saveHist(fecha,arr);await addLog(`Edición: ${user} ${fecha} — ${com}`);toast('Guardado ✓','ok');el('ed-comment').value='';el('ed-list').innerHTML='';
@@ -6070,6 +6130,7 @@ el('btn-log-cam-crear')?.addEventListener('click',async()=>{
 // Vista de recepción: informativa. El estado real (✓ recibido) de cada recibo lo marca el chequeador
 // desde "Recepción" (log-rec-jump); aquí solo se refleja, no se puede editar.
 async function renderLogCamRec(){
+  if(!CU)return; // sin sesión activa (ej. justo después de cerrar sesión) — no hay nada que cargar ni error que mostrar
   const c=el('log-cam-lista');
   const cComp=el('log-cam-completados-lista');
   try{
