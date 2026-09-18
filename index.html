@@ -867,6 +867,8 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div class="fg"><label>Public Key</label><input class="fc" id="ejs-key"></div>
             <div class="fg"><label>Para (coma para varios)</label><input class="fc" id="em-para" placeholder="jefe@westland.com"></div>
             <div class="fg"><label>CC</label><input class="fc" id="em-cc"></div>
+            <div class="fg"><label>Correo de tráfico (CC automático en "Consolidado completado")</label><input class="fc" id="em-cc-trafico" placeholder="trafico@westland.com (coma para varios)"></div>
+            <div style="font-size:11px;color:var(--mt);margin:-4px 0 8px 0">El correo de "Consolidado completado" (logística) se envía a Armando Alvarado y pone en copia automáticamente a Paul Rovira + el/los correo(s) de tráfico que pongas aquí.</div>
             <hr style="border:none;border-top:1px solid var(--bd);margin:10px 0">
             <div style="font-size:12px;font-weight:700;color:var(--mt);margin-bottom:8px">⏰ Envío programado automático</div>
             <div class="fg2">
@@ -3549,7 +3551,7 @@ async function loadEmailCfg(){
     el('test-desde').value=wk.desde;el('test-hasta').value=wk.hasta;
     const s=await get(R(db,EMCFG));if(!s.exists())return;const v=s.val();
     if(v.serviceId)el('ejs-sid').value=v.serviceId;if(v.templateId)el('ejs-tid').value=v.templateId;if(v.publicKey)el('ejs-key').value=v.publicKey;
-    if(v.para)el('em-para').value=v.para;if(v.cc)el('em-cc').value=v.cc;
+    if(v.para)el('em-para').value=v.para;if(v.cc)el('em-cc').value=v.cc;if(v.ccTrafico)el('em-cc-trafico').value=v.ccTrafico;
     if(v.autoDia!==undefined)el('auto-dia').value=v.autoDia;if(v.autoHora)el('auto-hora').value=v.autoHora;
     if(v.autoTipo)el('auto-tipo').value=v.autoTipo;if(v.autoPeriodo)el('auto-periodo').value=v.autoPeriodo;
     if(v.autoCustomDesde)el('auto-custom-desde').value=v.autoCustomDesde;if(v.autoCustomHasta)el('auto-custom-hasta').value=v.autoCustomHasta;
@@ -3647,7 +3649,7 @@ el('auto-periodo')?.addEventListener('change',toggleAutoCustom);
 
 // EMAIL
 el('btn-save-email').addEventListener('click',async()=>{
-  const cfg={serviceId:el('ejs-sid').value.trim(),templateId:el('ejs-tid').value.trim(),publicKey:el('ejs-key').value.trim(),para:el('em-para').value.trim(),cc:el('em-cc').value.trim(),autoDia:el('auto-dia').value,autoHora:el('auto-hora').value,autoTipo:el('auto-tipo').value,autoPeriodo:el('auto-periodo').value};
+  const cfg={serviceId:el('ejs-sid').value.trim(),templateId:el('ejs-tid').value.trim(),publicKey:el('ejs-key').value.trim(),para:el('em-para').value.trim(),cc:el('em-cc').value.trim(),ccTrafico:el('em-cc-trafico').value.trim(),autoDia:el('auto-dia').value,autoHora:el('auto-hora').value,autoTipo:el('auto-tipo').value,autoPeriodo:el('auto-periodo').value};
   if(!cfg.serviceId||!cfg.templateId||!cfg.publicKey){toast('Completa los 3 campos de EmailJS','err');return;}
   if(cfg.autoPeriodo==='custom'){
     cfg.autoCustomDesde=el('auto-custom-desde').value;cfg.autoCustomHasta=el('auto-custom-hasta').value;
@@ -5212,7 +5214,13 @@ async function renderVistaSemanal(refDate,hastaDate){
       +`<div style="font-size:10px;color:var(--mt)">${u.user}</div>`
       +`</td>`;
     diasVisibles.forEach(({k,d},vi)=>{
-      const dayMarks=(histByDay[k]||[]).filter(m=>m.user===u.user);
+      // Se muestra SIEMPRE en el orden lógico de la jornada (Entrada → Salida Alm. →
+      // Regreso Alm. → Salida Final), sin importar el orden en que se registraron o
+      // editaron las marcaciones — así una marca manual cargada después de otra (ej.
+      // "Salida Alm." registrada antes que "Entrada") nunca aparece fuera de secuencia.
+      const ORDEN_DIA={'Entrada':0,'Salida Alm.':1,'Regreso Alm.':2,'Salida Final':3};
+      const dayMarks=(histByDay[k]||[]).filter(m=>m.user===u.user)
+        .sort((a,b)=>{const oa=ORDEN_DIA[a.tipo]??99,ob=ORDEN_DIA[b.tipo]??99;return oa!==ob?oa-ob:(a.hora||'').localeCompare(b.hora||'');});
       const dowNum=d.getDay();
       const isToday=k===isoD(new Date());
       const isWeekend=dowNum===0||dowNum===6;
@@ -6349,18 +6357,20 @@ function recalcLogCamResumen(){
   const box=el('log-cam-resumen');if(!box)return;
   const checks=[...document.querySelectorAll('.log-cam-chk:checked')];
   if(!checks.length){box.innerHTML='<span style="color:var(--mt)">Selecciona los recibos de este camión para ver el resumen.</span>';return;}
-  let bultos=0,pallets=0;const provs=new Set();
+  let bultos=0,pallets=0;const provs=new Set();const deptos=new Set();
   checks.forEach(chk=>{
     const v=LOGR[chk.dataset.k];if(!v)return;
     bultos+=Number(v.bultosEsperados)||0;
     pallets+=Number(v.palletsEsperados)||0;
     if(v.proveedor)provs.add(v.proveedor);
+    if(v.departamento)deptos.add(v.departamento);
   });
   const row=(a,b)=>`<div style="display:flex;justify-content:space-between;padding:3px 0;gap:10px"><span style="color:var(--mt)">${a}</span><span>${b}</span></div>`;
   box.innerHTML=row('Recibos seleccionados','<b>'+checks.length+'</b>')
-    +row('Bultos totales','<b>'+bultos+'</b>')
+    +row('Bultos facturados totales','<b>'+bultos+'</b>')
     +(pallets?row('Pallets totales','<b>'+pallets+'</b>'):'')
-    +row('Proveedores',[...provs].join(', ')||'—');
+    +row('Proveedores',[...provs].join(', ')||'—')
+    +row('Departamento(s)',[...deptos].join(', ')||'—');
 }
 function renderLogCamNuevoChecklist(){
   const c=el('log-cam-recibos-check');if(!c)return;
@@ -6391,12 +6401,12 @@ function renderLogCamEquipoBox(){
     if(navBox)navBox.style.display='block';
     eqBox.style.display='block';
     if(lbl)lbl.textContent='Cantidad de contenedores';
-    if(hint)hint.textContent='Un chofer por contenedor. Formato de contenedor: TCKU1234567.';
+    if(hint)hint.textContent='El chofer y el sello se registran al recibir cada contenedor. Formato de contenedor: TCKU1234567.';
   }else if(esCamionOFurgonCam(tipo)){
     if(navBox)navBox.style.display='none';
     eqBox.style.display='block';
     if(lbl)lbl.textContent='Cantidad de camiones';
-    if(hint)hint.textContent='Un chofer por camión (si vienen dos equipos con choferes distintos, agrégalos por separado).';
+    if(hint)hint.textContent='El chofer se registra al recibir cada camión (aún no suele saberse en la planificación).';
   }else{
     if(navBox)navBox.style.display='none';
     eqBox.style.display='none';
@@ -6409,7 +6419,6 @@ function renderLogCamEquipoInputs(){
   const tipo=el('log-cam-tipoequipo')?.value;
   const cant=parseInt(el('log-cam-cantequipos')?.value)||1;
   const cont=el('log-cam-equipos-inputs');if(!cont)return;
-  const prevChofer=[...cont.querySelectorAll('.cam-eq-chofer')].map(i=>i.value);
   const prevB=[...cont.querySelectorAll('.cam-eq-campob')].map(i=>i.value);
   const prevC=[...cont.querySelectorAll('.cam-eq-campoc')].map(i=>i.value);
   const esConten=esContenedorCam(tipo);
@@ -6422,14 +6431,10 @@ function renderLogCamEquipoInputs(){
         +`<div class="fg2">`
         +`<div class="fg"><label style="font-size:11px">N° de contenedor</label><input class="fc cam-eq-campob" placeholder="TCKU1234567" value="${prevB[i]||''}" style="font-family:monospace;letter-spacing:1px"></div>`
         +`<div class="fg"><label style="font-size:11px">N° de sello</label><input class="fc cam-eq-campoc" placeholder="Ej: 0045821" value="${prevC[i]||''}"></div>`
-        +`</div>`
-        +`<div class="fg"><label style="font-size:11px">Chofer</label><input class="fc cam-eq-chofer" placeholder="Nombre del chofer" value="${prevChofer[i]||''}"></div>`;
+        +`</div>`;
     }else{
       div.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--ac);margin-bottom:6px">Camión ${i+1}</div>`
-        +`<div class="fg2">`
-        +`<div class="fg"><label style="font-size:11px">Chofer</label><input class="fc cam-eq-chofer" placeholder="Nombre del chofer" value="${prevChofer[i]||''}"></div>`
-        +`<div class="fg"><label style="font-size:11px">Placa</label><input class="fc cam-eq-campob" placeholder="Ej: AB1234" value="${prevB[i]||''}"></div>`
-        +`</div>`;
+        +`<div class="fg"><label style="font-size:11px">Placa</label><input class="fc cam-eq-campob" placeholder="Ej: AB1234" value="${prevB[i]||''}"></div>`;
     }
     cont.appendChild(div);
   }
@@ -6437,12 +6442,13 @@ function renderLogCamEquipoInputs(){
 function getLogCamEquiposFromForm(){
   const tipo=el('log-cam-tipoequipo')?.value;
   const esConten=esContenedorCam(tipo);
-  const choferes=[...document.querySelectorAll('.cam-eq-chofer')].map(i=>i.value.trim());
   const camposB=[...document.querySelectorAll('.cam-eq-campob')].map(i=>i.value.trim());
   const camposC=[...document.querySelectorAll('.cam-eq-campoc')].map(i=>i.value.trim());
-  return choferes.map((chofer,i)=>esConten
-    ?{chofer,numContenedor:camposB[i]||'',sello:camposC[i]||''}
-    :{chofer,placa:camposB[i]||''});
+  // El chofer NO se pide aquí: lo registra quien recibe físicamente el equipo, no quien
+  // planifica el consolidado (a menudo aún no se sabe qué chofer va a traer la carga).
+  return camposB.map((valB,i)=>esConten
+    ?{numContenedor:valB||'',sello:camposC[i]||''}
+    :{placa:valB||''});
 }
 el('log-cam-tipoequipo')?.addEventListener('change',renderLogCamEquipoBox);
 el('log-cam-cantequipos')?.addEventListener('input',renderLogCamEquipoInputs);
@@ -6457,12 +6463,13 @@ el('btn-log-cam-crear')?.addEventListener('click',async()=>{
     if(!checks.length){toast('Selecciona al menos un recibo','err');return;}
     const asignado=el('log-cam-asignado').value;
     if(!asignado){toast('Selecciona quién recibirá el camión','err');return;}
-    let bultosTotal=0,palletsTotal=0;const provs=new Set();const recibosMap={};
+    let bultosTotal=0,palletsTotal=0;const provs=new Set();const recibosMap={};const deptos=new Set();
     checks.forEach(chk=>{
       const k=chk.dataset.k,v=LOGR[k];if(!v)return;
       bultosTotal+=Number(v.bultosEsperados)||0;
       palletsTotal+=Number(v.palletsEsperados)||0;
       if(v.proveedor)provs.add(v.proveedor);
+      if(v.departamento)deptos.add(v.departamento);
       recibosMap[k]=true;
     });
     if(!Object.keys(recibosMap).length){toast('Los recibos seleccionados ya no existen. Recarga la lista.','err');return;}
@@ -6475,6 +6482,7 @@ el('btn-log-cam-crear')?.addEventListener('click',async()=>{
       recibos:recibosMap,
       bultosTotal,palletsTotal,
       proveedores:[...provs],
+      departamentos:[...deptos],
       tipoEquipo,naviera,
       equipos:equipos&&equipos.length?equipos:null,
       asignadoA:asignado,
@@ -6577,12 +6585,13 @@ async function renderLogCamRec(){
     const diffTxt=(n)=>n===0?'':(n>0?` (+${n} sobrante)`:` (${Math.abs(n)} falta)`);
     const resumenGlobal=`<div style="background:${!hayRecepcion?'var(--bg)':(matchTotal?'rgba(0,201,167,.08)':'rgba(255,165,2,.08)')};border:1px solid ${!hayRecepcion?'var(--bd)':(matchTotal?'var(--ac)':'var(--wn)')};border-radius:var(--rs);padding:10px 12px;margin-bottom:10px">
         <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📦 Recepción global — conciliación</div>
-        <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--mt)">Consolidado (esperado)</span><span><b>${bultosCons}</b> bultos${palletsConsEsp?(' · <b>'+palletsConsEsp+'</b> pallets est.'):''}</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--mt)">Recibido (real, por pallet)</span><span><b>${bultosRecTotal}</b> bultos${diffTxt(diffBultos)} · <b>${palletsRecTotal}</b> pallets en ${fisEntries.length} camión${fisEntries.length!==1?'es':''}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--mt)">Bulto facturado (esperado)</span><span><b>${bultosCons}</b> bultos${palletsConsEsp?(' · <b>'+palletsConsEsp+'</b> pallets est.'):''}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--mt)">Bulto recibido (real, por pallet)</span><span><b>${bultosRecTotal}</b> bultos${diffTxt(diffBultos)} · <b>${palletsRecTotal}</b> pallets en ${fisEntries.length} equipo${fisEntries.length!==1?'s':''}</span></div>
         <div style="margin-top:6px;font-size:12.5px;font-weight:700;color:${!hayRecepcion?'var(--mt)':(matchTotal?'var(--ac)':'var(--wn)')}">
-          ${!hayRecepcion?'⏳ Aún no se ha recibido ningún camión de esta carga':(matchTotal?'✓ Coincide con lo consolidado':'⚠️ No coincide con lo consolidado — revisar')}
+          ${!hayRecepcion?'⏳ Aún no se ha recibido ningún equipo de esta carga':(matchTotal?'✓ Bulto facturado coincide con bulto recibido':'⚠️ Bulto facturado no coincide con bulto recibido — revisar')}
         </div>
       </div>`;
+    const esConten=esContenedorCam(cam.tipoEquipo);
     const camionesHTML=fisEntries.map(([fk,f])=>{
       const pals=Object.entries(f.pallets||{});
       const subBultos=pals.reduce((a,[,p])=>a+(Number(p.bultos)||0),0);
@@ -6592,16 +6601,17 @@ async function renderLogCamRec(){
           ${abierto?`<button type="button" class="btn bg bsm log-camfis-rm-pallet" data-cam="${camK}" data-fis="${fk}" data-pal="${pk}" style="width:auto;padding:1px 6px;font-size:10px;color:var(--dn)">✕</button>`:''}
         </div>`).join('');
       const puedeGestionar=isAdm||cam.asignadoA===CU;
+      const etiquetaEquipo=esConten?(f.numContenedor?(' · '+f.numContenedor):'')+(f.sello?(' · Sello '+f.sello):''):(f.placa?(' · '+f.placa):'');
       return `<div style="border:1px solid ${abierto?'var(--ac)':'var(--bd)'};border-radius:var(--rs);padding:8px 10px;margin-bottom:8px;background:${abierto?'rgba(0,201,167,.05)':'var(--sf)'}">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:4px">
-            <b style="font-size:12.5px">🚛 Camión ${f.numero}${f.placa?(' · '+f.placa):''}${f.chofer?(' · '+f.chofer):''}</b>
+            <b style="font-size:12.5px">${esConten?'📦':'🚛'} ${esConten?'Contenedor':'Camión'} ${f.numero}${etiquetaEquipo}${f.chofer?(' · '+f.chofer):''}</b>
             <span style="display:flex;align-items:center;gap:8px">
               <span style="font-size:11px;font-weight:700;color:${abierto?'var(--wn)':'var(--ac)'}">${abierto?'⏳ abierto':'🔒 cerrado'}</span>
               ${puedeGestionar?`<button type="button" class="btn bg bsm log-camfis-eliminar" data-cam="${camK}" data-fis="${fk}" title="Eliminar este camión" style="width:auto;padding:2px 7px;font-size:11px;color:var(--dn)">🗑️</button>`:''}
             </span>
           </div>
           ${palRows||'<div style="font-size:11.5px;color:var(--mt)">Sin pallets agregados aún</div>'}
-          <div style="font-size:12px;font-weight:700;margin-top:4px">Subtotal camión ${f.numero}: ${subBultos} bultos · ${pals.length} pallets</div>
+          <div style="font-size:12px;font-weight:700;margin-top:4px">Subtotal ${esConten?'contenedor':'camión'} ${f.numero}: ${subBultos} bultos recibidos · ${pals.length} pallets</div>
           ${abierto?`
           <div class="fg2" style="margin-top:8px">
             <div class="fg"><label style="font-size:11px">Bultos en este pallet</label><input type="number" min="0" class="fc log-camfis-pal-bultos" id="log-camfis-pal-bultos-${fk}" style="padding:6px 8px"></div>
@@ -6621,6 +6631,7 @@ async function renderLogCamRec(){
         <div>
           <div style="font-weight:800;font-size:14px">🚛 ${cam.agente}${doneTag}${reabiertoTag}</div>
           <div style="font-size:11px;color:var(--mt)">${cam.fecha||''} ${cam.hora||''} · ${cam.bultosTotal} bultos${cam.palletsTotal?(' · '+cam.palletsTotal+' pallets'):''} · ${recKeys.length} recibo(s)${cam.proveedores&&cam.proveedores.length?(' · '+cam.proveedores.join(', ')):''}</div>
+          ${cam.departamentos&&cam.departamentos.length?`<div style="font-size:11px;color:var(--mt);margin-top:2px">🏬 Departamento(s): ${cam.departamentos.join(', ')}</div>`:''}
           ${cam.asignadoA?`<div style="font-size:11px;color:var(--mt);margin-top:2px">👤 Asignado a: ${cam.asignadoA}</div>`:''}
           ${equipoLine?`<div style="font-size:11px;color:var(--mt);margin-top:2px">${equipoLine}</div>`:''}
         </div>
@@ -6695,14 +6706,24 @@ document.addEventListener('click',async e=>{
 document.addEventListener('click',async e=>{
   const btn=e.target.closest('.log-camfis-abrir');if(!btn)return;
   const camK=btn.dataset.cam;
+  const camData=LOGCAMS[camK]||{};
+  const esConten=esContenedorCam(camData.tipoEquipo);
   const s=await get(R(db,`${LOGCAM}/${camK}/camionesFisicos`));
   const existentes=s.exists()?s.val():{};
   const numero=Object.keys(existentes).length+1;
+  // Estos campos los llena SIEMPRE quien recibe físicamente la carga (el chequeador), nunca
+  // quien creó el consolidado — porque es quien tiene al chofer y al equipo real enfrente.
   const chofer=(prompt('Chofer que trae este camión (opcional):')||'').trim();
-  const placa=(prompt('Placa del camión (opcional):')||'').trim();
+  let placa=null,numContenedor=null,sello=null;
+  if(esConten){
+    numContenedor=(prompt('N° de contenedor (ej: TCKU1234567):')||'').trim();
+    sello=(prompt('N° de sello (opcional):')||'').trim();
+  }else{
+    placa=(prompt('Placa del camión (opcional):')||'').trim();
+  }
   const r=push(R(db,`${LOGCAM}/${camK}/camionesFisicos`));
-  await set(r,{numero,estado:'abierto',pallets:{},abiertoPor:CU,abiertoTs:new Date().toISOString(),chofer:chofer||null,placa:placa||null});
-  toast('🚚 Camión '+numero+' abierto — agrega los pallets','ok');
+  await set(r,{numero,estado:'abierto',pallets:{},abiertoPor:CU,abiertoTs:new Date().toISOString(),chofer:chofer||null,placa:placa||null,numContenedor:numContenedor||null,sello:sello||null});
+  toast('🚚 '+(esConten?'Contenedor':'Camión')+' '+numero+' abierto — agrega los pallets','ok');
   renderLogCamRec();
 });
 document.addEventListener('click',async e=>{
@@ -6782,17 +6803,28 @@ async function sendConsolidadoCompletadoEmail(camK,cam,fisEntries,bultosRec,pall
     try{const s=await get(R(db,EMCFG));if(s.exists())cfg=s.val();}catch(e){}
   }
   if(!cfg||!cfg.serviceId||!cfg.templateId||!cfg.publicKey){console.warn('Correo de consolidado completado no enviado: EmailJS no está configurado');return;}
-  const destino='provira@saks.com.pa';
+  // El destinatario principal es Armando Alvarado (logística) — Paul Rovira genera el
+  // consolidado pero no debe ser juez y parte, así que va solo en copia. También se
+  // copia automáticamente el/los correo(s) de tráfico configurados en el Panel
+  // Administrativo (Correo automático → "Correo de tráfico"), porque son quienes de
+  // verdad reciben y procesan esta notificación.
+  const destino=u2e('aalvarado');
+  const ccExtra=(cfg.ccTrafico||'').trim();
+  const ccList=['provira@saks.com.pa',...(ccExtra?ccExtra.split(',').map(s=>s.trim()).filter(Boolean):[])].join(', ');
   const bultosCons=Number(cam.bultosTotal)||0,palletsCons=Number(cam.palletsTotal)||0;
   const proveedores=(cam.proveedores||[]).join(', ')||'—';
+  const departamentos=(cam.departamentos||[]).join(', ')||'—';
+  const esConten=esContenedorCam(cam.tipoEquipo);
   const equipoLine=(cam.equipos&&cam.equipos.length)?cam.equipos.map(eq=>eq.numContenedor
       ?`📦 ${eq.numContenedor}${eq.sello?(' · Sello '+eq.sello):''}${eq.chofer?(' · '+eq.chofer):''}`
       :`🚛 ${eq.placa||'—'}${eq.chofer?(' · '+eq.chofer):''}`
     ).join('<br>'):'—';
+  const colEquipoLabel=esConten?'N° Contenedor':'Placa';
   const camionesRows=fisEntries.map(([,f])=>{
     const pals=Object.values(f.pallets||{});
     const subBultos=pals.reduce((a,p)=>a+(Number(p.bultos)||0),0);
-    return `<tr><td>Camión ${f.numero}</td><td>${f.placa||'—'}</td><td>${f.chofer||'—'}</td><td>${subBultos}</td><td>${pals.length}</td></tr>`;
+    const idEquipo=esConten?(f.numContenedor||'—')+(f.sello?(' · Sello '+f.sello):''):(f.placa||'—');
+    return `<tr><td>${esConten?'Contenedor':'Camión'} ${f.numero}</td><td>${idEquipo}</td><td>${f.chofer||'—'}</td><td>${subBultos}</td><td>${pals.length}</td></tr>`;
   }).join('');
   const diff=bultosRec-bultosCons;
   const diffTxt=diff===0?'✓ Coincide con lo consolidado':(diff>0?`+${diff} sobrante`:`${Math.abs(diff)} bultos faltantes`);
@@ -6802,20 +6834,21 @@ async function sendConsolidadoCompletadoEmail(camK,cam,fisEntries,bultosRec,pall
     <b>Completado por:</b> ${CU}<br>
     <b>Fecha:</b> ${isoD(new Date())} ${fmtT(new Date())}</p>
     <p><b>Proveedores:</b> ${proveedores}</p>
+    <p><b>Departamento(s):</b> ${departamentos}</p>
     <p><b>Equipo consolidado (planificado):</b><br>${equipoLine}</p>
     <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
-      <tr style="background:#f0f0f0"><th>Camión</th><th>Placa</th><th>Chofer</th><th>Bultos</th><th>Pallets</th></tr>
+      <tr style="background:#f0f0f0"><th>Equipo</th><th>${colEquipoLabel}</th><th>Chofer</th><th>Bulto recibido</th><th>Pallets</th></tr>
       ${camionesRows}
     </table>
     <p style="margin-top:10px">
-      <b>Bultos consolidado (esperado):</b> ${bultosCons}${palletsCons?(' · '+palletsCons+' pallets est.'):''}<br>
-      <b>Bultos recibidos (real):</b> ${bultosRec}${palletsRec?(' · '+palletsRec+' pallets'):''}<br>
+      <b>Bulto facturado (esperado):</b> ${bultosCons}${palletsCons?(' · '+palletsCons+' pallets est.'):''}<br>
+      <b>Bulto recibido (real):</b> ${bultosRec}${palletsRec?(' · '+palletsRec+' pallets'):''}<br>
       <b>Diferencia:</b> ${diffTxt}
     </p>
     ${cam.nota?`<p><b>Nota:</b> ${cam.nota}</p>`:''}
   `;
   const subject=`✅ Consolidado completado — ${cam.agente||'—'} — ${bultosRec} bultos`;
-  const tParams={to_email:destino,cc_email:'',subject,html_content:html,message:html,saludo:'',periodo:isoD(new Date()),timestamp:new Date().toLocaleString('es')};
+  const tParams={to_email:destino,cc_email:ccList,subject,html_content:html,message:html,saludo:'',periodo:isoD(new Date()),timestamp:new Date().toLocaleString('es')};
   let sent=false;
   try{
     const resp=await fetch('https://api.emailjs.com/api/v1.0/email/send',{method:'POST',headers:{'Content-Type':'application/json','origin':'https://westland-marcaciones.firebaseapp.com'},body:JSON.stringify({service_id:cfg.serviceId,template_id:cfg.templateId,user_id:cfg.publicKey,template_params:tParams})});
