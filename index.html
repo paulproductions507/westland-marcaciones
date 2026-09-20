@@ -960,20 +960,38 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div style="background:var(--sf);border-radius:var(--rs);padding:13px;border:1px solid var(--bd);margin-bottom:11px">
               <div style="font-size:13px;font-weight:700;color:var(--ac);margin-bottom:9px">Generar</div>
               <div class="fg2">
-                <div class="fg"><label>Usuario</label><select class="fc" id="gen-user"></select></div>
                 <div class="fg"><label>Desde</label><input type="date" class="fc" id="gen-fi"></div>
                 <div class="fg"><label>Hasta</label><input type="date" class="fc" id="gen-ff"></div>
               </div>
-              <button class="btn bp bsm" id="btn-gen" style="width:auto;margin-top:6px">▶ Generar</button>
+              <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:9px">
+                <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">👥 Usuarios a generar</div>
+                <div id="gen-user-checks" style="display:flex;flex-direction:column;gap:10px;max-height:240px;overflow-y:auto"></div>
+                <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;align-items:center">
+                  <button class="btn bg bsm" id="btn-gen-todos" style="font-size:11px;padding:4px 10px;width:auto">✅ Todos</button>
+                  <button class="btn bg bsm" id="btn-gen-ninguno" style="font-size:11px;padding:4px 10px;width:auto;color:var(--mt)">☐ Ninguno</button>
+                  <span id="gen-sel-count" style="margin-left:auto;font-size:11px;color:var(--mt)"></span>
+                </div>
+              </div>
+              <div class="fg" style="margin-top:9px"><label>Nota para el colaborador (opcional)</label><input class="fc" id="gen-nota" placeholder="Por defecto: Marcación generada por administración"></div>
+              <div style="font-size:11px;color:var(--mt);margin-top:8px;line-height:1.5">Cada usuario se genera con <strong>su propio turno</strong>. Entrada: hasta 10 min antes o 4 min después · Almuerzo: 0–15 min después de su hora · Salida: ±10 min, sin bajar de las horas de su turno. Los días donde ya tenga marcaciones se omiten.</div>
+              <button class="btn bp bsm" id="btn-gen" style="width:auto;margin-top:8px">▶ Generar seleccionados</button>
             </div>
             <div style="background:var(--sf);border-radius:var(--rs);padding:13px;border:1px solid rgba(255,71,87,.2)">
               <div style="font-size:13px;font-weight:700;color:var(--dn);margin-bottom:9px">Borrar</div>
               <div class="fg2">
-                <div class="fg"><label>Usuario</label><select class="fc" id="bor-user"></select></div>
                 <div class="fg"><label>Desde</label><input type="date" class="fc" id="bor-fi"></div>
                 <div class="fg"><label>Hasta</label><input type="date" class="fc" id="bor-ff"></div>
               </div>
-              <button class="btn bd bsm" id="btn-bor" style="margin-top:6px">🗑 Borrar</button>
+              <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:9px">
+                <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">👥 Usuarios a borrar</div>
+                <div id="bor-user-checks" style="display:flex;flex-direction:column;gap:9px;max-height:220px;overflow-y:auto"></div>
+                <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;align-items:center">
+                  <button class="btn bg bsm" id="btn-bor-todos" style="font-size:11px;padding:4px 10px;width:auto">✅ Todos</button>
+                  <button class="btn bg bsm" id="btn-bor-ninguno" style="font-size:11px;padding:4px 10px;width:auto;color:var(--mt)">☐ Ninguno</button>
+                  <span id="bor-sel-count" style="margin-left:auto;font-size:11px;color:var(--mt)"></span>
+                </div>
+              </div>
+              <button class="btn bd bsm" id="btn-bor" style="margin-top:8px">🗑 Borrar seleccionados</button>
             </div>
           </div></div>
 
@@ -991,16 +1009,36 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 
           <div class="asec"><div class="ashdr" data-ac="ac-ed"><span>🔍 Editar marcaciones</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-ed">
-            <div class="fg2">
-              <div class="fg"><label>Usuario</label><select class="fc" id="ed-user"></select></div>
-              <div class="fg"><label>Fecha</label><input type="date" class="fc" id="ed-fecha"></div>
+            <style>.ed-row.ed-changed{border-color:var(--ac)!important;background:rgba(0,201,167,.09)!important}</style>
+            <div class="fg"><label>Fecha</label><input type="date" class="fc" id="ed-fecha"></div>
+            <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:8px">
+              <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">👥 Usuarios a editar (uno o varios)</div>
+              <div id="ed-user-checks" style="display:flex;flex-direction:column;gap:9px;max-height:220px;overflow-y:auto"></div>
+              <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;align-items:center">
+                <button class="btn bg bsm" id="btn-ed-todos" style="font-size:11px;padding:4px 10px;width:auto">✅ Todos</button>
+                <button class="btn bg bsm" id="btn-ed-ninguno" style="font-size:11px;padding:4px 10px;width:auto;color:var(--mt)">☐ Ninguno</button>
+                <span id="ed-sel-count" style="margin-left:auto;font-size:11px;color:var(--mt)"></span>
+              </div>
             </div>
-            <button class="btn bg bsm" id="btn-cargar-ed" style="margin-top:6px">🔎 Cargar</button>
+            <button class="btn bg bsm" id="btn-cargar-ed" style="margin-top:8px">🔎 Cargar marcaciones</button>
+            <div style="font-size:11px;color:var(--mt);margin-top:7px;line-height:1.45">💡 Escribe la hora de 1 a 12; el <strong>AM/PM se ajusta solo</strong> según el turno de cada usuario (una salida a las 5 queda en PM). Solo se guardan las marcaciones que cambies.</div>
             <div id="ed-list" style="margin-top:11px"></div>
-            <div class="fg" style="margin-top:8px"><label>Comentario obligatorio</label><textarea class="fc" id="ed-comment" rows="2"></textarea></div>
-            <div style="display:flex;gap:8px;margin-top:7px">
-              <button class="btn bp bsm" id="btn-save-ed" style="width:auto">💾 Guardar</button>
-              <button class="btn bd bsm" id="btn-del-ed">🗑 Borrar sel.</button>
+            <div id="ed-footer" style="display:none">
+              <div class="fg" style="margin-top:8px"><label>Comentario obligatorio (uno solo para todas las ediciones)</label>
+                <select class="fc" id="ed-preset">
+                  <option value="">— Comentario rápido —</option>
+                  <option>Corrección de marcaciones</option>
+                  <option>Olvidó marcar</option>
+                  <option>Falla de conexión o del sistema</option>
+                  <option>Ajuste según turno asignado</option>
+                  <option value="__otro__">Otro (escribir abajo)</option>
+                </select>
+                <textarea class="fc" id="ed-comment" rows="2" style="margin-top:6px" placeholder="Este comentario sale en la columna Notas del correo semanal"></textarea>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:7px">
+                <button class="btn bp bsm" id="btn-save-ed" style="width:auto">💾 Guardar cambios</button>
+                <button class="btn bd bsm" id="btn-del-ed">🗑 Borrar sel.</button>
+              </div>
             </div>
           </div></div>
 
@@ -2020,6 +2058,32 @@ let CU=null,CUM=null,sLeft=300,sTimer=null,cGPS=null,autoSchedInt=null;
 const el=id=>document.getElementById(id);
 const isoD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const fmtT=d=>{try{return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});}catch(e){return d.toTimeString().split(' ')[0];}};
+// ── HORA LEGIBLE CON AM/PM, SIEMPRE calculada desde el 'stamp' (no desde el texto 'hora') ──
+// Causa del problema "salgo a las 4:59 pm y el sistema lo lee como 4:59 am": el texto 'hora'
+// se guarda con el formato del teléfono ("04:59:12 p. m."), y la pantalla lo recortaba a 8
+// caracteres (quedaba "04:59:12" sin el PM) y el editor lo re-leía como 04:59 AM. Ahora todo
+// lo que se muestre o se edite sale del 'stamp' (fecha-hora exacta), que nunca es ambiguo.
+const _pad2=n=>String(n).padStart(2,'0');
+function fmtAP(d,conSeg){
+  if(conSeg===undefined)conSeg=true;
+  const h=d.getHours(),ap=h>=12?'PM':'AM',h12=h%12===0?12:h%12;
+  return h12+':'+_pad2(d.getMinutes())+(conSeg?':'+_pad2(d.getSeconds()):'')+' '+ap;
+}
+function fmtHoraAP(m,conSeg){
+  try{if(m&&m.stamp){const d=new Date(m.stamp);if(!isNaN(d))return fmtAP(d,conSeg);}}catch(e){}
+  return(m&&m.hora)?String(m.hora):'—';
+}
+function hhmmAP(t){ // "17:00" → "5:00 PM"
+  if(!t||!/^\d{1,2}:\d{2}/.test(t))return'';
+  const p=t.split(':').map(Number),h=p[0],ap=h>=12?'PM':'AM',h12=h%12===0?12:h%12;
+  return h12+':'+_pad2(p[1])+' '+ap;
+}
+function escHtml(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// Comentarios únicos (de la bitácora) de las marcas de un día que sufrieron modificación manual
+function notasDeMarcas(marks){
+  const out=[];(marks||[]).forEach(m=>{const n=(m&&m.nota?String(m.nota):'').trim();if(n&&!out.includes(n))out.push(n);});
+  return out;
+}
 const hav=(a,b,c,d)=>{const Rv=6371000,p=(c-a)*Math.PI/180,q=(d-b)*Math.PI/180,x=Math.sin(p/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(q/2)**2;return Rv*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));};
 const getSaludo=()=>{const h=new Date().getHours();return h>=5&&h<12?'Buenos días':h>=12&&h<19?'Buenas tardes':'Buenas noches';};
 const getEJSCfg=()=>{try{return JSON.parse(localStorage.getItem('wl_ejs')||'{}');}catch(e){return{};}};
@@ -3330,6 +3394,7 @@ function fillSelects(obj){
     s.innerHTML=withAll.includes(id)?'<option value="__ALL__">— Todos —</option>':'';
     users.filter(u=>!GERENTES.includes(u.user)).forEach(u=>s.innerHTML+=`<option value="${u.user}">${u.nombre} (${u.user})</option>`);
   });
+  try{renderEdUserChecks(obj);renderGenUserChecks(obj);renderBorUserChecks(obj);}catch(e){console.warn('checks usuarios',e);}
 }
 
 // HISTORIAL HOY
@@ -3905,6 +3970,7 @@ async function buildEmailSemanal(desde,hasta,nivel){
   </style>`;
   let thDias=`<th class="emp">Empleado</th>`;
   diasVis.forEach(({d,etq,k})=>{const wk=d.getDay()===0||d.getDay()===6;thDias+=`<th${wk?' class="wk"':''}>${DIA_LARGO[d.getDay()]}<br><span style="font-weight:400;opacity:.8;font-size:10px">${d.getDate()} ${MES_LARGO[d.getMonth()]}</span></th>`;});
+  thDias+=`<th style="background:#005570;min-width:110px">📝 Notas</th>`;
   thDias+=`<th style="background:#005570">Total</th>`;
   const totalPorDia=diasVis.map(()=>({colab:0,monto:0}));
   let totalSemana=0,rows='';
@@ -3912,8 +3978,10 @@ async function buildEmailSemanal(desde,hasta,nivel){
     const uObj=users[u.user]||{};
     let tds=`<td class="emp">${u.nombre}<br><span class="sub">${u.user}</span></td>`;
     let totalUsuario=0;
+    const notasUsr=[];
     diasVis.forEach(({k,d},vi)=>{
       const marks=(histByDay[k]||[]).filter(m=>m.user===u.user);
+      {const _nt=notasDeMarcas(marks);if(_nt.length)notasUsr.push({d,nts:_nt});}
       const dowNum=d.getDay();
       const isFer=feriados.includes(k);
       const pf=pagoFijoDelDia(uObj,dowNum,isFer);
@@ -3936,19 +4004,21 @@ async function buildEmailSemanal(desde,hasta,nivel){
         tds+=`<td class="c">${okHtml}</td>`;
       }else if(nivel>=2){
         // Una sola línea con todas las marcas separadas por "·" en vez de un bloque por marca
-        const line=marks.map(m=>(TIPO_ABR[m.tipo]||m.tipo)+' '+m.hora.slice(0,5)).join(' · ');
+        const line=marks.map(m=>(TIPO_ABR[m.tipo]||m.tipo)+' '+fmtHoraAP(m,false)).join(' · ');
         tds+=`<td><span class="mt">${line}</span>${okHtml}</td>`;
       }else{
         const abr=nivel>=1;
-        const lines=marks.map(m=>`<span class="mln"><span class="mt">${abr?(TIPO_ABR[m.tipo]||m.tipo):tipoLabel(m.tipo)}</span> <span class="mh">${m.hora.slice(0,8)}</span></span>`).join('');
+        const lines=marks.map(m=>`<span class="mln"><span class="mt">${abr?(TIPO_ABR[m.tipo]||m.tipo):tipoLabel(m.tipo)}</span> <span class="mh">${fmtHoraAP(m)}</span></span>`).join('');
         tds+=`<td>${lines}${okHtml}</td>`;
       }
     });
+    tds+=`<td style="font-size:10px;text-align:left;line-height:1.4">`+(notasUsr.length?notasUsr.map(({d,nts})=>`<div><strong>${DIA_LARGO[d.getDay()].slice(0,3)} ${d.getDate()}:</strong> ${escHtml(nts.join(' · '))}</div>`).join(''):'—')+`</td>`;
     tds+=`<td class="c" style="background:#eaf7f2"><strong style="color:#007a5e;font-size:12px">$${totalUsuario.toFixed(2)}</strong></td>`;
     rows+=`<tr>${tds}</tr>`;
   });
   let totalRow=`<tr class="tot"><td class="emp">TOTALES<br><span class="sub" style="color:#007a5e">Total: $${totalSemana.toFixed(2)}</span></td>`;
   diasVis.forEach((_,vi)=>{const t=totalPorDia[vi];totalRow+=`<td class="c">$${t.monto.toFixed(2)}<br><span class="sub">${t.colab} colab.</span></td>`;});
+  totalRow+=`<td></td>`;
   totalRow+=`<td class="c"><strong>$${totalSemana.toFixed(2)}</strong></td>`;
   totalRow+='</tr>';
   const notaCompresion=nivel>0?`<p style="font-size:10px;color:#888;font-family:Arial;margin:0 0 8px 0">ℹ️ Vista compacta por tamaño del correo. El detalle completo siempre está disponible en la app, en "Vista semanal de marcaciones".</p>`:'';
@@ -4946,74 +5016,154 @@ function listenApprovals(){
 }
 
 // BORRAR / GENERAR
+// BORRAR MARCACIONES — selección múltiple de usuarios
+function borSelUsers(){return[...document.querySelectorAll('#bor-user-checks input[type=checkbox]:checked')].map(c=>c.dataset.user);}
+function updBorCount(){
+  const all=document.querySelectorAll('#bor-user-checks input[type=checkbox]').length;
+  const st=el('bor-sel-count');if(st)st.textContent=borSelUsers().length+' de '+all+' seleccionados';
+}
+function renderBorUserChecks(obj){
+  const c=el('bor-user-checks');if(!c)return;
+  const prev=new Set(borSelUsers());
+  const lista=Object.values(obj||{}).filter(u=>!GERENTES.includes(u.user)).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+  c.innerHTML=lista.map(u=>`<label style="display:flex;align-items:center;gap:9px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--tx);font-size:13px;margin:0"><input type="checkbox" data-user="${escHtml(u.user)}" ${prev.has(u.user)?'checked':''} style="width:auto;accent-color:var(--dn);flex-shrink:0"><span>${escHtml(u.nombre||u.user)} <span style="color:var(--mt);font-size:11px">(${escHtml(u.user)})</span></span></label>`).join('');
+  updBorCount();
+}
+el('bor-user-checks')?.addEventListener('change',updBorCount);
+el('btn-bor-todos')?.addEventListener('click',()=>{document.querySelectorAll('#bor-user-checks input[type=checkbox]').forEach(c=>c.checked=true);updBorCount();});
+el('btn-bor-ninguno')?.addEventListener('click',()=>{document.querySelectorAll('#bor-user-checks input[type=checkbox]').forEach(c=>c.checked=false);updBorCount();});
 el('btn-bor').addEventListener('click',async()=>{
-  const user=el('bor-user').value,f1=el('bor-fi').value,f2=el('bor-ff').value;
+  const users=borSelUsers(),f1=el('bor-fi').value,f2=el('bor-ff').value;
+  if(!users.length){toast('Selecciona al menos un usuario','err');return;}
   if(!f1||!f2){toast('Seleccione fechas','err');return;}
-  if(!confirm(`¿Borrar de ${user==='__ALL__'?'TODOS':user}?`))return;
-  let removed=0;const start=new Date(f1+'T00:00:00'),end=new Date(f2+'T00:00:00');let cur=new Date(start);
+  const allU=await getUsers();
+  const nombres=users.map(u=>(allU[u]&&allU[u].nombre)||u);
+  const lista=nombres.length>6?nombres.slice(0,6).join(', ')+' y '+(nombres.length-6)+' más':nombres.join(', ');
+  if(!confirm(`¿Borrar TODAS las marcaciones del ${f1} al ${f2} de ${users.length} usuario${users.length!==1?'s':''}?\n\n${lista}\n\nEsta acción no se puede deshacer.`))return;
+  const sel=new Set(users);let removed=0;const start=new Date(f1+'T00:00:00'),end=new Date(f2+'T00:00:00');let cur=new Date(start);
   while(cur<=end){
     const key=isoD(cur),arr=await getHist(key);
-    if(arr&&arr.length){if(user==='__ALL__'){removed+=arr.length;await remove(R(db,`${HIST}/${key}`));}else{const f=arr.filter(m=>m.user!==user);removed+=(arr.length-f.length);if(!f.length)await remove(R(db,`${HIST}/${key}`));else await saveHist(key,f);}}
-    cur.setDate(cur.getDate()+1);
-  }
-  toast(`${removed} eliminadas ✓`,'ok');await addLog(`Borradas: ${user} ${f1}→${f2}`);
-  el('bor-fi').value='';el('bor-ff').value='';renderHistToday();
-});
-el('btn-gen').addEventListener('click',async()=>{
-  const user=el('gen-user').value,f1=el('gen-fi').value,f2=el('gen-ff').value;
-  if(!f1||!f2){toast('Seleccione fechas','err');return;}
-  if(!confirm(`¿Generar para ${user==='__ALL__'?'TODOS':user}?`))return;
-  toast('Generando...');
-  const users=user==='__ALL__'?Object.values(await getUsers()).map(u=>u.user):[user];
-  const total=await genMarcs(users,f1,f2);
-  await addLog(`Generadas ${total}: ${user} ${f1}→${f2}`);
-  toast(`✅ ${total} marcaciones generadas`,'ok');
-  el('gen-fi').value='';el('gen-ff').value='';renderHistToday();
-});
-async function genMarcs(usrs,f1,f2){
-  const hs=await get(R(db,HOR));const hor=hs.exists()?hs.val():{inicio:"09:00",fin:"18:00",duracionAlm:60};
-  const ds=await get(R(db,HDIAS));const hdias=ds.exists()?ds.val():{};
-  const rs=await get(R(db,RULES));const rul=rs.exists()?rs.val():{};
-  let total=0;
-  const rG=std=>{let r=0;for(let i=0;i<6;i++)r+=Math.random();return Math.round((r/6-0.5)*2*std);};
-  const rI=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
-  const DAY=['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
-  const start=new Date(f1+'T00:00:00'),end=new Date(f2+'T00:00:00');let cur=new Date(start);
-  while(cur<=end){
-    const wk=cur.getDay(),dn=DAY[wk],dh=hdias[dn]||hor;
-    const key=isoD(cur);
-    for(const u of usrs){
-      // Si hay jornada del día configurada para este usuario/fecha, manda sobre el horario general
-      let jor=null;
-      try{const js=await get(R(db,`${JDIA}/${key}/${u}`));jor=js.exists()?js.val():null;}catch(e){}
-      const base=jor?{inicio:jor.entrada,fin:jor.salida,almInicio:jor.almInicio,duracionAlm:(jor.almInicio&&jor.almFin)?Math.max(0,(()=>{const[aih,aim]=jor.almInicio.split(':').map(Number),[afh,afm]=jor.almFin.split(':').map(Number);return(afh*60+afm)-(aih*60+aim);})()):60}:dh;
-      const[eh,em]=(base.inicio||"09:00").split(':').map(Number);
-      const[sh,sm]=(base.fin||"18:00").split(':').map(Number);
-      const durAlmCfg=parseInt(base.duracionAlm!==undefined?base.duracionAlm:60);
-      const almStr=base.almInicio||rul.almInicio||null;
-      // Entrada y salida con variación natural pequeña (±0-5 min), siempre con segundos/ms aleatorios
-      const eOff=Math.max(-5,Math.min(5,rG(3)));
-      const ent=new Date(cur);ent.setHours(eh,Math.max(0,Math.min(59,em+eOff)),rI(0,59),rI(50,999));
-      const fOff=Math.max(-5,Math.min(5,rG(3)));
-      const fn=new Date(cur);fn.setHours(sh,Math.max(0,Math.min(59,sm+fOff)),rI(0,59),rI(50,999));
-      // ALMUERZO: variedad amplia en el horario de salida (±15 min) pero la DURACIÓN siempre
-      // se sortea entre un rango que recorta el almuerzo configurado (nunca lo alarga),
-      // así las horas computadas (entrada→salida menos almuerzo) nunca quedan por debajo
-      // de las horas base — el redondeo de horas siempre favorece al colaborador.
-      let aH,aM;
-      if(almStr){const[ah,am]=almStr.split(':').map(Number);aH=ah;aM=Math.max(0,Math.min(59,am+rG(8)));}
-      else{const tot=eh*60+(em+eOff)+rI(195,245);aH=Math.floor(tot/60)%24;aM=tot%60;}
-      const sa=new Date(cur);sa.setHours(aH,aM,rI(0,59),rI(50,999));
-      const durAlmReal=Math.max(20,durAlmCfg-rI(0,8)); // recorta hasta 8 min, nunca alarga
-      const ra=new Date(sa);ra.setMinutes(ra.getMinutes()+durAlmReal);ra.setSeconds(rI(0,59));ra.setMilliseconds(rI(50,999));
-      const marks=[{tipo:"Entrada",hora:fmtT(ent),stamp:ent.toISOString(),user:u},{tipo:"Salida Alm.",hora:fmtT(sa),stamp:sa.toISOString(),user:u},{tipo:"Regreso Alm.",hora:fmtT(ra),stamp:ra.toISOString(),user:u},{tipo:"Salida Final",hora:fmtT(fn),stamp:fn.toISOString(),user:u}];
-      const hrs=computeHrs(marks),miss=Math.max(0,Math.round((8-hrs)*60));
-      if(miss>10){fn.setMinutes(fn.getMinutes()+miss);marks[3].stamp=fn.toISOString();marks[3].hora=fmtT(fn);}
-      const ex=await getHist(key);const arr=ex||[];arr.push(...marks);await saveHist(key,arr);total+=4;
+    if(arr&&arr.length){
+      const f=arr.filter(m=>!sel.has(m.user));
+      if(f.length!==arr.length){removed+=(arr.length-f.length);if(!f.length)await remove(R(db,`${HIST}/${key}`));else await saveHist(key,f);}
     }
     cur.setDate(cur.getDate()+1);
   }
-  return total;
+  toast(`${removed} eliminadas ✓`,'ok');await addLog(`Borradas: ${users.join(', ')} ${f1}→${f2} (${removed} marcaciones)`);
+  el('bor-fi').value='';el('bor-ff').value='';renderHistToday();
+});
+// GENERAR MARCACIONES — selección múltiple, turno propio de cada usuario y variación natural
+function genSelUsers(){return[...document.querySelectorAll('#gen-user-checks input[type=checkbox]:checked')].map(c=>c.dataset.user);}
+function updGenCount(){
+  const all=document.querySelectorAll('#gen-user-checks input[type=checkbox]').length;
+  const st=el('gen-sel-count');if(st)st.textContent=genSelUsers().length+' de '+all+' seleccionados';
+}
+function renderGenUserChecks(obj){
+  const c=el('gen-user-checks');if(!c)return;
+  const prev=new Set(genSelUsers());
+  const lista=Object.values(obj||{}).filter(u=>!GERENTES.includes(u.user)).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+  c.innerHTML=lista.map(u=>`<label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--tx);font-size:13px;margin:0"><input type="checkbox" data-user="${escHtml(u.user)}" ${prev.has(u.user)?'checked':''} style="width:auto;accent-color:var(--ac);flex-shrink:0;margin-top:2px"><span>${escHtml(u.nombre||u.user)} <span style="color:var(--mt);font-size:11px">(${escHtml(u.user)})</span><span class="gen-turno" data-user="${escHtml(u.user)}" style="display:block;color:var(--ac);font-size:10.5px;font-family:'DM Mono',monospace;margin-top:1px"></span></span></label>`).join('');
+  updGenCount();
+  cargarTurnosEnChecks();
+}
+// Muestra bajo cada nombre el turno que tiene asignado (para saber en base a qué se va a generar)
+async function cargarTurnosEnChecks(){
+  try{
+    const sn=await get(R(db,HORCOL));const h=sn.exists()?sn.val():{};
+    document.querySelectorAll('#gen-user-checks .gen-turno').forEach(sp=>{
+      const dias=h[sp.dataset.user]||{};
+      const d=dias.lunes||dias.martes||dias.miercoles||Object.values(dias)[0];
+      sp.textContent=(d&&d.inicio)?('🕘 '+hhmmAP(d.inicio)+' – '+hhmmAP(d.fin)):'🕘 Horario general';
+    });
+  }catch(e){/* solo informativo */}
+}
+el('gen-user-checks')?.addEventListener('change',updGenCount);
+el('btn-gen-todos')?.addEventListener('click',()=>{document.querySelectorAll('#gen-user-checks input[type=checkbox]').forEach(c=>c.checked=true);updGenCount();});
+el('btn-gen-ninguno')?.addEventListener('click',()=>{document.querySelectorAll('#gen-user-checks input[type=checkbox]').forEach(c=>c.checked=false);updGenCount();});
+
+el('btn-gen').addEventListener('click',async()=>{
+  const users=genSelUsers(),f1=el('gen-fi').value,f2=el('gen-ff').value;
+  if(!users.length){toast('Selecciona al menos un usuario','err');return;}
+  if(!f1||!f2){toast('Seleccione fechas','err');return;}
+  if(f2<f1){toast('"Hasta" no puede ser anterior a "Desde"','err');return;}
+  const allU=await getUsers();
+  const nombres=users.map(u=>(allU[u]&&allU[u].nombre)||u);
+  const lista=nombres.length>6?nombres.slice(0,6).join(', ')+' y '+(nombres.length-6)+' más':nombres.join(', ');
+  if(!confirm(`¿Generar marcaciones del ${f1} al ${f2} para ${users.length} usuario${users.length!==1?'s':''}?\n\n${lista}\n\nCada uno se genera según su propio turno. Si ya tiene marcaciones ese día, se omite.`))return;
+  const btn=el('btn-gen');btn.disabled=true;toast('Generando...');
+  try{
+    const nota=(el('gen-nota')?.value||'').trim();
+    const r=await genMarcs(users,f1,f2,{nota});
+    await addLog(`Generadas ${r.total} marcaciones (${r.diasGen} día-usuario) para ${users.join(', ')} ${f1}→${f2}${r.omitidos?` — ${r.omitidos} omitidos por ya tener marcaciones`:''}${r.descartados?` — ${r.descartados} descartados por horario inválido`:''}`);
+    const extra=[];if(r.omitidos)extra.push(`${r.omitidos} omitido${r.omitidos!==1?'s':''} (ya tenían marcaciones)`);if(r.descartados)extra.push(`${r.descartados} descartado${r.descartados!==1?'s':''} (horario inválido)`);
+    toast(`✅ ${r.total} marcaciones generadas`+(extra.length?' · '+extra.join(' · '):''),r.total?'ok':'err',5000);
+    el('gen-fi').value='';el('gen-ff').value='';renderHistToday();
+  }catch(e){console.error('genMarcs',e);toast('❌ Error al generar: '+(e.message||e),'err',5000);}
+  finally{btn.disabled=false;}
+});
+// Números al azar. rTri concentra un poco hacia el centro del rango (más natural que uniforme).
+const _rI=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const _rF=(a,b)=>a+Math.random()*(b-a);
+const _rTri=(a,b)=>(_rF(a,b)+_rF(a,b))/2;
+const _rMix=(a,b)=>Math.random()<0.5?_rF(a,b):_rTri(a,b); // mitad uniforme, mitad centrado: más variedad sin verse extraño
+async function genMarcs(usrs,f1,f2,opts){
+  opts=opts||{};
+  const notaTxt=(opts.nota||'').trim()||'Marcación generada por administración';
+  const [hs,ds,rs,cs]=await Promise.all([get(R(db,HOR)),get(R(db,HDIAS)),get(R(db,RULES)),get(R(db,HORCOL)).catch(()=>null)]);
+  const hor=hs.exists()?hs.val():{inicio:"09:00",fin:"18:00",duracionAlm:60};
+  const hdias=ds.exists()?ds.val():{};
+  const rul=rs.exists()?rs.val():{};
+  const horcol=(cs&&cs.exists())?cs.val():{};
+  const DAY=['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
+  // Turno de cada colaborador con el MISMO orden de prioridad que usa el resto de la app
+  // (getHorarioBaseDe): 1) su horario/turno propio (HORCOL), 2) horario por día (HDIAS), 3) general.
+  const baseDe=(u,dn)=>{
+    const ch=horcol[u]&&horcol[u][dn];
+    if(ch&&ch.inicio)return{inicio:ch.inicio,fin:ch.fin||hor.fin||"18:00",almInicio:ch.almInicio||hor.almInicio||"12:00",duracionAlm:parseInt(ch.duracionAlm!==undefined?ch.duracionAlm:(hor.duracionAlm!==undefined?hor.duracionAlm:60))};
+    const b=hdias[dn]||hor;
+    return{inicio:b.inicio||"09:00",fin:b.fin||"18:00",almInicio:b.almInicio||rul.almInicio||"12:00",duracionAlm:parseInt(b.duracionAlm!==undefined?b.duracionAlm:60)};
+  };
+  const hm=t=>{const p=String(t||'0:0').split(':').map(Number);return(p[0]||0)*60+(p[1]||0);};
+  let total=0,diasGen=0,omitidos=0,descartados=0;
+  const start=new Date(f1+'T00:00:00'),end=new Date(f2+'T00:00:00');
+  for(let cur=new Date(start);cur<=end;cur.setDate(cur.getDate()+1)){
+    const key=isoD(cur),dn=DAY[cur.getDay()];
+    const midnight=new Date(cur.getFullYear(),cur.getMonth(),cur.getDate()).getTime();
+    const exRaw=await getHist(key);const ex=Array.isArray(exRaw)?exRaw:Object.values(exRaw||{});
+    let jorDia={};try{const js=await get(R(db,`${JDIA}/${key}`));jorDia=js.exists()?js.val():{};}catch(e){}
+    const nuevas=[];
+    for(const u of usrs){
+      // Nunca se mezclan marcas generadas con marcas que ya existen ese día (evita duplicados)
+      if(ex.some(m=>m.user===u)){omitidos++;continue;}
+      const jor=jorDia[u]||null;
+      // Si hay jornada del día configurada para este usuario/fecha, manda sobre el turno
+      const base=(jor&&jor.entrada&&jor.salida)
+        ?{inicio:jor.entrada,fin:jor.salida,almInicio:jor.almInicio||null,duracionAlm:(jor.almInicio&&jor.almFin)?Math.max(0,hm(jor.almFin)-hm(jor.almInicio)):60}
+        :baseDe(u,dn);
+      const iniS=hm(base.inicio)*60,finS=hm(base.fin)*60;
+      const durCfg=(base.duracionAlm>0)?base.duracionAlm:60;
+      const almStr=base.almInicio||rul.almInicio||null;
+      // ENTRADA: de 10 min antes a 4:59 después (pasados 5 min ya cuenta como tardanza)
+      const eS=iniS+Math.round(_rMix(-600,299));
+      // ALMUERZO: sale entre 0 y 15 min DESPUÉS de su hora (nunca antes)
+      const saS=almStr?(hm(almStr)*60+_rI(0,899)):(eS+_rI(195,245)*60+_rI(0,59));
+      // …y regresa tras un almuerzo que a lo sumo dura lo configurado (nunca más largo)
+      const durS=Math.min(durCfg*60,Math.max(20*60,durCfg*60-_rI(0,480)));
+      const raS=saS+durS;
+      // SALIDA: ±10 min de su hora de salida, pero NUNCA por debajo de las horas de su turno
+      // (a favor del colaborador: si entró tarde o el almuerzo se alargó, la salida se corre).
+      const netMin=Math.min(480,(finS-iniS)/60-durCfg);
+      const reqS=eS+(netMin>0?netMin:480)*60+durS;
+      let sfS=finS+Math.round(_rMix(-600,600));
+      if(sfS<reqS)sfS=reqS+_rI(0,120);
+      if(!(eS<saS&&saS<raS&&raS<sfS)){descartados++;continue;}
+      const mk=(tipo,secs)=>{const d=new Date(midnight+secs*1000+_rI(0,999));return{tipo,hora:fmtT(d),stamp:d.toISOString(),user:u,generadoPorSistema:true,generadoPor:CU,generadoTs:new Date().toISOString(),nota:notaTxt};};
+      nuevas.push(mk('Entrada',eS),mk('Salida Alm.',saS),mk('Regreso Alm.',raS),mk('Salida Final',sfS));
+      total+=4;diasGen++;
+    }
+    if(nuevas.length)await saveHist(key,[...ex,...nuevas]);
+  }
+  return{total,diasGen,omitidos,descartados};
 }
 // CONFIGURACIÓN DE ALMUERZO — GLOBAL, aplica igual a TODOS los colaboradores (no por persona,
 // para que nadie quede en desventaja frente a otro: si se descuenta, se descuenta a todos; si
@@ -5188,7 +5338,7 @@ async function renderVistaSemanal(refDate,hastaDate){
     return;
   }
   html+=`<div style="font-size:11px;color:var(--mt);margin-bottom:8px">${userList.length} colaborador${userList.length!==1?'es':''} con marcaciones · ${diasVisibles.length} día${diasVisibles.length!==1?'s':''} con actividad</div>`;
-  html+=`<table style="border-collapse:collapse;width:100%;min-width:${diasVisibles.length*106+120}px;font-size:11px">`;
+  html+=`<table style="border-collapse:collapse;width:100%;min-width:${diasVisibles.length*106+250}px;font-size:11px">`;
   // Header row — solo días visibles
   html+=`<tr>`;
   html+=`<th style="background:var(--sf2);color:var(--tx);padding:7px 9px;text-align:left;border:1px solid var(--bd);min-width:110px;font-size:12px">Empleado</th>`;
@@ -5200,6 +5350,7 @@ async function renderVistaSemanal(refDate,hastaDate){
     html+=`<th style="background:${bg};color:${col};padding:6px 5px;text-align:center;border:1px solid var(--bd);min-width:104px">`
       +`${DIA_LARGO[dowNum]}<br><span style="font-size:10px;font-weight:400;opacity:.75">${d.getDate()} ${MES_LARGO[d.getMonth()]}</span></th>`;
   });
+  html+=`<th style="background:var(--sf2);color:var(--tx);padding:7px 9px;text-align:center;border:1px solid var(--bd);min-width:130px;font-size:12px">📝 Notas</th>`;
   html+=`<th style="background:#005570;color:var(--tx);padding:7px 9px;text-align:center;border:1px solid var(--bd);min-width:90px;font-size:12px">Total</th>`;
   html+=`</tr>`;
   // Acumuladores solo para días visibles
@@ -5208,6 +5359,7 @@ async function renderVistaSemanal(refDate,hastaDate){
   userList.forEach(u=>{
     const uObj=users[u.user]||{};
     let totalUsuario=0,totalDescUsuario=0;
+    const notasUsr=[];
     html+=`<tr>`;
     html+=`<td style="padding:6px 8px;border:1px solid var(--bd);background:var(--sf);vertical-align:top">`
       +`<div style="font-weight:700;color:var(--tx);font-size:12px">${u.nombre}</div>`
@@ -5221,6 +5373,7 @@ async function renderVistaSemanal(refDate,hastaDate){
       const ORDEN_DIA={'Entrada':0,'Salida Alm.':1,'Regreso Alm.':2,'Salida Final':3};
       const dayMarks=(histByDay[k]||[]).filter(m=>m.user===u.user)
         .sort((a,b)=>{const oa=ORDEN_DIA[a.tipo]??99,ob=ORDEN_DIA[b.tipo]??99;return oa!==ob?oa-ob:(a.hora||'').localeCompare(b.hora||'');});
+      {const _nt=notasDeMarcas(dayMarks);if(_nt.length)notasUsr.push({d,nts:_nt});}
       const dowNum=d.getDay();
       const isToday=k===isoD(new Date());
       const isWeekend=dowNum===0||dowNum===6;
@@ -5257,7 +5410,7 @@ async function renderVistaSemanal(refDate,hastaDate){
         // descoordinado con lo que ya se le paga al colaborador ese día.
         const descuento=(k>=DESCUENTO_DESDE)?+(tar-monto).toFixed(2):0;
         totalPorDia[vi].desc=(totalPorDia[vi].desc||0)+descuento;totalDescSemana+=descuento;totalDescUsuario+=descuento;
-        const mLines=dayMarks.map(m=>`<div style="white-space:nowrap;line-height:1.6"><span style="color:var(--mt);font-size:10px">${tipoLabel(m.tipo)}${m.generadoPorSistema?' <span title="Generada por el sistema — no fue un toque real" style="color:#ffb020">🤖</span>':''}</span><br><span style="color:var(--ac);font-family:'DM Mono',monospace;font-size:11px">${m.hora.slice(0,8)}</span></div>`).join('');
+        const mLines=dayMarks.map(m=>`<div style="white-space:nowrap;line-height:1.6"><span style="color:var(--mt);font-size:10px">${tipoLabel(m.tipo)}${m.generadoPorSistema?' <span title="Generada por el sistema — no fue un toque real" style="color:#ffb020">🤖</span>':''}</span><br><span style="color:var(--ac);font-family:'DM Mono',monospace;font-size:11px">${fmtHoraAP(m)}</span></div>`).join('');
         const badge=completo?`<div style="color:#00c9a7;font-size:10px;font-weight:700;margin-top:2px">✅ $${monto.toFixed(2)}</div>${datosSospechosos?`<div style="color:#ffb020;font-size:9px;font-weight:700;margin-top:1px">⚠ Revisar esta marca (dato inconsistente)</div>`:''}`:`<div style="color:var(--wn);font-size:10px;margin-top:2px">⏳ ${cnt}/4 · $${monto.toFixed(2)}</div>`;
         const descHtml=descuento>0?`<div style="color:#ff6b6b;font-size:9.5px;font-weight:700;margin-top:2px">💸 Desc: -$${descuento.toFixed(2)}</div>`:'';
         // Hueco de secuencia: ej. tiene Regreso Alm. pero no Salida Alm. — esa marca probablemente
@@ -5274,6 +5427,9 @@ async function renderVistaSemanal(refDate,hastaDate){
         html+=`<td style="padding:5px 6px;border:1px solid var(--bd);background:${bgBase};vertical-align:top">${mLines}${badge}${descHtml}${huecoHtml}</td>`;
       }
     });
+    html+=`<td style="padding:5px 7px;border:1px solid var(--bd);background:var(--bg);vertical-align:top;text-align:left">`
+      +(notasUsr.length?notasUsr.map(({d,nts})=>`<div style="font-size:10px;line-height:1.4;margin-bottom:3px"><span style="color:var(--ac);font-weight:700">${DIA_LARGO[d.getDay()].slice(0,3)} ${d.getDate()}:</span> <span style="color:var(--tx)">${escHtml(nts.join(' · '))}</span></div>`).join(''):`<span style="color:var(--mt);font-size:10px">—</span>`)
+      +`</td>`;
     html+=`<td style="padding:6px 8px;border:1px solid var(--bd);background:rgba(0,201,167,.08);text-align:center;vertical-align:middle"><strong style="color:var(--ac);font-size:13px">$${totalUsuario.toFixed(2)}</strong>${totalDescUsuario>0?`<div style="color:#ff6b6b;font-size:10px;font-weight:700;margin-top:2px">💸 -$${totalDescUsuario.toFixed(2)}</div>`:''}</td>`;
     html+=`</tr>`;
   });
@@ -5292,6 +5448,7 @@ async function renderVistaSemanal(refDate,hastaDate){
       +(t.desc>0?`<div style="font-size:9.5px;color:#ff6b6b;font-weight:700">💸 -$${t.desc.toFixed(2)}</div>`:'')
       +`</td>`;
   });
+  html+=`<td style="border:1px solid var(--bd);background:rgba(0,201,167,.08)"></td>`;
   html+=`<td style="padding:7px 9px;border:1px solid var(--bd);background:rgba(0,201,167,.14);text-align:center;vertical-align:middle"><strong style="color:var(--ac);font-size:13px">$${totalSemana.toFixed(2)}</strong>${totalDescSemana>0?`<div style="color:#ff6b6b;font-size:10px;font-weight:700;margin-top:2px">💸 -$${totalDescSemana.toFixed(2)}</div>`:''}</td>`;
   html+=`</tr>`;
   html+=`</table>`;
@@ -5674,12 +5831,100 @@ el('btn-exp-users').addEventListener('click',async()=>{
   dlBlob(rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n'),'text/csv','usuarios_westland.csv');
 });
 
-// EDITAR
+// EDITAR MARCACIONES — uno o varios usuarios a la vez, un solo comentario
+// (el AM/PM ahora es explícito y se lee del 'stamp', nunca del texto de la hora)
+let _edCtx=null;
+const ED_TIPOS=['Entrada','Salida Alm.','Regreso Alm.','Salida Final'];
+function edSelUsers(){return[...document.querySelectorAll('#ed-user-checks input[type=checkbox]:checked')].map(c=>c.dataset.user);}
+function updEdCount(){
+  const all=document.querySelectorAll('#ed-user-checks input[type=checkbox]').length;
+  const st=el('ed-sel-count');if(st)st.textContent=edSelUsers().length+' de '+all+' seleccionados';
+}
+function renderEdUserChecks(obj){
+  const c=el('ed-user-checks');if(!c)return;
+  const prev=new Set(edSelUsers());
+  const lista=Object.values(obj||{}).filter(u=>!GERENTES.includes(u.user)).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+  c.innerHTML=lista.map(u=>`<label style="display:flex;align-items:center;gap:9px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--tx);font-size:13px;margin:0"><input type="checkbox" data-user="${escHtml(u.user)}" ${prev.has(u.user)?'checked':''} style="width:auto;accent-color:var(--ac);flex-shrink:0"><span>${escHtml(u.nombre||u.user)} <span style="color:var(--mt);font-size:11px">(${escHtml(u.user)})</span></span></label>`).join('');
+  updEdCount();
+}
+el('ed-user-checks')?.addEventListener('change',updEdCount);
+el('btn-ed-todos')?.addEventListener('click',()=>{document.querySelectorAll('#ed-user-checks input[type=checkbox]').forEach(c=>c.checked=true);updEdCount();});
+el('btn-ed-ninguno')?.addEventListener('click',()=>{document.querySelectorAll('#ed-user-checks input[type=checkbox]').forEach(c=>c.checked=false);updEdCount();});
+el('ed-preset')?.addEventListener('change',e=>{
+  const v=e.target.value,tx=el('ed-comment');
+  if(v==='__otro__'){tx.value='';tx.focus();}
+  else if(v){tx.value=v;}
+});
+// Fecha-hora de una marca: primero el stamp; si faltara, se reconstruye del texto respetando AM/PM
+function edFechaDeMarca(m,fecha){
+  const d=(m&&m.stamp)?new Date(m.stamp):null;
+  if(d&&!isNaN(d))return d;
+  const r=/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([ap])?/i.exec(String((m&&m.hora)||''));
+  if(r){let h=parseInt(r[1]);if(r[4])h=(h%12)+(r[4].toLowerCase()==='p'?12:0);return new Date(`${fecha}T${_pad2(h)}:${r[2]}:${_pad2(r[3]||0)}`);}
+  return new Date(`${fecha}T08:00:00`);
+}
+// Minuto del día en que "debería" caer cada tipo de marca según el turno del usuario
+function edEsperadoMin(tipo,user){
+  const b=_edCtx&&_edCtx.bases?_edCtx.bases[user]:null;
+  const M=t=>{const p=String(t||'').split(':');return(parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
+  const ini=(b&&b.inicio)?M(b.inicio):480,fin=(b&&b.fin)?M(b.fin):1020,alm=(b&&b.almInicio)?M(b.almInicio):720,dur=(b&&b.duracionAlm>0)?b.duracionAlm:60;
+  return tipo==='Entrada'?ini:tipo==='Salida Alm.'?alm:tipo==='Regreso Alm.'?alm+dur:fin;
+}
+// Al escribir la hora (1-12) se elige solo AM o PM: el que quede más cerca de lo que corresponde a su turno
+function edAutoAP(row){
+  const hEl=row.querySelector('.ech-h'),raw=parseInt(hEl.value);
+  // Si escriben la hora en formato 24h (13-23) se convierte sola: 17 → 5 PM
+  if(raw>=13&&raw<=23){hEl.value=raw-12;row.querySelector('.ech-ap').value='PM';row.dataset.apManual='1';return;}
+  if(row.dataset.apManual==='1')return;
+  const h12=raw;
+  if(!(h12>=1&&h12<=12))return;
+  const exp=edEsperadoMin(row.querySelector('.ect').value,row.dataset.u);
+  const am=(h12%12)*60,pm=am+720;
+  row.querySelector('.ech-ap').value=(Math.abs(pm-exp)<=Math.abs(am-exp))?'PM':'AM';
+}
+function edLeerFila(row){
+  const h12=parseInt(row.querySelector('.ech-h').value),mi=parseInt(row.querySelector('.ech-m').value),se=parseInt(row.querySelector('.ech-s').value);
+  const ap=row.querySelector('.ech-ap').value,tipo=row.querySelector('.ect').value;
+  return{ok:(h12>=1&&h12<=12&&mi>=0&&mi<=59&&se>=0&&se<=59),tipo,h24:(h12%12)+(ap==='PM'?12:0),mi,se};
+}
+function edCambiada(row){
+  const v=edLeerFila(row);
+  return v.ok&&(v.tipo!==row.dataset.tipo||v.h24!==+row.dataset.h||v.mi!==+row.dataset.mi||v.se!==+row.dataset.se);
+}
+function edRowHTML(m,fecha,user){
+  const d=edFechaDeMarca(m,fecha),h24=d.getHours(),ap=h24>=12?'PM':'AM',h12=h24%12===0?12:h24%12;
+  const opt=t=>`<option ${m.tipo===t?'selected':''}>${t}</option>`;
+  const nota=m.nota?`<div style="width:100%;font-size:10px;color:var(--mt)">📝 ${escHtml(m.nota)}</div>`:'';
+  const inp='style="width:54px;padding:5px 6px;text-align:center" inputmode="numeric"';
+  return `<div class="ed-row" data-u="${escHtml(user)}" data-i="${m._i}" data-tipo="${escHtml(m.tipo)}" data-h="${h24}" data-mi="${d.getMinutes()}" data-se="${d.getSeconds()}" data-stamp="${escHtml(m.stamp||'')}" data-ap-manual="0" style="display:flex;gap:7px;align-items:center;margin-bottom:7px;flex-wrap:wrap;padding:8px;background:var(--bg);border-radius:var(--rs);border:1px solid var(--bd)">`
+    +`<div style="display:flex;gap:7px;align-items:center;width:100%"><input type="checkbox" class="eck" data-i="${m._i}" data-u="${escHtml(user)}" style="width:auto;flex-shrink:0;accent-color:var(--dn)">`
+    +`<select class="ect fc" style="width:auto;padding:5px 8px;flex:1">${ED_TIPOS.map(opt).join('')}</select></div>`
+    +`<div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap">`
+    +`<input type="number" class="ech-h fc" min="1" max="12" value="${h12}" ${inp} placeholder="H">`
+    +`<span style="color:var(--ac);font-weight:700">:</span>`
+    +`<input type="number" class="ech-m fc" min="0" max="59" value="${_pad2(d.getMinutes())}" ${inp} placeholder="MM">`
+    +`<span style="color:var(--ac);font-weight:700">:</span>`
+    +`<input type="number" class="ech-s fc" min="0" max="59" value="${_pad2(d.getSeconds())}" ${inp} placeholder="SS">`
+    +`<select class="ech-ap fc" style="width:auto;padding:5px 6px;font-weight:700"><option ${ap==='AM'?'selected':''}>AM</option><option ${ap==='PM'?'selected':''}>PM</option></select>`
+    +`</div>`
+    +`<small style="color:var(--ac);font-size:10px;font-family:'DM Mono',monospace;flex-shrink:0">${fmtAP(d)}</small>`+nota+`</div>`;
+}
+el('ed-list')?.addEventListener('input',e=>{
+  const row=e.target.closest('.ed-row');if(!row)return;
+  if(e.target.classList.contains('ech-h'))edAutoAP(row);
+  row.classList.toggle('ed-changed',edCambiada(row));
+});
+el('ed-list')?.addEventListener('change',e=>{
+  const row=e.target.closest('.ed-row');if(!row)return;
+  if(e.target.classList.contains('ech-ap'))row.dataset.apManual='1';
+  row.classList.toggle('ed-changed',edCambiada(row));
+});
 el('btn-cargar-ed').addEventListener('click',async()=>{
-  const user=el('ed-user').value,fecha=el('ed-fecha').value;
-  if(!user||!fecha){toast('Seleccione usuario y fecha','err');return;}
+  const users=edSelUsers(),fecha=el('ed-fecha').value;
+  if(!users.length||!fecha){toast('Selecciona al menos un usuario y la fecha','err');return;}
   const c=el('ed-list');
   c.innerHTML='<div style="color:var(--mt);font-size:13px">Cargando...</div>';
+  el('ed-footer').style.display='none';
   // Ensure accordion body is visible (open it if closed)
   const acEd=el('ac-ed');
   if(acEd&&!acEd.classList.contains('open')){
@@ -5688,73 +5933,105 @@ el('btn-cargar-ed').addEventListener('click',async()=>{
     if(hdr)hdr.classList.add('open');
   }
   try{
-    const arr=await getHist(fecha);
-    const filtered=(arr||[]).map((m,i)=>({...m,_i:i})).filter(m=>m.user===user);
+    const arr=(await getHist(fecha))||[];
+    const usersObj=await getUsers();
+    const bases={};
+    await Promise.all(users.map(async u=>{try{bases[u]=await getHorarioBaseDe(u,fecha);}catch(e){bases[u]=null;}}));
+    _edCtx={fecha,users,bases};
     const TIPO_ORD={'Entrada':0,'Salida Alm.':1,'Regreso Alm.':2,'Salida Final':3};
-    filtered.sort((a,b)=>{const oa=TIPO_ORD[a.tipo]??99,ob=TIPO_ORD[b.tipo]??99;return oa!==ob?oa-ob:(a.hora||'').localeCompare(b.hora||'');});
-    c.innerHTML='';
-    if(!filtered.length){c.innerHTML='<div style="color:var(--mt);font-size:13px">Sin marcaciones para este usuario en esta fecha.</div>';return;}
-    filtered.forEach(m=>{
-      const row=document.createElement('div');
-      row.style.cssText='display:flex;gap:7px;align-items:center;margin-bottom:7px;flex-wrap:wrap;padding:7px;background:var(--bg);border-radius:var(--rs);border:1px solid var(--bd)';
-      // Parse HH MM SS from stored hora (format HH:MM:SS)
-      const partes=m.hora?m.hora.split(':'):['00','00','00'];
-      const horaH=partes[0]||'00',horaM=partes[1]||'00',horaS=partes[2]?partes[2].split(' ')[0].padStart(2,'0'):'00';
-      row.innerHTML=`<input type="checkbox" data-i="${m._i}" class="eck" style="width:auto;flex-shrink:0">`
-        +`<select data-i="${m._i}" class="ect fc" style="width:auto;padding:5px 8px;flex:1">`
-        +`<option ${m.tipo==="Entrada"?"selected":""}>Entrada</option>`
-        +`<option ${m.tipo==="Salida Alm."?"selected":""}>Salida Alm.</option>`
-        +`<option ${m.tipo==="Regreso Alm."?"selected":""}>Regreso Alm.</option>`
-        +`<option ${m.tipo==="Salida Final"?"selected":""}>Salida Final</option>`
-        +`</select>`
-        +`<div style="display:flex;align-items:center;gap:3px;flex-shrink:0">`
-        +`<input type="number" data-i="${m._i}" class="ech-h fc" min="0" max="23" value="${horaH}" style="width:52px;padding:5px 6px;text-align:center" placeholder="HH">`
-        +`<span style="color:var(--ac);font-weight:700">:</span>`
-        +`<input type="number" data-i="${m._i}" class="ech-m fc" min="0" max="59" value="${horaM}" style="width:52px;padding:5px 6px;text-align:center" placeholder="MM">`
-        +`<span style="color:var(--ac);font-weight:700">:</span>`
-        +`<input type="number" data-i="${m._i}" class="ech-s fc" min="0" max="59" value="${horaS}" style="width:52px;padding:5px 6px;text-align:center" placeholder="SS">`
-        +`</div>`
-        +`<small style="color:var(--ac);font-size:10px;font-family:'DM Mono',monospace;flex-shrink:0">${m.hora}</small>`;
-      c.appendChild(row);
+    c.innerHTML='';let totalMarcas=0;
+    users.forEach(u=>{
+      const marks=arr.map((m,i)=>({...m,_i:i})).filter(m=>m.user===u)
+        .sort((a,b)=>{const oa=TIPO_ORD[a.tipo]??99,ob=TIPO_ORD[b.tipo]??99;return oa!==ob?oa-ob:String(a.stamp||'').localeCompare(String(b.stamp||''));});
+      const b=bases[u],turno=(b&&b.inicio)?` · turno ${hhmmAP(b.inicio)}–${hhmmAP(b.fin)}`:'';
+      const box=document.createElement('div');box.style.cssText='margin-bottom:14px';
+      box.innerHTML=`<div style="font-weight:700;font-size:13px;color:var(--ac);margin:6px 0">👤 ${escHtml((usersObj[u]&&usersObj[u].nombre)||u)} <span style="color:var(--mt);font-size:11px;font-weight:400">(${escHtml(u)})${escHtml(turno)}</span></div>`
+        +(marks.length?marks.map(m=>edRowHTML(m,fecha,u)).join(''):'<div style="color:var(--mt);font-size:12px;padding:4px 0">Sin marcaciones este día.</div>');
+      c.appendChild(box);totalMarcas+=marks.length;
     });
-    toast(`✓ ${filtered.length} marcación(es) cargadas`,'ok',2000);
-    // Scroll to ed-list
+    el('ed-footer').style.display=totalMarcas?'block':'none';
+    toast(`✓ ${totalMarcas} marcación(es) cargadas de ${users.length} usuario(s)`,'ok',2200);
     c.scrollIntoView({behavior:'smooth',block:'nearest'});
-  }catch(e){c.innerHTML='<div style="color:var(--dn);font-size:13px">Error al cargar. Verifica conexión.</div>';toast('Error al cargar','err');}
+  }catch(e){console.error(e);c.innerHTML='<div style="color:var(--dn);font-size:13px">Error al cargar. Verifica conexión.</div>';toast('Error al cargar','err');}
 });
+// Revisa duplicados de tipo y orden cronológico (Entrada < Salida Alm. < Regreso Alm. < Salida Final)
+function edProblemas(marksUser){
+  const porTipo={},dups=[],desorden=[];
+  marksUser.forEach(m=>{(porTipo[m.tipo]=porTipo[m.tipo]||[]).push(m);});
+  ED_TIPOS.forEach(t=>{if((porTipo[t]||[]).length>1)dups.push(t);});
+  const pres=ED_TIPOS.filter(t=>porTipo[t]&&porTipo[t].length);
+  for(let k=1;k<pres.length;k++){
+    const a=porTipo[pres[k-1]][0],b=porTipo[pres[k]][0];
+    if(new Date(b.stamp)<=new Date(a.stamp))desorden.push(`${pres[k]} (${fmtAP(new Date(b.stamp))}) queda antes o igual que ${pres[k-1]} (${fmtAP(new Date(a.stamp))})`);
+  }
+  return{dups,desorden};
+}
 el('btn-save-ed').addEventListener('click',async()=>{
-  const user=el('ed-user').value,fecha=el('ed-fecha').value,com=el('ed-comment').value.trim();if(!com){toast('Comentario obligatorio','err');return;}
-  const arr=await getHist(fecha);if(!arr||!arr.length){toast('Sin marcaciones','err');return;}
-  document.querySelectorAll('.ect').forEach(s=>{
-    const i=Number(s.dataset.i);if(!arr[i])return;
-    const origTipo=arr[i].tipo,origHora=arr[i].hora;
-    arr[i].tipo=s.value;
-    const hEl=document.querySelector(`.ech-h[data-i="${i}"]`);
-    const mEl=document.querySelector(`.ech-m[data-i="${i}"]`);
-    const sEl=document.querySelector(`.ech-s[data-i="${i}"]`);
-    if(hEl&&mEl&&sEl){
-      const hh=String(Math.max(0,Math.min(23,parseInt(hEl.value)||0))).padStart(2,'0');
-      const mm=String(Math.max(0,Math.min(59,parseInt(mEl.value)||0))).padStart(2,'0');
-      const ss=String(Math.max(0,Math.min(59,parseInt(sEl.value)||0))).padStart(2,'0');
-      const ns=new Date(`${fecha}T${hh}:${mm}:${ss}`).toISOString();
-      arr[i].stamp=ns;arr[i].hora=fmtT(new Date(ns));
+  const com=el('ed-comment').value.trim();
+  if(!com){toast('Comentario obligatorio','err');return;}
+  if(!_edCtx){toast('Primero carga las marcaciones','err');return;}
+  const fecha=_edCtx.fecha;
+  const rows=[...document.querySelectorAll('#ed-list .ed-row')];
+  for(const r of rows){if(!edLeerFila(r).ok){toast('Revisa la hora: horas 1-12, minutos y segundos 0-59','err',4500);r.scrollIntoView({behavior:'smooth',block:'center'});return;}}
+  const cambiadas=rows.filter(edCambiada);
+  if(!cambiadas.length){toast('No hay cambios para guardar','err');return;}
+  const btn=el('btn-save-ed');btn.disabled=true;
+  try{
+    const arr=await getHist(fecha);
+    if(!arr||!arr.length){toast('Sin marcaciones','err');return;}
+    // Seguridad: si alguien tocó ese día mientras editabas, se pide recargar en vez de pisar datos
+    for(const r of cambiadas){
+      const m=arr[Number(r.dataset.i)];
+      if(!m||m.user!==r.dataset.u||m.tipo!==r.dataset.tipo||(m.stamp||'')!==r.dataset.stamp){toast('Las marcaciones de ese día cambiaron. Vuelve a cargar.','err',5000);return;}
     }
-    // Solo si realmente cambió tipo u hora se etiqueta la marca con la nota — esto queda
-    // guardado en la marca misma (historial_v1), visible SOLO para el propio colaborador
-    // afectado en "Marcaciones de hoy". El correo automático (EmailJS) no lee este campo,
-    // así que el reporte a RRHH sigue exactamente igual, sin columnas nuevas.
-    if(arr[i].tipo!==origTipo||arr[i].hora!==origHora){
-      arr[i].nota=com;arr[i].editadoPor=CU;arr[i].editadoTs=new Date().toISOString();
+    const nuevo=arr.map(m=>({...m}));
+    const detalle={};
+    cambiadas.forEach(r=>{
+      const i=Number(r.dataset.i),v=edLeerFila(r),u=r.dataset.u;
+      const antes=fmtHoraAP(nuevo[i]),tipoAntes=nuevo[i].tipo;
+      const ns=new Date(`${fecha}T${_pad2(v.h24)}:${_pad2(v.mi)}:${_pad2(v.se)}`);
+      if(!nuevo[i].horaOriginal)nuevo[i].horaOriginal=antes; // queda la hora ORIGINAL (la primera vez que se edita)
+      nuevo[i].tipo=v.tipo;nuevo[i].stamp=ns.toISOString();nuevo[i].hora=fmtT(ns);
+      nuevo[i].nota=com;nuevo[i].editadoPor=CU;nuevo[i].editadoTs=new Date().toISOString();
+      (detalle[u]=detalle[u]||[]).push(`${tipoAntes}${tipoAntes!==v.tipo?'→'+v.tipo:''} ${antes} → ${fmtAP(ns)}`);
+    });
+    const usersObj=await getUsers(),avisos=[];
+    for(const u of Object.keys(detalle)){
+      const nom=(usersObj[u]&&usersObj[u].nombre)||u;
+      const p=edProblemas(nuevo.filter(m=>m.user===u));
+      if(p.dups.length){toast(`${nom}: ${p.dups.join(', ')} quedaría repetida. Cambia el tipo de una de las dos.`,'err',5500);return;}
+      p.desorden.forEach(t=>avisos.push(`• ${nom}: ${t}`));
     }
-  });
-  await saveHist(fecha,arr);await addLog(`Edición: ${user} ${fecha} — ${com}`);toast('Guardado ✓','ok');el('ed-comment').value='';el('ed-list').innerHTML='';
+    if(avisos.length&&!confirm(`⚠ Estas marcaciones quedarían en un orden raro (¿AM/PM?):\n\n${avisos.join('\n')}\n\n¿Guardar de todas formas?`))return;
+    await saveHist(fecha,nuevo);
+    for(const u of Object.keys(detalle))await addLog(`Edición: ${u} ${fecha} — ${com} [${detalle[u].join('; ')}]`);
+    toast(`Guardado ✓ ${cambiadas.length} marcación(es) en ${Object.keys(detalle).length} usuario(s)`,'ok');
+    el('ed-comment').value='';el('ed-preset').value='';el('ed-list').innerHTML='';el('ed-footer').style.display='none';_edCtx=null;
+    try{renderHistToday();}catch(e){}
+  }catch(e){console.error('guardar edición',e);toast('❌ Error al guardar: '+(e.message||e),'err',5000);}
+  finally{btn.disabled=false;}
 });
 el('btn-del-ed').addEventListener('click',async()=>{
-  const user=el('ed-user').value,fecha=el('ed-fecha').value,com=el('ed-comment').value.trim();if(!com){toast('Comentario obligatorio','err');return;}
-  const arr=await getHist(fecha);if(!arr||!arr.length){toast('Sin marcaciones','err');return;}
-  const checks=Array.from(document.querySelectorAll('.eck')).filter(c=>c.checked);if(!checks.length){toast('Selecciona marcaciones','err');return;}
+  const com=el('ed-comment').value.trim();
+  if(!com){toast('Comentario obligatorio','err');return;}
+  if(!_edCtx){toast('Primero carga las marcaciones','err');return;}
+  const fecha=_edCtx.fecha;
+  const checks=[...document.querySelectorAll('#ed-list .eck')].filter(c=>c.checked);
+  if(!checks.length){toast('Selecciona marcaciones','err');return;}
+  if(!confirm(`¿Borrar ${checks.length} marcación(es) seleccionada(s)?`))return;
+  const arr=await getHist(fecha);
+  if(!arr||!arr.length){toast('Sin marcaciones','err');return;}
+  const porUser={};
+  for(const c of checks){
+    const row=c.closest('.ed-row'),m=arr[Number(c.dataset.i)];
+    if(!m||m.user!==row.dataset.u||m.tipo!==row.dataset.tipo||(m.stamp||'')!==row.dataset.stamp){toast('Las marcaciones de ese día cambiaron. Vuelve a cargar.','err',5000);return;}
+    (porUser[m.user]=porUser[m.user]||[]).push(`${m.tipo} ${fmtHoraAP(m)}`);
+  }
   checks.map(c=>Number(c.dataset.i)).sort((a,b)=>b-a).forEach(i=>arr.splice(i,1));
-  await saveHist(fecha,arr);await addLog(`Borradas: ${user} ${fecha} — ${com}`);toast('Eliminadas ✓','ok');el('ed-comment').value='';el('ed-list').innerHTML='';
+  await saveHist(fecha,arr);
+  for(const u of Object.keys(porUser))await addLog(`Borradas: ${u} ${fecha} — ${com} [${porUser[u].join('; ')}]`);
+  toast('Eliminadas ✓','ok');
+  el('ed-comment').value='';el('ed-preset').value='';el('ed-list').innerHTML='';el('ed-footer').style.display='none';_edCtx=null;
 });
 
 // LIMPIAR
@@ -6022,17 +6299,20 @@ function buildResumenIndividualHTML(u,desde,hasta,s){
   dias.forEach(d=>{
     const dd=s.det[d],cnt=dd.marcCount||0;
     const estado=cnt<4?`⏳ ${cnt}/4`:'✅ Completo';
-    const mks=(dd.marcaciones||[]).map(m=>`${m.tipo}: <strong>${m.hora}</strong>`).join(' &nbsp;|&nbsp; ')||'—';
-    filas+=`<tr><td style="padding:7px 10px;border:1px solid #ccc">📅 ${fmtDiaLargo(d)}</td><td style="padding:7px 10px;border:1px solid #ccc;font-size:12px">${mks}</td><td style="padding:7px 10px;border:1px solid #ccc;text-align:center">${estado}</td><td style="padding:7px 10px;border:1px solid #ccc;text-align:right">$${Number(dd.saldoParcial||dd.bruto||0).toFixed(2)}</td></tr>`;
+    const _ORD={'Entrada':0,'Salida Alm.':1,'Regreso Alm.':2,'Salida Final':3};
+    const mks=[...(dd.marcaciones||[])].sort((a,b)=>(_ORD[a.tipo]??9)-(_ORD[b.tipo]??9)).map(m=>`${m.tipo}: <strong>${fmtHoraAP(m)}</strong>`).join(' &nbsp;|&nbsp; ')||'—';
+    const _nts=notasDeMarcas(dd.marcaciones);
+    const notaHtml=_nts.length?_nts.map(n=>`📝 ${escHtml(n)}`).join('<br>'):'—';
+    filas+=`<tr><td style="padding:7px 10px;border:1px solid #ccc">📅 ${fmtDiaLargo(d)}</td><td style="padding:7px 10px;border:1px solid #ccc;font-size:12px">${mks}</td><td style="padding:7px 10px;border:1px solid #ccc;text-align:center">${estado}</td><td style="padding:7px 10px;border:1px solid #ccc;font-size:12px;color:#555">${notaHtml}</td><td style="padding:7px 10px;border:1px solid #ccc;text-align:right">$${Number(dd.saldoParcial||dd.bruto||0).toFixed(2)}</td></tr>`;
   });
   return`<!doctype html><html><head><meta charset="utf-8"><title>Tus marcaciones</title></head>
   <body style="font-family:Arial,Helvetica,sans-serif;color:#022;padding:20px;max-width:640px;margin:0 auto">
     <h2 style="color:#00313C;margin-bottom:4px">Hola ${s.nombre||u.nombre||u.user} 👋</h2>
     <p style="color:#555;margin-bottom:14px">Este es tu resumen personal de marcaciones y pago del período <strong>${desde}</strong> al <strong>${hasta}</strong>.</p>
     <table style="border-collapse:collapse;width:100%">
-      <tr><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C;text-align:left">Día</th><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C;text-align:left">Marcaciones</th><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C">Estado</th><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C">Monto del día</th></tr>
-      ${filas||'<tr><td colspan="4" style="padding:10px;border:1px solid #ccc;color:#888">Sin marcaciones registradas en este período.</td></tr>'}
-      <tr style="font-weight:800;background:#f0f4f5"><td colspan="3" style="padding:8px;border:1px solid #ccc">TOTAL DEL PERÍODO</td><td style="padding:8px;border:1px solid #ccc;text-align:right">$${Number(s.neto||0).toFixed(2)}</td></tr>
+      <tr><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C;text-align:left">Día</th><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C;text-align:left">Marcaciones</th><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C">Estado</th><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C">Notas</th><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C">Monto del día</th></tr>
+      ${filas||'<tr><td colspan="5" style="padding:10px;border:1px solid #ccc;color:#888">Sin marcaciones registradas en este período.</td></tr>'}
+      <tr style="font-weight:800;background:#f0f4f5"><td colspan="4" style="padding:8px;border:1px solid #ccc">TOTAL DEL PERÍODO</td><td style="padding:8px;border:1px solid #ccc;text-align:right">$${Number(s.neto||0).toFixed(2)}</td></tr>
     </table>
     <p style="font-size:12px;color:#888;margin-top:14px">Días trabajados: <strong>${s.dias||0}</strong> · Horas: <strong>${s.horas||0}</strong></p>
     <p style="font-size:12px;color:#888">Si algo no coincide con lo que registraste, avísale a tu supervisor antes del cierre de planilla.</p>
