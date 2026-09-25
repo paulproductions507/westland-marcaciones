@@ -1109,6 +1109,18 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             </div>
             <div id="rrhh-tabla" style="overflow-x:auto;margin-top:4px"></div>
             <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:12px">
+              <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🗓️ Agregar Sábado y Domingo (pago manual)</div>
+              <div style="font-size:12px;color:var(--mt);margin-bottom:8px">El sábado y el domingo no se marcan con huella. Aquí seleccionas manualmente quién vino cada día y su horario desde–hasta; esto NO cuenta como marcación, solo como pago. Se agrega a la tabla y al correo de arriba. El domingo usa automáticamente la tarifa dominical de cada colaborador.</div>
+              <div class="fg2" style="margin-bottom:8px">
+                <div class="fg"><label>Fecha Sábado</label><input type="date" class="fc" id="rrhh-wknd-sab"></div>
+                <div class="fg"><label>Fecha Domingo</label><input type="date" class="fc" id="rrhh-wknd-dom"></div>
+              </div>
+              <button class="btn bg bsm" id="btn-rrhh-wknd-cargar" style="width:auto;margin-bottom:10px">🔄 Cargar colaboradores</button>
+              <div id="rrhh-wknd-list" style="font-size:11px"></div>
+              <button class="btn bp bsm" id="btn-rrhh-wknd-guardar" style="width:auto;margin-top:8px">💾 Guardar e incluir en el reporte</button>
+              <div id="rrhh-wknd-status" style="font-size:12px;color:var(--mt);margin-top:8px"></div>
+            </div>
+            <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:12px">
               <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">📤 Enviar vista RRHH por correo</div>
               <div class="fg2" style="margin-bottom:8px">
                 <div class="fg"><label>Para</label><input class="fc" id="rrhh-para" placeholder="correo@empresa.com"></div>
@@ -2053,6 +2065,7 @@ onValue(R(db,'.info/connected'),(snap)=>{
 
 // PATHS
 const META="meta_v1",USERS="users_v1",HIST="historial_v1",PLOG="prolog_v1",FER="feriados_v1",APR="approvals_v1";
+const WKPAGO="wkpago_v1"; // Firebase: wkpago_v1/{fecha}/{user}={desde,hasta} — pago manual de sábado/domingo (sin marcación de reloj)
 const LOGPROV="logistica_proveedores_v1",LOGREC="logistica_recibos_v1",LOGDEPTO="logistica_deptos_v1",LOGCAM="logistica_camiones_v1";
 const LOGSUM="logistica_suministro_v1",LOGSUM_MOV=LOGSUM+"/movimientos",LOGSUM_TAM=LOGSUM+"/tamanos",LOGSUM_CAT=LOGSUM+"/catalogo",LOGSUM_RESP=LOGSUM+"/responsables",LOGSUM_REQ=LOGSUM+"/solicitudes",LOGSUM_AREA=LOGSUM+"/areas",LOGSUM_ACUSE=LOGSUM+"/acuses";
 const LOGAN="logistica_analisis_v1",LOGAN_SEM=LOGAN+"/semanas",LOGAN_TRANS=LOGAN+"/transferencias",LOGAN_NOTAS=LOGAN+"/notas";
@@ -4157,7 +4170,7 @@ async function buildSemanalSeguro(desde,hasta){
 // celda (deja solo ✅/Ausente + monto + descuento) si el HTML no cabe bajo el límite de EmailJS.
 async function buildEmailRRHH(desde,hasta,nivel){
   nivel=nivel||0;
-  const data=await buildRRHHData(desde,hasta);
+  const data=await buildRRHHDataConFinde(desde,hasta);
   const css=`<style>
     .rt{border-collapse:collapse;width:100%;font-family:Arial,Helvetica,sans-serif}
     .rt th{background:#00313C;color:#fff;padding:6px 5px;font-size:11px;border:1px solid #00313C;text-align:center}
@@ -4180,6 +4193,8 @@ async function buildEmailRRHH(desde,hasta,nivel){
     f.dias.forEach((dd,vi)=>{
       if(dd.tipo==='fijo'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">💰 Base</span><br>$${dd.monto.toFixed(2)}</td>`;return;}
       if(dd.tipo==='ausente'){tds+=`<td class="abs">Ausente</td>`;return;}
+      if(dd.tipo==='libre'){tds+=`<td style="color:#999">—</td>`;return;}
+      if(dd.tipo==='manual'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">🗓️ F.Semana</span><br>${dd.horas.toFixed(2)}h (${dd.desde}–${dd.hasta})<br>$${dd.monto.toFixed(2)}</td>`;return;}
       totalPorDia[vi].monto+=dd.monto;totalPorDia[vi].desc+=dd.descuento;
       const chk=dd.tipo==='completo'?'✅':'⏳ '+dd.cnt+'/4';
       const horasLine=nivel>=1?'':`${dd.horas.toFixed(2)}h · `;
@@ -5620,12 +5635,83 @@ async function buildRRHHData(desde,hasta){
   const descGlobal=+filas.reduce((a,f)=>a+f.descUsuario,0).toFixed(2);
   return{diasVis,filas,totalGlobal,descGlobal};
 }
+// ── PAGO MANUAL DE FIN DE SEMANA (sábado/domingo, sin marcación de reloj) ──────────────────
+// El sábado y domingo no se marcan con huella; RRHH necesita agregar manualmente quién vino y
+// su horario desde–hasta, como PAGO (no como marcación). Se guarda por fecha en wkpago_v1 y se
+// fusiona con buildRRHHData (tabla en pantalla y correo) sin tocar la lógica de marcaciones reales.
+async function loadWkPago(fecha){
+  if(!fecha)return{};
+  try{const s=await get(R(db,`${WKPAGO}/${fecha}`));return s.exists()?s.val():{};}catch(e){console.error('loadWkPago',e);return{};}
+}
+async function saveWkPago(fecha,data){
+  if(!fecha)return;
+  try{await set(R(db,`${WKPAGO}/${fecha}`),data);}catch(e){console.error('saveWkPago',e);throw e;}
+}
+function horasEntreHM(desde,hasta){
+  if(!desde||!hasta)return 0;
+  const[h1,m1]=desde.split(':').map(Number),[h2,m2]=hasta.split(':').map(Number);
+  let mins=(h2*60+m2)-(h1*60+m1);
+  if(mins<0)mins+=24*60;
+  return mins/60;
+}
+// Toma el resultado de buildRRHHData y, si hay fechas de sábado/domingo elegidas en la Vista
+// RRHH con pago manual guardado, agrega esas columnas (o las completa si ya caían dentro del
+// rango). El sábado paga con tarifa.regular, el domingo con tarifa.domingo (tarifa dominical ya
+// configurada por colaborador) — ambas proporcionales a las horas trabajadas (máx. 8h/día).
+async function buildRRHHDataConFinde(desde,hasta){
+  const base=await buildRRHHData(desde,hasta);
+  const fechaSab=el('rrhh-wknd-sab')?.value||'';
+  const fechaDom=el('rrhh-wknd-dom')?.value||'';
+  const targets=[fechaSab,fechaDom].filter(Boolean);
+  if(!targets.length)return base;
+  const wkMap={};
+  for(const f of targets){const wk=await loadWkPago(f);if(wk&&Object.keys(wk).length)wkMap[f]=wk;}
+  const fechasConDatos=Object.keys(wkMap);
+  if(!fechasConDatos.length)return base;
+  const users=await getUsers();
+  const ETQ_DOW=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  fechasConDatos.forEach(fecha=>{
+    if(!base.diasVis.some(v=>v.k===fecha)){
+      const d=new Date(fecha+'T00:00:00');
+      base.diasVis.push({k:fecha,i:0,d,etq:ETQ_DOW[d.getDay()]});
+    }
+  });
+  base.diasVis.sort((a,b)=>a.k.localeCompare(b.k));
+  base.diasVis.forEach((v,i)=>v.i=i);
+  base.filas.forEach(f=>{while(f.dias.length<base.diasVis.length)f.dias.push({tipo:'ausente'});});
+  const presentes=new Set(base.filas.map(f=>f.user));
+  fechasConDatos.forEach(fecha=>{
+    Object.keys(wkMap[fecha]).forEach(uid=>{
+      if(presentes.has(uid))return;
+      const uObj=users[uid];if(!uObj)return;
+      presentes.add(uid);
+      base.filas.push({user:uid,nombre:uObj.nombre,cedula:uObj.cedula||'',dias:base.diasVis.map(()=>({tipo:'ausente'})),totalUsuario:0,descUsuario:0});
+    });
+  });
+  base.filas.forEach(f=>{
+    const uObj=users[f.user]||{};
+    base.diasVis.forEach((dv,vi)=>{
+      if(!wkMap[dv.k])return;
+      const reg=wkMap[dv.k][f.user];
+      if(!reg){if(f.dias[vi]&&f.dias[vi].tipo==='ausente')f.dias[vi]={tipo:'libre'};return;}
+      const horas=+Math.min(horasEntreHM(reg.desde,reg.hasta),8).toFixed(2);
+      const dowNum=dv.d.getDay();
+      const tar=dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20);
+      const monto=+((horas/8)*tar).toFixed(2);
+      f.dias[vi]={tipo:'manual',horas,monto,desde:reg.desde,hasta:reg.hasta};
+    });
+    f.totalUsuario=+f.dias.reduce((a,d)=>a+(d.monto||0),0).toFixed(2);
+  });
+  base.totalGlobal=+base.filas.reduce((a,f)=>a+f.totalUsuario,0).toFixed(2);
+  base.descGlobal=+base.filas.reduce((a,f)=>a+f.descUsuario,0).toFixed(2);
+  return base;
+}
 async function renderVistaRRHH(desde,hasta){
   const c=el('rrhh-tabla');if(!c)return;
   c.innerHTML='<div style="color:var(--mt);font-size:13px;padding:10px">Cargando...</div>';
   if(!desde){const lun=getLunesDeSemana(null);desde=isoD(lun);hasta=isoD(isoDateAdd(lun,6));}
   if(!hasta)hasta=desde;
-  const data=await buildRRHHData(desde,hasta);
+  const data=await buildRRHHDataConFinde(desde,hasta);
   if(!data.filas.length){c.innerHTML='<div style="color:var(--mt);font-size:13px;padding:10px 0">Sin marcaciones registradas para este período.</div>';return;}
   let html=`<div style="font-size:12px;color:var(--ac);font-weight:700;margin-bottom:8px">🧾 RRHH — Período: ${desde} al ${hasta}</div>`;
   html+=`<table style="border-collapse:collapse;width:100%;min-width:${data.diasVis.length*96+260}px;font-size:11px">`;
@@ -5649,6 +5735,18 @@ async function renderVistaRRHH(desde,hasta){
       }
       if(dd.tipo==='ausente'){
         html+=`<td style="padding:5px 5px;border:1px solid var(--bd);text-align:center;vertical-align:middle"><span style="color:var(--dn);font-size:10px;font-weight:700">Ausente</span></td>`;
+        return;
+      }
+      if(dd.tipo==='libre'){
+        html+=`<td style="padding:5px 5px;border:1px solid var(--bd);text-align:center;vertical-align:middle"><span style="color:var(--mt);font-size:10px">—</span></td>`;
+        return;
+      }
+      if(dd.tipo==='manual'){
+        totalPorDia[vi].monto+=dd.monto;
+        html+=`<td style="padding:5px 5px;border:1px solid var(--bd);text-align:center;vertical-align:middle">`
+          +`<div style="color:#c58aff;font-size:10px;font-weight:700">🗓️ Fin de semana</div>`
+          +`<div style="font-size:9.5px;color:var(--mt);margin-top:1px">${dd.horas.toFixed(2)}h (${dd.desde}–${dd.hasta})</div>`
+          +`<div style="font-weight:800;font-size:12px;color:var(--ac);margin-top:1px">$${dd.monto.toFixed(2)}</div></td>`;
         return;
       }
       totalPorDia[vi].monto+=dd.monto;totalPorDia[vi].desc+=dd.descuento;
@@ -5774,12 +5872,72 @@ el('btn-sem-ver')?.addEventListener('click',()=>{
   const lun=getLunesDeSemana(null);
   const inp=el('rrhh-desde');if(inp)inp.value=isoD(lun);
   const inpH=el('rrhh-hasta');if(inpH)inpH.value=isoD(isoDateAdd(lun,6));
+  const inpSab=el('rrhh-wknd-sab');if(inpSab)inpSab.value=isoD(isoDateAdd(lun,5));
+  const inpDom=el('rrhh-wknd-dom');if(inpDom)inpDom.value=isoD(isoDateAdd(lun,6));
 })();
 el('btn-rrhh-actual')?.addEventListener('click',()=>{
   const lun=getLunesDeSemana(null);
   el('rrhh-desde').value=isoD(lun);
   el('rrhh-hasta').value=isoD(isoDateAdd(lun,6));
+  if(el('rrhh-wknd-sab'))el('rrhh-wknd-sab').value=isoD(isoDateAdd(lun,5));
+  if(el('rrhh-wknd-dom'))el('rrhh-wknd-dom').value=isoD(isoDateAdd(lun,6));
   renderVistaRRHH(el('rrhh-desde').value,el('rrhh-hasta').value);
+});
+
+// ── UI: lista de colaboradores para el pago manual de sábado/domingo ───────────────────────
+async function renderRRHHWkndList(){
+  const c=el('rrhh-wknd-list');if(!c)return;
+  const fechaSab=el('rrhh-wknd-sab')?.value||'',fechaDom=el('rrhh-wknd-dom')?.value||'';
+  if(!fechaSab&&!fechaDom){c.innerHTML='<div style="color:var(--mt);padding:8px 0">Indica al menos una fecha (sábado o domingo) y toca "Cargar colaboradores".</div>';return;}
+  c.innerHTML='<div style="color:var(--mt);padding:8px 0">Cargando...</div>';
+  const users=await getUsers();
+  const lista=Object.values(users).filter(u=>!GERENTES.includes(u.user)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const wkSab=fechaSab?await loadWkPago(fechaSab):{};
+  const wkDom=fechaDom?await loadWkPago(fechaDom):{};
+  let html=`<div style="display:grid;grid-template-columns:1fr ${fechaSab?'auto 78px 78px':''} ${fechaDom?'auto 78px 78px':''};gap:5px 8px;align-items:center;font-size:10px;color:var(--mt);font-weight:700;text-transform:uppercase;padding-bottom:5px;border-bottom:1px solid var(--bd);margin-bottom:4px">
+    <div>Colaborador</div>${fechaSab?'<div style="grid-column:span 3">Sábado</div>':''}${fechaDom?'<div style="grid-column:span 3">Domingo</div>':''}
+  </div>`;
+  lista.forEach(u=>{
+    const rs=wkSab[u.user]||null,rd=wkDom[u.user]||null;
+    html+=`<div class="rrhh-wknd-row" data-user="${u.user}" style="display:grid;grid-template-columns:1fr ${fechaSab?'auto 78px 78px':''} ${fechaDom?'auto 78px 78px':''};gap:5px 8px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+      <div style="color:var(--tx)">${u.nombre}<div style="font-size:10px;color:var(--mt)">${u.user}</div></div>
+      ${fechaSab?`<input type="checkbox" class="wknd-sab-chk" ${rs?'checked':''} style="width:auto;accent-color:var(--ac)">
+      <input type="time" class="fc wknd-sab-desde" value="${rs?.desde||'08:00'}" style="font-size:11px;padding:4px 5px">
+      <input type="time" class="fc wknd-sab-hasta" value="${rs?.hasta||'17:00'}" style="font-size:11px;padding:4px 5px">`:''}
+      ${fechaDom?`<input type="checkbox" class="wknd-dom-chk" ${rd?'checked':''} style="width:auto;accent-color:var(--ac)">
+      <input type="time" class="fc wknd-dom-desde" value="${rd?.desde||'11:00'}" style="font-size:11px;padding:4px 5px">
+      <input type="time" class="fc wknd-dom-hasta" value="${rd?.hasta||'19:00'}" style="font-size:11px;padding:4px 5px">`:''}
+    </div>`;
+  });
+  c.innerHTML=html;
+}
+el('btn-rrhh-wknd-cargar')?.addEventListener('click',renderRRHHWkndList);
+el('btn-rrhh-wknd-guardar')?.addEventListener('click',async()=>{
+  const fechaSab=el('rrhh-wknd-sab')?.value||'',fechaDom=el('rrhh-wknd-dom')?.value||'';
+  if(!fechaSab&&!fechaDom){toast('Indica al menos una fecha (sábado o domingo)','err');return;}
+  const st=el('rrhh-wknd-status');if(st)st.textContent='Guardando...';
+  try{
+    if(fechaSab){
+      const sabData={};
+      document.querySelectorAll('.rrhh-wknd-row').forEach(row=>{
+        const chk=row.querySelector('.wknd-sab-chk');if(!chk||!chk.checked)return;
+        sabData[row.dataset.user]={desde:row.querySelector('.wknd-sab-desde')?.value||'08:00',hasta:row.querySelector('.wknd-sab-hasta')?.value||'17:00'};
+      });
+      await saveWkPago(fechaSab,sabData);
+    }
+    if(fechaDom){
+      const domData={};
+      document.querySelectorAll('.rrhh-wknd-row').forEach(row=>{
+        const chk=row.querySelector('.wknd-dom-chk');if(!chk||!chk.checked)return;
+        domData[row.dataset.user]={desde:row.querySelector('.wknd-dom-desde')?.value||'11:00',hasta:row.querySelector('.wknd-dom-hasta')?.value||'19:00'};
+      });
+      await saveWkPago(fechaDom,domData);
+    }
+    const v=el('rrhh-desde').value,h=el('rrhh-hasta').value;
+    if(v&&h)await renderVistaRRHH(v,h);
+    if(st)st.textContent='Guardado ✓ — el sábado y domingo ya están incluidos en la tabla de arriba y se incluirán en el correo.';
+    toast('Fin de semana guardado ✓','ok',3000);
+  }catch(e){console.error('guardar wknd',e);if(st)st.textContent='';toast('❌ Error al guardar: '+(e.message||e),'err');}
 });
 el('btn-rrhh-ant')?.addEventListener('click',()=>{
   const desde=el('rrhh-desde').value||isoD(new Date());
