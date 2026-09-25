@@ -2065,7 +2065,7 @@ onValue(R(db,'.info/connected'),(snap)=>{
 
 // PATHS
 const META="meta_v1",USERS="users_v1",HIST="historial_v1",PLOG="prolog_v1",FER="feriados_v1",APR="approvals_v1";
-const WKPAGO="wkpago_v1"; // Firebase: wkpago_v1/{fecha}/{user}={desde,hasta} — pago manual de sábado/domingo (sin marcación de reloj)
+const WKPAGO=`${META}/wkpago`; // Firebase: meta_v1/wkpago/{fecha}/{user}={desde,hasta} — pago manual de sábado/domingo (sin marcación de reloj). Va dentro de meta_v1 porque es la única ruta con permiso de escritura ya habilitado para este tipo de dato administrativo.
 const LOGPROV="logistica_proveedores_v1",LOGREC="logistica_recibos_v1",LOGDEPTO="logistica_deptos_v1",LOGCAM="logistica_camiones_v1";
 const LOGSUM="logistica_suministro_v1",LOGSUM_MOV=LOGSUM+"/movimientos",LOGSUM_TAM=LOGSUM+"/tamanos",LOGSUM_CAT=LOGSUM+"/catalogo",LOGSUM_RESP=LOGSUM+"/responsables",LOGSUM_REQ=LOGSUM+"/solicitudes",LOGSUM_AREA=LOGSUM+"/areas",LOGSUM_ACUSE=LOGSUM+"/acuses";
 const LOGAN="logistica_analisis_v1",LOGAN_SEM=LOGAN+"/semanas",LOGAN_TRANS=LOGAN+"/transferencias",LOGAN_NOTAS=LOGAN+"/notas";
@@ -5683,7 +5683,7 @@ async function buildRRHHDataConFinde(desde,hasta){
   fechasConDatos.forEach(fecha=>{
     Object.keys(wkMap[fecha]).forEach(uid=>{
       if(presentes.has(uid))return;
-      const uObj=users[uid];if(!uObj)return;
+      const uObj=users[uid];if(!uObj||!uObj.nombre)return;
       presentes.add(uid);
       base.filas.push({user:uid,nombre:uObj.nombre,cedula:uObj.cedula||'',dias:base.diasVis.map(()=>({tipo:'ausente'})),totalUsuario:0,descUsuario:0});
     });
@@ -5891,7 +5891,7 @@ async function renderRRHHWkndList(){
   if(!fechaSab&&!fechaDom){c.innerHTML='<div style="color:var(--mt);padding:8px 0">Indica al menos una fecha (sábado o domingo) y toca "Cargar colaboradores".</div>';return;}
   c.innerHTML='<div style="color:var(--mt);padding:8px 0">Cargando...</div>';
   const users=await getUsers();
-  const lista=Object.values(users).filter(u=>!GERENTES.includes(u.user)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const lista=Object.values(users).filter(u=>u&&u.user&&u.nombre&&!GERENTES.includes(u.user)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const wkSab=fechaSab?await loadWkPago(fechaSab):{};
   const wkDom=fechaDom?await loadWkPago(fechaDom):{};
   let html=`<div style="display:grid;grid-template-columns:1fr ${fechaSab?'auto 78px 78px':''} ${fechaDom?'auto 78px 78px':''};gap:5px 8px;align-items:center;font-size:10px;color:var(--mt);font-weight:700;text-transform:uppercase;padding-bottom:5px;border-bottom:1px solid var(--bd);margin-bottom:4px">
