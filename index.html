@@ -1108,25 +1108,24 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               <button class="btn bg bsm" id="btn-rrhh-ver" style="width:auto">🔍 Ver</button>
             </div>
             <div id="rrhh-tabla" style="overflow-x:auto;margin-top:4px"></div>
+            <div id="rrhh-cruce" style="margin-top:10px"></div>
             <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:12px">
-              <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🗓️ Agregar Sábado y Domingo (pago manual)</div>
-              <div style="font-size:12px;color:var(--mt);margin-bottom:8px">El sábado y el domingo no se marcan con huella. Aquí seleccionas manualmente quién vino cada día y su horario desde–hasta; esto NO cuenta como marcación, solo como pago. Se agrega a la tabla y al correo de arriba. El domingo usa automáticamente la tarifa dominical de cada colaborador.</div>
-              <div class="fg2" style="margin-bottom:8px">
-                <div class="fg"><label>Fecha Sábado</label><input type="date" class="fc" id="rrhh-wknd-sab"></div>
-                <div class="fg"><label>Fecha Domingo</label><input type="date" class="fc" id="rrhh-wknd-dom"></div>
-              </div>
-              <button class="btn bg bsm" id="btn-rrhh-wknd-cargar" style="width:auto;margin-bottom:10px">🔄 Cargar colaboradores</button>
-              <div id="rrhh-wknd-list" style="font-size:11px"></div>
-              <button class="btn bp bsm" id="btn-rrhh-wknd-guardar" style="width:auto;margin-top:8px">💾 Guardar e incluir en el reporte</button>
-              <div id="rrhh-wknd-status" style="font-size:12px;color:var(--mt);margin-top:8px"></div>
+              <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🗓️ Pago preliminar (Viernes / Sábado / Domingo)</div>
+              <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Para adelantarle a RRHH quién viene el viernes (antes de que todos terminen de marcar) y para sábado/domingo, que no se marcan con huella. Toca cada día para desplegarlo. Esto es solo un reporte preliminar — nunca reemplaza la marcación real de los colaboradores.</div>
+              <div id="rrhh-wknd-days"></div>
             </div>
             <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:12px">
-              <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">📤 Enviar vista RRHH por correo</div>
+              <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">📤 Enviar correo a RRHH</div>
               <div class="fg2" style="margin-bottom:8px">
                 <div class="fg"><label>Para</label><input class="fc" id="rrhh-para" placeholder="correo@empresa.com"></div>
                 <div class="fg"><label>CC (opcional)</label><input class="fc" id="rrhh-cc" placeholder="cc@empresa.com"></div>
               </div>
-              <button class="btn bp bsm" id="btn-rrhh-enviar" style="width:auto">📤 Enviar vista RRHH ahora</button>
+              <div style="font-size:11.5px;color:var(--mt);margin-bottom:8px">
+                <strong>Previo</strong>: reporte temprano con los datos preliminares que hayas guardado arriba (viernes/sábado/domingo).<br>
+                <strong>Oficial</strong>: confirmación final — usa la marcación real del viernes (no la preliminar) más sábado/domingo, e incluye la verificación de si se cumplió lo pedido para el viernes.
+              </div>
+              <button class="btn bp bsm" id="btn-rrhh-enviar-previo" style="width:auto;margin-right:8px">📤 Enviar correo PREVIO</button>
+              <button class="btn bg bsm" id="btn-rrhh-enviar-oficial" style="width:auto">📬 Enviar correo OFICIAL</button>
               <div id="rrhh-enviar-status" style="font-size:12px;color:var(--mt);margin-top:8px"></div>
             </div>
           </div></div>
@@ -4168,9 +4167,9 @@ async function buildSemanalSeguro(desde,hasta){
 // Usa la misma fuente de datos que la vista en pantalla (buildRRHHData), solo cambia a marcado
 // Arial para que se vea bien en clientes de correo. nivel>=1 quita las horas trabajadas de cada
 // celda (deja solo ✅/Ausente + monto + descuento) si el HTML no cabe bajo el límite de EmailJS.
-async function buildEmailRRHH(desde,hasta,nivel){
-  nivel=nivel||0;
-  const data=await buildRRHHDataConFinde(desde,hasta);
+async function buildEmailRRHH(desde,hasta,nivel,modo){
+  nivel=nivel||0;modo=modo||'previo';
+  const data=modo==='oficial'?await buildRRHHDataOficial(desde,hasta):await buildRRHHDataConFinde(desde,hasta);
   const css=`<style>
     .rt{border-collapse:collapse;width:100%;font-family:Arial,Helvetica,sans-serif}
     .rt th{background:#00313C;color:#fff;padding:6px 5px;font-size:11px;border:1px solid #00313C;text-align:center}
@@ -4207,22 +4206,44 @@ async function buildEmailRRHH(desde,hasta,nivel){
   totalPorDia.forEach(t=>{totRow+=`<td>$${t.monto.toFixed(2)}${t.desc>0?`<br><span class="desc">-$${t.desc.toFixed(2)}</span>`:''}</td>`;});
   totRow+=`<td>$${data.totalGlobal.toFixed(2)}${data.descGlobal>0?`<br><span class="desc">-$${data.descGlobal.toFixed(2)}</span>`:''}</td></tr>`;
   const tabla=data.filas.length?`<div style="overflow-x:auto"><table class="rt"><thead><tr>${thDias}</tr></thead><tbody>${rows}</tbody><tfoot>${totRow}</tfoot></table></div>`:'<p style="color:#cc3333">Sin marcaciones registradas para este período.</p>';
+  let cruceHtml='';
+  if(modo==='oficial'){
+    const dias=await buildCruceDias();
+    if(dias&&dias.length){
+      cruceHtml=`<div style="margin-bottom:16px;border:2px solid #cc3333;border-radius:8px;padding:10px 12px;background:#fff5f5">
+        <div style="font-weight:700;color:#cc3333;font-size:13px;margin-bottom:8px">⚠️ Diferencias vs. lo solicitado en el correo previo</div>
+        ${dias.map(d=>{
+          if(d.pendiente)return`<div style="font-size:12px;color:#888;margin-bottom:8px"><strong>${d.label}:</strong> aún no se confirmó lo oficial, se usó el previo tal cual.</div>`;
+          if(!d.filas.length)return'';
+          return`<div style="margin-bottom:10px">
+            <div style="font-size:12px;font-weight:700;color:#00313C;margin-bottom:4px">${d.label}</div>
+            <table style="width:100%;font-size:12px;border-collapse:collapse">
+              ${d.filas.map(f=>`<tr><td style="padding:3px 4px;border-bottom:1px solid #f0dada">${f.nombre}</td><td style="padding:3px 4px;border-bottom:1px solid #f0dada;color:#cc3333;font-weight:700">${f.estado}</td><td style="padding:3px 4px;border-bottom:1px solid #f0dada;color:#666;font-style:italic">${f.motivo||'—'}</td></tr>`).join('')}
+            </table>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+  }
   const sal=getSaludo();
+  const tituloModo=modo==='oficial'?'Confirmación oficial':'Reporte preliminar';
   return`<div style="font-family:Arial,Helvetica,sans-serif;color:#022;max-width:900px">
     ${css}
     <h2 style="color:#00313C;margin:0 0 12px 0">Asistencia RRHH — Dpto. Juguetería Westland · Nivel 300</h2>
     <p style="font-size:14px;margin:0 0 8px 0">${sal},</p>
-    <p style="font-size:13px;color:#555;margin:0 0 14px 0">Reporte de asistencia y pago correspondiente al período <strong>${desde}</strong> al <strong>${hasta}</strong>.</p>
+    <p style="font-size:13px;color:#555;margin:0 0 4px 0"><strong>${tituloModo}</strong> — período <strong>${desde}</strong> al <strong>${hasta}</strong>.</p>
+    ${modo==='oficial'?'<p style="font-size:12px;color:#888;margin:0 0 10px 0">Este correo confirma la asistencia con datos ya definitivos, incluyendo viernes, sábado y domingo.</p>':'<p style="font-size:12px;color:#888;margin:0 0 10px 0">Este correo es un adelanto (incluye viernes, sábado y domingo); la confirmación oficial llegará el domingo.</p>'}
+    ${cruceHtml}
     ${tabla}
     <p style="margin-top:14px;border-top:2px solid #00313C;padding-top:8px;color:#00313C;font-size:12px;font-weight:700">Planilla Camarón — Juguetería Westland · Nivel 300 · ${new Date().toLocaleString('es')}</p>
   </div>`;
 }
-async function buildRRHHSeguro(desde,hasta){
+async function buildRRHHSeguro(desde,hasta,modo){
   for(let nivel=0;nivel<=1;nivel++){
-    const html=await buildEmailRRHH(desde,hasta,nivel);
+    const html=await buildEmailRRHH(desde,hasta,nivel,modo);
     if(htmlByteSize(html)<=EMAILJS_SAFE_LIMIT)return{html,nivel};
   }
-  const html=await buildEmailRRHH(desde,hasta,1);
+  const html=await buildEmailRRHH(desde,hasta,1,modo);
   return{html,nivel:1};
 }
 
@@ -4261,7 +4282,8 @@ async function sendEmailReport(tipo,periodo,cfgOverride){
       const r=await buildSemanalSeguro(desde,hasta);htmlTable=r.html;nivelComp=r.nivel;
     }else if(tipo==='rrhh'){
       // Vista RRHH: mismo rango exacto desde→hasta, formato simplificado de asistencia.
-      const r=await buildRRHHSeguro(desde,hasta);htmlTable=r.html;nivelComp=r.nivel;
+      // cfg.modoRRHH distingue el correo previo (preliminar) del oficial (confirmación).
+      const r=await buildRRHHSeguro(desde,hasta,cfg.modoRRHH||'previo');htmlTable=r.html;nivelComp=r.nivel;
     }else{
       const summ=await buildSummary(desde,hasta,false);
       let usersArr=[],rbU={};
@@ -4275,7 +4297,11 @@ async function sendEmailReport(tipo,periodo,cfgOverride){
     }
     const sal=getSaludo();
     // Professional subject with department info
-    const subject=(tipo==='rrhh'?'Asistencia RRHH Dpto. Juguetería Westland Nivel 300 · ':'Marcaciones Dpto. Juguetería Westland Nivel 300 · ')+desde+' al '+hasta;
+    // Mismo asunto base en Previo y Oficial (con "Re:" en el Oficial) para que Gmail/Outlook
+    // agrupen ambos correos en la misma conversación — EmailJS no permite fijar cabeceras
+    // In-Reply-To/References, así que esto es lo más cercano a "responder sobre el mismo correo".
+    const subjectBase=(tipo==='rrhh'?'Asistencia RRHH Dpto. Juguetería Westland Nivel 300 · ':'Marcaciones Dpto. Juguetería Westland Nivel 300 · ')+desde+' al '+hasta;
+    const subject=(tipo==='rrhh'&&cfg.modoRRHH==='oficial')?('Re: '+subjectBase):subjectBase;
     const tParams={to_email:cfg.para,cc_email:cfg.cc||'',subject,html_content:htmlTable,message:htmlTable,saludo:sal,periodo:desde+' al '+hasta,timestamp:new Date().toLocaleString('es')};
     let sent=false;
     try{
@@ -5635,17 +5661,35 @@ async function buildRRHHData(desde,hasta){
   const descGlobal=+filas.reduce((a,f)=>a+f.descUsuario,0).toFixed(2);
   return{diasVis,filas,totalGlobal,descGlobal};
 }
-// ── PAGO MANUAL DE FIN DE SEMANA (sábado/domingo, sin marcación de reloj) ──────────────────
-// El sábado y domingo no se marcan con huella; RRHH necesita agregar manualmente quién vino y
-// su horario desde–hasta, como PAGO (no como marcación). Se guarda por fecha en wkpago_v1 y se
-// fusiona con buildRRHHData (tabla en pantalla y correo) sin tocar la lógica de marcaciones reales.
-async function loadWkPago(fecha){
+// ── PAGO PRELIMINAR vs OFICIAL (viernes temprano + sábado/domingo, sin marcación de reloj) ─
+// RRHH pide viernes temprano (antes de que todos terminen de marcar), y sábado/domingo nunca se
+// marcan con huella. Por eso cada fecha guarda DOS versiones en meta_v1/wkpago/{fecha}/{etapa}:
+//   - "previo"  → lo que se espera/adelanta (se llena antes, se manda en el correo Previo).
+//   - "oficial" → lo que realmente pasó (viernes: automático desde la marcación real; sábado y
+//                 domingo: el admin lo confirma el domingo en la tarde, y si no lo confirma se
+//                 usa el previo como respaldo). Se manda en el correo Oficial del domingo.
+// El viernes NUNCA tiene etapa "oficial" propia: su versión oficial siempre es la marcación real.
+const RRHH_WKND_DIAS=[
+  {key:'vie',label:'Viernes',emoji:'🗓️',defDesde:'08:00',defHasta:'17:00',offset:4,etapas:['previo']},
+  {key:'sab',label:'Sábado',emoji:'📅',defDesde:'08:00',defHasta:'17:00',offset:5,etapas:['previo','oficial']},
+  {key:'dom',label:'Domingo',emoji:'☀️',defDesde:'11:00',defHasta:'19:00',offset:6,etapas:['previo','oficial']}
+];
+const ETAPA_LABEL={previo:'📝 Previo (se espera)',oficial:'✅ Oficial (confirmar lo que pasó)'};
+async function loadWkPago(fecha,etapa){
   if(!fecha)return{};
-  try{const s=await get(R(db,`${WKPAGO}/${fecha}`));return s.exists()?s.val():{};}catch(e){console.error('loadWkPago',e);return{};}
+  etapa=etapa||'previo';
+  try{const s=await get(R(db,`${WKPAGO}/${fecha}/${etapa}`));return s.exists()?s.val():{};}catch(e){console.error('loadWkPago',e);return{};}
 }
-async function saveWkPago(fecha,data){
+async function saveWkPago(fecha,etapa,data){
   if(!fecha)return;
-  try{await set(R(db,`${WKPAGO}/${fecha}`),data);}catch(e){console.error('saveWkPago',e);throw e;}
+  try{await set(R(db,`${WKPAGO}/${fecha}/${etapa}`),data);}catch(e){console.error('saveWkPago',e);throw e;}
+}
+async function loadMotivos(fecha){
+  if(!fecha)return{};
+  try{const s=await get(R(db,`${WKPAGO}/${fecha}/motivos`));return s.exists()?s.val():{};}catch(e){console.error('loadMotivos',e);return{};}
+}
+async function saveMotivo(fecha,uid,texto){
+  try{await set(R(db,`${WKPAGO}/${fecha}/motivos/${uid}`),texto||null);}catch(e){console.error('saveMotivo',e);throw e;}
 }
 function horasEntreHM(desde,hasta){
   if(!desde||!hasta)return 0;
@@ -5654,18 +5698,21 @@ function horasEntreHM(desde,hasta){
   if(mins<0)mins+=24*60;
   return mins/60;
 }
-// Toma el resultado de buildRRHHData y, si hay fechas de sábado/domingo elegidas en la Vista
-// RRHH con pago manual guardado, agrega esas columnas (o las completa si ya caían dentro del
-// rango). El sábado paga con tarifa.regular, el domingo con tarifa.domingo (tarifa dominical ya
-// configurada por colaborador) — ambas proporcionales a las horas trabajadas (máx. 8h/día).
-async function buildRRHHDataConFinde(desde,hasta){
+// Toma el resultado de buildRRHHData y agrega/completa las columnas de viernes/sábado/domingo con
+// el dato guardado (etapa "previo" u "oficial" según el correo). El viernes en modo "oficial"
+// nunca se sobreescribe — su valor real de marcación se deja tal cual.
+async function buildRRHHDataMerged(desde,hasta,modo){
   const base=await buildRRHHData(desde,hasta);
-  const fechaSab=el('rrhh-wknd-sab')?.value||'';
-  const fechaDom=el('rrhh-wknd-dom')?.value||'';
-  const targets=[fechaSab,fechaDom].filter(Boolean);
-  if(!targets.length)return base;
+  const activos=RRHH_WKND_DIAS.filter(d=>el(`rrhh-wknd-${d.key}`)?.value);
+  if(!activos.length)return base;
   const wkMap={};
-  for(const f of targets){const wk=await loadWkPago(f);if(wk&&Object.keys(wk).length)wkMap[f]=wk;}
+  for(const d of activos){
+    if(modo==='oficial'&&d.key==='vie')continue; // el viernes oficial siempre es la marcación real
+    const fecha=el(`rrhh-wknd-${d.key}`).value;
+    let wk=await loadWkPago(fecha,modo==='oficial'?'oficial':'previo');
+    if(modo==='oficial'&&(!wk||!Object.keys(wk).length))wk=await loadWkPago(fecha,'previo'); // respaldo si aún no confirmaron
+    if(wk&&Object.keys(wk).length)wkMap[fecha]=wk;
+  }
   const fechasConDatos=Object.keys(wkMap);
   if(!fechasConDatos.length)return base;
   const users=await getUsers();
@@ -5706,13 +5753,66 @@ async function buildRRHHDataConFinde(desde,hasta){
   base.descGlobal=+base.filas.reduce((a,f)=>a+f.descUsuario,0).toFixed(2);
   return base;
 }
+async function buildRRHHDataConFinde(desde,hasta){return buildRRHHDataMerged(desde,hasta,'previo');}
+async function buildRRHHDataOficial(desde,hasta){return buildRRHHDataMerged(desde,hasta,'oficial');}
+// Cruce previo↔oficial de los tres días (viernes/sábado/domingo). Solo devuelve DIFERENCIAS
+// (lo que coincide no se muestra). RRHH nunca ve horas de marcación real, solo si se cumplió
+// lo solicitado, y el motivo que el admin le haya puesto a esa diferencia.
+async function buildCruceDias(){
+  const motivosCache={};
+  const salida=[];
+  for(const d of RRHH_WKND_DIAS){
+    const fecha=el(`rrhh-wknd-${d.key}`)?.value||'';
+    if(!fecha)continue;
+    const previo=await loadWkPago(fecha,'previo');
+    if(!previo||!Object.keys(previo).length)continue;
+    let oficialSet,esComparableComoBinario=false;
+    const filas=[];
+    if(d.key==='vie'){
+      const real=await buildRRHHData(fecha,fecha);
+      const marcaronReal=new Set(real.filas.filter(f=>f.dias[0]&&f.dias[0].tipo!=='ausente').map(f=>f.user));
+      esComparableComoBinario=true;
+      const users=await getUsers();
+      const todos=new Set([...Object.keys(previo),...marcaronReal]);
+      todos.forEach(uid=>{
+        const esperado=!!previo[uid],marco=marcaronReal.has(uid);
+        if(esperado===marco)return; // coincide, no se muestra
+        const estado=esperado&&!marco?'❌ No se presentó':'➕ Marcó sin estar en el previo';
+        filas.push({uid,nombre:(users[uid]||{}).nombre||uid,estado});
+      });
+    }else{
+      const oficial=await loadWkPago(fecha,'oficial');
+      if(!oficial||!Object.keys(oficial).length){
+        salida.push({fecha,label:d.label,pendiente:true,filas:[]});
+        continue;
+      }
+      const users=await getUsers();
+      const todos=new Set([...Object.keys(previo),...Object.keys(oficial)]);
+      todos.forEach(uid=>{
+        const p=previo[uid],o=oficial[uid];
+        let estado=null;
+        if(p&&!o)estado='❌ No se presentó';
+        else if(!p&&o)estado='➕ Vino sin estar en el previo';
+        else if(p&&o&&(p.desde!==o.desde||p.hasta!==o.hasta))estado=`⚠️ Horario cambió (${p.desde}–${p.hasta} → ${o.desde}–${o.hasta})`;
+        if(!estado)return; // coincide, no se muestra
+        filas.push({uid,nombre:(users[uid]||{}).nombre||uid,estado});
+      });
+    }
+    if(!filas.length)continue;
+    if(!motivosCache[fecha])motivosCache[fecha]=await loadMotivos(fecha);
+    filas.forEach(fl=>{fl.motivo=motivosCache[fecha][fl.uid]||'';});
+    filas.sort((a,b)=>a.nombre.localeCompare(b.nombre));
+    salida.push({fecha,label:d.label,pendiente:false,filas});
+  }
+  return salida;
+}
 async function renderVistaRRHH(desde,hasta){
   const c=el('rrhh-tabla');if(!c)return;
   c.innerHTML='<div style="color:var(--mt);font-size:13px;padding:10px">Cargando...</div>';
   if(!desde){const lun=getLunesDeSemana(null);desde=isoD(lun);hasta=isoD(isoDateAdd(lun,6));}
   if(!hasta)hasta=desde;
   const data=await buildRRHHDataConFinde(desde,hasta);
-  if(!data.filas.length){c.innerHTML='<div style="color:var(--mt);font-size:13px;padding:10px 0">Sin marcaciones registradas para este período.</div>';return;}
+  if(!data.filas.length){c.innerHTML='<div style="color:var(--mt);font-size:13px;padding:10px 0">Sin marcaciones registradas para este período.</div>';renderCruceRRHH();return;}
   let html=`<div style="font-size:12px;color:var(--ac);font-weight:700;margin-bottom:8px">🧾 RRHH — Período: ${desde} al ${hasta}</div>`;
   html+=`<table style="border-collapse:collapse;width:100%;min-width:${data.diasVis.length*96+260}px;font-size:11px">`;
   html+=`<tr><th style="background:var(--sf2);color:var(--tx);padding:7px 9px;text-align:left;border:1px solid var(--bd);min-width:130px">Colaborador</th>`
@@ -5776,6 +5876,7 @@ async function renderVistaRRHH(desde,hasta){
   html+=`<td style="padding:7px 9px;border:1px solid var(--bd);background:rgba(0,201,167,.14);text-align:center;vertical-align:middle"><strong style="color:var(--ac);font-size:13px">$${data.totalGlobal.toFixed(2)}</strong></td></tr>`;
   html+='</table>';
   c.innerHTML=html;
+  renderCruceRRHH();
 }
 
 // Botón "🤖 Generar" en un hueco de almuerzo: crea la marca faltante con hora estimada (basada
@@ -5868,77 +5969,120 @@ el('btn-sem-ver')?.addEventListener('click',()=>{
 });
 
 // Vista RRHH — semana actual por defecto al iniciar (igual que la Vista Semanal)
+initRRHHWkndUI();
 (function(){
   const lun=getLunesDeSemana(null);
   const inp=el('rrhh-desde');if(inp)inp.value=isoD(lun);
   const inpH=el('rrhh-hasta');if(inpH)inpH.value=isoD(isoDateAdd(lun,6));
-  const inpSab=el('rrhh-wknd-sab');if(inpSab)inpSab.value=isoD(isoDateAdd(lun,5));
-  const inpDom=el('rrhh-wknd-dom');if(inpDom)inpDom.value=isoD(isoDateAdd(lun,6));
+  RRHH_WKND_DIAS.forEach(d=>{const inpD=el(`rrhh-wknd-${d.key}`);if(inpD)inpD.value=isoD(isoDateAdd(lun,d.offset));});
 })();
 el('btn-rrhh-actual')?.addEventListener('click',()=>{
   const lun=getLunesDeSemana(null);
   el('rrhh-desde').value=isoD(lun);
   el('rrhh-hasta').value=isoD(isoDateAdd(lun,6));
-  if(el('rrhh-wknd-sab'))el('rrhh-wknd-sab').value=isoD(isoDateAdd(lun,5));
-  if(el('rrhh-wknd-dom'))el('rrhh-wknd-dom').value=isoD(isoDateAdd(lun,6));
+  RRHH_WKND_DIAS.forEach(d=>{const inpD=el(`rrhh-wknd-${d.key}`);if(inpD)inpD.value=isoD(isoDateAdd(lun,d.offset));});
   renderVistaRRHH(el('rrhh-desde').value,el('rrhh-hasta').value);
 });
 
-// ── UI: lista de colaboradores para el pago manual de sábado/domingo ───────────────────────
-async function renderRRHHWkndList(){
-  const c=el('rrhh-wknd-list');if(!c)return;
-  const fechaSab=el('rrhh-wknd-sab')?.value||'',fechaDom=el('rrhh-wknd-dom')?.value||'';
-  if(!fechaSab&&!fechaDom){c.innerHTML='<div style="color:var(--mt);padding:8px 0">Indica al menos una fecha (sábado o domingo) y toca "Cargar colaboradores".</div>';return;}
-  c.innerHTML='<div style="color:var(--mt);padding:8px 0">Cargando...</div>';
+// ── UI: pago preliminar/oficial por día (viernes/sábado/domingo), en secciones plegables ───
+function initRRHHWkndUI(){
+  const cont=el('rrhh-wknd-days');if(!cont)return;
+  cont.innerHTML=RRHH_WKND_DIAS.map(d=>`
+    <details class="rrhh-wknd-day" style="border:1px solid var(--bd);border-radius:10px;margin-bottom:8px;overflow:hidden">
+      <summary style="padding:10px 12px;cursor:pointer;font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span>${d.emoji} ${d.label}</span>
+        <input type="date" class="fc" id="rrhh-wknd-${d.key}" style="margin-left:auto;width:auto;font-size:12px" onclick="event.stopPropagation()">
+      </summary>
+      <div style="padding:10px 12px;border-top:1px solid var(--bd)">
+        ${d.etapas.map((etapa,ei)=>`
+          <div style="${ei>0?'margin-top:14px;padding-top:12px;border-top:1px dashed var(--bd)':''}">
+            <div style="font-size:11px;font-weight:700;color:var(--mt);margin-bottom:6px">${ETAPA_LABEL[etapa]}</div>
+            <button class="btn bg bsm" data-wknd-cargar="${d.key}|${etapa}" style="width:auto;margin-bottom:10px">🔄 Cargar colaboradores</button>
+            <div id="rrhh-wknd-list-${d.key}-${etapa}" style="display:flex;flex-direction:column;gap:2px;font-size:11px"></div>
+            <button class="btn bp bsm" data-wknd-guardar="${d.key}|${etapa}" style="width:auto;margin-top:10px">💾 Guardar</button>
+            <div class="rrhh-wknd-status" id="rrhh-wknd-status-${d.key}-${etapa}" style="font-size:12px;color:var(--mt);margin-top:8px"></div>
+          </div>`).join('')}
+      </div>
+    </details>`).join('');
+  cont.addEventListener('click',e=>{
+    const bc=e.target.closest('[data-wknd-cargar]');if(bc){const[dk,et]=bc.dataset.wkndCargar.split('|');renderRRHHWkndDayList(dk,et);return;}
+    const bg=e.target.closest('[data-wknd-guardar]');if(bg){const[dk,et]=bg.dataset.wkndGuardar.split('|');saveRRHHWkndDay(dk,et);return;}
+  });
+}
+async function renderRRHHWkndDayList(dayKey,etapa){
+  const dayCfg=RRHH_WKND_DIAS.find(d=>d.key===dayKey);if(!dayCfg)return;
+  const listEl=el(`rrhh-wknd-list-${dayKey}-${etapa}`);if(!listEl)return;
+  const fecha=el(`rrhh-wknd-${dayKey}`)?.value||'';
+  if(!fecha){listEl.innerHTML='<div style="color:var(--mt);padding:6px 0">Elige una fecha arriba primero.</div>';return;}
+  listEl.innerHTML='<div style="color:var(--mt);padding:6px 0">Cargando...</div>';
   const users=await getUsers();
   const lista=Object.values(users).filter(u=>u&&u.user&&u.nombre&&!GERENTES.includes(u.user)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
-  const wkSab=fechaSab?await loadWkPago(fechaSab):{};
-  const wkDom=fechaDom?await loadWkPago(fechaDom):{};
-  let html=`<div style="display:grid;grid-template-columns:1fr ${fechaSab?'auto 78px 78px':''} ${fechaDom?'auto 78px 78px':''};gap:5px 8px;align-items:center;font-size:10px;color:var(--mt);font-weight:700;text-transform:uppercase;padding-bottom:5px;border-bottom:1px solid var(--bd);margin-bottom:4px">
-    <div>Colaborador</div>${fechaSab?'<div style="grid-column:span 3">Sábado</div>':''}${fechaDom?'<div style="grid-column:span 3">Domingo</div>':''}
-  </div>`;
-  lista.forEach(u=>{
-    const rs=wkSab[u.user]||null,rd=wkDom[u.user]||null;
-    html+=`<div class="rrhh-wknd-row" data-user="${u.user}" style="display:grid;grid-template-columns:1fr ${fechaSab?'auto 78px 78px':''} ${fechaDom?'auto 78px 78px':''};gap:5px 8px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)">
-      <div style="color:var(--tx)">${u.nombre}<div style="font-size:10px;color:var(--mt)">${u.user}</div></div>
-      ${fechaSab?`<input type="checkbox" class="wknd-sab-chk" ${rs?'checked':''} style="width:auto;accent-color:var(--ac)">
-      <input type="time" class="fc wknd-sab-desde" value="${rs?.desde||'08:00'}" style="font-size:11px;padding:4px 5px">
-      <input type="time" class="fc wknd-sab-hasta" value="${rs?.hasta||'17:00'}" style="font-size:11px;padding:4px 5px">`:''}
-      ${fechaDom?`<input type="checkbox" class="wknd-dom-chk" ${rd?'checked':''} style="width:auto;accent-color:var(--ac)">
-      <input type="time" class="fc wknd-dom-desde" value="${rd?.desde||'11:00'}" style="font-size:11px;padding:4px 5px">
-      <input type="time" class="fc wknd-dom-hasta" value="${rd?.hasta||'19:00'}" style="font-size:11px;padding:4px 5px">`:''}
+  let wk=await loadWkPago(fecha,etapa);
+  // Al confirmar el "oficial" por primera vez, arranca desde el previo como punto de partida.
+  if(etapa==='oficial'&&(!wk||!Object.keys(wk).length))wk=await loadWkPago(fecha,'previo');
+  listEl.innerHTML=lista.map(u=>{
+    const reg=wk[u.user]||null;
+    return`<div class="rrhh-wknd-row" data-user="${u.user}" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+      <label style="display:flex;align-items:center;gap:6px;flex:1 1 150px;min-width:0;cursor:pointer">
+        <input type="checkbox" class="wknd-chk" ${reg?'checked':''} style="width:auto;flex-shrink:0;accent-color:var(--ac)">
+        <span style="overflow:hidden"><span style="color:var(--tx)">${u.nombre}</span><br><span style="font-size:10px;color:var(--mt)">${u.user}</span></span>
+      </label>
+      <input type="time" class="fc wknd-desde" value="${reg?.desde||dayCfg.defDesde}" style="width:96px;font-size:12px;padding:5px 6px;flex:0 0 auto">
+      <span style="color:var(--mt)">–</span>
+      <input type="time" class="fc wknd-hasta" value="${reg?.hasta||dayCfg.defHasta}" style="width:96px;font-size:12px;padding:5px 6px;flex:0 0 auto">
     </div>`;
-  });
-  c.innerHTML=html;
+  }).join('');
 }
-el('btn-rrhh-wknd-cargar')?.addEventListener('click',renderRRHHWkndList);
-el('btn-rrhh-wknd-guardar')?.addEventListener('click',async()=>{
-  const fechaSab=el('rrhh-wknd-sab')?.value||'',fechaDom=el('rrhh-wknd-dom')?.value||'';
-  if(!fechaSab&&!fechaDom){toast('Indica al menos una fecha (sábado o domingo)','err');return;}
-  const st=el('rrhh-wknd-status');if(st)st.textContent='Guardando...';
+async function saveRRHHWkndDay(dayKey,etapa){
+  const dayCfg=RRHH_WKND_DIAS.find(d=>d.key===dayKey);if(!dayCfg)return;
+  const fecha=el(`rrhh-wknd-${dayKey}`)?.value||'';
+  const st=el(`rrhh-wknd-status-${dayKey}-${etapa}`);
+  if(!fecha){toast('Elige una fecha primero','err');return;}
+  if(st)st.textContent='Guardando...';
   try{
-    if(fechaSab){
-      const sabData={};
-      document.querySelectorAll('.rrhh-wknd-row').forEach(row=>{
-        const chk=row.querySelector('.wknd-sab-chk');if(!chk||!chk.checked)return;
-        sabData[row.dataset.user]={desde:row.querySelector('.wknd-sab-desde')?.value||'08:00',hasta:row.querySelector('.wknd-sab-hasta')?.value||'17:00'};
-      });
-      await saveWkPago(fechaSab,sabData);
-    }
-    if(fechaDom){
-      const domData={};
-      document.querySelectorAll('.rrhh-wknd-row').forEach(row=>{
-        const chk=row.querySelector('.wknd-dom-chk');if(!chk||!chk.checked)return;
-        domData[row.dataset.user]={desde:row.querySelector('.wknd-dom-desde')?.value||'11:00',hasta:row.querySelector('.wknd-dom-hasta')?.value||'19:00'};
-      });
-      await saveWkPago(fechaDom,domData);
-    }
+    const data={};
+    document.querySelectorAll(`#rrhh-wknd-list-${dayKey}-${etapa} .rrhh-wknd-row`).forEach(row=>{
+      const chk=row.querySelector('.wknd-chk');if(!chk||!chk.checked)return;
+      data[row.dataset.user]={desde:row.querySelector('.wknd-desde')?.value||dayCfg.defDesde,hasta:row.querySelector('.wknd-hasta')?.value||dayCfg.defHasta};
+    });
+    await saveWkPago(fecha,etapa,data);
     const v=el('rrhh-desde').value,h=el('rrhh-hasta').value;
     if(v&&h)await renderVistaRRHH(v,h);
-    if(st)st.textContent='Guardado ✓ — el sábado y domingo ya están incluidos en la tabla de arriba y se incluirán en el correo.';
-    toast('Fin de semana guardado ✓','ok',3000);
+    if(st)st.textContent=`Guardado ✓ — ${ETAPA_LABEL[etapa]} de ${dayCfg.label.toLowerCase()}.`;
+    toast(`${dayCfg.label} (${etapa}) guardado ✓`,'ok',2500);
   }catch(e){console.error('guardar wknd',e);if(st)st.textContent='';toast('❌ Error al guardar: '+(e.message||e),'err');}
-});
+}
+// ── UI: cruce en pantalla (solo diferencias) con motivo editable, antes de mandar el oficial ──
+async function renderCruceRRHH(){
+  const c=el('rrhh-cruce');if(!c)return;
+  const dias=await buildCruceDias();
+  if(!dias.length){c.innerHTML='';return;}
+  c.innerHTML=`<div style="border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-top:10px">
+    <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">🔍 Diferencias previo vs. oficial (se incluyen en el correo Oficial)</div>
+    ${dias.map(d=>{
+      if(d.pendiente)return`<div style="font-size:12px;color:var(--mt);margin-bottom:8px">${d.label}: aún no se confirma lo oficial.</div>`;
+      if(!d.filas.length)return`<div style="font-size:12px;color:var(--mt);margin-bottom:8px">${d.label}: sin diferencias ✓</div>`;
+      return`<div style="margin-bottom:10px">
+        <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:4px">${d.label}</div>
+        ${d.filas.map(f=>`<div class="rrhh-cruce-row" data-fecha="${d.fecha}" data-user="${f.uid}" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,80,80,.15)">
+          <span style="flex:1 1 130px;min-width:0;color:var(--tx)">${f.nombre}</span>
+          <span style="color:#ff5c5c;font-weight:700;font-size:11.5px;flex:1 1 160px">${f.estado}</span>
+          <input type="text" class="fc rrhh-cruce-motivo" placeholder="Motivo (opcional)" value="${(f.motivo||'').replace(/"/g,'&quot;')}" style="flex:1 1 140px;font-size:11.5px;padding:5px 6px">
+          <button class="btn bg bsm" data-cruce-guardar-motivo style="width:auto;padding:5px 10px;font-size:11px">💾</button>
+        </div>`).join('')}
+      </div>`;
+    }).join('')}
+  </div>`;
+  c.querySelectorAll('[data-cruce-guardar-motivo]').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      const row=btn.closest('.rrhh-cruce-row');
+      try{
+        await saveMotivo(row.dataset.fecha,row.dataset.user,row.querySelector('.rrhh-cruce-motivo').value.trim());
+        toast('Motivo guardado ✓','ok',2000);
+      }catch(e){console.error(e);toast('❌ Error al guardar motivo','err');}
+    });
+  });
+}
 el('btn-rrhh-ant')?.addEventListener('click',()=>{
   const desde=el('rrhh-desde').value||isoD(new Date());
   const hasta=el('rrhh-hasta').value||desde;
@@ -5963,7 +6107,7 @@ el('btn-rrhh-ver')?.addEventListener('click',()=>{
   if(h<v){toast('La fecha "Hasta" no puede ser anterior a "Desde"','err');return;}
   renderVistaRRHH(v,h);
 });
-el('btn-rrhh-enviar')?.addEventListener('click',async()=>{
+async function enviarRRHH(modo){
   const desde=el('rrhh-desde').value,hasta=el('rrhh-hasta').value;
   if(!desde||!hasta){toast('Selecciona fecha "Desde" y "Hasta"','err');return;}
   if(hasta<desde){toast('La fecha "Hasta" no puede ser anterior a "Desde"','err');return;}
@@ -5973,10 +6117,12 @@ el('btn-rrhh-enviar')?.addEventListener('click',async()=>{
   try{
     let cfg={};try{const s=await get(R(db,EMCFG));cfg=s.exists()?s.val():{};}catch(e){}
     if(!cfg.publicKey||!cfg.serviceId||!cfg.templateId){toast('Configura EmailJS primero (arriba, en Envío programado automático)','err');if(st)st.textContent='';return;}
-    await sendEmailReport('rrhh','custom',{...cfg,para,cc,testDesde:desde,testHasta:hasta});
+    await sendEmailReport('rrhh','custom',{...cfg,para,cc,testDesde:desde,testHasta:hasta,modoRRHH:modo});
   }catch(e){console.error(e);toast('Error al enviar: '+(e.message||e),'err');}
   finally{if(st)st.textContent='';}
-});
+}
+el('btn-rrhh-enviar-previo')?.addEventListener('click',()=>enviarRRHH('previo'));
+el('btn-rrhh-enviar-oficial')?.addEventListener('click',()=>enviarRRHH('oficial'));
 
 // MANUAL
 el('btn-man').addEventListener('click',async()=>{
