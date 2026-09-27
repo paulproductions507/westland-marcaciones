@@ -505,6 +505,9 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         <div id="mnext" class="mnext">Próxima: Entrada</div>
         <div id="lunch-countdown" style="display:none;margin-top:10px;padding:10px 14px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);text-align:center;font-size:14px;line-height:1.5"></div>
         <div style="margin-top:10px">
+          <button class="btn bg bsm" id="btn-ver-turno">📆 Ver mi turno</button>
+        </div>
+        <div style="display:none">
           <button class="btn bg bsm" id="btn-mark-facial">🙂 Marcar con rostro</button>
         </div>
       </div>
@@ -685,6 +688,9 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         <button id="btn-rpt-resumen" class="btn bg bsm">📊 Resumen</button>
         <button id="btn-rpt-detalle" class="btn bg bsm">📋 Detallado</button>
         <button id="btn-limpiar" class="btn bg bsm">🔄 Limpiar</button>
+        <button id="btn-atajo-sem" class="btn bg bsm">📆 Vista semanal</button>
+        <button id="btn-atajo-rrhh" class="btn bg bsm">🧾 Vista RRHH</button>
+        <button id="btn-atajo-email" class="btn bg bsm">✉ Correo automático</button>
         <div style="display:flex;align-items:center;gap:7px;margin-left:auto">
           <label style="font-size:12px;color:var(--mt)">Redondeo:</label>
           <select id="sel-redondeo" class="fc" style="width:auto;padding:5px 9px;font-size:13px">
@@ -955,7 +961,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="fer-list" style="margin-top:9px"></div>
           </div></div>
 
-          <div class="asec"><div class="ashdr" data-ac="ac-pro"><span>⚡ Generar / Borrar marcaciones</span><span class="ach">▾</span></div>
+          <div class="asec"><div class="ashdr" data-ac="ac-pro"><span>🎲 Marcación aleatoria</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-pro">
             <div style="background:var(--sf);border-radius:var(--rs);padding:13px;border:1px solid var(--bd);margin-bottom:11px">
               <div style="font-size:13px;font-weight:700;color:var(--ac);margin-bottom:9px">Generar</div>
@@ -1018,6 +1024,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               <div style="font-size:11px;color:var(--mt);margin-top:8px">Si un colaborador ya tiene esa marcación ese día, se omite (nunca se duplica).</div>
               <button class="btn bp bsm" id="btn-genu" style="width:auto;margin-top:8px">▶ Generar esta marcación para los seleccionados</button>
             </div>
+          </div></div>
+
+          <div class="asec"><div class="ashdr" data-ac="ac-bor"><span>🗑 Borrar marcación</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-bor">
             <div style="background:var(--sf);border-radius:var(--rs);padding:13px;border:1px solid rgba(255,71,87,.2)">
               <div style="font-size:13px;font-weight:700;color:var(--dn);margin-bottom:9px">Borrar</div>
               <div class="fg2">
@@ -1035,18 +1045,6 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               </div>
               <button class="btn bd bsm" id="btn-bor" style="margin-top:8px">🗑 Borrar seleccionados</button>
             </div>
-          </div></div>
-
-          <div class="asec"><div class="ashdr" data-ac="ac-extrap"><span>⏱ Hora extra pendiente</span><span class="ach">▾</span></div>
-          <div class="asbdy" id="ac-extrap">
-            <div style="font-size:12px;color:var(--mt);margin-bottom:8px">Para cuando un colaborador se quedó trabajando de más y esa hora no quedó marcada en el sistema. Este crédito NO crea una marcación falsa: se suma automáticamente a la hora de su PRÓXIMA "Salida Final" real (la que él mismo marque), y queda anotado en la bitácora con el motivo.</div>
-            <div class="fg2">
-              <div class="fg"><label>Usuario</label><select class="fc" id="extrap-user"></select></div>
-              <div class="fg"><label>Minutos extra</label><input type="number" class="fc" id="extrap-min" placeholder="Ej: 150"></div>
-            </div>
-            <div class="fg"><label>Motivo (obligatorio)</label><input class="fc" id="extrap-motivo" placeholder="Ej: se quedó hasta las 7:30pm el 5/sep, no marcó salida"></div>
-            <button class="btn bp bsm" id="btn-extrap-asignar" style="width:auto;margin-top:4px">➕ Asignar crédito</button>
-            <div id="extrap-list" style="margin-top:12px"></div>
           </div></div>
 
           <div class="asec"><div class="ashdr" data-ac="ac-ed"><span>🔍 Editar marcaciones</span><span class="ach">▾</span></div>
@@ -1091,6 +1089,43 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             </div>
           </div></div>
 
+
+          <div class="asec"><div class="ashdr" data-ac="ac-man"><span>✍ Marcación manual</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-man">
+            <div class="fg2">
+              <div class="fg"><label>Fecha y hora</label><input type="datetime-local" class="fc" id="man-dt" step="1"></div>
+              <div class="fg"><label>Segundos</label><input type="number" class="fc" id="man-seg" min="0" max="59" placeholder="0-59" value="0"></div>
+            </div>
+            <div class="fg2" style="margin-top:8px">
+              <div class="fg"><label>Usuario</label><select class="fc" id="man-user"></select></div>
+              <div class="fg"><label>Tipo (opcional)</label>
+                <select class="fc" id="man-tipo">
+                  <option value="">Automático (según orden del día)</option>
+                  <option value="Entrada">Entrada</option>
+                  <option value="Salida Alm.">Salida Alm.</option>
+                  <option value="Regreso Alm.">Regreso Alm.</option>
+                  <option value="Salida Final">Salida Final</option>
+                </select>
+              </div>
+            </div>
+            <div style="font-size:11px;color:var(--mt);margin-top:6px">💡 El campo de hora ya admite segundos directamente (HH:MM:SS). El campo "Segundos" es opcional, por si tu navegador no muestra ese selector.</div>
+            <button class="btn bp bsm" id="btn-man" style="width:auto;margin-top:6px">✅ Registrar</button>
+          </div></div>
+
+
+          <div class="asec"><div class="ashdr" data-ac="ac-extrap"><span>⏱ Hora extra pendiente</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-extrap">
+            <div style="font-size:12px;color:var(--mt);margin-bottom:8px">Para cuando un colaborador se quedó trabajando de más y esa hora no quedó marcada en el sistema. Este crédito NO crea una marcación falsa: se suma automáticamente a la hora de su PRÓXIMA "Salida Final" real (la que él mismo marque), y queda anotado en la bitácora con el motivo.</div>
+            <div class="fg2">
+              <div class="fg"><label>Usuario</label><select class="fc" id="extrap-user"></select></div>
+              <div class="fg"><label>Minutos extra</label><input type="number" class="fc" id="extrap-min" placeholder="Ej: 150"></div>
+            </div>
+            <div class="fg"><label>Motivo (obligatorio)</label><input class="fc" id="extrap-motivo" placeholder="Ej: se quedó hasta las 7:30pm el 5/sep, no marcó salida"></div>
+            <button class="btn bp bsm" id="btn-extrap-asignar" style="width:auto;margin-top:4px">➕ Asignar crédito</button>
+            <div id="extrap-list" style="margin-top:12px"></div>
+          </div></div>
+
+
           <div class="asec"><div class="ashdr" data-ac="ac-sem"><span>📆 Vista semanal de marcaciones</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-sem">
             <div style="font-size:12px;color:var(--mt);margin-bottom:9px">Un renglón por usuario · columnas por día · días sin marcaciones = Ausente. Elige cualquier rango: una semana completa, 2 días, 4 días, etc.</div>
@@ -1123,6 +1158,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               <div id="sem-distribuir-status" style="font-size:12px;color:var(--mt);margin-top:8px"></div>
             </div>
           </div></div>
+
 
           <div class="asec"><div class="ashdr" data-ac="ac-rrhh"><span>🧾 Vista RRHH</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-rrhh">
@@ -1158,28 +1194,6 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               <button class="btn bg bsm" id="btn-rrhh-enviar-oficial" style="width:auto">📬 Enviar correo OFICIAL</button>
               <div id="rrhh-enviar-status" style="font-size:12px;color:var(--mt);margin-top:8px"></div>
             </div>
-          </div></div>
-
-          <div class="asec"><div class="ashdr" data-ac="ac-man"><span>✍ Marcación manual</span><span class="ach">▾</span></div>
-          <div class="asbdy" id="ac-man">
-            <div class="fg2">
-              <div class="fg"><label>Fecha y hora</label><input type="datetime-local" class="fc" id="man-dt" step="1"></div>
-              <div class="fg"><label>Segundos</label><input type="number" class="fc" id="man-seg" min="0" max="59" placeholder="0-59" value="0"></div>
-            </div>
-            <div class="fg2" style="margin-top:8px">
-              <div class="fg"><label>Usuario</label><select class="fc" id="man-user"></select></div>
-              <div class="fg"><label>Tipo (opcional)</label>
-                <select class="fc" id="man-tipo">
-                  <option value="">Automático (según orden del día)</option>
-                  <option value="Entrada">Entrada</option>
-                  <option value="Salida Alm.">Salida Alm.</option>
-                  <option value="Regreso Alm.">Regreso Alm.</option>
-                  <option value="Salida Final">Salida Final</option>
-                </select>
-              </div>
-            </div>
-            <div style="font-size:11px;color:var(--mt);margin-top:6px">💡 El campo de hora ya admite segundos directamente (HH:MM:SS). El campo "Segundos" es opcional, por si tu navegador no muestra ese selector.</div>
-            <button class="btn bp bsm" id="btn-man" style="width:auto;margin-top:6px">✅ Registrar</button>
           </div></div>
 
           <div class="asec"><div class="ashdr" data-ac="ac-fadm"><span>🖼 Fotos de perfil</span><span class="ach">▾</span></div>
@@ -1998,6 +2012,18 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
     <div class="mfoot">
       <button class="btn bg" id="foto-cancel">Cancelar</button>
       <button class="btn bp" id="btn-save-foto" style="width:auto">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MI TURNO (colaborador) -->
+<div id="m-miturno" class="mbd">
+  <div class="mbox">
+    <h3>📆 Mi turno</h3>
+    <p style="font-size:12px;color:var(--mt);margin:-6px 0 10px 0">Los días y horarios que tienes asignados esta semana.</p>
+    <div id="miturno-body"><div style="color:var(--mt);font-size:12px">Cargando...</div></div>
+    <div class="mfoot">
+      <button class="btn bg" id="miturno-cerrar">Cerrar</button>
     </div>
   </div>
 </div>
@@ -4436,6 +4462,25 @@ document.querySelectorAll('.ashdr').forEach(h=>{
     b.classList.toggle('open',!open);h.classList.toggle('open',!open);
   });
 });
+// Atajos "Vista semanal / Vista RRHH / Correo automático" (junto a Resumen/Detallado/Limpiar):
+// abren el Panel Administrativo, expanden esa sección puntual (cerrando otras del mismo grupo,
+// igual que un toque manual) y la llevan a la vista.
+function abrirSeccionAdmin(acId){
+  const panel=el('admin-body'),ch=el('admin-ch');
+  if(panel)panel.style.display='block';
+  if(ch)ch.textContent='▴';
+  const hdr=document.querySelector(`.ashdr[data-ac="${acId}"]`),body=el(acId);
+  if(!hdr||!body)return;
+  const parentPanel=hdr.closest('.apbdy,.asbdy');
+  if(parentPanel){
+    parentPanel.querySelectorAll('.asbdy.open').forEach(other=>{if(other.id!==acId){other.classList.remove('open');other.previousElementSibling?.classList.remove('open');}});
+  }
+  body.classList.add('open');hdr.classList.add('open');
+  setTimeout(()=>hdr.scrollIntoView({behavior:'smooth',block:'start'}),80);
+}
+el('btn-atajo-sem')?.addEventListener('click',()=>abrirSeccionAdmin('ac-sem'));
+el('btn-atajo-rrhh')?.addEventListener('click',()=>abrirSeccionAdmin('ac-rrhh'));
+el('btn-atajo-email')?.addEventListener('click',()=>abrirSeccionAdmin('ac-em'));
 
 // Sidebar de Control Logístico: navegación tipo flyout, sectorizada (una sola sección visible)
 function logShowSection(sectionId,acId){
@@ -5020,6 +5065,47 @@ function closeFacialModal(){
   const prev=document.getElementById('facial-profile-ref');if(prev)prev.remove();
 }
 el('btn-mark-facial').addEventListener('click',openFacialModal);
+// ── MODAL "Mi turno" (colaborador) — muestra los 7 días con el turno/horario que le corresponde,
+// cruzando TURNOS (nombre del turno asignado ese día) con HORCOL (horario ya resuelto) y, para
+// domingo, el turno por defecto si no tiene uno propio asignado. Hoy queda resaltado.
+async function renderMiTurno(){
+  const body=el('miturno-body');if(!body||!CU)return;
+  body.innerHTML='<div style="color:var(--mt);font-size:12px">Cargando...</div>';
+  try{
+    const[hs,ds,cs,ts,dd]=await Promise.all([
+      get(R(db,HOR)),get(R(db,HDIAS)),get(R(db,HORCOL)),get(R(db,TURNOS)),get(R(db,`${META}/turno_domingo_default`))
+    ]);
+    const hor=hs.exists()?hs.val():{inicio:'09:00',fin:'18:00'};
+    const hdias=ds.exists()?ds.val():{};
+    const horcolAll=cs.exists()?cs.val():{};
+    const turnos=ts.exists()?ts.val():{};
+    const domDefault=dd.exists()?dd.val():null;
+    const miHorcol=horcolAll[CU]||{};
+    const nombreTurnoDia={};
+    Object.values(turnos).forEach(t=>{
+      const dias=migrarTurnoADias(t);
+      Object.keys(dias).forEach(dia=>{if(dias[dia]&&dias[dia][CU])nombreTurnoDia[dia]=t.nombre;});
+    });
+    const filas=DIA_KEYS.map(dia=>{
+      const ch=miHorcol[dia];
+      let inicio,fin,turnoNombre=nombreTurnoDia[dia]||null;
+      if(ch&&ch.inicio){inicio=ch.inicio;fin=ch.fin;}
+      else if(dia==='domingo'&&domDefault&&turnos[domDefault]){inicio=turnos[domDefault].inicio;fin=turnos[domDefault].fin;turnoNombre=turnoNombre||(turnos[domDefault].nombre+' (por defecto)');}
+      else{const b=hdias[dia]||hor;inicio=b.inicio||hor.inicio||'09:00';fin=b.fin||hor.fin||'18:00';}
+      return{dia,label:DIA_NOMBRE[dia],turno:turnoNombre,inicio,fin};
+    });
+    const hoyIdx=(new Date().getDay()+6)%7; // lunes=0 ... domingo=6
+    body.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${filas.map((f,i)=>`<div style="background:${i===hoyIdx?'rgba(0,201,167,.12)':'var(--bg)'};border:1px solid ${i===hoyIdx?'var(--ac)':'var(--bd)'};border-radius:var(--rs);padding:9px 10px">
+        <div style="font-size:11px;font-weight:700;color:${i===hoyIdx?'var(--ac)':'var(--mt)'};text-transform:uppercase;letter-spacing:.5px">${f.label}${i===hoyIdx?' · hoy':''}</div>
+        <div style="font-size:14px;font-weight:800;color:var(--tx);margin-top:3px">${f.inicio} – ${f.fin}</div>
+        <div style="font-size:11px;color:var(--mt);margin-top:2px">${f.turno||'Horario general'}</div>
+      </div>`).join('')}
+    </div>`;
+  }catch(e){console.error('renderMiTurno',e);body.innerHTML='<div style="color:var(--dn);font-size:12px">Error al cargar tu turno.</div>';}
+}
+el('btn-ver-turno')?.addEventListener('click',()=>{el('m-miturno').classList.add('open');renderMiTurno();});
+el('miturno-cerrar')?.addEventListener('click',()=>el('m-miturno').classList.remove('open'));
 el('facial-cancel').addEventListener('click',closeFacialModal);
 
 el('facial-enroll-btn').addEventListener('click',async()=>{
