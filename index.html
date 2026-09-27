@@ -988,6 +988,36 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               <div style="font-size:11px;color:var(--mt);margin-top:8px;line-height:1.5">Cada usuario se genera con <strong>su propio turno</strong>. Entrada: hasta 10 min antes o 4 min después · Almuerzo: 0–15 min después de su hora · Salida: ±10 min, sin bajar de las horas de su turno. Los días donde ya tenga marcaciones se omiten.</div>
               <button class="btn bp bsm" id="btn-gen" style="width:auto;margin-top:8px">▶ Generar seleccionados</button>
             </div>
+            <div style="background:var(--sf);border-radius:var(--rs);padding:13px;border:1px solid var(--bd);margin-bottom:11px">
+              <div style="font-size:13px;font-weight:700;color:var(--ac);margin-bottom:4px">Generar UNA marcación puntual (hora manual)</div>
+              <div style="font-size:11.5px;color:var(--mt);margin-bottom:9px">Para cuando necesitas registrar un solo tipo de marcación (ej. solo la Entrada) a varios colaboradores de una sola pasada, con una hora que tú decides — no la del turno configurado. Pensado para casos puntuales como adelantar la entrada del domingo. Cada colaborador queda con una hora ligeramente distinta (hasta 10 min antes o 5 min después de la que indiques), nunca todos a la hora exacta.</div>
+              <div class="fg2">
+                <div class="fg"><label>Fecha</label><input type="date" class="fc" id="genu-fecha"></div>
+                <div class="fg"><label>Tipo de marcación</label>
+                  <select class="fc" id="genu-tipo">
+                    <option value="Entrada">Entrada</option>
+                    <option value="Salida Alm.">Salida de almuerzo</option>
+                    <option value="Regreso Alm.">Regreso de almuerzo</option>
+                    <option value="Salida Final">Salida final</option>
+                  </select>
+                </div>
+              </div>
+              <div class="fg"><label>Hora objetivo</label><input type="time" class="fc" id="genu-hora"></div>
+              <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:9px">
+                <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">👥 Colaboradores</div>
+                <div id="genu-user-checks" style="display:flex;flex-direction:column;gap:9px;max-height:220px;overflow-y:auto"></div>
+                <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;align-items:center">
+                  <button class="btn bg bsm" id="btn-genu-todos" style="font-size:11px;padding:4px 10px;width:auto">✅ Todos</button>
+                  <button class="btn bg bsm" id="btn-genu-ninguno" style="font-size:11px;padding:4px 10px;width:auto;color:var(--mt)">☐ Ninguno</button>
+                  <span id="genu-sel-count" style="margin-left:auto;font-size:11px;color:var(--mt)"></span>
+                </div>
+              </div>
+              <div class="fg" style="margin-top:9px"><label>Motivo (obligatorio)</label>
+                <input class="fc" id="genu-motivo" placeholder="Ej: Domingo — se adelanta la entrada antes de las 11am">
+              </div>
+              <div style="font-size:11px;color:var(--mt);margin-top:8px">Si un colaborador ya tiene esa marcación ese día, se omite (nunca se duplica).</div>
+              <button class="btn bp bsm" id="btn-genu" style="width:auto;margin-top:8px">▶ Generar esta marcación para los seleccionados</button>
+            </div>
             <div style="background:var(--sf);border-radius:var(--rs);padding:13px;border:1px solid rgba(255,71,87,.2)">
               <div style="font-size:13px;font-weight:700;color:var(--dn);margin-bottom:9px">Borrar</div>
               <div class="fg2">
@@ -3515,7 +3545,7 @@ function fillSelects(obj){
     s.innerHTML=withAll.includes(id)?'<option value="__ALL__">— Todos —</option>':'';
     users.filter(u=>!GERENTES.includes(u.user)).forEach(u=>s.innerHTML+=`<option value="${u.user}">${u.nombre} (${u.user})</option>`);
   });
-  try{renderEdUserChecks(obj);renderGenUserChecks(obj);renderBorUserChecks(obj);}catch(e){console.warn('checks usuarios',e);}
+  try{renderEdUserChecks(obj);renderGenUserChecks(obj);renderBorUserChecks(obj);renderGenuUserChecks(obj);}catch(e){console.warn('checks usuarios',e);}
 }
 
 // HISTORIAL HOY
@@ -5250,6 +5280,64 @@ el('btn-gen').addEventListener('click',async()=>{
     toast(`✅ ${r.total} marcaciones generadas`+(extra.length?' · '+extra.join(' · '):''),r.total?'ok':'err',5000);
     el('gen-fi').value='';el('gen-ff').value='';el('gen-motivo-preset').value='';el('gen-motivo').value='';el('gen-motivo').style.display='none';el('gen-motivo-buscar').value='';renderHistToday();
   }catch(e){console.error('genMarcs',e);toast('❌ Error al generar: '+(e.message||e),'err',5000);}
+  finally{btn.disabled=false;}
+});
+// GENERAR UNA MARCACIÓN PUNTUAL — un solo tipo (Entrada, Salida Alm., Regreso Alm. o Salida
+// Final), a varios colaboradores en una sola pasada, anclada a una hora que el admin decide a
+// mano (no al turno configurado). Pensado para casos puntuales como adelantar la Entrada de un
+// domingo con horario especial. Cada colaborador recibe una hora ligeramente distinta (hasta 10
+// min antes / ~5 min después de la hora indicada, mismo estilo de variación que el resto de la
+// app), nunca la misma hora exacta para todos. Si el colaborador ya tiene esa marca ese día, se
+// omite (nunca se duplica).
+function genuSelUsers(){return[...document.querySelectorAll('#genu-user-checks input[type=checkbox]:checked')].map(c=>c.dataset.user);}
+function updGenuCount(){
+  const all=document.querySelectorAll('#genu-user-checks input[type=checkbox]').length;
+  const st=el('genu-sel-count');if(st)st.textContent=genuSelUsers().length+' de '+all+' seleccionados';
+}
+function renderGenuUserChecks(obj){
+  const c=el('genu-user-checks');if(!c)return;
+  const prev=new Set(genuSelUsers());
+  const lista=Object.values(obj||{}).filter(u=>!GERENTES.includes(u.user)).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+  c.innerHTML=lista.map(u=>`<label style="display:flex;align-items:center;gap:9px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--tx);font-size:13px;margin:0"><input type="checkbox" data-user="${escHtml(u.user)}" ${prev.has(u.user)?'checked':''} style="width:auto;accent-color:var(--ac);flex-shrink:0"><span>${escHtml(u.nombre||u.user)} <span style="color:var(--mt);font-size:11px">(${escHtml(u.user)})</span></span></label>`).join('');
+  updGenuCount();
+}
+el('genu-user-checks')?.addEventListener('change',updGenuCount);
+el('btn-genu-todos')?.addEventListener('click',()=>{document.querySelectorAll('#genu-user-checks input[type=checkbox]').forEach(c=>c.checked=true);updGenuCount();});
+el('btn-genu-ninguno')?.addEventListener('click',()=>{document.querySelectorAll('#genu-user-checks input[type=checkbox]').forEach(c=>c.checked=false);updGenuCount();});
+async function genMarcUnica(usrs,fecha,tipo,horaObjetivo,motivo){
+  const[hh,mm]=horaObjetivo.split(':').map(Number);
+  const baseS=hh*3600+mm*60;
+  const midnight=new Date(fecha+'T00:00:00').getTime();
+  const exRaw=await getHist(fecha);const ex=Array.isArray(exRaw)?exRaw:Object.values(exRaw||{});
+  const nuevas=[];let omitidos=0;
+  for(const u of usrs){
+    if(ex.some(m=>m.user===u&&m.tipo===tipo)){omitidos++;continue;}
+    const offS=Math.round(_rMix(-600,299)); // hasta 10 min antes, hasta ~5 min después — nunca todos igual
+    const d=new Date(midnight+(baseS+offS)*1000+_rI(0,999));
+    nuevas.push({tipo,hora:fmtT(d),stamp:d.toISOString(),user:u,generadoPorSistema:true,generadoPor:CU,generadoTs:new Date().toISOString(),nota:motivo});
+  }
+  if(nuevas.length)await saveHist(fecha,[...ex,...nuevas]);
+  return{total:nuevas.length,omitidos};
+}
+el('btn-genu').addEventListener('click',async()=>{
+  const users=genuSelUsers(),fecha=el('genu-fecha').value,tipo=el('genu-tipo').value,hora=el('genu-hora').value;
+  const motivo=(el('genu-motivo').value||'').trim();
+  if(!users.length){toast('Selecciona al menos un colaborador','err');return;}
+  if(!fecha){toast('Selecciona la fecha','err');return;}
+  if(!hora){toast('Indica la hora objetivo','err');return;}
+  if(!motivo){toast('El motivo es obligatorio (queda en la bitácora)','err');return;}
+  const allU=await getUsers();
+  const nombres=users.map(u=>(allU[u]&&allU[u].nombre)||u);
+  const lista=nombres.length>6?nombres.slice(0,6).join(', ')+' y '+(nombres.length-6)+' más':nombres.join(', ');
+  if(!confirm(`¿Generar "${tipo}" el ${fecha} cerca de las ${hora} para ${users.length} colaborador${users.length!==1?'es':''}?\n\n${lista}\n\nCada uno quedará con una hora ligeramente distinta (hasta 10 min antes / 5 min después). Motivo: ${motivo}`))return;
+  const btn=el('btn-genu');btn.disabled=true;toast('Generando...');
+  try{
+    const r=await genMarcUnica(users,fecha,tipo,hora,motivo);
+    await addLog(`Marcación puntual generada por ${CU}: ${tipo} — ${fecha} ~${hora} para ${users.join(', ')} — motivo: ${motivo}${r.omitidos?` — ${r.omitidos} omitidos (ya tenían esa marca)`:''}`);
+    toast(`✅ ${r.total} marcaciones generadas`+(r.omitidos?` · ${r.omitidos} omitido${r.omitidos!==1?'s':''} (ya la tenían)`:''),r.total?'ok':'err',5000);
+    el('genu-motivo').value='';
+    renderHistToday();
+  }catch(e){console.error('genMarcUnica',e);toast('❌ Error al generar: '+(e.message||e),'err',5000);}
   finally{btn.disabled=false;}
 });
 // Números al azar. rTri concentra un poco hacia el centro del rango (más natural que uniforme).
