@@ -849,6 +849,19 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
           <div class="asbdy" id="ac-turnos">
             <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Crea los turnos que necesites (nombre + horario). Luego, en cada turno, elige el día de la semana y marca qué colaboradores tienen ESE turno ESE día — puedes tener turnos distintos cada día (ej. martes: 4 en Turno 1 y 4 en Turno 2; miércoles: solo Turno 1). Un colaborador solo puede tener un turno por día; si lo asignas aquí, se quita automáticamente de cualquier otro turno que tuviera ese mismo día. El domingo se configura igual, por su propia pestaña.</div>
             <div class="fg" style="margin-bottom:14px"><label>Turno por defecto para Domingos (respaldo, solo si un colaborador no tiene domingo asignado en ningún turno)</label><select class="fc" id="turno-domingo-default"></select></div>
+            <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:14px">
+              <div style="font-weight:700;font-size:13px;margin-bottom:6px">🏖 Días libres</div>
+              <div style="font-size:11.5px;color:var(--mt);margin-bottom:9px">Para cuando le das a alguien el día libre en una semana puntual (aunque ese día le toque turno). Se refleja en su "Ver mi turno".</div>
+              <div class="fg"><label>Fecha</label><input type="date" class="fc" id="libre-fecha"></div>
+              <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:9px">
+                <div id="libre-user-checks" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto"><div style="color:var(--mt);font-size:12px">Elige una fecha y toca "Cargar".</div></div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px">
+                <button class="btn bg bsm" id="btn-libre-cargar" style="width:auto">🔄 Cargar</button>
+                <button class="btn bp bsm" id="btn-libre-guardar" style="width:auto">💾 Guardar días libres</button>
+              </div>
+              <div id="libre-status" style="font-size:12px;color:var(--mt);margin-top:8px"></div>
+            </div>
             <div id="turnos-list"></div>
             <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:10px">
               <div style="font-weight:700;font-size:13px;margin-bottom:8px">+ Nuevo turno</div>
@@ -3172,6 +3185,9 @@ async function loadHorarioColabAdmin(){
 // meta_v1/turno_domingo_default (se aplica a HDIAS/domingo, prioridad 2), salvo que el
 // colaborador tenga su propio domingo configurado en HORCOL (prioridad 1, gana igual).
 const TURNOS='turnos_v1';
+const DIASLIBRES=`${META}/dias_libres`; // Firebase: meta_v1/dias_libres/{fecha}/{user}=true — día libre puntual de esa semana, tiene prioridad sobre cualquier turno asignado ese día.
+async function loadDiaLibre(fecha){if(!fecha)return{};try{const s=await get(R(db,`${DIASLIBRES}/${fecha}`));return s.exists()?s.val():{};}catch(e){console.error('loadDiaLibre',e);return{};}}
+async function saveDiaLibre(fecha,data){try{await set(R(db,`${DIASLIBRES}/${fecha}`),data);}catch(e){console.error('saveDiaLibre',e);throw e;}}
 // El descuento por horas faltantes solo se muestra desde esta fecha en adelante (lunes de la
 // semana en que se activó la función) — nunca retroactivo a semanas anteriores ya cerradas.
 const DESCUENTO_DESDE='2026-09-07';
@@ -3374,6 +3390,32 @@ el('turno-domingo-default')?.addEventListener('change',async function(){
     }
     toast('Turno de Domingo (por defecto) actualizado ✓','ok');
   }catch(e){toast('⛔ Error: '+(e.message||e),'err',6000);}
+});
+// ── Días libres (admin) — día suelto sin turno para uno o varios colaboradores, en una fecha
+// puntual. Tiene prioridad sobre cualquier turno asignado ese día al mostrarle "Ver mi turno".
+async function renderLibreUserChecks(){
+  const c=el('libre-user-checks');if(!c)return;
+  const fecha=el('libre-fecha')?.value;
+  if(!fecha){c.innerHTML='<div style="color:var(--mt);font-size:12px">Elige una fecha y toca "Cargar".</div>';return;}
+  c.innerHTML='<div style="color:var(--mt);font-size:12px">Cargando...</div>';
+  const users=await getUsers();
+  const lista=Object.values(users).filter(u=>u&&u.user&&u.nombre&&!GERENTES.includes(u.user)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const libres=await loadDiaLibre(fecha);
+  c.innerHTML=lista.map(u=>`<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;color:var(--tx)"><input type="checkbox" class="libre-chk" data-user="${u.user}" ${libres[u.user]?'checked':''} style="width:auto;accent-color:var(--ac);flex-shrink:0"><span>${u.nombre} <span style="color:var(--mt);font-size:10.5px">(${u.user})</span></span></label>`).join('')||'<div style="color:var(--mt);font-size:12px">Sin colaboradores.</div>';
+}
+el('btn-libre-cargar')?.addEventListener('click',renderLibreUserChecks);
+el('btn-libre-guardar')?.addEventListener('click',async()=>{
+  const fecha=el('libre-fecha')?.value;
+  if(!fecha){toast('Elige una fecha primero','err');return;}
+  const st=el('libre-status');if(st)st.textContent='Guardando...';
+  try{
+    const data={};
+    document.querySelectorAll('#libre-user-checks .libre-chk').forEach(c=>{if(c.checked)data[c.dataset.user]=true;});
+    await saveDiaLibre(fecha,data);
+    await addLog(`Días libres actualizados por ${CU}: ${fecha} — ${Object.keys(data).join(', ')||'(nadie)'}`);
+    if(st)st.textContent='Guardado ✓';
+    toast('Días libres guardados ✓','ok');
+  }catch(e){console.error('guardar dia libre',e);if(st)st.textContent='';toast('❌ Error al guardar: '+(e.message||e),'err');}
 });
 
 // getHorarioBaseDe ahora también consulta HORCOL (ver función arriba)
@@ -5072,8 +5114,11 @@ async function renderMiTurno(){
   const body=el('miturno-body');if(!body||!CU)return;
   body.innerHTML='<div style="color:var(--mt);font-size:12px">Cargando...</div>';
   try{
-    const ts=await get(R(db,TURNOS));
+    const[ts,cs]=await Promise.all([get(R(db,TURNOS)),get(R(db,HORCOL))]);
     const turnos=ts.exists()?ts.val():{};
+    const horcolAll=cs.exists()?cs.val():{};
+    const miHorcol=horcolAll[CU]||{};
+    const usaTurnos=Object.keys(turnos).length>0; // si nadie ha creado turnos todavía, no aplica la regla estricta — se sigue mostrando el horario general de siempre
     const nombreTurnoDia={};
     Object.values(turnos).forEach(t=>{
       const dias=migrarTurnoADias(t);
@@ -5082,18 +5127,26 @@ async function renderMiTurno(){
     const lun=getLunesDeSemana(null);
     const filas=await Promise.all(DIA_KEYS.map(async(dia,i)=>{
       const fechaISO=isoD(isoDateAdd(lun,i));
+      const libres=await loadDiaLibre(fechaISO);
+      if(libres[CU])return{dia,label:DIA_NOMBRE[dia],estado:'libre'};
+      const asignado=!usaTurnos||!!nombreTurnoDia[dia]||!!(miHorcol[dia]&&miHorcol[dia].inicio);
+      if(!asignado)return{dia,label:DIA_NOMBRE[dia],estado:'sinturno'};
       const b=await getHorarioBaseDe(CU,fechaISO); // {inicio,fin,almInicio,duracionAlm} — misma función que usa el resto de la app
-      const almFin=addMinutos(b.almInicio,b.duracionAlm);
-      return{dia,label:DIA_NOMBRE[dia],turno:nombreTurnoDia[dia]||null,inicio:b.inicio,fin:b.fin,almInicio:b.almInicio,almFin,duracionAlm:b.duracionAlm};
+      return{dia,label:DIA_NOMBRE[dia],estado:'ok',turno:nombreTurnoDia[dia]||null,inicio:b.inicio,fin:b.fin,duracionAlm:b.duracionAlm};
     }));
     const hoyIdx=(new Date().getDay()+6)%7; // lunes=0 ... domingo=6
     body.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      ${filas.map((f,i)=>`<div style="background:${i===hoyIdx?'rgba(0,201,167,.12)':'var(--bg)'};border:1px solid ${i===hoyIdx?'var(--ac)':'var(--bd)'};border-radius:var(--rs);padding:9px 10px">
-        <div style="font-size:11px;font-weight:700;color:${i===hoyIdx?'var(--ac)':'var(--mt)'};text-transform:uppercase;letter-spacing:.5px">${f.label}${i===hoyIdx?' · hoy':''}</div>
-        <div style="font-size:14px;font-weight:800;color:var(--tx);margin-top:3px">${f.inicio} – ${f.fin}</div>
-        <div style="font-size:11px;color:var(--mt);margin-top:2px">${f.turno||'Horario general'}</div>
-        <div style="font-size:11px;color:var(--mt);margin-top:4px;padding-top:4px;border-top:1px dashed var(--bd)">🍽 Almuerzo: ${f.duracionAlm} min</div>
-      </div>`).join('')}
+      ${filas.map((f,i)=>{
+        const hoy=i===hoyIdx;
+        const wrapOpen=`<div style="background:${hoy?'rgba(0,201,167,.12)':'var(--bg)'};border:1px solid ${hoy?'var(--ac)':'var(--bd)'};border-radius:var(--rs);padding:9px 10px">
+          <div style="font-size:11px;font-weight:700;color:${hoy?'var(--ac)':'var(--mt)'};text-transform:uppercase;letter-spacing:.5px">${f.label}${hoy?' · hoy':''}</div>`;
+        if(f.estado==='libre')return`${wrapOpen}<div style="font-size:13px;font-weight:800;color:var(--wn);margin-top:3px">🏖 Día libre</div></div>`;
+        if(f.estado==='sinturno')return`${wrapOpen}<div style="font-size:12.5px;font-weight:700;color:var(--mt);margin-top:3px">— No te toca este día —</div></div>`;
+        return`${wrapOpen}<div style="font-size:14px;font-weight:800;color:var(--tx);margin-top:3px">${f.inicio} – ${f.fin}</div>
+          <div style="font-size:11px;color:var(--mt);margin-top:2px">${f.turno||'Horario general'}</div>
+          <div style="font-size:11px;color:var(--mt);margin-top:4px;padding-top:4px;border-top:1px dashed var(--bd)">🍽 Almuerzo: ${f.duracionAlm} min</div>
+        </div>`;
+      }).join('')}
     </div>`;
   }catch(e){console.error('renderMiTurno',e);body.innerHTML='<div style="color:var(--dn);font-size:12px">Error al cargar tu turno.</div>';}
 }
