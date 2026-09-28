@@ -859,8 +859,20 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px">
                 <button class="btn bg bsm" id="btn-libre-cargar" style="width:auto">🔄 Cargar</button>
                 <button class="btn bp bsm" id="btn-libre-guardar" style="width:auto">💾 Guardar días libres</button>
+                <button class="btn bg bsm" id="btn-libre-ver" style="width:auto">👁 Ver días libres programados</button>
               </div>
               <div id="libre-status" style="font-size:12px;color:var(--mt);margin-top:8px"></div>
+            </div>
+            <div id="turnos-semana-bar" style="background:var(--sf);border:1px solid var(--ac);border-radius:var(--rs);padding:10px 12px;margin-bottom:10px">
+              <div style="font-weight:700;font-size:13px;margin-bottom:6px">🗓 Semana que estás programando (lunes → domingo)</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <button class="btn bg bsm" id="tsem-prev" style="width:auto">‹</button>
+                <div id="tsem-label" style="flex:1;text-align:center;font-size:13px;font-weight:800"></div>
+                <button class="btn bg bsm" id="tsem-next" style="width:auto">›</button>
+              </div>
+              <div id="tsem-estado" style="font-size:11.5px;margin-top:7px"></div>
+              <div id="tsem-libres" style="font-size:11.5px;margin-top:7px"></div>
+              <button class="btn bg bsm" id="tsem-fijar" style="width:auto;font-size:11px;margin-top:8px">✅ Confirmar esta semana tal como está</button>
             </div>
             <div id="turnos-list"></div>
             <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:10px">
@@ -2029,11 +2041,21 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
   </div>
 </div>
 
+<!-- MODAL DÍAS LIBRES PROGRAMADOS (admin) -->
+<div id="m-libres" class="mbd">
+  <div class="mbox">
+    <h3>🏖 Días libres programados</h3>
+    <p style="font-size:12px;color:var(--mt);margin:-6px 0 10px 0">Colaboradores que NO estarán disponibles, por fecha (próximas 6 semanas).</p>
+    <div id="libres-body"></div>
+    <div class="mfoot"><button class="btn bg" id="libres-cerrar">Cerrar</button></div>
+  </div>
+</div>
+
 <!-- MODAL MI TURNO (colaborador) -->
 <div id="m-miturno" class="mbd">
   <div class="mbox">
     <h3>📆 Mi turno</h3>
-    <p style="font-size:12px;color:var(--mt);margin:-6px 0 10px 0">Los días y horarios que tienes asignados esta semana.</p>
+    <p style="font-size:12px;color:var(--mt);margin:-6px 0 10px 0">Los días y horarios que tienes asignados. Este panel es solo de consulta.</p>
     <div id="miturno-body"><div style="color:var(--mt);font-size:12px">Cargando...</div></div>
     <div class="mfoot">
       <button class="btn bg" id="miturno-cerrar">Cerrar</button>
@@ -2099,7 +2121,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import{getAuth,signInWithEmailAndPassword,signOut,EmailAuthProvider,reauthenticateWithCredential,updatePassword}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
-import{getDatabase,ref as R,set,push,get,onValue,remove,update,query,limitToLast}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+import{getDatabase,ref as R,set,push,get,onValue,remove,update,query,limitToLast,orderByKey,startAt,endAt}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 const FB={apiKey:"AIzaSyCn7bUx8PdK-1TCmOnffWJYLouC5vdGMIE",authDomain:"westland-marcaciones.firebaseapp.com",projectId:"westland-marcaciones",storageBucket:"westland-marcaciones.appspot.com",messagingSenderId:"477907187320",appId:"1:477907187320:web:c04ef5b3b8ff5773b99f8d",databaseURL:"https://westland-marcaciones-default-rtdb.firebaseio.com"};
 const app=initializeApp(FB),auth=getAuth(app),db=getDatabase(app);
@@ -2734,22 +2756,40 @@ async function ensureDefaults(){
 // Path: meta_v1/jornada_dia/YYYY-MM-DD/{user} = {entrada,salida,almInicio,almFin,horasBase,configuradoPor,ts,mantuvo:bool}
 function jorPath(u){return`${JDIA}/${isoD(new Date())}/${u}`;}
 
-async function getHorarioBaseDe(user,fecha){
+// AHORRO DE TRÁFICO: HOR, HDIAS y RULES son iguales para todos; antes se descargaban 3 veces POR colaborador
+// en cada consulta (y renderAsistencia lo hace en bucle cada 60 s). Se comparten durante 15 s.
+const _SH_CACHE={};
+function getSharedSnap(path,ttl=15000){
+  const c=_SH_CACHE[path],now=Date.now();
+  if(c&&now-c.t<ttl)return c.p;
+  const p=get(R(db,path));
+  _SH_CACHE[path]={t:now,p};
+  p.catch(()=>{delete _SH_CACHE[path];});
+  return p;
+}
+async function getHorarioBaseDe(user,fecha,horcolUser){
   const DAY=['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
   const d=fecha?new Date(fecha+'T00:00:00'):new Date();
   const dn=DAY[d.getDay()];
   // Todas las lecturas son independientes entre sí: se piden en paralelo (antes eran 4 viajes
   // secuenciales a Firebase, lo cual con señal débil sumaba varios segundos cada uno).
-  const [csR,hsR,dsR,rsR]=await Promise.all([
-    get(R(db,`${HORCOL}/${user}/${dn}`)).catch(()=>null),
-    get(R(db,HOR)),
-    get(R(db,HDIAS)),
-    get(R(db,RULES))
+  const [csR,hsR,dsR,rsR,semD]=await Promise.all([
+    horcolUser!==undefined?Promise.resolve({exists:()=>!!(horcolUser&&horcolUser[dn]),val:()=>horcolUser[dn]}):get(R(db,`${HORCOL}/${user}/${dn}`)).catch(()=>null),
+    getSharedSnap(HOR),
+    getSharedSnap(HDIAS),
+    getSharedSnap(RULES),
+    getTurnosSemana(lunesISODe(fecha||isoD(new Date())))
   ]);
   const hor=hsR.exists()?hsR.val():{inicio:"09:00",fin:"18:00",duracionAlm:60};
+  // Prioridad 0: turno PROGRAMADO para esa semana concreta (turnos_semana). Si el día está programado
+  // y el colaborador no aparece, NO se le aplica la plantilla: usa el horario general.
+  const tsem=turnoSemanaDe(semD,dn,user);
+  if(tsem&&tsem.inicio){
+    return{inicio:tsem.inicio,fin:tsem.fin||hor.fin||"18:00",almInicio:tsem.almInicio||hor.almInicio||"12:00",duracionAlm:parseInt(tsem.duracionAlm!==undefined?tsem.duracionAlm:(hor.duracionAlm!==undefined?hor.duracionAlm:60))};
+  }
   // Prioridad 1: horario específico del colaborador (HORCOL) — incluye SU PROPIO almuerzo si
   // el turno lo trae configurado; si no, usa el almuerzo general de la empresa como respaldo.
-  if(csR&&csR.exists()&&csR.val().inicio){
+  if(tsem!==null&&csR&&csR.exists()&&csR.val().inicio){
     const ch=csR.val();
     return{inicio:ch.inicio,fin:ch.fin||hor.fin||"18:00",almInicio:ch.almInicio||hor.almInicio||"12:00",duracionAlm:parseInt(ch.duracionAlm!==undefined?ch.duracionAlm:(hor.duracionAlm!==undefined?hor.duracionAlm:60))};
   }
@@ -3187,7 +3227,43 @@ async function loadHorarioColabAdmin(){
 const TURNOS='turnos_v1';
 const DIASLIBRES=`${META}/dias_libres`; // Firebase: meta_v1/dias_libres/{fecha}/{user}=true — día libre puntual de esa semana, tiene prioridad sobre cualquier turno asignado ese día.
 async function loadDiaLibre(fecha){if(!fecha)return{};try{const s=await get(R(db,`${DIASLIBRES}/${fecha}`));return s.exists()?s.val():{};}catch(e){console.error('loadDiaLibre',e);return{};}}
+// AHORRO DE TRÁFICO: una sola consulta trae los días libres de toda la semana (antes eran 7 lecturas).
+// Si las reglas de Firebase no permiten consultar el nodo padre, cae al método por día como respaldo.
+let _miTurnoCache={};let _miTurnoSemana=0;
+async function loadDiasLibresRango(desdeISO,hastaISO){
+  try{
+    const s=await get(query(R(db,DIASLIBRES),orderByKey(),startAt(desdeISO),endAt(hastaISO)));
+    return s.exists()?s.val():{};
+  }catch(e){
+    console.warn('loadDiasLibresRango: uso respaldo por día',e);
+    const out={};
+    for(let d=new Date(desdeISO+'T00:00:00');isoD(d)<=hastaISO;d.setDate(d.getDate()+1)){
+      const f=isoD(d);const v=await loadDiaLibre(f);if(v&&Object.keys(v).length)out[f]=v;
+    }
+    return out;
+  }
+}
 async function saveDiaLibre(fecha,data){try{await set(R(db,`${DIASLIBRES}/${fecha}`),data);}catch(e){console.error('saveDiaLibre',e);throw e;}}
+// ── TURNOS POR SEMANA (trazables) ─────────────────────────────────────────────
+// Firebase: meta_v1/turnos_semana/{lunesISO}/{dia}/{user} = {tid,nombre,inicio,fin,almInicio,duracionAlm}
+//           meta_v1/turnos_semana/{lunesISO}/{dia}/_meta  = {por,ts}  ← quién lo programó y cuándo
+// - Un día con _meta está "PROGRAMADO" para esa semana concreta y manda sobre la plantilla base.
+// - Guarda una COPIA del horario del turno: si después se edita el turno, las semanas ya
+//   programadas (incluidas las pasadas, que alimentan cálculos de horas) NO cambian.
+// - Un día SIN _meta hereda la plantilla base (turnos_v1 + horario_colab_v1), como siempre.
+const TURSEM=`${META}/turnos_semana`;
+async function getTurnosSemana(lunISO,fresh){
+  const path=`${TURSEM}/${lunISO}`;
+  if(fresh)delete _SH_CACHE[path];
+  try{const sn=await getSharedSnap(path);return sn.exists()?sn.val():{};}catch(e){console.warn('getTurnosSemana',e);return{};}
+}
+function lunesISODe(fechaISO){return isoD(getLunesDeSemana(fechaISO||null));}
+function addDaysISO(iso,n){return isoD(isoDateAdd(new Date(iso+'T00:00:00'),n));}
+function diaProgramado(sem,dia){return !!(sem&&sem[dia]&&sem[dia]._meta);}
+// undefined = día NO programado (aplica plantilla) · null = programado y ese usuario SIN turno · objeto = su turno
+function turnoSemanaDe(sem,dia,user){if(!diaProgramado(sem,dia))return undefined;return sem[dia][user]||null;}
+// Domingo: la jornada ya terminó, por lógica se trabaja con la semana que entra
+function semanaPorDefectoLun(){const h=new Date();return isoD(getLunesDeSemana(h.getDay()===0?isoD(isoDateAdd(h,1)):null));}
 // El descuento por horas faltantes solo se muestra desde esta fecha en adelante (lunes de la
 // semana en que se activó la función) — nunca retroactivo a semanas anteriores ya cerradas.
 const DESCUENTO_DESDE='2026-09-07';
@@ -3222,78 +3298,147 @@ async function reaplicarTurnoTodosDias(t){
   Object.keys(dias).forEach(dia=>{Object.keys(dias[dia]||{}).forEach(u=>{writes.push(set(R(db,`${HORCOL}/${u}/${dia}`),{inicio:t.inicio,fin:t.fin,almInicio:t.almInicio||null,duracionAlm:t.duracionAlm!==undefined?t.duracionAlm:60}));});});
   await Promise.all(writes);
 }
+// Semana que se está programando en el panel de Turnos (lunes ISO) y sus datos
+let _turnosSemLun=null,_turnosSemData={},_turnosSemLibres={};
+// Asignación EFECTIVA de un día: lo programado para esa semana, o la plantilla base si aún no se programó
+function efectivoDia(sem,dia){
+  const m={};
+  if(diaProgramado(sem,dia)){Object.keys(sem[dia]).forEach(u=>{if(u!=='_meta'&&sem[dia][u])m[u]=sem[dia][u];});return m;}
+  Object.keys(_turnosCache||{}).forEach(tid=>{
+    const t=_turnosCache[tid];const dd=migrarTurnoADias(t);
+    Object.keys(dd[dia]||{}).forEach(u=>{m[u]={tid,nombre:t.nombre,inicio:t.inicio,fin:t.fin,almInicio:t.almInicio||null,duracionAlm:t.duracionAlm!==undefined?t.duracionAlm:60};});
+  });
+  return m;
+}
+function diasEfectivosTurno(id){
+  const out={};
+  DIA_KEYS.forEach(dia=>{const m=efectivoDia(_turnosSemData,dia);out[dia]={};Object.keys(m).forEach(u=>{if(m[u].tid===id)out[dia][u]=true;});});
+  return out;
+}
+function fmtFechaCorta(iso){return new Date(iso+'T00:00:00').toLocaleDateString('es',{weekday:'short',day:'numeric',month:'short'});}
+function fmtFechaHora(ts){try{return new Date(ts).toLocaleString('es',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}catch(e){return ts||'';}}
 // Quién tiene asignado ese día en OTROS turnos (para avisar antes de "robárselo" a otro turno)
 function turnoDuenoDelDia(turnos,dia,excludeId){
-  const map={};
-  Object.keys(turnos).forEach(oid=>{
-    if(oid===excludeId)return;
-    const od=migrarTurnoADias(turnos[oid]);
-    Object.keys(od[dia]||{}).forEach(u=>{map[u]=turnos[oid].nombre;});
-  });
+  const map={},m=efectivoDia(_turnosSemData,dia);
+  Object.keys(m).forEach(u=>{if(m[u].tid!==excludeId)map[u]=m[u].nombre;});
   return map;
 }
 function turnoDiaChecklistHTML(id,dia,dias,colab,dueno){
   const chk=(dias[dia]||{});
+  const libresDia=_turnosSemLibres[addDaysISO(_turnosSemLun,DIA_KEYS.indexOf(dia))]||{};
   return colab.map(u=>{
     const checked=!!chk[u.user];
     const otro=(!checked&&dueno[u.user])?dueno[u.user]:null;
-    return `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;padding:2px 0"><input type="checkbox" class="turno-dia-ck" data-id="${id}" data-dia="${dia}" data-user="${u.user}" ${checked?'checked':''} style="width:auto;accent-color:var(--ac);flex-shrink:0"><span>${u.nombre}${otro?` <span style="color:var(--wn);font-size:10.5px">(hoy: ${otro})</span>`:''}</span></label>`;
+    const libre=libresDia[u.user]?` <span style="color:var(--dn);font-size:10.5px;font-weight:700">🏖 día libre</span>`:'';
+    return `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;padding:2px 0"><input type="checkbox" class="turno-dia-ck" data-id="${id}" data-dia="${dia}" data-user="${u.user}" ${checked?'checked':''} style="width:auto;accent-color:var(--ac);flex-shrink:0"><span>${u.nombre}${otro?` <span style="color:var(--wn);font-size:10.5px">(en: ${otro})</span>`:''}${libre}</span></label>`;
   }).join('')||'<div style="font-size:12px;color:var(--mt)">Sin colaboradores.</div>';
 }
 function renderTurnoDiaBody(id){
-  const t=_turnosCache&&_turnosCache[id];if(!t)return;
+  const t=_turnosCache&&_turnosCache[id];if(!t||!_turnosSemLun)return;
   const dia=_turnoDiaSel[id]||'lunes';
-  const dias=migrarTurnoADias(t);
+  const dias=diasEfectivosTurno(id);
   const dueno=turnoDuenoDelDia(_turnosCache,dia,id);
   const body=document.querySelector(`.turno-dia-body[data-id="${id}"]`);if(!body)return;
-  body.innerHTML=`<div style="display:flex;flex-direction:column;gap:2px;max-height:230px;overflow-y:auto;margin-bottom:8px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px">`
+  const fechaISO=addDaysISO(_turnosSemLun,DIA_KEYS.indexOf(dia));
+  const prog=diaProgramado(_turnosSemData,dia),meta=prog?_turnosSemData[dia]._meta:null;
+  const badge=prog
+    ?`<div style="font-size:11px;color:var(--ac);margin-bottom:6px">✓ Programado para el ${fmtFechaCorta(fechaISO)} — por <strong>${meta.por||'?'}</strong> · ${fmtFechaHora(meta.ts)}</div>`
+    :`<div style="font-size:11px;color:var(--wn);margin-bottom:6px">⚠ ${fmtFechaCorta(fechaISO)} aún NO está programado: se muestra el horario base. Al guardar, queda programado solo para esa fecha.</div>`;
+  body.innerHTML=badge+`<div style="display:flex;flex-direction:column;gap:2px;max-height:230px;overflow-y:auto;margin-bottom:8px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px">`
     +turnoDiaChecklistHTML(id,dia,dias,_turnosColabCache,dueno)
-    +`</div><button class="btn bp bsm btn-guardar-turno-dia" data-id="${id}" data-dia="${dia}" style="width:auto">💾 Guardar ${DIA_NOMBRE[dia]}</button>`;
+    +`</div><button class="btn bp bsm btn-guardar-turno-dia" data-id="${id}" data-dia="${dia}" style="width:auto">💾 Guardar ${DIA_NOMBRE[dia]} ${fmtFechaCorta(fechaISO)}</button>`;
   body.querySelector('.btn-guardar-turno-dia').addEventListener('click',()=>guardarTurnoDia(id,dia));
 }
 function renderTurnoPills(id){
-  const t=_turnosCache&&_turnosCache[id];if(!t)return;
-  const dias=migrarTurnoADias(t);
+  const t=_turnosCache&&_turnosCache[id];if(!t||!_turnosSemLun)return;
+  const dias=diasEfectivosTurno(id);
   const sel=_turnoDiaSel[id]||'lunes';
   const wrap=document.querySelector(`.turno-dia-pills[data-id="${id}"]`);if(!wrap)return;
   wrap.innerHTML=DIA_KEYS.map((dk,i)=>{
     const cnt=Object.keys(dias[dk]||{}).length;
     const on=dk===sel;
-    return `<button type="button" class="btn ${on?'bp':'bg'} bsm turno-dia-pill" data-id="${id}" data-dia="${dk}" style="width:auto;font-size:11px;padding:4px 9px">${DIA_PILL[i]}${cnt?` (${cnt})`:''}</button>`;
+    return `<button type="button" class="btn ${on?'bp':'bg'} bsm turno-dia-pill" data-id="${id}" data-dia="${dk}" style="width:auto;font-size:11px;padding:4px 9px">${DIA_PILL[i]}${cnt?` (${cnt})`:''}${diaProgramado(_turnosSemData,dk)?' ✓':''}</button>`;
   }).join('');
   wrap.querySelectorAll('.turno-dia-pill').forEach(btn=>btn.addEventListener('click',()=>{_turnoDiaSel[id]=btn.dataset.dia;renderTurnoPills(id);renderTurnoDiaBody(id);}));
 }
+// Barra "Semana que estás programando": rango desde–hasta, estado de programación y días libres de esa semana
+function renderBarraSemanaTurnos(){
+  const L=el('tsem-label');if(!L||!_turnosSemLun)return;
+  const lun=_turnosSemLun,dom=addDaysISO(lun,6);
+  L.textContent=`${fmtFechaCorta(lun)} → ${fmtFechaCorta(dom)}`;
+  const prog=DIA_KEYS.filter(d=>diaProgramado(_turnosSemData,d));
+  let ult=null;prog.forEach(d=>{const m=_turnosSemData[d]._meta;if(m&&(!ult||(m.ts||'')>(ult.ts||'')))ult=m;});
+  const pasada=lun<isoD(getLunesDeSemana(null));
+  const est=el('tsem-estado');
+  if(est){
+    let txt,col;
+    if(!prog.length){txt='⚠ Esta semana AÚN NO está programada: hoy se usa el horario base. Lo que guardes abajo queda SOLO para esta semana.';col='var(--wn)';}
+    else if(prog.length===7){txt=`✅ Semana programada completa · última modificación: ${ult.por||'?'} · ${fmtFechaHora(ult.ts)}`;col='var(--ac)';}
+    else{txt=`🟡 Programados ${prog.length} de 7 días (los marcados con ✓). Los demás usan el horario base. Última modificación: ${ult.por||'?'} · ${fmtFechaHora(ult.ts)}`;col='var(--wn)';}
+    if(pasada)txt='🔒 SEMANA YA PASADA — cambiarla altera cómo se calculan sus horas. '+txt;
+    est.style.color=col;est.textContent=txt;
+  }
+  const lb=el('tsem-libres');
+  if(lb){
+    const nom={};(_turnosColabCache||[]).forEach(u=>{nom[u.user]=u.nombre;});
+    const filas=[];
+    for(let i=0;i<7;i++){const f=addDaysISO(lun,i);const us=Object.keys(_turnosSemLibres[f]||{}).filter(u=>_turnosSemLibres[f][u]);if(us.length)filas.push(`<div><strong>${fmtFechaCorta(f)}</strong>: ${us.map(u=>nom[u]||u).join(', ')} <span style="color:var(--mt)">(${us.length} menos)</span></div>`);}
+    lb.innerHTML=filas.length?`<div style="font-weight:700;margin-bottom:2px">🏖 Días libres esta semana</div>${filas.join('')}`:'<span style="color:var(--mt)">🏖 Sin días libres registrados esta semana.</span>';
+  }
+}
+async function cargarSemanaTurnos(){
+  if(!_turnosSemLun)_turnosSemLun=semanaPorDefectoLun();
+  const lun=_turnosSemLun,dom=addDaysISO(lun,6);
+  try{const r=await Promise.all([getTurnosSemana(lun,true),loadDiasLibresRango(lun,dom)]);_turnosSemData=r[0];_turnosSemLibres=r[1];}
+  catch(e){_turnosSemData={};_turnosSemLibres={};}
+  renderBarraSemanaTurnos();
+  Object.keys(_turnosCache||{}).forEach(id=>{renderTurnoPills(id);renderTurnoDiaBody(id);});
+}
 async function guardarTurnoDia(id,dia){
-  const t=_turnosCache&&_turnosCache[id];if(!t)return;
+  const t=_turnosCache&&_turnosCache[id];if(!t||!_turnosSemLun)return;
+  const lun=_turnosSemLun,dom=addDaysISO(lun,6),fechaISO=addDaysISO(lun,DIA_KEYS.indexOf(dia));
   const body=document.querySelector(`.turno-dia-body[data-id="${id}"]`);
   const checked=new Set([...body.querySelectorAll(`.turno-dia-ck[data-dia="${dia}"]`)].filter(c=>c.checked).map(c=>c.dataset.user));
-  const prevDias=migrarTurnoADias(t);
-  const prevChecked=new Set(Object.keys(prevDias[dia]||{}));
+  const prevMap=efectivoDia(_turnosSemData,dia);
+  const prevChecked=new Set(Object.keys(prevMap).filter(u=>prevMap[u].tid===id));
+  // Protecciones: semana pasada y colaboradores con día libre ese día
+  if(lun<isoD(getLunesDeSemana(null))&&!confirm(`⚠ La semana ${lun} → ${dom} YA PASÓ. Cambiarla altera cómo se calculan sus horas. ¿Seguro que quieres modificarla?`))return;
+  const libresDia=_turnosSemLibres[fechaISO]||{};
+  const conLibre=[...checked].filter(u=>libresDia[u]);
+  if(conLibre.length&&!confirm(`Estos colaboradores tienen DÍA LIBRE el ${fmtFechaCorta(fechaISO)}: ${conLibre.join(', ')}.\n¿Igual los quieres en ${t.nombre}?`))return;
   const btn=body.querySelector('.btn-guardar-turno-dia');if(btn){btn.disabled=true;btn.textContent='Guardando...';}
   try{
-    // A quién hay que quitarle ese día en OTROS turnos porque ahora queda en este
-    const writes=[];
-    const nuevosDeOtro=[...checked].filter(u=>!prevChecked.has(u));
-    Object.keys(_turnosCache).forEach(oid=>{
-      if(oid===id)return;
-      const od=migrarTurnoADias(_turnosCache[oid]);
-      let cambio=false;const copia={...(od[dia]||{})};
-      nuevosDeOtro.forEach(u=>{if(copia[u]){delete copia[u];cambio=true;}});
-      if(cambio)writes.push(set(R(db,`${TURNOS}/${oid}/dias/${dia}`),copia));
-    });
-    // El nuevo listado del día para ESTE turno
-    const nuevoDia={};checked.forEach(u=>{nuevoDia[u]=true;});
-    writes.push(set(R(db,`${TURNOS}/${id}/dias/${dia}`),nuevoDia));
-    await Promise.all(writes);
-    // Aplica el horario de este turno a los que quedaron marcados, y libera (vuelve al
-    // horario general) a los que se destildaron
-    const quitados=[...prevChecked].filter(u=>!checked.has(u));
-    await aplicarHorarioTurnoDia(dia,t.inicio,t.fin,[...checked],t.almInicio,t.duracionAlm);
-    await Promise.all(quitados.map(u=>set(R(db,`${HORCOL}/${u}/${dia}`),null)));
-    toast(`${DIA_NOMBRE[dia]}: asignación guardada ✓`,'ok');
-    await addLog(`Turno "${t.nombre}" — ${DIA_NOMBRE[dia]}: ${[...checked].join(', ')||'(nadie)'}`);
-    loadTurnosAdmin();
+    // Día completo de esa semana: se conserva lo de los otros turnos, se quita a quien se destildó y se pasa a este turno a quien se marcó
+    const nuevo={};
+    Object.keys(prevMap).forEach(u=>{if(prevChecked.has(u)&&!checked.has(u))return;nuevo[u]=prevMap[u];});
+    checked.forEach(u=>{nuevo[u]={tid:id,nombre:t.nombre,inicio:t.inicio,fin:t.fin,almInicio:t.almInicio||null,duracionAlm:t.duracionAlm!==undefined?t.duracionAlm:60};});
+    const nodo={...nuevo,_meta:{por:CU,ts:new Date().toISOString()}};
+    await set(R(db,`${TURSEM}/${lun}/${dia}`),nodo);
+    delete _SH_CACHE[`${TURSEM}/${lun}`];_miTurnoCache={};
+    _turnosSemData={..._turnosSemData,[dia]:nodo};
+    toast(`${DIA_NOMBRE[dia]} ${fmtFechaCorta(fechaISO)}: programado para esa semana ✓`,'ok');
+    await addLog(`Turnos semana ${lun}→${dom} · "${t.nombre}" · ${DIA_NOMBRE[dia]} ${fechaISO}: antes [${[...prevChecked].join(', ')||'nadie'}] → ahora [${[...checked].join(', ')||'nadie'}] (por ${CU})`);
+    renderBarraSemanaTurnos();
+    Object.keys(_turnosCache||{}).forEach(x=>{renderTurnoPills(x);renderTurnoDiaBody(x);});
   }catch(e){toast('⛔ Error al guardar: '+(e.message||e),'err',6000);if(btn){btn.disabled=false;btn.textContent='💾 Guardar '+DIA_NOMBRE[dia];}}
+}
+// "Confirmar semana": fija tal cual está (horario base incluido) los días que aún no están programados
+async function fijarSemanaTurnos(){
+  if(!_turnosSemLun)return;
+  const lun=_turnosSemLun,dom=addDaysISO(lun,6);
+  const pend=DIA_KEYS.filter(d=>!diaProgramado(_turnosSemData,d));
+  if(!pend.length){toast('Esta semana ya está programada completa ✓','ok');return;}
+  if(lun<isoD(getLunesDeSemana(null))&&!confirm(`⚠ La semana ${lun} → ${dom} YA PASÓ. ¿Confirmarla de todos modos?`))return;
+  if(!confirm(`Se dejarán PROGRAMADOS ${pend.length} día(s) de la semana ${fmtFechaCorta(lun)} → ${fmtFechaCorta(dom)} exactamente como se ven ahora. ¿Continuar?`))return;
+  try{
+    const ts=new Date().toISOString(),nuevos={..._turnosSemData};
+    await Promise.all(pend.map(d=>{const nodo={...efectivoDia(_turnosSemData,d),_meta:{por:CU,ts,origen:'confirmada desde horario base'}};nuevos[d]=nodo;return set(R(db,`${TURSEM}/${lun}/${d}`),nodo);}));
+    delete _SH_CACHE[`${TURSEM}/${lun}`];_miTurnoCache={};_turnosSemData=nuevos;
+    await addLog(`Turnos semana ${lun}→${dom}: confirmada tal como estaba (${pend.join(', ')}) (por ${CU})`);
+    toast('Semana confirmada ✓','ok');
+    renderBarraSemanaTurnos();
+    Object.keys(_turnosCache||{}).forEach(x=>{renderTurnoPills(x);renderTurnoDiaBody(x);});
+  }catch(e){toast('⛔ Error: '+(e.message||e),'err',6000);}
 }
 async function loadTurnosAdmin(){
   const c=el('turnos-list'),selDom=el('turno-domingo-default');
@@ -3306,6 +3451,7 @@ async function loadTurnosAdmin(){
   let domDefault=null;try{const d=await get(R(db,`${META}/turno_domingo_default`));domDefault=d.exists()?d.val():null;}catch(e){}
   selDom.innerHTML='<option value="">— Ninguno —</option>'+ids.map(id=>`<option value="${id}" ${id===domDefault?'selected':''}>${turnos[id].nombre} (${turnos[id].inicio}→${turnos[id].fin})</option>`).join('');
   _turnosCache=turnos;_turnosColabCache=colab;_turnosUsersCache=users;
+  await cargarSemanaTurnos();
   // Migra en Firebase, en segundo plano, los turnos que todavía tengan el formato viejo
   ids.forEach(id=>{const t=turnos[id];if(!t.dias&&t.usuarios){set(R(db,`${TURNOS}/${id}/dias`),migrarTurnoADias(t)).catch(()=>{});}});
   if(!ids.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">Aún no hay turnos creados. Crea el primero abajo.</div>';return;}
@@ -3329,7 +3475,7 @@ async function loadTurnosAdmin(){
         <span>Duración</span>
         <input type="number" min="0" step="5" class="fc turno-inp" data-id="${id}" data-campo="duracionAlm" value="${t.duracionAlm!==undefined?t.duracionAlm:60}" style="width:64px;font-size:12px;padding:4px 6px">
         <span>min</span>
-        <button class="btn bp bsm btn-save-turno" data-id="${id}" style="width:auto;font-size:11px;padding:4px 10px">💾 Guardar horas (aplica a todos sus días)</button>
+        <button class="btn bp bsm btn-save-turno" data-id="${id}" style="width:auto;font-size:11px;padding:4px 10px">💾 Guardar horas del turno (no cambia semanas ya programadas)</button>
       </div>
       <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">📅 Colaboradores por día</div>
       <div class="turno-dia-pills" data-id="${id}" style="display:flex;gap:5px;margin-bottom:9px;flex-wrap:wrap"></div>
@@ -3368,6 +3514,9 @@ async function loadTurnosAdmin(){
     }catch(e){toast('⛔ Error al eliminar: '+(e.message||e),'err',6000);}
   }));
 }
+el('tsem-prev')?.addEventListener('click',async()=>{_turnosSemLun=addDaysISO(_turnosSemLun||semanaPorDefectoLun(),-7);await cargarSemanaTurnos();});
+el('tsem-next')?.addEventListener('click',async()=>{_turnosSemLun=addDaysISO(_turnosSemLun||semanaPorDefectoLun(),7);await cargarSemanaTurnos();});
+el('tsem-fijar')?.addEventListener('click',fijarSemanaTurnos);
 el('btn-crear-turno')?.addEventListener('click',async()=>{
   const nombre=(el('nt-nombre').value||'').trim(),ini=el('nt-ini').value,fin=el('nt-fin').value;
   const almInicio=el('nt-alm-ini').value||'12:00',duracionAlm=parseInt(el('nt-alm-dur').value||'60')||0;
@@ -3401,6 +3550,7 @@ async function renderLibreUserChecks(){
   const users=await getUsers();
   const lista=Object.values(users).filter(u=>u&&u.user&&u.nombre&&!GERENTES.includes(u.user)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const libres=await loadDiaLibre(fecha);
+  const stL=el('libre-status');if(stL)stL.textContent='📅 '+new Date(fecha+'T00:00:00').toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   c.innerHTML=lista.map(u=>`<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;color:var(--tx)"><input type="checkbox" class="libre-chk" data-user="${u.user}" ${libres[u.user]?'checked':''} style="width:auto;accent-color:var(--ac);flex-shrink:0"><span>${u.nombre} <span style="color:var(--mt);font-size:10.5px">(${u.user})</span></span></label>`).join('')||'<div style="color:var(--mt);font-size:12px">Sin colaboradores.</div>';
 }
 el('btn-libre-cargar')?.addEventListener('click',renderLibreUserChecks);
@@ -3412,11 +3562,35 @@ el('btn-libre-guardar')?.addEventListener('click',async()=>{
     const data={};
     document.querySelectorAll('#libre-user-checks .libre-chk').forEach(c=>{if(c.checked)data[c.dataset.user]=true;});
     await saveDiaLibre(fecha,data);
+    _miTurnoCache={};
+    if(_turnosSemLun&&_turnosCache)cargarSemanaTurnos();
     await addLog(`Días libres actualizados por ${CU}: ${fecha} — ${Object.keys(data).join(', ')||'(nadie)'}`);
-    if(st)st.textContent='Guardado ✓';
+    if(st)st.textContent='Guardado ✓ — '+new Date(fecha+'T00:00:00').toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
     toast('Días libres guardados ✓','ok');
   }catch(e){console.error('guardar dia libre',e);if(st)st.textContent='';toast('❌ Error al guardar: '+(e.message||e),'err');}
 });
+
+// Vista para el admin: quién tiene día libre y cuándo (próximas 6 semanas) — una sola consulta
+async function renderLibresProgramados(){
+  const body=el('libres-body');if(!body)return;
+  body.innerHTML='<div style="color:var(--mt);font-size:12px">Cargando...</div>';
+  try{
+    const hoy=isoD(new Date()),hasta=addDaysISO(hoy,41);
+    const[rango,users]=await Promise.all([loadDiasLibresRango(hoy,hasta),getUsers()]);
+    const nom={};Object.values(users||{}).forEach(u=>{if(u&&u.user)nom[u.user]=u.nombre||u.user;});
+    const fechas=Object.keys(rango).filter(f=>Object.keys(rango[f]||{}).some(u=>rango[f][u])).sort();
+    if(!fechas.length){body.innerHTML='<div style="color:var(--mt);font-size:12.5px">No hay días libres programados en las próximas 6 semanas.</div>';return;}
+    body.innerHTML=fechas.map(f=>{
+      const us=Object.keys(rango[f]).filter(u=>rango[f][u]);
+      const d=new Date(f+'T00:00:00').toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'});
+      return `<div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:9px 10px;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:800;text-transform:capitalize">${d} <span style="color:var(--wn);font-weight:700">· ${us.length} ${us.length===1?'unidad menos':'unidades menos'}</span></div>
+        <div style="font-size:12.5px;margin-top:3px">🏖 ${us.map(u=>nom[u]||u).join(', ')}</div></div>`;
+    }).join('');
+  }catch(e){console.error('renderLibresProgramados',e);body.innerHTML='<div style="color:var(--dn);font-size:12px">Error al cargar los días libres.</div>';}
+}
+el('btn-libre-ver')?.addEventListener('click',()=>{el('m-libres').classList.add('open');renderLibresProgramados();});
+el('libres-cerrar')?.addEventListener('click',()=>el('m-libres').classList.remove('open'));
 
 // getHorarioBaseDe ahora también consulta HORCOL (ver función arriba)
 const _origGetHorarioBase=null; // referencia legacy, no usar
@@ -5116,38 +5290,23 @@ el('btn-mark-facial').addEventListener('click',openFacialModal);
 const MITURNO_OTRO_DEPTO={
   provira:{dias:['lunes','martes','miercoles','jueves','viernes'],texto:'GPH · Departamento de tráfico'}
 };
-async function renderMiTurno(){
+async function renderMiTurno(semana){
   const body=el('miturno-body');if(!body||!CU)return;
-  body.innerHTML='<div style="color:var(--mt);font-size:12px">Cargando...</div>';
-  try{
-    const[ts,cs]=await Promise.all([get(R(db,TURNOS)),get(R(db,HORCOL))]);
-    const turnos=ts.exists()?ts.val():{};
-    const horcolAll=cs.exists()?cs.val():{};
-    const miHorcol=horcolAll[CU]||{};
-    const usaTurnos=Object.keys(turnos).length>0; // si nadie ha creado turnos todavía, no aplica la regla estricta — se sigue mostrando el horario general de siempre
-    const nombreTurnoDia={};
-    Object.values(turnos).forEach(t=>{
-      const dias=migrarTurnoADias(t);
-      Object.keys(dias).forEach(dia=>{if(dias[dia]&&dias[dia][CU])nombreTurnoDia[dia]=t.nombre;});
-    });
-    const lun=getLunesDeSemana(null);
-    const filas=await Promise.all(DIA_KEYS.map(async(dia,i)=>{
-      const fechaISO=isoD(isoDateAdd(lun,i));
-      const libres=await loadDiaLibre(fechaISO);
-      if(libres[CU])return{dia,label:DIA_NOMBRE[dia],estado:'libre'};
-      const otro=MITURNO_OTRO_DEPTO[CU];
-      if(otro&&otro.dias.includes(dia))return{dia,label:DIA_NOMBRE[dia],estado:'otrodepto',texto:otro.texto};
-      const asignado=!usaTurnos||!!nombreTurnoDia[dia]||!!(miHorcol[dia]&&miHorcol[dia].inicio);
-      if(!asignado)return{dia,label:DIA_NOMBRE[dia],estado:'sinturno'};
-      const b=await getHorarioBaseDe(CU,fechaISO); // {inicio,fin,almInicio,duracionAlm} — misma función que usa el resto de la app
-      return{dia,label:DIA_NOMBRE[dia],estado:'ok',turno:nombreTurnoDia[dia]||null,inicio:b.inicio,fin:b.fin,duracionAlm:b.duracionAlm};
-    }));
-    const hoyIdx=(new Date().getDay()+6)%7; // lunes=0 ... domingo=6
-    body.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+  if(typeof semana==='number')_miTurnoSemana=Math.max(-1,Math.min(2,semana));
+  const sem=_miTurnoSemana;
+  const lun=isoDateAdd(getLunesDeSemana(null),sem*7);
+  const lunISO=isoD(lun),domISO=isoD(isoDateAdd(lun,6));
+  const hoyIdx=sem===0?(new Date().getDay()+6)%7:-1; // lunes=0 ... domingo=6
+  const ETQ={'-1':'Semana pasada','0':'Semana actual','1':'Próxima semana','2':'En 2 semanas'};
+  const pintar=(filas,nota)=>{
+    const btnN=(n,txt,dis)=>`<button type="button" data-sem="${n}" ${dis?'disabled':''} style="padding:6px 12px;border-radius:var(--rs);font-size:15px;font-weight:800;cursor:${dis?'default':'pointer'};background:transparent;color:${dis?'var(--bd)':'var(--ac)'};border:1px solid ${dis?'var(--bd)':'var(--ac)'}">${txt}</button>`;
+    const nav=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">${btnN(sem-1,'‹',sem<=-1)}<div style="flex:1;text-align:center"><div style="font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.5px">${ETQ[sem]}</div><div style="font-size:13px;font-weight:800">${fmtFechaCorta(lunISO)} → ${fmtFechaCorta(domISO)}</div></div>${btnN(sem+1,'›',sem>=2)}</div>`
+      +`<div style="font-size:11px;color:var(--mt);margin-bottom:8px;text-align:center">${nota}</div>`;
+    body.innerHTML=nav+`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       ${filas.map((f,i)=>{
         const hoy=i===hoyIdx;
         const wrapOpen=`<div style="background:${hoy?'rgba(0,201,167,.12)':'var(--bg)'};border:1px solid ${hoy?'var(--ac)':'var(--bd)'};border-radius:var(--rs);padding:9px 10px">
-          <div style="font-size:11px;font-weight:700;color:${hoy?'var(--ac)':'var(--mt)'};text-transform:uppercase;letter-spacing:.5px">${f.label}${hoy?' · hoy':''}</div>`;
+          <div style="font-size:11px;font-weight:700;color:${hoy?'var(--ac)':'var(--mt)'};text-transform:uppercase;letter-spacing:.5px">${f.label} ${isoDateAdd(lun,i).getDate()}${hoy?' · hoy':''}</div>`;
         if(f.estado==='libre')return`${wrapOpen}<div style="font-size:13px;font-weight:800;color:var(--wn);margin-top:3px">🏖 Día libre</div></div>`;
         if(f.estado==='otrodepto')return`${wrapOpen}<div style="font-size:12.5px;font-weight:800;color:var(--ac);margin-top:3px">🏢 ${f.texto}</div></div>`;
         if(f.estado==='sinturno')return`${wrapOpen}<div style="font-size:12.5px;font-weight:700;color:var(--mt);margin-top:3px">Sin turno asignado</div></div>`;
@@ -5157,9 +5316,45 @@ async function renderMiTurno(){
         </div>`;
       }).join('')}
     </div>`;
+    body.querySelectorAll('[data-sem]').forEach(b=>b.addEventListener('click',()=>{if(!b.disabled)renderMiTurno(parseInt(b.dataset.sem,10));}));
+  };
+  // AHORRO DE TRÁFICO: si lo abrió hace menos de 60 s, se reutiliza lo ya descargado (0 lecturas)
+  const cache=_miTurnoCache[lunISO];
+  if(cache&&Date.now()-cache.t<60000){pintar(cache.filas,cache.nota);return;}
+  body.innerHTML='<div style="color:var(--mt);font-size:12px">Cargando...</div>';
+  try{
+    // 4 lecturas: turnos base, MI horario, días libres de la semana (1 consulta) y lo programado para esa semana
+    const[ts,cs,libresRango,semD]=await Promise.all([get(R(db,TURNOS)),get(R(db,`${HORCOL}/${CU}`)),loadDiasLibresRango(lunISO,domISO),getTurnosSemana(lunISO)]);
+    const turnos=ts.exists()?ts.val():{};
+    const miHorcol=cs.exists()?cs.val():{};
+    const usaTurnos=Object.keys(turnos).length>0; // si nadie ha creado turnos todavía, no aplica la regla estricta — se sigue mostrando el horario general de siempre
+    const nombreTurnoDia={};
+    Object.values(turnos).forEach(t=>{
+      const dias=migrarTurnoADias(t);
+      Object.keys(dias).forEach(dia=>{if(dias[dia]&&dias[dia][CU])nombreTurnoDia[dia]=t.nombre;});
+    });
+    const filas=await Promise.all(DIA_KEYS.map(async(dia,i)=>{
+      const fechaISO=isoD(isoDateAdd(lun,i));
+      const libres=libresRango[fechaISO]||{};
+      if(libres[CU])return{dia,label:DIA_NOMBRE[dia],estado:'libre'};
+      const otro=MITURNO_OTRO_DEPTO[CU];
+      if(otro&&otro.dias.includes(dia))return{dia,label:DIA_NOMBRE[dia],estado:'otrodepto',texto:otro.texto};
+      // Turno PROGRAMADO para esa semana concreta: manda sobre la plantilla base
+      const tsem=turnoSemanaDe(semD,dia,CU);
+      if(tsem&&tsem.inicio)return{dia,label:DIA_NOMBRE[dia],estado:'ok',turno:tsem.nombre||null,inicio:tsem.inicio,fin:tsem.fin,duracionAlm:parseInt(tsem.duracionAlm!==undefined?tsem.duracionAlm:60)};
+      if(tsem===null)return{dia,label:DIA_NOMBRE[dia],estado:'sinturno'};
+      const asignado=!usaTurnos||!!nombreTurnoDia[dia]||!!(miHorcol[dia]&&miHorcol[dia].inicio);
+      if(!asignado)return{dia,label:DIA_NOMBRE[dia],estado:'sinturno'};
+      const b=await getHorarioBaseDe(CU,fechaISO,miHorcol); // {inicio,fin,almInicio,duracionAlm} — misma función que usa el resto de la app
+      return{dia,label:DIA_NOMBRE[dia],estado:'ok',turno:nombreTurnoDia[dia]||null,inicio:b.inicio,fin:b.fin,duracionAlm:b.duracionAlm};
+    }));
+    const nProg=DIA_KEYS.filter(d=>diaProgramado(semD,d)).length;
+    const nota=nProg===7?'✅ Semana programada':(nProg>0?`🟡 Semana programada parcialmente (${nProg} de 7 días)`:'⏳ Semana aún no programada: se muestra tu horario base y puede cambiar');
+    _miTurnoCache[lunISO]={t:Date.now(),filas,nota};
+    pintar(filas,nota);
   }catch(e){console.error('renderMiTurno',e);body.innerHTML='<div style="color:var(--dn);font-size:12px">Error al cargar tu turno.</div>';}
 }
-el('btn-ver-turno')?.addEventListener('click',()=>{el('m-miturno').classList.add('open');renderMiTurno();});
+el('btn-ver-turno')?.addEventListener('click',()=>{el('m-miturno').classList.add('open');renderMiTurno(new Date().getDay()===0?1:0);});
 el('miturno-cerrar')?.addEventListener('click',()=>el('m-miturno').classList.remove('open'));
 el('facial-cancel').addEventListener('click',closeFacialModal);
 
@@ -5497,8 +5692,10 @@ async function genMarcs(usrs,f1,f2,opts){
   const DAY=['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
   // Turno de cada colaborador con el MISMO orden de prioridad que usa el resto de la app
   // (getHorarioBaseDe): 1) su horario/turno propio (HORCOL), 2) horario por día (HDIAS), 3) general.
-  const baseDe=(u,dn)=>{
-    const ch=horcol[u]&&horcol[u][dn];
+  const baseDe=(u,dn,semD)=>{
+    const ts=turnoSemanaDe(semD,dn,u);
+    if(ts&&ts.inicio)return{inicio:ts.inicio,fin:ts.fin||hor.fin||"18:00",almInicio:ts.almInicio||hor.almInicio||"12:00",duracionAlm:parseInt(ts.duracionAlm!==undefined?ts.duracionAlm:(hor.duracionAlm!==undefined?hor.duracionAlm:60))};
+    const ch=(ts===null)?null:(horcol[u]&&horcol[u][dn]);
     if(ch&&ch.inicio)return{inicio:ch.inicio,fin:ch.fin||hor.fin||"18:00",almInicio:ch.almInicio||hor.almInicio||"12:00",duracionAlm:parseInt(ch.duracionAlm!==undefined?ch.duracionAlm:(hor.duracionAlm!==undefined?hor.duracionAlm:60))};
     const b=hdias[dn]||hor;
     return{inicio:b.inicio||"09:00",fin:b.fin||"18:00",almInicio:b.almInicio||rul.almInicio||"12:00",duracionAlm:parseInt(b.duracionAlm!==undefined?b.duracionAlm:60)};
@@ -5511,6 +5708,7 @@ async function genMarcs(usrs,f1,f2,opts){
     const midnight=new Date(cur.getFullYear(),cur.getMonth(),cur.getDate()).getTime();
     const exRaw=await getHist(key);const ex=Array.isArray(exRaw)?exRaw:Object.values(exRaw||{});
     let jorDia={};try{const js=await get(R(db,`${JDIA}/${key}`));jorDia=js.exists()?js.val():{};}catch(e){}
+    const semD=await getTurnosSemana(lunesISODe(key));
     const nuevas=[];
     for(const u of usrs){
       // Nunca se mezclan marcas generadas con marcas que ya existen ese día (evita duplicados)
@@ -5519,7 +5717,7 @@ async function genMarcs(usrs,f1,f2,opts){
       // Si hay jornada del día configurada para este usuario/fecha, manda sobre el turno
       const base=(jor&&jor.entrada&&jor.salida)
         ?{inicio:jor.entrada,fin:jor.salida,almInicio:jor.almInicio||null,duracionAlm:(jor.almInicio&&jor.almFin)?Math.max(0,hm(jor.almFin)-hm(jor.almInicio)):60}
-        :baseDe(u,dn);
+        :baseDe(u,dn,semD);
       const iniS=hm(base.inicio)*60,finS=hm(base.fin)*60;
       const durCfg=(base.duracionAlm>0)?base.duracionAlm:60;
       const almStr=base.almInicio||rul.almInicio||null;
