@@ -5110,6 +5110,12 @@ el('btn-mark-facial').addEventListener('click',openFacialModal);
 // ── MODAL "Mi turno" (colaborador) — muestra los 7 días con el turno/horario que le corresponde,
 // cruzando TURNOS (nombre del turno asignado ese día) con HORCOL (horario ya resuelto) y, para
 // domingo, el turno por defecto si no tiene uno propio asignado. Hoy queda resaltado.
+// Colaboradores que ciertos días NO trabajan en la bodega sino en otro departamento.
+// Ej.: provira (Paul Rovira) de lunes a viernes está en GPH · Departamento de tráfico.
+// Un día libre marcado por el admin siempre tiene prioridad sobre esta regla.
+const MITURNO_OTRO_DEPTO={
+  provira:{dias:['lunes','martes','miercoles','jueves','viernes'],texto:'GPH · Departamento de tráfico'}
+};
 async function renderMiTurno(){
   const body=el('miturno-body');if(!body||!CU)return;
   body.innerHTML='<div style="color:var(--mt);font-size:12px">Cargando...</div>';
@@ -5129,6 +5135,8 @@ async function renderMiTurno(){
       const fechaISO=isoD(isoDateAdd(lun,i));
       const libres=await loadDiaLibre(fechaISO);
       if(libres[CU])return{dia,label:DIA_NOMBRE[dia],estado:'libre'};
+      const otro=MITURNO_OTRO_DEPTO[CU];
+      if(otro&&otro.dias.includes(dia))return{dia,label:DIA_NOMBRE[dia],estado:'otrodepto',texto:otro.texto};
       const asignado=!usaTurnos||!!nombreTurnoDia[dia]||!!(miHorcol[dia]&&miHorcol[dia].inicio);
       if(!asignado)return{dia,label:DIA_NOMBRE[dia],estado:'sinturno'};
       const b=await getHorarioBaseDe(CU,fechaISO); // {inicio,fin,almInicio,duracionAlm} — misma función que usa el resto de la app
@@ -5141,7 +5149,8 @@ async function renderMiTurno(){
         const wrapOpen=`<div style="background:${hoy?'rgba(0,201,167,.12)':'var(--bg)'};border:1px solid ${hoy?'var(--ac)':'var(--bd)'};border-radius:var(--rs);padding:9px 10px">
           <div style="font-size:11px;font-weight:700;color:${hoy?'var(--ac)':'var(--mt)'};text-transform:uppercase;letter-spacing:.5px">${f.label}${hoy?' · hoy':''}</div>`;
         if(f.estado==='libre')return`${wrapOpen}<div style="font-size:13px;font-weight:800;color:var(--wn);margin-top:3px">🏖 Día libre</div></div>`;
-        if(f.estado==='sinturno')return`${wrapOpen}<div style="font-size:12.5px;font-weight:700;color:var(--mt);margin-top:3px">— No te toca este día —</div></div>`;
+        if(f.estado==='otrodepto')return`${wrapOpen}<div style="font-size:12.5px;font-weight:800;color:var(--ac);margin-top:3px">🏢 ${f.texto}</div></div>`;
+        if(f.estado==='sinturno')return`${wrapOpen}<div style="font-size:12.5px;font-weight:700;color:var(--mt);margin-top:3px">Sin turno asignado</div></div>`;
         return`${wrapOpen}<div style="font-size:14px;font-weight:800;color:var(--tx);margin-top:3px">${f.inicio} – ${f.fin}</div>
           <div style="font-size:11px;color:var(--mt);margin-top:2px">${f.turno||'Horario general'}</div>
           <div style="font-size:11px;color:var(--mt);margin-top:4px;padding-top:4px;border-top:1px dashed var(--bd)">🍽 Almuerzo: ${f.duracionAlm} min</div>
