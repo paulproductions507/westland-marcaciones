@@ -2118,6 +2118,58 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
   </div>
 </div>
 
+<script>
+// PANEL DE ERRORES VISIBLE — para poder diagnosticar desde el iPhone sin consola de desarrollador.
+// Atrapa cualquier error de JavaScript o promesa rechazada que nadie más haya manejado y lo
+// muestra en una franja roja arriba de la pantalla, con botón para copiar el texto y mandarlo.
+// No cambia ningún dato ni ninguna función de la app: solo AVISA.
+(function(){
+  var box=null,list=[];
+  function ensureBox(){
+    if(box)return box;
+    box=document.createElement('div');
+    box.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999999;background:#3a0d0d;color:#fff;font:12px/1.4 -apple-system,sans-serif;padding:10px 12px;max-height:40vh;overflow-y:auto;box-shadow:0 2px 8px rgba(0,0,0,.5)';
+    var head=document.createElement('div');
+    head.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:6px';
+    head.innerHTML='<strong style="flex:1">⚠ Error detectado — copia esto y envíalo</strong>';
+    var btnCopy=document.createElement('button');
+    btnCopy.textContent='Copiar';
+    btnCopy.style.cssText='background:#fff;color:#3a0d0d;border:none;border-radius:6px;padding:5px 10px;font-weight:700';
+    btnCopy.onclick=function(){
+      var txt=list.join('\n\n');
+      if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).catch(function(){});}
+      var ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;top:-1000px';document.body.appendChild(ta);ta.select();
+      try{document.execCommand('copy');}catch(e){}
+      document.body.removeChild(ta);
+      btnCopy.textContent='¡Copiado!';setTimeout(function(){btnCopy.textContent='Copiar';},1500);
+    };
+    var btnClose=document.createElement('button');
+    btnClose.textContent='✕';
+    btnClose.style.cssText='background:transparent;color:#fff;border:none;font-size:16px;padding:0 4px';
+    btnClose.onclick=function(){box.remove();box=null;list=[];};
+    head.appendChild(btnCopy);head.appendChild(btnClose);
+    box.appendChild(head);
+    var pre=document.createElement('pre');
+    pre.style.cssText='white-space:pre-wrap;word-break:break-word;margin:0;font-size:11px';
+    box.appendChild(pre);
+    box._pre=pre;
+    document.body.appendChild(box);
+    return box;
+  }
+  function report(txt){
+    list.push(txt);
+    var b=ensureBox();
+    b._pre.textContent=list.join('\n\n');
+  }
+  window.addEventListener('error',function(ev){
+    report('JS: '+(ev.message||'')+'\n'+(ev.filename||'')+':'+(ev.lineno||'')+':'+(ev.colno||'')+'\n'+((ev.error&&ev.error.stack)||''));
+  });
+  window.addEventListener('unhandledrejection',function(ev){
+    var r=ev.reason;
+    report('Promesa sin capturar: '+((r&&(r.message||r.code))||String(r))+'\n'+((r&&r.stack)||''));
+  });
+})();
+</script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import{getAuth,signInWithEmailAndPassword,signOut,EmailAuthProvider,reauthenticateWithCredential,updatePassword}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
@@ -2762,9 +2814,10 @@ const _SH_CACHE={};
 function getSharedSnap(path,ttl=15000){
   const c=_SH_CACHE[path],now=Date.now();
   if(c&&now-c.t<ttl)return c.p;
-  const p=get(R(db,path));
+  // Si la lectura falla (permiso, red, cuota), NUNCA debe tumbar a quien la esperaba:
+  // se resuelve como "snapshot vacío" y se limpia la caché para reintentar pronto.
+  const p=get(R(db,path)).catch(e=>{console.warn('getSharedSnap',path,e);delete _SH_CACHE[path];return{exists:()=>false,val:()=>null};});
   _SH_CACHE[path]={t:now,p};
-  p.catch(()=>{delete _SH_CACHE[path];});
   return p;
 }
 async function getHorarioBaseDe(user,fecha,horcolUser){
