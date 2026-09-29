@@ -2694,7 +2694,7 @@ async function attemptSyncOne(key,obj){
       // Se bloqueó por duplicado: la marca optimista que se pintó en pantalla no llegó a
       // Firebase, así que hay que corregir la vista con lo que realmente quedó guardado, y
       // avisarle claro al colaborador para que no piense que ya marcó.
-      toast(`⚠️ ${obj.tipo} no se guardó: ese rubro ya estaba registrado hoy.`,'err',5000);
+      toast(`⚠️ Tu ${obj.tipo} de las ${obj.hora} no se guardó: el sistema ya tenía uno registrado hoy. Revisa tu lista abajo — si de verdad falta, avisa al encargado.`,'err',6500);
       if(obj.user===CU)renderHistToday();
     }
     markSyncedUI(obj.cid);
@@ -2732,7 +2732,8 @@ setInterval(()=>{if(FB_CONNECTED&&getPendMarks().length)syncPendMarks();if(FB_CO
 // sube solo lo que realmente falta. Siempre visible y disponible a pedido, sin depender del
 // estado de conexión mostrado en pantalla.
 async function forceSyncNow(){
-  const btn=el('btn-reintentar-conn');if(btn)btn.disabled=true;
+  const btn=el('btn-reintentar-conn');const txtOrig=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='🔄 Verificando...';}
   toast('🔄 Verificando conexión...','ok',1500);
   const pend=getPendMarks();
   const intentos=getIntentosRechazados();
@@ -2747,7 +2748,8 @@ async function forceSyncNow(){
     }else{
       toast('✓ Sin marcaciones pendientes en este teléfono.','ok',2000);
     }
-    if(btn)btn.disabled=false;return;
+    if(btn){btn.disabled=false;btn.textContent='✅ Al día';setTimeout(()=>{if(btn)btn.textContent=txtOrig;},1800);}
+    return;
   }
   let sincronizadas=0,bloqueadas=0;
   for(const m of pend){
@@ -2759,13 +2761,17 @@ async function forceSyncNow(){
       markSyncedUI(m.cid);
     }catch(e){/* sigue sin responder */}
   }
-  if(bloqueadas>0)await renderHistToday(); // corrige la vista si algo quedó pintado de más
+  await renderHistToday(); // siempre se refresca contra Firebase: así el botón "Actualizar" deja la pantalla en el estado real, no solo cuando algo se bloqueó
   updateConnBadge();refreshPendingIcons();
   if(sincronizadas>0)toast(`🔄 ${sincronizadas} marcación${sincronizadas>1?'es':''} sincronizada${sincronizadas>1?'s':''}`,'ok',3000);
   if(bloqueadas>0)toast(`⚠️ ${bloqueadas} marcación${bloqueadas>1?'es':''} duplicada${bloqueadas>1?'s':''} descartada${bloqueadas>1?'s':''} (rubro ya existía)`,'err',4500);
   if(subidosIntentos>0)toast(`⛔ ${subidosIntentos} intento${subidosIntentos>1?'s':''} rechazado${subidosIntentos>1?'s':''} anteriormente — revisa la bitácora`,'err',4500);
   if(sincronizadas===0&&bloqueadas===0)toast('⚠ Sigue sin conexión. Se reintentará solo.','err',3000);
-  if(btn)btn.disabled=false;
+  if(btn){
+    btn.disabled=false;
+    btn.textContent=(sincronizadas>0||bloqueadas>0)?'✅ Completado':'⚠ Sin conexión';
+    setTimeout(()=>{if(btn)btn.textContent=txtOrig;},2200);
+  }
 }
 el('btn-reintentar-conn').addEventListener('click',forceSyncNow);
 
@@ -3978,9 +3984,14 @@ async function renderHistToday(preList){
   if(cached||pendHoy.length)paintHistToday([...(cached||[]),...pendHoy]);
   else c.innerHTML='<div style="color:var(--mt);font-size:13px;text-align:center;padding:8px">Cargando...</div>';
   // Y en paralelo, sin bloquear lo que ya se ve, se trae el dato real del servidor y se repinta.
-  const arr=await getHist(today);
-  LAST_HIST_TODAY=(arr||[]).filter(x=>!x.cid);
-  setHoyCache(CU,LAST_HIST_TODAY);
+  // CRÍTICO: si esta lectura falla (red débil, cuota, permiso intermitente), NUNCA se debe
+  // sobrescribir lo que ya sabíamos con un "día vacío" falso — eso le hace "olvidar" a la app
+  // marcaciones que sí existen, y la próxima marca que el colaborador intente vuelve a calcular
+  // el primer tipo (Entrada) en vez del que realmente sigue, que Firebase termina bloqueando por
+  // duplicado al sincronizar. Solo se sobrescribe si la lectura fue exitosa de verdad.
+  let arr;try{arr=await get(R(db,`${HIST}/${today}`));arr=arr.exists()?arr.val():[];arr=await autoLimpiarDuplicados(today,arr);}
+  catch(e){console.warn('renderHistToday: lectura falló, se conserva lo que ya había en pantalla',e);arr=null;}
+  if(arr!==null){LAST_HIST_TODAY=(arr||[]).filter(x=>!x.cid);setHoyCache(CU,LAST_HIST_TODAY);}
   const pendHoyFresh=getPendMarks().filter(m=>m.key===today&&m.user===CU);
   paintHistToday([...LAST_HIST_TODAY,...pendHoyFresh]);
 }
@@ -10568,7 +10579,15 @@ function listenLogistica(){
 // BOOTSTRAP
 (async()=>{
   try{await ensureDefaults();toast('Sistema listo ✓','ok',2000);}
-  catch(e){console.error(e);toast('⛔ Error al inicializar: '+((e&&(e.code||e.message))||e),'err',8000);}
+  catch(e){
+    console.error(e);
+    // "Permission denied" AQUÍ es normal y no es nueva: esta función corre antes de iniciar
+    // sesión, y si las reglas de Firebase exigen estar autenticado para esas rutas, siempre
+    // ha fallado en este punto (antes se veía igual, solo que sin el detalle). No hay que
+    // alarmar por esto — solo avisamos si es un motivo distinto a permiso denegado.
+    const denegado=/permission[_ ]denied/i.test((e&&(e.code||e.message))||'');
+    if(!denegado)toast('⛔ Error al inicializar: '+((e&&(e.code||e.message))||e),'err',8000);
+  }
 })();
 </script>
 </body>
