@@ -994,8 +994,9 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
                 <div class="fg"><label>Desde</label><input type="date" class="fc" id="gen-fi"></div>
                 <div class="fg"><label>Hasta</label><input type="date" class="fc" id="gen-ff"></div>
               </div>
+              <div class="fg" style="margin-top:9px"><label>1️⃣ Elige el turno (según el día de "Desde")</label><select class="fc" id="gen-turno-filter"><option value="">Todos los turnos</option></select></div>
               <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:9px">
-                <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">👥 Usuarios a generar</div>
+                <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">2️⃣ 👥 Usuarios de ese turno — elige uno o todos</div>
                 <div id="gen-user-checks" style="display:flex;flex-direction:column;gap:10px;max-height:240px;overflow-y:auto"></div>
                 <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;align-items:center">
                   <button class="btn bg bsm" id="btn-gen-todos" style="font-size:11px;padding:4px 10px;width:auto">✅ Todos</button>
@@ -5633,6 +5634,53 @@ el('btn-bor').addEventListener('click',async()=>{
   el('bor-fi').value='';el('bor-ff').value='';renderHistToday();
 });
 // GENERAR MARCACIONES — selección múltiple, turno propio de cada usuario y variación natural
+// Turno de cada colaborador para UNA fecha concreta: usa lo ya PROGRAMADO esa semana si existe
+// (turnos_semana), y si no, la plantilla base del turno (turnos_v1) — la misma prioridad que
+// usa el resto de la app al calcular horarios, para que "por turno" aquí sea el turno real.
+async function turnoMapParaFecha(fechaISO){
+  const dn=DIA_KEYS[(new Date(fechaISO+'T00:00:00').getDay()+6)%7];
+  const[ts,semD]=await Promise.all([get(R(db,TURNOS)),getTurnosSemana(lunesISODe(fechaISO))]);
+  const turnos=ts.exists()?ts.val():{};
+  const map={};
+  Object.keys(turnos).forEach(tid=>{
+    const dias=migrarTurnoADias(turnos[tid]);
+    Object.keys(dias[dn]||{}).forEach(u=>{map[u]={tid,nombre:turnos[tid].nombre};});
+  });
+  if(diaProgramado(semD,dn)){
+    Object.keys(map).forEach(u=>delete map[u]); // ese día ya quedó fijado en firme para la semana: la plantilla no aplica
+    Object.keys(semD[dn]).forEach(u=>{if(u!=='_meta'&&semD[dn][u])map[u]={tid:semD[dn][u].tid,nombre:semD[dn][u].nombre};});
+  }
+  return{map,turnos};
+}
+// Repinta el selector de turnos y le pone a cada checkbox su turno de ese día (data-tid), luego
+// aplica el filtro visible según lo elegido — así "Todos/Ninguno" solo tocan lo que se ve.
+let _genTurnoMap={};
+async function refrescarFiltroTurnoGen(){
+  const fechaISO=el('gen-fi')?.value||isoD(new Date());
+  const sel=el('gen-turno-filter');if(!sel)return;
+  const prevSel=sel.value;
+  const{map,turnos}=await turnoMapParaFecha(fechaISO);
+  _genTurnoMap=map;
+  const ids=Object.keys(turnos).sort();
+  sel.innerHTML='<option value="">Todos los turnos</option>'
+    +ids.map(id=>`<option value="${id}">${escHtml(turnos[id].nombre)} (${turnos[id].inicio}→${turnos[id].fin})</option>`).join('')
+    +'<option value="__sin__">Sin turno asignado ese día</option>';
+  if([...sel.options].some(o=>o.value===prevSel))sel.value=prevSel;
+  document.querySelectorAll('#gen-user-checks label[data-user]').forEach(lab=>{
+    const info=map[lab.dataset.user];
+    lab.dataset.tid=info?info.tid:'__sin__';
+  });
+  aplicarFiltroTurnoGenVisible();
+}
+function aplicarFiltroTurnoGenVisible(){
+  const val=el('gen-turno-filter')?.value||'';
+  document.querySelectorAll('#gen-user-checks label[data-user]').forEach(lab=>{
+    lab.style.display=(!val||lab.dataset.tid===val)?'flex':'none';
+  });
+  updGenCount();
+}
+el('gen-turno-filter')?.addEventListener('change',aplicarFiltroTurnoGenVisible);
+el('gen-fi')?.addEventListener('change',refrescarFiltroTurnoGen);
 function genSelUsers(){return[...document.querySelectorAll('#gen-user-checks input[type=checkbox]:checked')].map(c=>c.dataset.user);}
 function updGenCount(){
   const all=document.querySelectorAll('#gen-user-checks input[type=checkbox]').length;
@@ -5642,9 +5690,10 @@ function renderGenUserChecks(obj){
   const c=el('gen-user-checks');if(!c)return;
   const prev=new Set(genSelUsers());
   const lista=Object.values(obj||{}).filter(u=>!GERENTES.includes(u.user)).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
-  c.innerHTML=lista.map(u=>`<label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--tx);font-size:13px;margin:0"><input type="checkbox" data-user="${escHtml(u.user)}" ${prev.has(u.user)?'checked':''} style="width:auto;accent-color:var(--ac);flex-shrink:0;margin-top:2px"><span>${escHtml(u.nombre||u.user)} <span style="color:var(--mt);font-size:11px">(${escHtml(u.user)})</span><span class="gen-turno" data-user="${escHtml(u.user)}" style="display:block;color:var(--ac);font-size:10.5px;font-family:'DM Mono',monospace;margin-top:1px"></span></span></label>`).join('');
+  c.innerHTML=lista.map(u=>`<label data-user="${escHtml(u.user)}" style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--tx);font-size:13px;margin:0"><input type="checkbox" data-user="${escHtml(u.user)}" ${prev.has(u.user)?'checked':''} style="width:auto;accent-color:var(--ac);flex-shrink:0;margin-top:2px"><span>${escHtml(u.nombre||u.user)} <span style="color:var(--mt);font-size:11px">(${escHtml(u.user)})</span><span class="gen-turno" data-user="${escHtml(u.user)}" style="display:block;color:var(--ac);font-size:10.5px;font-family:'DM Mono',monospace;margin-top:1px"></span></span></label>`).join('');
   updGenCount();
   cargarTurnosEnChecks();
+  refrescarFiltroTurnoGen();
 }
 // Muestra bajo cada nombre el turno que tiene asignado (para saber en base a qué se va a generar)
 async function cargarTurnosEnChecks(){
@@ -5658,8 +5707,10 @@ async function cargarTurnosEnChecks(){
   }catch(e){/* solo informativo */}
 }
 el('gen-user-checks')?.addEventListener('change',updGenCount);
-el('btn-gen-todos')?.addEventListener('click',()=>{document.querySelectorAll('#gen-user-checks input[type=checkbox]').forEach(c=>c.checked=true);updGenCount();});
-el('btn-gen-ninguno')?.addEventListener('click',()=>{document.querySelectorAll('#gen-user-checks input[type=checkbox]').forEach(c=>c.checked=false);updGenCount();});
+// Solo afecta los checkboxes VISIBLES (respeta el filtro de turno elegido arriba)
+function genVisibleChecks(){return[...document.querySelectorAll('#gen-user-checks label[data-user]')].filter(l=>l.style.display!=='none').map(l=>l.querySelector('input[type=checkbox]'));}
+el('btn-gen-todos')?.addEventListener('click',()=>{genVisibleChecks().forEach(c=>c.checked=true);updGenCount();});
+el('btn-gen-ninguno')?.addEventListener('click',()=>{genVisibleChecks().forEach(c=>c.checked=false);updGenCount();});
 
 el('btn-gen').addEventListener('click',async()=>{
   const users=genSelUsers(),f1=el('gen-fi').value,f2=el('gen-ff').value;
