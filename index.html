@@ -10568,7 +10568,7 @@ function listenLogistica(){
 // BOOTSTRAP
 (async()=>{
   try{await ensureDefaults();toast('Sistema listo ✓','ok',2000);}
-  catch(e){console.error(e);toast('Error al inicializar','err');}
+  catch(e){console.error(e);toast('⛔ Error al inicializar: '+((e&&(e.code||e.message))||e),'err',8000);}
 })();
 </script>
 </body>
