@@ -506,6 +506,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         <div id="lunch-countdown" style="display:none;margin-top:10px;padding:10px 14px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);text-align:center;font-size:14px;line-height:1.5"></div>
         <div style="margin-top:10px">
           <button class="btn bg bsm" id="btn-ver-turno">📆 Ver mi turno</button>
+          <button class="btn bg bsm" id="btn-ver-marcas" style="margin-top:8px">🗂️ Mis marcaciones de la semana</button>
         </div>
         <div style="display:none">
           <button class="btn bg bsm" id="btn-mark-facial">🙂 Marcar con rostro</button>
@@ -2060,6 +2061,19 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
     <div id="miturno-body"><div style="color:var(--mt);font-size:12px">Cargando...</div></div>
     <div class="mfoot">
       <button class="btn bg" id="miturno-cerrar">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MIS MARCACIONES (colaborador) — lectura directa de Firebase, sin caché -->
+<div id="m-mismarcas" class="mbd">
+  <div class="mbox">
+    <h3>🗂️ Mis marcaciones</h3>
+    <p style="font-size:12px;color:var(--mt);margin:-6px 0 10px 0">Esto es lo que el servidor tiene guardado ahora mismo, no lo que ves en tu pantalla.</p>
+    <div id="mismarcas-body"><div style="color:var(--mt);font-size:12px">Cargando...</div></div>
+    <div class="mfoot">
+      <button class="btn bg" id="mismarcas-refrescar">🔄 Volver a leer del servidor</button>
+      <button class="btn bg" id="mismarcas-cerrar">Cerrar</button>
     </div>
   </div>
 </div>
@@ -5421,6 +5435,59 @@ async function renderMiTurno(semana){
 }
 el('btn-ver-turno')?.addEventListener('click',()=>{el('m-miturno').classList.add('open');renderMiTurno(new Date().getDay()===0?1:0);});
 el('miturno-cerrar')?.addEventListener('click',()=>el('m-miturno').classList.remove('open'));
+
+function dias_de(lun){const d=[];for(let i=0;i<7;i++)d.push(isoD(isoDateAdd(lun,i)));return d;}
+let _misMarcasSemana=0,_misMarcasCache={};
+const MISMARCAS_TIPOS=['Entrada','Salida a Almuerzo','Regreso de Almuerzo','Salida'];
+async function renderMisMarcaciones(semana,forzarRefresco){
+  const body=el('mismarcas-body');if(!body||!CU)return;
+  if(typeof semana==='number')_misMarcasSemana=Math.max(-3,Math.min(0,semana));
+  const sem=_misMarcasSemana;
+  const lun=isoDateAdd(getLunesDeSemana(null),sem*7);
+  const lunISO=isoD(lun),domISO=isoD(isoDateAdd(lun,6));
+  const hoyISO=isoD(new Date());
+  // AHORRO DE TRÁFICO A PROPÓSITO: esta semana se consulta UNA sola vez al servidor. Después,
+  // abrir el modal de nuevo o moverse entre semanas ya vistas NO vuelve a leer nada — solo lo
+  // hace: (1) la primera vez que se mira una semana, o (2) el botón "Volver a leer del servidor".
+  const cache=_misMarcasCache[lunISO];
+  if(!forzarRefresco&&cache){pintarMisMarcaciones(cache.snaps,dias_de(lun),lunISO,domISO,hoyISO,sem);return;}
+  body.innerHTML='<div style="color:var(--mt);font-size:12px">Leyendo del servidor...</div>';
+  try{
+    // Lectura DIRECTA al servidor por cada día — a propósito NO se usa LAST_HIST_TODAY ni
+    // ninguna caché de pantalla: la idea de este panel es que el colaborador vea justo lo que
+    // el servidor tiene guardado, para confiar en que su marcación de verdad quedó registrada.
+    const dias=dias_de(lun);
+    const snaps=await Promise.all(dias.map(f=>get(R(db,`${HIST}/${f}`))));
+    _misMarcasCache[lunISO]={t:Date.now(),snaps};
+    pintarMisMarcaciones(snaps,dias,lunISO,domISO,hoyISO,sem);
+  }catch(e){console.error('renderMisMarcaciones',e);body.innerHTML='<div style="color:var(--dn);font-size:12px">No se pudo leer del servidor. Toca "Volver a leer del servidor" para reintentar.</div>';}
+}
+function pintarMisMarcaciones(snaps,dias,lunISO,domISO,hoyISO,sem){
+  const body=el('mismarcas-body');if(!body)return;
+  const lun=new Date(lunISO+'T00:00:00');
+  const nav=(n,txt,dis)=>`<button type="button" data-sem="${n}" ${dis?'disabled':''} style="padding:6px 12px;border-radius:var(--rs);font-size:15px;font-weight:800;cursor:${dis?'default':'pointer'};background:transparent;color:${dis?'var(--bd)':'var(--ac)'};border:1px solid ${dis?'var(--bd)':'var(--ac)'}">${txt}</button>`;
+  const cab=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">${nav(sem-1,'‹',sem<=-3)}<div style="flex:1;text-align:center"><div style="font-size:13px;font-weight:800">${fmtFechaCorta(lunISO)} → ${fmtFechaCorta(domISO)}</div></div>${nav(sem+1,'›',sem>=0)}</div>`;
+  const filas=dias.map((f,i)=>{
+    const s=snaps[i],lista=s.exists()?(s.val()||[]):[];
+    const mias=lista.filter(m=>m.user===CU&&m.tipo);
+    const hoy=f===hoyISO;
+    const wrap=`<div style="background:${hoy?'rgba(0,201,167,.12)':'var(--bg)'};border:1px solid ${hoy?'var(--ac)':'var(--bd)'};border-radius:var(--rs);padding:9px 10px;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:700;color:${hoy?'var(--ac)':'var(--mt)'};text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${DIA_NOMBRE[DIA_KEYS[i]]} ${isoDateAdd(lun,i).getDate()}${hoy?' · hoy':''}</div>`;
+    if(!mias.length)return`${wrap}<div style="font-size:12.5px;color:var(--mt)">Sin marcaciones guardadas.</div></div>`;
+    const porTipo={};mias.forEach(m=>{porTipo[m.tipo]=m;});
+    return wrap+MISMARCAS_TIPOS.map(t=>{
+      const m=porTipo[t];
+      if(!m)return`<div style="font-size:12px;color:var(--mt);padding:2px 0">◻ ${t}: —</div>`;
+      const hora=m.stamp?new Date(m.stamp).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):(m.hora||'');
+      return`<div style="font-size:12.5px;color:var(--tx);padding:2px 0">✅ ${t}: <strong>${hora}</strong> <span style="color:var(--ac);font-size:10.5px">· en el servidor</span></div>`;
+    }).join('')+'</div>';
+  }).join('');
+  body.innerHTML=cab+filas+`<div style="font-size:10.5px;color:var(--mt);text-align:center;margin-top:4px">Leído del servidor: ${new Date().toLocaleTimeString('es')}</div>`;
+  body.querySelectorAll('[data-sem]').forEach(b=>b.addEventListener('click',()=>{if(!b.disabled)renderMisMarcaciones(parseInt(b.dataset.sem,10));}));
+}
+el('btn-ver-marcas')?.addEventListener('click',()=>{el('m-mismarcas').classList.add('open');renderMisMarcaciones(0);});
+el('mismarcas-refrescar')?.addEventListener('click',()=>renderMisMarcaciones(_misMarcasSemana,true));
+el('mismarcas-cerrar')?.addEventListener('click',()=>el('m-mismarcas').classList.remove('open'));
 el('facial-cancel').addEventListener('click',closeFacialModal);
 
 el('facial-enroll-btn').addEventListener('click',async()=>{
