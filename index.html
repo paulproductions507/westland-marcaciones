@@ -1117,6 +1117,14 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
           </div></div>
 
 
+          <div class="asec"><div class="ashdr" data-ac="ac-rsync"><span>📡 Forzar sincronización remota</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-rsync">
+            <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Si el dispositivo de ese colaborador tiene la app abierta en este momento (aunque sea con señal intermitente), le va a llegar la orden casi al instante y va a intentar subir, por sí solo, todo lo que tenga pendiente en su cola local — como si él mismo hubiera tocado "Actualizar". Si tiene la app cerrada, la orden queda esperando y se ejecuta sola la próxima vez que la abra.</div>
+            <div class="fg"><label>Colaborador</label><select class="fc" id="rsync-user"></select></div>
+            <button class="btn bp bsm" id="btn-rsync" style="width:auto;margin-top:6px">📡 Enviar orden de sincronizar ahora</button>
+            <div id="rsync-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
+          </div></div>
+
           <div class="asec"><div class="ashdr" data-ac="ac-man"><span>✍ Marcación manual</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-man">
             <div class="fg2">
@@ -2169,7 +2177,7 @@ onValue(R(db,'.info/connected'),(snap)=>{
 });
 
 // PATHS
-const META="meta_v1",USERS="users_v1",HIST="historial_v1",PLOG="prolog_v1",FER="feriados_v1",APR="approvals_v1";
+const META="meta_v1",USERS="users_v1",HIST="historial_v1",PLOG="prolog_v1",FER="feriados_v1",APR="approvals_v1",SYNCCMD=`${META}/forzar_sync`;
 const WKPAGO=`${META}/wkpago`; // Firebase: meta_v1/wkpago/{fecha}/{user}={desde,hasta} — pago manual de sábado/domingo (sin marcación de reloj). Va dentro de meta_v1 porque es la única ruta con permiso de escritura ya habilitado para este tipo de dato administrativo.
 const LOGPROV="logistica_proveedores_v1",LOGREC="logistica_recibos_v1",LOGDEPTO="logistica_deptos_v1",LOGCAM="logistica_camiones_v1";
 const LOGSUM="logistica_suministro_v1",LOGSUM_MOV=LOGSUM+"/movimientos",LOGSUM_TAM=LOGSUM+"/tamanos",LOGSUM_CAT=LOGSUM+"/catalogo",LOGSUM_RESP=LOGSUM+"/responsables",LOGSUM_REQ=LOGSUM+"/solicitudes",LOGSUM_AREA=LOGSUM+"/areas",LOGSUM_ACUSE=LOGSUM+"/acuses";
@@ -3621,6 +3629,21 @@ const _origGetHorarioBase=null; // referencia legacy, no usar
 async function openApp(user){
   el('login-scr').style.display='none';el('app').style.display='block';CU=user;
   renderHistToday(); // se dispara de inmediato, en paralelo — no espera al resto de la carga
+  // El admin puede "empujar" una orden de sincronizar ya mismo desde su panel. Este dispositivo
+  // la escucha en tiempo real mientras la app esté abierta, y si llega, fuerza su propia cola
+  // local a subir — sin que el colaborador tenga que tocar nada.
+  (function escucharOrdenSync(){
+    const KEY=`sync_cmd_last_${user}`;
+    let last=0;try{last=parseInt(localStorage.getItem(KEY)||'0',10)||0;}catch(e){}
+    trackedOnValue(R(db,`${SYNCCMD}/${user}`),async(snap)=>{
+      if(!snap.exists())return;
+      const cmd=snap.val(),ts=cmd&&cmd.ts||0;
+      if(!ts||ts<=last)return; // orden ya procesada antes, o quedó de una sesión vieja
+      last=ts;try{localStorage.setItem(KEY,String(ts));}catch(e){}
+      toast('📡 El administrador pidió sincronizar — revisando marcaciones pendientes...','ok',3500);
+      await forceSyncNow();
+    });
+  })();
   getEffectiveSchedule(user).catch(()=>{}); // cachea el horario localmente mientras hay señal
   startLunchCountdown();
   el('tb-date').textContent=new Date().toLocaleDateString('es',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
@@ -3804,7 +3827,7 @@ window.deleteUser=async function(userKey,nombre){
 function fillSelects(obj){
   const users=Object.values(obj||{});
   const withAll=['gen-user','bor-user','rpt-users'];
-  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user'].forEach(id=>{
+  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user'].forEach(id=>{
     const s=el(id);if(!s)return;
     s.innerHTML=withAll.includes(id)?'<option value="__ALL__">— Todos —</option>':'';
     users.filter(u=>!GERENTES.includes(u.user)).forEach(u=>s.innerHTML+=`<option value="${u.user}">${u.nombre} (${u.user})</option>`);
@@ -5008,7 +5031,16 @@ el('btn-enviar-banco-mailto')?.addEventListener('click',function(){
 async function canMark(date,user,preList){
   const key=isoD(date),list=preList||await getHist(key),mine=(list||[]).filter(x=>x.user===user);
   if(mine.length>=4)return{ok:false,msg:'Límite: ya tienes 4 marcaciones hoy.'};
-  if(mine.length>0){const sorted=[...mine].sort((a,b)=>a.stamp.localeCompare(b.stamp));const diff=(date-new Date(sorted[sorted.length-1].stamp))/60000;if(diff<20)return{ok:false,msg:`Espera ${Math.ceil(20-diff)} min más.`};}
+  if(mine.length>0){
+    const sorted=[...mine].sort((a,b)=>a.stamp.localeCompare(b.stamp));
+    const ultima=sorted[sorted.length-1],diff=(date-new Date(ultima.stamp))/60000;
+    // Si la última marca guardada queda en el FUTURO respecto al reloj de este dispositivo
+    // (diff muy negativo), NO se debe mostrar una espera absurda de horas — eso casi siempre
+    // significa una marca generada por el admin para más tarde hoy, o el reloj de otro
+    // dispositivo mal puesto. Se avisa claro en vez de confundir con "Espera 199 min más.".
+    if(diff<-15)return{ok:false,msg:`Tu última marca (${ultima.tipo}) quedó con hora futura (${new Date(ultima.stamp).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',hour12:true})}). Avisa al administrador para que la revise.`};
+    if(diff<20)return{ok:false,msg:`Espera ${Math.ceil(20-diff)} min más.`};
+  }
   // Regla enérgica de rubros: el próximo rubro se calcula por TIPO ya existente ese día (no por
   // posición), y si el próximo rubro sería "Salida Alm." se exige que sea a partir de las 11:55am.
   // Esto evita que una marca fantasma/perdida por caída de conexión asigne "Salida Alm." cuando
@@ -6683,6 +6715,18 @@ el('btn-rrhh-enviar-previo')?.addEventListener('click',()=>enviarRRHH('previo'))
 el('btn-rrhh-enviar-oficial')?.addEventListener('click',()=>enviarRRHH('oficial'));
 
 // MANUAL
+el('btn-rsync')?.addEventListener('click',async()=>{
+  const user=el('rsync-user').value,st=el('rsync-status');
+  if(!user){toast('Elige un colaborador','err');return;}
+  const btn=el('btn-rsync');btn.disabled=true;
+  try{
+    await set(R(db,`${SYNCCMD}/${user}`),{ts:Date.now(),por:CU});
+    await addLog(`📡 Orden de sincronización remota enviada a ${user} (por ${CU})`);
+    if(st)st.textContent='✅ Orden enviada. Si tiene la app abierta, debería sincronizar en segundos. Si la tiene cerrada, se ejecutará sola cuando la abra.';
+    toast('📡 Orden enviada ✓','ok',3000);
+  }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo enviar la orden','err');}
+  btn.disabled=false;
+});
 el('btn-man').addEventListener('click',async()=>{
   const val=el('man-dt').value,user=el('man-user').value,segManual=el('man-seg').value,tipoSel=el('man-tipo').value;
   if(!val||!user){toast('Seleccione fecha y usuario','err');return;}
