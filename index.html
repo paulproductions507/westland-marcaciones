@@ -876,6 +876,16 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               <button class="btn bg bsm" id="tsem-fijar" style="width:auto;font-size:11px;margin-top:8px">✅ Confirmar esta semana tal como está</button>
             </div>
             <div id="turnos-list"></div>
+            <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin:10px 0">
+              <div style="font-weight:700;font-size:13px;margin-bottom:8px">👤 Ver el turno de UN colaborador, semana por semana</div>
+              <div class="fg"><label>Colaborador</label><select class="fc" id="tcol-user"></select></div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:9px">
+                <button class="btn bg bsm" id="tcol-prev" style="width:auto">‹</button>
+                <div id="tcol-label" style="flex:1;text-align:center;font-size:13px;font-weight:800"></div>
+                <button class="btn bg bsm" id="tcol-next" style="width:auto">›</button>
+              </div>
+              <div id="tcol-body" style="margin-top:9px"></div>
+            </div>
             <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:10px">
               <div style="font-weight:700;font-size:13px;margin-bottom:8px">+ Nuevo turno</div>
               <div class="fg2">
@@ -2177,7 +2187,7 @@ onValue(R(db,'.info/connected'),(snap)=>{
 });
 
 // PATHS
-const META="meta_v1",USERS="users_v1",HIST="historial_v1",PLOG="prolog_v1",FER="feriados_v1",APR="approvals_v1",SYNCCMD=`${META}/forzar_sync`;
+const META="meta_v1",USERS="users_v1",HIST="historial_v1",PLOG="prolog_v1",FER="feriados_v1",APR="approvals_v1",SYNCCMD=`${META}/forzar_sync`,DESCMAN=`${META}/descuento_manual`;
 const WKPAGO=`${META}/wkpago`; // Firebase: meta_v1/wkpago/{fecha}/{user}={desde,hasta} — pago manual de sábado/domingo (sin marcación de reloj). Va dentro de meta_v1 porque es la única ruta con permiso de escritura ya habilitado para este tipo de dato administrativo.
 const LOGPROV="logistica_proveedores_v1",LOGREC="logistica_recibos_v1",LOGDEPTO="logistica_deptos_v1",LOGCAM="logistica_camiones_v1";
 const LOGSUM="logistica_suministro_v1",LOGSUM_MOV=LOGSUM+"/movimientos",LOGSUM_TAM=LOGSUM+"/tamanos",LOGSUM_CAT=LOGSUM+"/catalogo",LOGSUM_RESP=LOGSUM+"/responsables",LOGSUM_REQ=LOGSUM+"/solicitudes",LOGSUM_AREA=LOGSUM+"/areas",LOGSUM_ACUSE=LOGSUM+"/acuses";
@@ -2203,6 +2213,14 @@ let CU=null,CUM=null,sLeft=300,sTimer=null,cGPS=null,autoSchedInt=null;
 const el=id=>document.getElementById(id);
 const isoD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const fmtT=d=>{try{return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});}catch(e){return d.toTimeString().split(' ')[0];}};
+// Convierte "HH:mm" (24h) a 12h con a.m./p.m. — para que un horario como "17:00" nunca se
+// confunda con una fecha (RRHH llegó a leer "17:00" como si fuera "el día 17").
+function hm12(hm){
+  if(!hm||typeof hm!=='string'||!hm.includes(':'))return hm||'';
+  const[h,m]=hm.split(':').map(Number);
+  const d=new Date(2000,0,1,h||0,m||0);
+  try{return d.toLocaleTimeString('es',{hour:'numeric',minute:'2-digit',hour12:true});}catch(e){return hm;}
+}
 // ── HORA LEGIBLE CON AM/PM, SIEMPRE calculada desde el 'stamp' (no desde el texto 'hora') ──
 // Causa del problema "salgo a las 4:59 pm y el sistema lo lee como 4:59 am": el texto 'hora'
 // se guarda con el formato del teléfono ("04:59:12 p. m."), y la pantalla lo recortaba a 8
@@ -3274,6 +3292,25 @@ async function loadDiasLibresRango(desdeISO,hastaISO){
   }
 }
 async function saveDiaLibre(fecha,data){try{await set(R(db,`${DIASLIBRES}/${fecha}`),data);}catch(e){console.error('saveDiaLibre',e);throw e;}}
+// ── DESCUENTO MANUAL CONFIRMADO (solo lo ve el admin en Vista Semanal) ────────────────────────
+// Para cuando el admin YA confirmó con el colaborador que llegó tarde o salió temprano (algo
+// acordado, no una diferencia mínima de sincronización) y quiere que el descuento se aplique sí
+// o sí, sin depender de que las marcas lo reflejen solas. Es aparte y ADICIONAL al descuento
+// automático — nunca lo cubre el acumulado semanal, porque es deliberado, no un residuo menor.
+// Firebase: meta_v1/descuento_manual/{fecha}/{user} = {min, motivo, por, ts}
+async function loadDescuentoManualRango(desdeISO,hastaISO){
+  try{
+    const s=await get(query(R(db,DESCMAN),orderByKey(),startAt(desdeISO),endAt(hastaISO)));
+    return s.exists()?s.val():{};
+  }catch(e){
+    console.warn('loadDescuentoManualRango: uso respaldo por día',e);
+    const out={};
+    for(let d=new Date(desdeISO+'T00:00:00');isoD(d)<=hastaISO;d.setDate(d.getDate()+1)){
+      const f=isoD(d);try{const v=await get(R(db,`${DESCMAN}/${f}`));if(v.exists())out[f]=v.val();}catch(e2){}
+    }
+    return out;
+  }
+}
 // ── TURNOS POR SEMANA (trazables) ─────────────────────────────────────────────
 // Firebase: meta_v1/turnos_semana/{lunesISO}/{dia}/{user} = {tid,nombre,inicio,fin,almInicio,duracionAlm}
 //           meta_v1/turnos_semana/{lunesISO}/{dia}/_meta  = {por,ts}  ← quién lo programó y cuándo
@@ -3424,6 +3461,37 @@ async function cargarSemanaTurnos(){
   renderBarraSemanaTurnos();
   Object.keys(_turnosCache||{}).forEach(id=>{renderTurnoPills(id);renderTurnoDiaBody(id);});
 }
+// Visor: el turno de UN colaborador elegido, día por día, para cualquier semana — reutiliza
+// turnoMapParaFecha (misma prioridad semana-programada > plantilla) y los días libres.
+let _tcolLun=null;
+async function renderTcolSemana(){
+  const sel=el('tcol-user'),body=el('tcol-body');if(!sel||!body)return;
+  const user=sel.value;if(!_tcolLun)_tcolLun=lunesISODe(isoD(new Date()));
+  const lun=_tcolLun,dom=addDaysISO(lun,6);
+  const lbl=el('tcol-label');if(lbl)lbl.textContent=`${fmtFechaCorta(lun)} → ${fmtFechaCorta(dom)}`;
+  if(!user){body.innerHTML='<div style="font-size:12px;color:var(--mt)">Elige un colaborador.</div>';return;}
+  body.innerHTML='<div style="font-size:12px;color:var(--mt)">Cargando...</div>';
+  try{
+    const dias=DIA_KEYS.map((_,i)=>addDaysISO(lun,i));
+    const[mapas,libresRango]=await Promise.all([
+      Promise.all(dias.map(f=>turnoMapParaFecha(f))),
+      loadDiasLibresRango(lun,dom)
+    ]);
+    body.innerHTML=dias.map((f,i)=>{
+      const libre=(libresRango[f]||{})[user];
+      const info=mapas[i].map[user];
+      const turnos=mapas[i].turnos;
+      let txt;
+      if(libre)txt=`<span style="color:var(--wn);font-weight:800">🏖 Día libre</span>`;
+      else if(info)txt=`<strong>${escHtml(info.nombre)}</strong> <span style="color:var(--mt)">${turnos[info.tid]?`(${turnos[info.tid].inicio}→${turnos[info.tid].fin})`:''}</span>`;
+      else txt=`<span style="color:var(--mt)">Sin turno asignado</span>`;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span style="color:var(--mt);font-weight:700">${DIA_NOMBRE[DIA_KEYS[i]]} ${new Date(f+'T00:00:00').getDate()}</span><span>${txt}</span></div>`;
+    }).join('');
+  }catch(e){console.error('renderTcolSemana',e);body.innerHTML='<div style="font-size:12px;color:var(--dn)">Error al cargar.</div>';}
+}
+el('tcol-user')?.addEventListener('change',renderTcolSemana);
+el('tcol-prev')?.addEventListener('click',()=>{_tcolLun=addDaysISO(_tcolLun||lunesISODe(isoD(new Date())),-7);renderTcolSemana();});
+el('tcol-next')?.addEventListener('click',()=>{_tcolLun=addDaysISO(_tcolLun||lunesISODe(isoD(new Date())),7);renderTcolSemana();});
 async function guardarTurnoDia(id,dia){
   const t=_turnosCache&&_turnosCache[id];if(!t||!_turnosSemLun)return;
   const lun=_turnosSemLun,dom=addDaysISO(lun,6),fechaISO=addDaysISO(lun,DIA_KEYS.indexOf(dia));
@@ -3482,6 +3550,7 @@ async function loadTurnosAdmin(){
   selDom.innerHTML='<option value="">— Ninguno —</option>'+ids.map(id=>`<option value="${id}" ${id===domDefault?'selected':''}>${turnos[id].nombre} (${turnos[id].inicio}→${turnos[id].fin})</option>`).join('');
   _turnosCache=turnos;_turnosColabCache=colab;_turnosUsersCache=users;
   await cargarSemanaTurnos();
+  renderTcolSemana();
   // Migra en Firebase, en segundo plano, los turnos que todavía tengan el formato viejo
   ids.forEach(id=>{const t=turnos[id];if(!t.dias&&t.usuarios){set(R(db,`${TURNOS}/${id}/dias`),migrarTurnoADias(t)).catch(()=>{});}});
   if(!ids.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">Aún no hay turnos creados. Crea el primero abajo.</div>';return;}
@@ -3827,7 +3896,7 @@ window.deleteUser=async function(userKey,nombre){
 function fillSelects(obj){
   const users=Object.values(obj||{});
   const withAll=['gen-user','bor-user','rpt-users'];
-  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user'].forEach(id=>{
+  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user','tcol-user'].forEach(id=>{
     const s=el(id);if(!s)return;
     s.innerHTML=withAll.includes(id)?'<option value="__ALL__">— Todos —</option>':'';
     users.filter(u=>!GERENTES.includes(u.user)).forEach(u=>s.innerHTML+=`<option value="${u.user}">${u.nombre} (${u.user})</option>`);
@@ -4218,7 +4287,7 @@ function buildEmailHTML(tipo,desde,hasta,sumObj,rowsByUser,usersArr){
           const cnt=dd.marcCount||0;
           const completo=cnt>=4;
           const dc=(dd.diferencia||'').startsWith('-')?'bad':'okc';
-          const jorTag=dd.jornadaDia?` <span class="jc">[jornada hoy: ${dd.jornadaDia.entrada}-${dd.jornadaDia.salida}, por ${dd.jornadaDia.configuradoPor}]</span>`:'';
+          const jorTag=dd.jornadaDia?` <span class="jc">[jornada hoy: ${hm12(dd.jornadaDia.entrada)}-${hm12(dd.jornadaDia.salida)}, por ${dd.jornadaDia.configuradoPor}]</span>`:'';
           lineas+=`<span class="dln">📅 <b>${d}</b> — ${mks||'sin marcaciones'} — ${dd.horas||0}h · tarifa $${Number(dd.tarifaDia||0).toFixed(2)} · ${completo?'<span class="okc">✅ completo</span>':'<span class="bad">⏳ '+cnt+'/4</span>'} · dif: <span class="${dc}">${dd.diferencia||'—'}</span>${jorTag}</span>`;
         });
         rows+=`<tr><td></td><td colspan="6" class="dd">${lineas}</td></tr>`;
@@ -4515,7 +4584,7 @@ async function buildEmailRRHH(desde,hasta,nivel,modo){
       if(dd.tipo==='fijo'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">💰 Base</span><br>$${dd.monto.toFixed(2)}</td>`;return;}
       if(dd.tipo==='ausente'){tds+=`<td class="abs">Ausente</td>`;return;}
       if(dd.tipo==='libre'){tds+=`<td style="color:#999">—</td>`;return;}
-      if(dd.tipo==='manual'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">🗓️ F.Semana</span><br>${dd.horas.toFixed(2)}h (${dd.desde}–${dd.hasta})<br>$${dd.monto.toFixed(2)}</td>`;return;}
+      if(dd.tipo==='manual'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">🗓️ F.Semana</span><br>${dd.horas.toFixed(2)}h (${hm12(dd.desde)}–${hm12(dd.hasta)})<br>$${dd.monto.toFixed(2)}</td>`;return;}
       totalPorDia[vi].monto+=dd.monto;totalPorDia[vi].desc+=dd.descuento;
       const chk=dd.tipo==='completo'?'✅':'⏳ '+dd.cnt+'/4';
       const horasLine=nivel>=1?'':`${dd.horas.toFixed(2)}h · `;
@@ -5965,6 +6034,73 @@ function computeHrsParcial(marks,almCfg){
   return +(raw/60);
 }
 
+// ── ACUMULADO SEMANAL (minutos de sobra) — SOLO VISIBLE PARA EL ADMIN EN VISTA SEMANAL ────────
+// Si un colaborador se pasó unos minutos un día en su ENTRADA o en su ALMUERZO (llegó un poco
+// temprano, le tomó menos tiempo el almuerzo) y otro día de la MISMA semana le faltaron unos
+// minutos por esas mismas dos causas (una tardanza mínima en la entrada, un almuerzo que se
+// alargó un poco), esos minutos de sobra cubren el faltante ANTES de calcular el descuento.
+// A propósito, la SALIDA (Salida Final) NUNCA participa — ni como fuente de sobra, ni como
+// faltante elegible; eso es un asunto aparte. Reglas también a propósito: nunca generan pago
+// extra (si sobra más de lo que hace falta, el resto no se usa — no se paga aparte, está
+// prohibido), y nunca pasan a la semana siguiente (el "pool" se arma y se gasta solo con los
+// días de este mismo reporte; no se guarda en Firebase). RRHH y el colaborador NUNCA ven el
+// detalle de esto — solo ven el monto ya corregido, como si siempre hubiera sido así.
+//
+// Minutos de diferencia de UN día, solo por Entrada y por Almuerzo, contra el horario
+// REALMENTE programado de ese colaborador ese día (turno de la semana > horario propio >
+// horario general — la misma prioridad que usa el resto de la app). positivo=faltante,
+// negativo=sobra. Se limita (cap) a lo que el día realmente tuvo de falta/sobra total, para
+// nunca inventar más de lo que en verdad pasó ese día.
+async function deltaEntradaAlmuerzoDia(user,fechaISO,dayMarks,almCfg,horcolUser,hrsParcial,completo){
+  const by={};(dayMarks||[]).forEach(m=>{if(m&&m.tipo)by[m.tipo]=new Date(m.stamp);});
+  if(!by['Entrada'])return{deficitMin:0,excedenteMin:0};
+  let base;try{base=await getHorarioBaseDe(user,fechaISO,horcolUser);}catch(e){return{deficitMin:0,excedenteMin:0};}
+  const[hI,mI]=String(base.inicio||'08:00').split(':').map(Number);
+  const progEntradaMin=(hI||0)*60+(mI||0);
+  const realEntradaMin=by['Entrada'].getHours()*60+by['Entrada'].getMinutes();
+  const deltaEntrada=realEntradaMin-progEntradaMin;
+  let deltaAlmuerzo=0;
+  if(by['Salida Alm.']&&by['Regreso Alm.']){
+    const realDur=(by['Regreso Alm.']-by['Salida Alm.'])/60000;
+    const progDur=base.duracionAlm!==undefined?base.duracionAlm:((almCfg&&almCfg.minutos)||60);
+    deltaAlmuerzo=realDur-progDur;
+  }
+  const actualDeficitMin=Math.max(0,(8-hrsParcial)*60);
+  const actualExcedenteMin=completo?computeHrsExcedente(dayMarks,almCfg)*60:0;
+  return{
+    deficitMin:Math.min(Math.max(0,deltaEntrada)+Math.max(0,deltaAlmuerzo),actualDeficitMin),
+    excedenteMin:Math.min(Math.max(0,-deltaEntrada)+Math.max(0,-deltaAlmuerzo),actualExcedenteMin)
+  };
+}
+// computeHrsExcedente: como computeHrs, pero SIN el tope de 8h — para acotar (cap) cuánta sobra
+// real tuvo un día completo (4 marcas); no se usa como fuente directa del pool, solo como límite.
+function computeHrsExcedente(marks,almCfg){
+  const cfg=almCfg||{descontar:true,minutos:60};
+  const by={};(marks||[]).forEach(m=>{if(m&&m.tipo)by[m.tipo]=new Date(m.stamp);});
+  if(!by["Entrada"]||!by["Salida Final"])return 0;
+  let raw=(by["Salida Final"]-by["Entrada"])/60000;
+  if(cfg.descontar){const lunch=by["Salida Alm."]&&by["Regreso Alm."]?(by["Regreso Alm."]-by["Salida Alm."])/60000:cfg.minutos;raw-=lunch;}
+  return Math.max(0,(raw-8*60)/60);
+}
+// dias: [{k,deficitMin,excedenteMin}, ...] — un colaborador, una semana/rango, ya en minutos y
+// ya acotados a Entrada+Almuerzo (ver deltaEntradaAlmuerzoDia). El faltante más antiguo se cubre
+// primero. Devuelve {map:{k:horas prestadas}, disponibleMin, usadoMin}.
+function calcularAcumuladoSemana(dias){
+  let pool=0;const deficits=[];
+  dias.forEach(({k,deficitMin,excedenteMin})=>{
+    pool+=(excedenteMin||0)/60;
+    if(deficitMin>0)deficits.push({k,falta:deficitMin/60});
+  });
+  const disponibleMin=Math.round(pool*60);
+  const map={};let usadoMin=0;
+  deficits.sort((a,b)=>a.k.localeCompare(b.k)).forEach(({k,falta})=>{
+    if(pool<=0)return;
+    const usar=Math.min(pool,falta);
+    if(usar>0){map[k]=usar;pool-=usar;usadoMin+=Math.round(usar*60);}
+  });
+  return{map,disponibleMin,usadoMin};
+}
+
 // PAGO FIJO / SALARIO BASE — para usuarios (ej. Super Admin) que no deben marcar reloj pero
 // sí deben recibir su pago íntegro en la Vista Semanal para los días configurados en su perfil.
 // Usa la tarifa especial del usuario si está activa; si no, la tarifa regular/domingo/feriado
@@ -6067,6 +6203,7 @@ async function renderVistaSemanal(refDate,hastaDate){
   const fs=await get(R(db,FER));const feriados=fs.exists()?Object.values(fs.val()).map(f=>f.fecha):[];
   const almGlobal=await loadAlmuerzoGlobal();
   // OCULTAR columnas donde NINGÚN colaborador tiene marcación ni pago fijo ese día
+  const descManRango=await loadDescuentoManualRango(isoList[0],isoList[isoList.length-1]);
   const diasVisibles=isoList.map((k,i)=>({k,i,d:dias[i],etq:etiquetas[i]}))
     .filter(({k,d})=>userList.some(u=>(histByDay[k]||[]).some(m=>m.user===u.user)
       ||(u.pagoFijo?.activo&&u.pagoFijo.dias?.includes(d.getDay()))));
@@ -6097,10 +6234,27 @@ async function renderVistaSemanal(refDate,hastaDate){
   // Acumuladores solo para días visibles
   const totalPorDia=diasVisibles.map(()=>({colab:0,monto:0,desc:0}));
   let totalSemana=0,totalDescSemana=0;
-  userList.forEach(u=>{
+  for(const u of userList){
     const uObj=users[u.user]||{};
-    let totalUsuario=0,totalDescUsuario=0;
+    let totalUsuario=0,totalDescUsuario=0,totalAcumUsrMin=0;
     const notasUsr=[];
+    // Pre-pasada SOLO para armar el pool de minutos de sobra de esta semana/rango (Entrada +
+    // Almuerzo únicamente) — no pinta nada todavía, solo clasifica cada día.
+    let horcolUserCache=null;try{const hc=await get(R(db,`${HORCOL}/${u.user}`));horcolUserCache=hc.exists()?hc.val():{};}catch(e){horcolUserCache={};}
+    const diasInfoAcumRaw=await Promise.all(diasVisibles.filter(({k})=>k>=DESCUENTO_DESDE).map(async({k,d})=>{
+      const dowNum=d.getDay(),isFer=feriados.includes(k);
+      if(pagoFijoDelDia(uObj,dowNum,isFer))return null;
+      const dayMarks=(histByDay[k]||[]).filter(m=>m.user===u.user);
+      if(!dayMarks.length)return null;
+      const cnt=dayMarks.length,completo=cnt>=4;
+      const almCfg=almCfgForDia(almGlobal,dowNum);
+      const hrsParcial=cnt<4?computeHrsParcial(dayMarks,almCfg):computeHrs(dayMarks,almCfg);
+      const{deficitMin,excedenteMin}=await deltaEntradaAlmuerzoDia(u.user,k,dayMarks,almCfg,horcolUserCache,hrsParcial,completo);
+      return{k,deficitMin,excedenteMin};
+    }));
+    const diasInfoAcum=diasInfoAcumRaw.filter(Boolean);
+    const acumResult=calcularAcumuladoSemana(diasInfoAcum);
+    const acumuladoSemana=acumResult.map;
     html+=`<tr>`;
     html+=`<td style="padding:6px 8px;border:1px solid var(--bd);background:var(--sf);vertical-align:top">`
       +`<div style="font-weight:700;color:var(--tx);font-size:12px">${u.nombre}</div>`
@@ -6136,24 +6290,37 @@ async function renderVistaSemanal(refDate,hastaDate){
         const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
         const almCfg=almCfgForDia(almGlobal,dowNum);
         const hrs=computeHrs(dayMarks,almCfg);
-        const hrsParcial=cnt<4?computeHrsParcial(dayMarks,almCfg):hrs;
+        let hrsParcial=cnt<4?computeHrsParcial(dayMarks,almCfg):hrs;
+        // Minutos de sobra de ESTA MISMA semana (ver calcularAcumuladoSemana arriba) que cubren
+        // parte o todo el faltante de este día, antes de calcular el descuento.
+        const acumAplicado=(k>=DESCUENTO_DESDE)?(acumuladoSemana[k]||0):0;
+        if(acumAplicado>0){hrsParcial=Math.min(8,hrsParcial+acumAplicado);totalAcumUsrMin+=Math.round(acumAplicado*60);}
         // SALVAGUARDA: si están las 4 marcas pero el resultado de horas es absurdo (ej. 0 o casi
         // 0 — señal casi segura de un dato inconsistente, como un 'stamp' interno que no coincide
         // con la hora mostrada en pantalla), NUNCA se le paga $0 a alguien que sí marcó su día
         // completo. Se protege el pago íntegro y se marca "⚠ revisar" para que el administrador
         // lo confirme a mano, en vez de arriesgar un descuento mal calculado.
         const datosSospechosos=completo&&hrs<1;
-        const monto=datosSospechosos?tar:((k>=DESCUENTO_DESDE)?+((Math.min(hrsParcial,8)/8)*tar).toFixed(2):(completo?tar:+((Math.min(hrsParcial,8)/8)*tar).toFixed(2)));
+        const montoAuto=datosSospechosos?tar:((k>=DESCUENTO_DESDE)?+((Math.min(hrsParcial,8)/8)*tar).toFixed(2):(completo?tar:+((Math.min(hrsParcial,8)/8)*tar).toFixed(2)));
+        // Descuento manual CONFIRMADO por el admin (llegó tarde/salió temprano, ya acordado) —
+        // aparte del automático, nunca lo absorbe el acumulado semanal.
+        const descManInfo=(descManRango[k]||{})[u.user]||null;
+        const descManualMin=descManInfo?.min||0;
+        const descManualMonto=descManualMin>0?+Math.min(montoAuto,(descManualMin/(8*60))*tar).toFixed(2):0;
+        const monto=+(montoAuto-descManualMonto).toFixed(2);
         totalPorDia[vi].colab++;totalPorDia[vi].monto+=monto;totalSemana+=monto;totalUsuario+=monto;
         // Descuento prorrateado por hora (tarifa del día ÷ 8) sobre las horas que faltaron para
         // completar la jornada de 8h. No es un cálculo aparte: es exactamente la diferencia entre
         // la tarifa completa y lo que ya se está pagando arriba (monto) — así nunca queda
         // descoordinado con lo que ya se le paga al colaborador ese día.
-        const descuento=(k>=DESCUENTO_DESDE)?+(tar-monto).toFixed(2):0;
+        const descAuto=(k>=DESCUENTO_DESDE)?+(tar-montoAuto).toFixed(2):0;
+        const descuento=+(descAuto+descManualMonto).toFixed(2);
         totalPorDia[vi].desc=(totalPorDia[vi].desc||0)+descuento;totalDescSemana+=descuento;totalDescUsuario+=descuento;
         const mLines=dayMarks.map(m=>`<div style="white-space:nowrap;line-height:1.6"><span style="color:var(--mt);font-size:10px">${tipoLabel(m.tipo)}${m.generadoPorSistema?' <span title="Generada por el sistema — no fue un toque real" style="color:#ffb020">🤖</span>':''}</span><br><span style="color:var(--ac);font-family:'DM Mono',monospace;font-size:11px">${fmtHoraAP(m)}</span></div>`).join('');
         const badge=completo?`<div style="color:#00c9a7;font-size:10px;font-weight:700;margin-top:2px">✅ $${monto.toFixed(2)}</div>${datosSospechosos?`<div style="color:#ffb020;font-size:9px;font-weight:700;margin-top:1px">⚠ Revisar esta marca (dato inconsistente)</div>`:''}`:`<div style="color:var(--wn);font-size:10px;margin-top:2px">⏳ ${cnt}/4 · $${monto.toFixed(2)}</div>`;
-        const descHtml=descuento>0?`<div style="color:#ff6b6b;font-size:9.5px;font-weight:700;margin-top:2px">💸 Desc: -$${descuento.toFixed(2)}</div>`:'';
+        const descHtml=descAuto>0?`<div style="color:#ff6b6b;font-size:9.5px;font-weight:700;margin-top:2px">💸 Desc: -$${descAuto.toFixed(2)}</div>`:'';
+        const descManHtml=descManualMonto>0?`<div style="color:#c084fc;font-size:9px;font-weight:700;margin-top:1px">🔒 Confirmado: -$${descManualMonto.toFixed(2)} (${escHtml(descManInfo.motivo||'sin motivo')}) · por ${escHtml(descManInfo.por||'?')}</div>`:'';
+        const acumHtml=acumAplicado>0?`<div style="color:#00c9a7;font-size:9px;font-weight:700;margin-top:1px">💧 +${Math.round(acumAplicado*60)} min cubiertos con sobrante de la semana</div>`:'';
         // Hueco de secuencia: ej. tiene Regreso Alm. pero no Salida Alm. — esa marca probablemente
         // sigue atascada en el teléfono del colaborador. Se avisa aparte de "incompleto" (4/4
         // normal cuando aún no termina el día) para no generar falsas alarmas.
@@ -6165,15 +6332,15 @@ async function renderVistaSemanal(refDate,hastaDate){
           +`<button type="button" class="btn-avisar-hueco" data-user="${u.user}" data-dia="${k}" data-falta="${hueco.join('|')}" style="margin-top:2px;font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid #ff6b6b;background:transparent;color:#ff6b6b;cursor:pointer">🔔 Avisar</button>`
           +(huecoAlmGenerable?` <button type="button" class="btn-generar-hueco" data-user="${u.user}" data-dia="${k}" data-falta="${hueco[0]}" style="margin-top:2px;font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid #ffb020;background:transparent;color:#ffb020;cursor:pointer">🤖 Generar</button>`:'')
           +`</div>`:'';
-        html+=`<td style="padding:5px 6px;border:1px solid var(--bd);background:${bgBase};vertical-align:top">${mLines}${badge}${descHtml}${huecoHtml}</td>`;
+        html+=`<td style="padding:5px 6px;border:1px solid var(--bd);background:${bgBase};vertical-align:top">${mLines}${badge}${descHtml}${descManHtml}${acumHtml}${huecoHtml}</td>`;
       }
     });
-    html+=`<td style="padding:6px 8px;border:1px solid var(--bd);background:rgba(0,201,167,.08);text-align:center;vertical-align:middle"><strong style="color:var(--ac);font-size:13px">$${totalUsuario.toFixed(2)}</strong>${totalDescUsuario>0?`<div style="color:#ff6b6b;font-size:10px;font-weight:700;margin-top:2px">💸 -$${totalDescUsuario.toFixed(2)}</div>`:''}</td>`;
+    html+=`<td style="padding:6px 8px;border:1px solid var(--bd);background:rgba(0,201,167,.08);text-align:center;vertical-align:middle"><strong style="color:var(--ac);font-size:13px">$${totalUsuario.toFixed(2)}</strong>${totalDescUsuario>0?`<div style="color:#ff6b6b;font-size:10px;font-weight:700;margin-top:2px">💸 -$${totalDescUsuario.toFixed(2)}</div>`:''}${totalAcumUsrMin>0?`<div style="color:#00c9a7;font-size:9.5px;font-weight:700;margin-top:2px">💧 ${totalAcumUsrMin} min de la semana usados para cubrir faltantes</div>`:''}</td>`;
     html+=`<td style="padding:5px 7px;border:1px solid var(--bd);background:var(--bg);vertical-align:top;text-align:left">`
       +(notasUsr.length?notasUsr.map(({d,nts})=>`<div style="font-size:10px;line-height:1.4;margin-bottom:3px"><span style="color:var(--ac);font-weight:700">${DIA_LARGO[d.getDay()].slice(0,3)} ${d.getDate()}:</span> <span style="color:var(--tx)">${escHtml(nts.join(' · '))}</span></div>`).join(''):`<span style="color:var(--mt);font-size:10px">—</span>`)
       +`</td>`;
     html+=`</tr>`;
-  });
+  }
   // FILA DE TOTALES — solo días visibles
   html+=`<tr style="background:rgba(0,201,167,.10)">`;
   html+=`<td style="padding:7px 9px;border:1px solid var(--bd);vertical-align:middle">`
@@ -6224,9 +6391,25 @@ async function buildRRHHData(desde,hasta){
   const diasVis=isoList.map((k,i)=>({k,i,d:dias[i],etq:ETQ_DOW[dias[i].getDay()]}))
     .filter(({k,d})=>userList.some(u=>(histByDay[k]||[]).some(m=>m.user===u.user)
       ||(u.pagoFijo?.activo&&u.pagoFijo.dias?.includes(d.getDay()))));
-  const filas=userList.map(u=>{
+  const filas=[];
+  for(const u of userList){
     const uObj=users[u.user]||{};
-    let totalUsuario=0,descUsuario=0;
+    let totalUsuario=0,descUsuario=0,acumUsrMin=0;
+    // Mismo pool de minutos de sobra que la Vista Semanal (ver calcularAcumuladoSemana) — para
+    // que ambas vistas siempre coincidan en el monto de cada colaborador. Solo Entrada+Almuerzo.
+    let horcolUserCache=null;try{const hc=await get(R(db,`${HORCOL}/${u.user}`));horcolUserCache=hc.exists()?hc.val():{};}catch(e){horcolUserCache={};}
+    const diasInfoAcumRaw=await Promise.all(diasVis.filter(({k})=>k>=DESCUENTO_DESDE).map(async({k,d})=>{
+      const dowNum=d.getDay(),isFer=feriados.includes(k);
+      if(pagoFijoDelDia(uObj,dowNum,isFer))return null;
+      const marks=(histByDay[k]||[]).filter(m=>m.user===u.user);
+      if(!marks.length)return null;
+      const cnt=marks.length,completo=cnt>=4;
+      const almCfg=almCfgForDia(almGlobal,dowNum);
+      const hrsParcial=cnt<4?computeHrsParcial(marks,almCfg):computeHrs(marks,almCfg);
+      const{deficitMin,excedenteMin}=await deltaEntradaAlmuerzoDia(u.user,k,marks,almCfg,horcolUserCache,hrsParcial,completo);
+      return{k,deficitMin,excedenteMin};
+    }));
+    const acumuladoSemana=calcularAcumuladoSemana(diasInfoAcumRaw.filter(Boolean)).map;
     const diasArr=diasVis.map(({k,d})=>{
       const marks=(histByDay[k]||[]).filter(m=>m.user===u.user);
       const dowNum=d.getDay();const isFer=feriados.includes(k);
@@ -6237,16 +6420,18 @@ async function buildRRHHData(desde,hasta){
       const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
       const almCfg=almCfgForDia(almGlobal,dowNum);
       const hrs=computeHrs(marks,almCfg);
-      const hrsParcial=cnt<4?computeHrsParcial(marks,almCfg):hrs;
+      let hrsParcial=cnt<4?computeHrsParcial(marks,almCfg):hrs;
+      const acumAplicado=(k>=DESCUENTO_DESDE)?(acumuladoSemana[k]||0):0;
+      if(acumAplicado>0){hrsParcial=Math.min(8,hrsParcial+acumAplicado);acumUsrMin+=Math.round(acumAplicado*60);}
       const datosSospechosos=completo&&hrs<1;
       const monto=datosSospechosos?tar:((k>=DESCUENTO_DESDE)?+((Math.min(hrsParcial,8)/8)*tar).toFixed(2):(completo?tar:+((Math.min(hrsParcial,8)/8)*tar).toFixed(2)));
       const descuento=(k>=DESCUENTO_DESDE&&!datosSospechosos)?+(tar-monto).toFixed(2):0;
       const horas=datosSospechosos?8:+Math.min(hrsParcial,8).toFixed(2);
       totalUsuario+=monto;descUsuario+=descuento;
-      return{tipo:completo?'completo':'parcial',cnt,monto,descuento,horas,datosSospechosos};
+      return{tipo:completo?'completo':'parcial',cnt,monto,descuento,horas,datosSospechosos,acumAplicadoMin:acumAplicado>0?Math.round(acumAplicado*60):0};
     });
-    return{user:u.user,nombre:u.nombre,cedula:uObj.cedula||'',dias:diasArr,totalUsuario:+totalUsuario.toFixed(2),descUsuario:+descUsuario.toFixed(2)};
-  });
+    filas.push({user:u.user,nombre:u.nombre,cedula:uObj.cedula||'',dias:diasArr,totalUsuario:+totalUsuario.toFixed(2),descUsuario:+descUsuario.toFixed(2),acumUsrMin});
+  }
   const totalGlobal=+filas.reduce((a,f)=>a+f.totalUsuario,0).toFixed(2);
   const descGlobal=+filas.reduce((a,f)=>a+f.descUsuario,0).toFixed(2);
   return{diasVis,filas,totalGlobal,descGlobal};
@@ -6435,7 +6620,7 @@ async function renderVistaRRHH(desde,hasta){
         totalPorDia[vi].monto+=dd.monto;
         html+=`<td style="padding:5px 5px;border:1px solid var(--bd);text-align:center;vertical-align:middle">`
           +`<div style="color:#c58aff;font-size:10px;font-weight:700">🗓️ Fin de semana</div>`
-          +`<div style="font-size:9.5px;color:var(--mt);margin-top:1px">${dd.horas.toFixed(2)}h (${dd.desde}–${dd.hasta})</div>`
+          +`<div style="font-size:9.5px;color:var(--mt);margin-top:1px">${dd.horas.toFixed(2)}h (${hm12(dd.desde)}–${hm12(dd.hasta)})</div>`
           +`<div style="font-weight:800;font-size:12px;color:var(--ac);margin-top:1px">$${dd.monto.toFixed(2)}</div></td>`;
         return;
       }
