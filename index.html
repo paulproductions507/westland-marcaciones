@@ -813,6 +813,12 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="users-list" style="margin-top:13px"></div>
           </div></div>
 
+          <div class="asec"><div class="ashdr" data-ac="ac-baja"><span>🗃 Colaboradores dados de baja</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-baja">
+            <div style="font-size:11px;color:var(--mt);margin-bottom:9px;line-height:1.45">Colaboradores que ya no están laborando. No aparecen en ninguna lista activa (turnos, pago, marcación), pero su ficha y su historial siguen intactos. Si vuelve a trabajar con nosotros, "♻ Restaurar" lo regresa tal cual estaba.</div>
+            <div id="colab-baja-list"></div>
+          </div></div>
+
           <div class="asec"><div class="ashdr" data-ac="ac-rl"><span>📏 Reglas de horario</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-rl">
             <div class="fg2">
@@ -1133,6 +1139,22 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div class="fg"><label>Colaborador</label><select class="fc" id="rsync-user"></select></div>
             <button class="btn bp bsm" id="btn-rsync" style="width:auto;margin-top:6px">📡 Enviar orden de sincronizar ahora</button>
             <div id="rsync-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
+          </div></div>
+
+          <div class="asec"><div class="ashdr" data-ac="ac-descman"><span>🔒 Descuento manual confirmado</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-descman">
+            <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Para cuando YA confirmaste con el colaborador que llegó tarde o salió temprano. Este descuento se suma al automático, nunca lo cubre el acumulado de la semana, y <strong>solo tú lo ves</strong> aquí en Vista Semanal — RRHH y el colaborador solo ven el monto final, ya con esto aplicado.</div>
+            <div class="fg"><label>Fecha</label><input type="date" class="fc" id="descman-fecha"></div>
+            <div class="fg"><label>Colaborador</label><select class="fc" id="descman-user"></select></div>
+            <div class="fg"><label>Minutos a descontar</label><input type="number" class="fc" id="descman-min" min="1" placeholder="ej. 15"></div>
+            <div class="fg"><label>Motivo</label><select class="fc" id="descman-motivo">
+              <option value="Llegó tarde (confirmado)">Llegó tarde (confirmado)</option>
+              <option value="Salió temprano (confirmado)">Salió temprano (confirmado)</option>
+              <option value="Otro">Otro</option>
+            </select></div>
+            <button class="btn bp bsm" id="btn-descman" style="width:auto;margin-top:6px">🔒 Aplicar descuento confirmado</button>
+            <div id="descman-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
+            <div id="descman-lista" style="margin-top:10px"></div>
           </div></div>
 
           <div class="asec"><div class="ashdr" data-ac="ac-man"><span>✍ Marcación manual</span><span class="ach">▾</span></div>
@@ -2187,7 +2209,7 @@ onValue(R(db,'.info/connected'),(snap)=>{
 });
 
 // PATHS
-const META="meta_v1",USERS="users_v1",HIST="historial_v1",PLOG="prolog_v1",FER="feriados_v1",APR="approvals_v1",SYNCCMD=`${META}/forzar_sync`,DESCMAN=`${META}/descuento_manual`;
+const META="meta_v1",USERS="users_v1",HIST="historial_v1",PLOG="prolog_v1",FER="feriados_v1",APR="approvals_v1",SYNCCMD=`${META}/forzar_sync`,DESCMAN=`${META}/descuento_manual`,USERS_ARCH=`${META}/usuarios_archivados`;
 const WKPAGO=`${META}/wkpago`; // Firebase: meta_v1/wkpago/{fecha}/{user}={desde,hasta} — pago manual de sábado/domingo (sin marcación de reloj). Va dentro de meta_v1 porque es la única ruta con permiso de escritura ya habilitado para este tipo de dato administrativo.
 const LOGPROV="logistica_proveedores_v1",LOGREC="logistica_recibos_v1",LOGDEPTO="logistica_deptos_v1",LOGCAM="logistica_camiones_v1";
 const LOGSUM="logistica_suministro_v1",LOGSUM_MOV=LOGSUM+"/movimientos",LOGSUM_TAM=LOGSUM+"/tamanos",LOGSUM_CAT=LOGSUM+"/catalogo",LOGSUM_RESP=LOGSUM+"/responsables",LOGSUM_REQ=LOGSUM+"/solicitudes",LOGSUM_AREA=LOGSUM+"/areas",LOGSUM_ACUSE=LOGSUM+"/acuses";
@@ -3829,7 +3851,7 @@ async function renderDatosBancariosGerente(){
 
 // REFRESH
 async function refreshUI(){
-  const u=await getUsers();renderUserList(u);fillSelects(u);
+  const u=await getUsers();renderUserList(u);fillSelects(u);renderColabBaja();
   renderHistToday();renderLog();loadRules();loadHorario();loadFeriados();loadGPSCfg();loadHorariosDias();
   if(ADMINS.includes(CU)){renderSemUserChecks();loadBandejaBanco();loadHorarioColabAdmin();loadTurnosAdmin();}
   if(ADMINS.includes(CU)||GERENTES.includes(CU))loadBandejaBanco();
@@ -3882,21 +3904,96 @@ window.editUser=async function(userKey){
   loadBitacora(userKey);
   toast('Usuario cargado para editar. Modifica y presiona Guardar.','ok',4000);
 };
+// "Eliminar" un colaborador ahora significa darlo de baja: su ficha se mueve a un archivo
+// aparte (usuarios_archivados) — deja de aparecer en todas las listas activas (turnos, pago,
+// marcación, etc.) pero NO se borra nada de verdad. Queda disponible para "♻ Restaurar" en la
+// sección de abajo si vuelve a trabajar con nosotros. El historial de marcaciones ya hechas
+// tampoco se toca — sigue ligado a su mismo usuario, se vea o no en las listas activas.
 window.deleteUser=async function(userKey,nombre){
-  if(userKey===SUPERADMIN){toast('No se puede eliminar al Super Admin','err');return;}
-  if(!confirm('¿Eliminar usuario '+nombre+' ('+userKey+')? Esta acción no se puede deshacer.'))return;
+  if(userKey===SUPERADMIN){toast('No se puede dar de baja al Super Admin','err');return;}
+  if(!confirm('¿Dar de baja a '+nombre+' ('+userKey+')? Dejará de aparecer en las listas activas, pero su ficha se guarda y se puede restaurar después desde "Colaboradores dados de baja".'))return;
   try{
+    const users=await getUsers();const uObj=users[userKey];if(!uObj){toast('No se encontró ese usuario','err');return;}
+    await set(R(db,`${USERS_ARCH}/${userKey}`),{...uObj,fechaBaja:isoD(new Date()),porBaja:CU});
     await remove(R(db,USERS+'/'+userKey));
     invalidateUsersCache();
-    await addLog('Usuario eliminado: '+userKey+' por '+CU);
-    toast('Usuario '+nombre+' eliminado ✓','ok');
-    refreshUI();
-  }catch(e){toast('Error al eliminar','err');console.error(e);}
+    await addLog('Colaborador dado de baja: '+userKey+' por '+CU);
+    toast('Colaborador '+nombre+' dado de baja ✓','ok');
+    refreshUI();renderColabBaja();
+  }catch(e){toast('Error al dar de baja','err');console.error(e);}
 };
+async function renderColabBaja(){
+  const c=el('colab-baja-list');if(!c)return;
+  c.innerHTML='<div style="color:var(--mt);font-size:12px">Cargando...</div>';
+  try{
+    const s=await get(R(db,USERS_ARCH));
+    const arch=s.exists()?s.val():{};
+    const keys=Object.keys(arch);
+    if(!keys.length){c.innerHTML='<div style="color:var(--mt);font-size:12.5px">No hay colaboradores dados de baja.</div>';return;}
+    c.innerHTML=keys.map(k=>{
+      const u=arch[k];
+      return`<div class="uitem" data-baja-user="${escHtml(k)}" style="justify-content:space-between;flex-wrap:wrap;gap:6px;opacity:.85">
+        <div style="flex:1;min-width:0">
+          <div class="uname">${escHtml(u.nombre||k)}</div>
+          <div class="udet">${escHtml(k)} · ${escHtml(u.cedula||'')} · de baja desde ${u.fechaBaja||'?'}${u.porBaja?` (por ${escHtml(u.porBaja)})`:''}</div>
+          <div class="baja-edit-row" style="display:none;margin-top:6px;gap:6px;flex-wrap:wrap">
+            <input class="fc baja-edit-nombre" placeholder="Nombre" value="${escHtml(u.nombre||'')}" style="max-width:160px">
+            <input class="fc baja-edit-ced" placeholder="Cédula" value="${escHtml(u.cedula||'')}" style="max-width:120px">
+            <button type="button" class="btn bp bsm btn-baja-guardar" data-user="${escHtml(k)}" style="width:auto;font-size:11px">💾 Guardar</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0">
+          <button type="button" class="btn bg bsm btn-baja-editar" data-user="${escHtml(k)}" style="font-size:11px;padding:3px 8px">✏️</button>
+          <button type="button" class="btn bg bsm btn-baja-restaurar" data-user="${escHtml(k)}" data-n="${escHtml(u.nombre||k)}" style="font-size:11px;padding:3px 8px;color:var(--ac);border-color:rgba(0,201,167,.4)">♻️ Restaurar</button>
+          <button type="button" class="btn bg bsm btn-baja-eliminar" data-user="${escHtml(k)}" data-n="${escHtml(u.nombre||k)}" style="font-size:11px;padding:3px 8px;color:var(--dn);border-color:rgba(255,71,87,.3)">🗑</button>
+        </div>
+      </div>`;
+    }).join('');
+    c.querySelectorAll('.btn-baja-editar').forEach(b=>b.addEventListener('click',()=>{
+      const row=b.closest('[data-baja-user]').querySelector('.baja-edit-row');
+      row.style.display=row.style.display==='none'?'flex':'none';
+    }));
+    c.querySelectorAll('.btn-baja-guardar').forEach(b=>b.addEventListener('click',async()=>{
+      const wrap=b.closest('[data-baja-user]'),k=b.dataset.user;
+      const nombre=wrap.querySelector('.baja-edit-nombre').value.trim(),ced=wrap.querySelector('.baja-edit-ced').value.trim();
+      if(!nombre){toast('El nombre no puede quedar vacío','err');return;}
+      try{
+        await set(R(db,`${USERS_ARCH}/${k}/nombre`),nombre);
+        await set(R(db,`${USERS_ARCH}/${k}/cedula`),ced);
+        await addLog(`Ficha de ${k} (dado de baja) editada por ${CU}`);
+        toast('Guardado ✓','ok');renderColabBaja();
+      }catch(e){toast('⛔ Error al guardar','err');}
+    }));
+    c.querySelectorAll('.btn-baja-restaurar').forEach(b=>b.addEventListener('click',async()=>{
+      const k=b.dataset.user,n=b.dataset.n;
+      if(!confirm(`¿Restaurar a ${n} (${k}) como colaborador activo?`))return;
+      try{
+        const s2=await get(R(db,`${USERS_ARCH}/${k}`));if(!s2.exists())return;
+        const{fechaBaja,porBaja,...uObj}=s2.val();
+        await set(R(db,`${USERS}/${k}`),uObj);
+        await remove(R(db,`${USERS_ARCH}/${k}`));
+        invalidateUsersCache();
+        await addLog(`Colaborador restaurado: ${k} por ${CU}`);
+        toast(`${n} restaurado ✓`,'ok');
+        refreshUI();renderColabBaja();
+      }catch(e){toast('⛔ Error al restaurar','err');}
+    }));
+    c.querySelectorAll('.btn-baja-eliminar').forEach(b=>b.addEventListener('click',async()=>{
+      const k=b.dataset.user,n=b.dataset.n;
+      if(!confirm(`⚠ Esto SÍ es definitivo. ¿Eliminar para siempre la ficha de ${n} (${k})? No se puede deshacer.`))return;
+      try{
+        await remove(R(db,`${USERS_ARCH}/${k}`));
+        await addLog(`Ficha archivada de ${k} eliminada definitivamente por ${CU}`);
+        toast('Eliminado definitivamente','ok');
+        renderColabBaja();
+      }catch(e){toast('⛔ Error al eliminar','err');}
+    }));
+  }catch(e){c.innerHTML='<div style="color:var(--dn);font-size:12px">Error al cargar.</div>';}
+}
 function fillSelects(obj){
   const users=Object.values(obj||{});
   const withAll=['gen-user','bor-user','rpt-users'];
-  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user','tcol-user'].forEach(id=>{
+  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user','tcol-user','descman-user'].forEach(id=>{
     const s=el(id);if(!s)return;
     s.innerHTML=withAll.includes(id)?'<option value="__ALL__">— Todos —</option>':'';
     users.filter(u=>!GERENTES.includes(u.user)).forEach(u=>s.innerHTML+=`<option value="${u.user}">${u.nombre} (${u.user})</option>`);
@@ -6381,6 +6478,7 @@ async function buildRRHHData(desde,hasta){
   const fs=await get(R(db,FER));const feriados=fs.exists()?Object.values(fs.val()).map(f=>f.fecha):[];
   const almGlobal=await loadAlmuerzoGlobal();
   const histByDay={};
+  const descManRango=await loadDescuentoManualRango(isoList[0],isoList[isoList.length-1]);
   for(const k of isoList){histByDay[k]=await getHist(k);}
   const userList0=todosColab.filter(u=>isoList.some(k=>(histByDay[k]||[]).some(m=>m.user===u.user))
     ||(u.pagoFijo?.activo&&isoList.some((k,i)=>u.pagoFijo.dias?.includes(dias[i].getDay()))));
@@ -6424,8 +6522,13 @@ async function buildRRHHData(desde,hasta){
       const acumAplicado=(k>=DESCUENTO_DESDE)?(acumuladoSemana[k]||0):0;
       if(acumAplicado>0){hrsParcial=Math.min(8,hrsParcial+acumAplicado);acumUsrMin+=Math.round(acumAplicado*60);}
       const datosSospechosos=completo&&hrs<1;
-      const monto=datosSospechosos?tar:((k>=DESCUENTO_DESDE)?+((Math.min(hrsParcial,8)/8)*tar).toFixed(2):(completo?tar:+((Math.min(hrsParcial,8)/8)*tar).toFixed(2)));
-      const descuento=(k>=DESCUENTO_DESDE&&!datosSospechosos)?+(tar-monto).toFixed(2):0;
+      const montoAuto=datosSospechosos?tar:((k>=DESCUENTO_DESDE)?+((Math.min(hrsParcial,8)/8)*tar).toFixed(2):(completo?tar:+((Math.min(hrsParcial,8)/8)*tar).toFixed(2)));
+      // Mismo descuento manual confirmado que Vista Semanal — aquí SIN ninguna etiqueta visible,
+      // RRHH solo ve el monto ya reducido, como si siempre hubiera sido ese.
+      const descManualMin=((descManRango[k]||{})[u.user]||{}).min||0;
+      const descManualMonto=descManualMin>0?+Math.min(montoAuto,(descManualMin/(8*60))*tar).toFixed(2):0;
+      const monto=+(montoAuto-descManualMonto).toFixed(2);
+      const descuento=((k>=DESCUENTO_DESDE&&!datosSospechosos)?+(tar-montoAuto).toFixed(2):0)+descManualMonto;
       const horas=datosSospechosos?8:+Math.min(hrsParcial,8).toFixed(2);
       totalUsuario+=monto;descUsuario+=descuento;
       return{tipo:completo?'completo':'parcial',cnt,monto,descuento,horas,datosSospechosos,acumAplicadoMin:acumAplicado>0?Math.round(acumAplicado*60):0};
@@ -6900,6 +7003,45 @@ el('btn-rrhh-enviar-previo')?.addEventListener('click',()=>enviarRRHH('previo'))
 el('btn-rrhh-enviar-oficial')?.addEventListener('click',()=>enviarRRHH('oficial'));
 
 // MANUAL
+async function renderDescManLista(fecha){
+  const cont=el('descman-lista');if(!cont||!fecha)return;
+  cont.innerHTML='<div style="font-size:11px;color:var(--mt)">Cargando...</div>';
+  try{
+    const s=await get(R(db,`${DESCMAN}/${fecha}`));
+    const data=s.exists()?s.val():{};
+    const nom={};(_turnosColabCache||[]).forEach(u=>{nom[u.user]=u.nombre;});
+    const entries=Object.keys(data);
+    if(!entries.length){cont.innerHTML='<div style="font-size:11px;color:var(--mt)">Sin descuentos confirmados en esta fecha.</div>';return;}
+    cont.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--mt);margin-bottom:5px">Ya aplicados el ${fecha}:</div>`+entries.map(u=>{
+      const inf=data[u];
+      return`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:6px 9px;margin-bottom:5px;font-size:11.5px"><span>${escHtml(nom[u]||u)} — ${inf.min} min (${escHtml(inf.motivo||'')})</span><button type="button" class="btn bg bsm btn-descman-del" data-user="${escHtml(u)}" data-fecha="${fecha}" style="width:auto;padding:3px 8px;font-size:10.5px">🗑 Quitar</button></div>`;
+    }).join('');
+    cont.querySelectorAll('.btn-descman-del').forEach(b=>b.addEventListener('click',async()=>{
+      try{
+        await set(R(db,`${DESCMAN}/${b.dataset.fecha}/${b.dataset.user}`),null);
+        await addLog(`🔒 Descuento confirmado quitado: ${b.dataset.user} del ${b.dataset.fecha} (por ${CU})`);
+        toast('Quitado ✓','ok');
+        renderDescManLista(b.dataset.fecha);
+      }catch(e){toast('⛔ Error al quitar','err');}
+    }));
+  }catch(e){cont.innerHTML='<div style="font-size:11px;color:var(--dn)">Error al cargar.</div>';}
+}
+el('descman-fecha')?.addEventListener('change',()=>renderDescManLista(el('descman-fecha').value));
+el('btn-descman')?.addEventListener('click',async()=>{
+  const fecha=el('descman-fecha').value,user=el('descman-user').value,min=parseInt(el('descman-min').value,10),motivo=el('descman-motivo').value;
+  const st=el('descman-status');
+  if(!fecha||!user||!min||min<=0){toast('Completa fecha, colaborador y minutos','err');return;}
+  const btn=el('btn-descman');btn.disabled=true;
+  try{
+    await set(R(db,`${DESCMAN}/${fecha}/${user}`),{min,motivo,por:CU,ts:Date.now()});
+    await addLog(`🔒 Descuento confirmado aplicado: ${user}, ${fecha}, ${min} min (${motivo}) (por ${CU})`);
+    if(st)st.textContent=`✅ Aplicado. Se verá reflejado en Vista Semanal para el ${fecha}.`;
+    toast('🔒 Descuento aplicado ✓','ok');
+    el('descman-min').value='';
+    renderDescManLista(fecha);
+  }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo aplicar','err');}
+  btn.disabled=false;
+});
 el('btn-rsync')?.addEventListener('click',async()=>{
   const user=el('rsync-user').value,st=el('rsync-status');
   if(!user){toast('Elige un colaborador','err');return;}
@@ -7291,6 +7433,40 @@ async function buildSummary(desde,hasta,applyDisc){
       const descDia=(!jornadaDia&&applyDisc&&hrs<8)?+Math.max(0,tar*(1-Math.min(hrs,8)/8)).toFixed(2):0;
       const fmt=m=>{const sg=m<0?'-':(m>0?'+':''),a=Math.abs(m);return`${sg}${Math.floor(a/60)}h ${String(a%60).padStart(2,'0')}m`;};
       summ[u].det[k]={horas:+hrs.toFixed(2),tarifaDia:tar,bruto:tar,descDia,saldoParcial,pendiente,marcCount,horasTrab:hrs.toFixed(2),diferencia:fmt(Math.round((hrs-8)*60)),marcaciones:byU[u],jornadaDia};
+    }
+  }
+  // ACUMULADO SEMANAL + DESCUENTO MANUAL CONFIRMADO — lo mismo que ya aplican Vista Semanal y
+  // RRHH, para que este correo individual muestre el mismo monto neto final. Sin etiqueta
+  // visible aquí tampoco: el colaborador solo ve su descuento ya ajustado.
+  if(applyDisc){
+    const keysDesc=keys.filter(k=>k>=DESCUENTO_DESDE);
+    const descManRango=keysDesc.length?await loadDescuentoManualRango(keysDesc[0],keysDesc[keysDesc.length-1]):{};
+    for(const u of Object.keys(summ)){
+      const uObj=allM[u]||{};
+      let horcolUserCache=null;try{const hc=await get(R(db,`${HORCOL}/${u}`));horcolUserCache=hc.exists()?hc.val():{};}catch(e){horcolUserCache={};}
+      const diasOrden=[...summ[u].dias].filter(k=>k>=DESCUENTO_DESDE).sort();
+      const diasInfoRaw=await Promise.all(diasOrden.map(async k=>{
+        const dd=summ[u].det[k];
+        if(!dd||dd.jornadaDia)return null; // jornada confirmada ese día: queda fuera, como ya estaba
+        const wk=new Date(k+'T00:00:00').getDay();
+        const almCfg=almCfgForDia(almGlobal,wk);
+        const completo=dd.marcCount>=4;
+        const hrsParcial=dd.marcCount<4?computeHrsParcial(dd.marcaciones,almCfg):dd.horas;
+        const{deficitMin,excedenteMin}=await deltaEntradaAlmuerzoDia(u,k,dd.marcaciones,almCfg,horcolUserCache,hrsParcial,completo);
+        return{k,deficitMin,excedenteMin,hrsParcial};
+      }));
+      const diasValidos=diasInfoRaw.filter(Boolean);
+      const acumuladoSemana=calcularAcumuladoSemana(diasValidos).map;
+      diasValidos.forEach(({k,hrsParcial})=>{
+        const dd=summ[u].det[k];const tar=dd.tarifaDia;
+        const acum=acumuladoSemana[k]||0;
+        const hrsAjustada=acum>0?Math.min(8,hrsParcial+acum):hrsParcial;
+        const montoAuto=+((Math.min(hrsAjustada,8)/8)*tar).toFixed(2);
+        const descManInfo=(descManRango[k]||{})[u]||null;
+        const descManualMin=descManInfo?.min||0;
+        const descManualMonto=descManualMin>0?+Math.min(montoAuto,(descManualMin/(8*60))*tar).toFixed(2):0;
+        dd.descDia=+Math.max(0,(tar-montoAuto)+descManualMonto).toFixed(2);
+      });
     }
   }
   const rnd=el('sel-redondeo')?.value||'none';
