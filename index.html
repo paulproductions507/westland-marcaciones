@@ -884,7 +884,13 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="turnos-list"></div>
             <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin:10px 0">
               <div style="font-weight:700;font-size:13px;margin-bottom:8px">👤 Ver el turno de UN colaborador, semana por semana</div>
-              <div class="fg"><label>Colaborador</label><select class="fc" id="tcol-user"></select></div>
+              <div class="fg"><label>Colaborador</label>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <button class="btn bg bsm" id="tcol-user-prev" type="button" style="width:auto;flex-shrink:0">‹</button>
+                  <select class="fc" id="tcol-user" style="flex:1"></select>
+                  <button class="btn bg bsm" id="tcol-user-next" type="button" style="width:auto;flex-shrink:0">›</button>
+                </div>
+              </div>
               <div style="display:flex;align-items:center;gap:8px;margin-top:9px">
                 <button class="btn bg bsm" id="tcol-prev" style="width:auto">‹</button>
                 <div id="tcol-label" style="flex:1;text-align:center;font-size:13px;font-weight:800"></div>
@@ -3512,6 +3518,15 @@ async function renderTcolSemana(){
   }catch(e){console.error('renderTcolSemana',e);body.innerHTML='<div style="font-size:12px;color:var(--dn)">Error al cargar.</div>';}
 }
 el('tcol-user')?.addEventListener('change',renderTcolSemana);
+function tcolMoverColab(delta){
+  const sel=el('tcol-user');if(!sel||!sel.options.length)return;
+  let i=sel.selectedIndex;if(i<0)i=0;
+  i=Math.max(0,Math.min(sel.options.length-1,i+delta));
+  sel.selectedIndex=i;
+  renderTcolSemana();
+}
+el('tcol-user-prev')?.addEventListener('click',()=>tcolMoverColab(-1));
+el('tcol-user-next')?.addEventListener('click',()=>tcolMoverColab(1));
 el('tcol-prev')?.addEventListener('click',()=>{_tcolLun=addDaysISO(_tcolLun||lunesISODe(isoD(new Date())),-7);renderTcolSemana();});
 el('tcol-next')?.addEventListener('click',()=>{_tcolLun=addDaysISO(_tcolLun||lunesISODe(isoD(new Date())),7);renderTcolSemana();});
 async function guardarTurnoDia(id,dia){
@@ -5272,6 +5287,32 @@ async function registrar(date=new Date(),user=CU,tipoForzado=null){
   if(!tipoForzado){const chk=await canMark(date,user,combinado);if(!chk.ok){registrarIntentoRechazado(user,chk.msg);flashBtn(chk.msg);return;}}
   const mine=combinado.filter(x=>x.user===user);
   const tipo=tipoForzado||tipoPorReglas(mine);
+  // ENTRADA TARDÍA → APROBACIÓN, no se marca directo. Más de 10 min después de la hora de
+  // entrada de su turno (y todavía antes de la hora de almuerzo) se manda a revisión del
+  // admin en vez de registrarse sola. El colaborador queda avisado de que está pendiente; el
+  // admin la ve con la hora exacta que él marcó y puede ajustarla antes de aprobar.
+  if(tipo==='Entrada'&&esPropio&&!tipoForzado&&!ADMINS.includes(user)&&!GERENTES.includes(user)){
+    try{
+      const sched=await withTimeout(getHorarioBaseDe(user,key),3000);
+      const hmMin=t=>{const p=String(t||'0:0').split(':').map(Number);return(p[0]||0)*60+(p[1]||0);};
+      const progMin=hmMin(sched.inicio),realMin=date.getHours()*60+date.getMinutes();
+      const almMin=sched.almInicio?hmMin(sched.almInicio):null;
+      const tardanza=realMin-progMin;
+      if(tardanza>10&&(almMin===null||realMin<almMin)){
+        const aprKey='mk_'+user+'_'+key+'_'+Date.now();
+        await set(R(db,`${APR}/${aprKey}`),{
+          tipo:'marcacion',subtipo:'Entrada',user,nombre:(CUM&&CUM.nombre)||user,
+          hora:fmtT(date),date:key,stamp:date.toISOString(),
+          reason:`Entrada tardía — ${tardanza} min después de su turno (${sched.inicio})`,
+          status:'pending'
+        });
+        await sendNotif(user,'todos_admin','⏳ Entrada pendiente de aprobación',`${(CUM&&CUM.nombre)||user} marcó entrada a las ${fmtT(date)} (turno: ${sched.inicio}) — requiere aprobación`);
+        toast(`⏳ Tu entrada (${fmtT(date)}) quedó pendiente de aprobación por llegar después de las ${sched.inicio}. Un administrador la revisará y se registrará con la hora que confirme.`,'ok',7500);
+        el('mbtn').classList.add('pulse');setTimeout(()=>el('mbtn').classList.remove('pulse'),900);
+        return;
+      }
+    }catch(e){/* si falla la consulta del horario, se deja pasar y se marca normal — no se bloquea por esto */}
+  }
   // Si esta es la Salida Final REAL del colaborador y tiene un crédito de hora extra pendiente
   // (asignado por un admin porque se quedó trabajando de más y no marcó esa hora), se le suma
   // aquí — sobre la hora real en que está marcando ahora mismo — y se registra en la bitácora.
@@ -5626,7 +5667,10 @@ function pintarMisMarcaciones(snaps,dias,lunISO,domISO,hoyISO,sem){
       const m=porTipo[t];
       if(!m)return`<div style="font-size:12px;color:var(--mt);padding:2px 0">◻ ${MISMARCAS_ETIQ[t]}: —</div>`;
       const hora=m.stamp?new Date(m.stamp).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true}):(m.hora||'');
-      return`<div style="font-size:12.5px;color:var(--tx);padding:2px 0">✅ ${MISMARCAS_ETIQ[t]}: <strong>${hora}</strong></div>`;
+      // Si esta marca pasó por aprobación y el admin ajustó la hora, se ve la comparación —
+      // qué pediste vs. qué quedó registrado, y por qué.
+      const notaAjuste=m.notaAprobacion?`<div style="font-size:10.5px;color:var(--wn);margin:1px 0 0 18px">↳ Solicitaste ${m.horaSolicitada} — se aprobó a esta hora. Motivo: ${escHtml(m.notaAprobacion)}</div>`:'';
+      return`<div style="font-size:12.5px;color:var(--tx);padding:2px 0">✅ ${MISMARCAS_ETIQ[t]}: <strong>${hora}</strong></div>${notaAjuste}`;
     }).join('')+'</div>';
   }).join('');
   body.innerHTML=cab+filas+`<div style="font-size:10.5px;color:var(--mt);text-align:center;margin-top:4px">Leído del servidor: ${new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true})}</div>`;
@@ -5785,26 +5829,70 @@ async function depositarEnBandeja(userKey,bancoData){
 }
 
 // APPROVALS
+// Dos tipos de solicitud conviven en esta misma cola:
+//  - tipo:'jornada'   → el colaborador configuró su horario del día y no es admin (ver setJornadaHoy)
+//  - tipo:'marcacion' → una Entrada tardía que se detuvo en registrar() en vez de marcarse sola
+function hhmmss(d){return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');}
 let approvalsListening=false;
 function listenApprovals(){
   if(approvalsListening)return;approvalsListening=true;
   trackedOnValue(R(db,APR),async snap=>{
     const c=el('aprov-list');c.innerHTML='';
     if(!snap.exists()){c.innerHTML='<div style="color:var(--mt);font-size:13px">Sin solicitudes</div>';el('pbadge').textContent='0';return;}
-    const entries=Object.entries(snap.val()).filter(([,v])=>v.status==='pending');
+    const all=snap.val();
+    const entries=Object.entries(all).filter(([,v])=>v.status==='pending');
     el('pbadge').textContent=entries.length||'0';
     if(!entries.length){c.innerHTML='<div style="color:var(--mt);font-size:13px">Sin solicitudes</div>';return;}
     entries.forEach(([k,v])=>{
       const div=document.createElement('div');div.className='aitem';
-      div.innerHTML=`<div class="auser">👤 ${v.user} — ${v.hora} (${v.date})</div><div class="adet">${v.reason||''}</div>
-        <div class="aact"><button class="btn bp bsm" data-k="${k}" data-a="approve">✅ Aprobar</button><button class="btn bd bsm" data-k="${k}" data-a="reject">❌ Rechazar</button></div>`;
+      if(v.tipo==='jornada'){
+        div.innerHTML=`<div class="auser">🕐 ${escHtml(v.nombre||v.user)} — jornada ${v.entrada}→${v.salida} (${v.fecha})</div>
+          <div class="aact"><button class="btn bp bsm" data-k="${k}" data-a="approve-jornada">✅ Aprobar</button><button class="btn bd bsm" data-k="${k}" data-a="reject">❌ Rechazar</button></div>`;
+      }else{
+        // Marcación tardía: el admin puede corregir la hora ANTES de aprobar. Si la cambia,
+        // el comentario es obligatorio — eso es lo que el colaborador va a ver.
+        div.innerHTML=`<div class="auser">⏳ ${escHtml(v.nombre||v.user)} — ${escHtml(v.subtipo||'Entrada')} solicitada: ${v.hora} (${v.date})</div>
+          <div class="adet">${escHtml(v.reason||'')}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin:6px 0 4px"><label style="font-size:11px;color:var(--mt);flex-shrink:0">Hora a aprobar:</label>
+          <input type="time" step="1" class="fc apr-hora-edit" data-k="${k}" value="${hhmmss(new Date(v.stamp))}" style="max-width:130px"></div>
+          <input type="text" class="fc apr-nota" data-k="${k}" placeholder="Comentario para el colaborador (obligatorio si cambias la hora)" style="margin-bottom:6px">
+          <div class="aact"><button class="btn bp bsm" data-k="${k}" data-a="approve-marc">✅ Aprobar</button><button class="btn bd bsm" data-k="${k}" data-a="reject">❌ Rechazar</button></div>`;
+      }
       c.appendChild(div);
     });
     c.querySelectorAll('[data-a]').forEach(btn=>{
       btn.addEventListener('click',async()=>{
-        const k=btn.dataset.k,a=btn.dataset.a,entry=snap.val()[k];
-        if(a==='approve'){await doMark(new Date(entry.stamp),entry.user);await set(R(db,`${APR}/${k}/status`),'approved');await addLog(`Aprobado: ${entry.user}`);toast(`✓ Aprobado`,'ok');}
-        else{await set(R(db,`${APR}/${k}/status`),'rejected');await addLog(`Rechazado: ${entry.user}`);toast('Rechazada','err');}
+        const k=btn.dataset.k,a=btn.dataset.a,entry=all[k];
+        try{
+          if(a==='approve-jornada'){
+            await set(R(db,`${JDIA}/${entry.fecha}/${entry.user}/aprobado`),true);
+            await set(R(db,`${JDIA}/${entry.fecha}/${entry.user}/pendienteAprobacion`),false);
+            await set(R(db,`${APR}/${k}/status`),'approved');
+            await addLog(`Jornada aprobada: ${entry.user} (${entry.fecha}) por ${CU}`);
+            toast('✓ Jornada aprobada','ok');
+          }else if(a==='approve-marc'){
+            const horaEdit=document.querySelector(`.apr-hora-edit[data-k="${k}"]`)?.value;
+            const nota=(document.querySelector(`.apr-nota[data-k="${k}"]`)?.value||'').trim();
+            let stampFinal=entry.stamp;
+            if(horaEdit){const[hh,mm,ss]=horaEdit.split(':').map(Number);const d=new Date(entry.date+'T00:00:00');d.setHours(hh||0,mm||0,ss||0,0);stampFinal=d.toISOString();}
+            const horaFinal=fmtT(new Date(stampFinal));
+            const editado=horaFinal!==entry.hora;
+            if(editado&&!nota){toast('Si cambias la hora, deja un comentario para el colaborador','err');return;}
+            const histKey=entry.date,list=await getHist(histKey);
+            const obj={tipo:entry.subtipo||'Entrada',hora:horaFinal,stamp:stampFinal,user:entry.user,horaSolicitada:entry.hora,aprobadoPor:CU,...(editado?{notaAprobacion:nota}:{})};
+            await saveHist(histKey,[...(list||[]),obj]);
+            await set(R(db,`${APR}/${k}/status`),'approved');
+            await addLog(`Marcación aprobada: ${entry.user} — ${entry.subtipo||'Entrada'} solicitó ${entry.hora}, se aprobó ${horaFinal}${editado?` (editada: "${nota}")`:''} — por ${CU}`);
+            await sendNotif(CU,entry.user,editado?'✅ Tu marca fue aprobada con un ajuste':'✅ Tu marca fue aprobada',editado?`Tu ${entry.subtipo||'Entrada'} solicitada a las ${entry.hora} quedó registrada a las ${horaFinal}. Motivo: ${nota}`:`Tu ${entry.subtipo||'Entrada'} de las ${entry.hora} fue aprobada.`);
+            if(entry.user===CU)renderHistToday();
+            toast('✓ Marcación aprobada','ok');
+          }else{
+            await set(R(db,`${APR}/${k}/status`),'rejected');
+            await addLog(`Rechazado: ${entry.user} (${entry.tipo||'marcacion'})`);
+            if(entry.tipo!=='jornada')await sendNotif(CU,entry.user,'❌ Tu marcación fue rechazada',`Tu ${entry.subtipo||'Entrada'} de las ${entry.hora} (${entry.date}) fue rechazada. Contacta al administrador.`);
+            toast('Rechazada','err');
+          }
+        }catch(e){console.error('listenApprovals action',e);toast('⛔ Error al procesar: '+(e.message||e),'err',5000);}
       });
     });
   });
@@ -5975,9 +6063,14 @@ async function genMarcUnica(usrs,fecha,tipo,horaObjetivo,motivo){
   const midnight=new Date(fecha+'T00:00:00').getTime();
   const exRaw=await getHist(fecha);const ex=Array.isArray(exRaw)?exRaw:Object.values(exRaw||{});
   const nuevas=[];let omitidos=0;
+  // A favor del colaborador siempre, nunca en contra: Entrada y Regreso de Almuerzo se
+  // adelantan (llegar/volver antes = más horas trabajadas); Salida a Almuerzo y Salida Final
+  // se atrasan (salir a almorzar/irse más tarde = más horas trabajadas). Nunca al revés.
+  const antes=(tipo==='Entrada'||tipo==='Regreso Alm.');
+  const rango=antes?[-180,0]:[0,300]; // 3 min antes, o 5 min después — y nunca la misma hora exacta para todos
   for(const u of usrs){
     if(ex.some(m=>m.user===u&&m.tipo===tipo)){omitidos++;continue;}
-    const offS=Math.round(_rMix(-600,299)); // hasta 10 min antes, hasta ~5 min después — nunca todos igual
+    const offS=Math.round(_rMix(rango[0],rango[1]));
     const d=new Date(midnight+(baseS+offS)*1000+_rI(0,999));
     nuevas.push({tipo,hora:fmtT(d),stamp:d.toISOString(),user:u,generadoPorSistema:true,generadoPor:CU,generadoTs:new Date().toISOString(),nota:motivo});
   }
@@ -5994,7 +6087,9 @@ el('btn-genu').addEventListener('click',async()=>{
   const allU=await getUsers();
   const nombres=users.map(u=>(allU[u]&&allU[u].nombre)||u);
   const lista=nombres.length>6?nombres.slice(0,6).join(', ')+' y '+(nombres.length-6)+' más':nombres.join(', ');
-  if(!confirm(`¿Generar "${tipo}" el ${fecha} cerca de las ${hora} para ${users.length} colaborador${users.length!==1?'es':''}?\n\n${lista}\n\nCada uno quedará con una hora ligeramente distinta (hasta 10 min antes / 5 min después). Motivo: ${motivo}`))return;
+  const antesTxt=(tipo==='Entrada'||tipo==='Regreso Alm.');
+  const ventanaTxt=antesTxt?'hasta 3 min antes':'hasta 5 min después';
+  if(!confirm(`¿Generar "${tipo}" el ${fecha} cerca de las ${hora} para ${users.length} colaborador${users.length!==1?'es':''}?\n\n${lista}\n\nCada uno quedará con una hora ligeramente distinta (${ventanaTxt} — siempre a favor del colaborador). Motivo: ${motivo}`))return;
   const btn=el('btn-genu');btn.disabled=true;toast('Generando...');
   try{
     const r=await genMarcUnica(users,fecha,tipo,hora,motivo);
@@ -6037,7 +6132,7 @@ async function genMarcs(usrs,f1,f2,opts){
     const midnight=new Date(cur.getFullYear(),cur.getMonth(),cur.getDate()).getTime();
     const exRaw=await getHist(key);const ex=Array.isArray(exRaw)?exRaw:Object.values(exRaw||{});
     let jorDia={};try{const js=await get(R(db,`${JDIA}/${key}`));jorDia=js.exists()?js.val():{};}catch(e){}
-    const semD=await getTurnosSemana(lunesISODe(key));
+    const semD=await getTurnosSemana(lunesISODe(key),true); // fresco a propósito: si el admin acaba de reprogramar el turno, debe verse reflejado de inmediato al generar
     const nuevas=[];
     for(const u of usrs){
       // Nunca se mezclan marcas generadas con marcas que ya existen ese día (evita duplicados)
@@ -6057,11 +6152,11 @@ async function genMarcs(usrs,f1,f2,opts){
       // …y regresa tras un almuerzo que a lo sumo dura lo configurado (nunca más largo)
       const durS=Math.min(durCfg*60,Math.max(20*60,durCfg*60-_rI(0,480)));
       const raS=saS+durS;
-      // SALIDA: ±10 min de su hora de salida, pero NUNCA por debajo de las horas de su turno
-      // (a favor del colaborador: si entró tarde o el almuerzo se alargó, la salida se corre).
+      // SALIDA: SOLO después de su hora de salida (0 a 5 min), nunca antes — a favor del
+      // colaborador siempre: si entró tarde o el almuerzo se alargó, la salida se corre más.
       const netMin=Math.min(480,(finS-iniS)/60-durCfg);
       const reqS=eS+(netMin>0?netMin:480)*60+durS;
-      let sfS=finS+Math.round(_rMix(-600,600));
+      let sfS=finS+Math.round(_rMix(0,300));
       if(sfS<reqS)sfS=reqS+_rI(0,120);
       if(!(eS<saS&&saS<raS&&raS<sfS)){descartados++;continue;}
       const mk=(tipo,secs)=>{const d=new Date(midnight+secs*1000+_rI(0,999));return{tipo,hora:fmtT(d),stamp:d.toISOString(),user:u,generadoPorSistema:true,generadoPor:CU,generadoTs:new Date().toISOString(),nota:notaTxt};};
