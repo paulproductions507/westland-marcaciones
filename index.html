@@ -806,6 +806,12 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
                 </div>
               </div>
             </div>
+            <div style="margin-top:10px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 11px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="checkbox" id="u-sinacum" style="width:auto">
+                <label for="u-sinacum" style="font-size:12.5px;font-weight:700;color:var(--mt);text-transform:none;letter-spacing:0">🚫 No aplicar acumulado semanal a este colaborador (descuento siempre por su jornada real, sin cubrir con sobrante de otros días)</label>
+              </div>
+            </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
               <button class="btn bp bsm" id="btn-save-user" style="width:auto">💾 Guardar</button>
               <button class="btn bg bsm" id="btn-exp-users">⬇ CSV</button>
@@ -3902,6 +3908,7 @@ window.editUser=async function(userKey){
   el('u-nombre').value=u.nombre||'';el('u-user').value=u.user||'';
   el('u-ced').value=u.cedula||'';el('u-email').value=u.email||'';
   el('u-rol').value=u.rol||'Colaborador';
+  el('u-sinacum').checked=!!u.sinAcumulado;
   if(u.tarifa){
     el('u-tr').value=u.tarifa.regular||'';el('u-td').value=u.tarifa.domingo||'';el('u-tf').value=u.tarifa.feriado||'';
     const tieneEspecial=!!(u.tarifa.especial&&u.tarifa.especial>0);
@@ -6433,7 +6440,9 @@ async function renderVistaSemanal(refDate,hastaDate){
     // Pre-pasada SOLO para armar el pool de minutos de sobra de esta semana/rango (Entrada +
     // Almuerzo únicamente) — no pinta nada todavía, solo clasifica cada día.
     let horcolUserCache=null;try{const hc=await get(R(db,`${HORCOL}/${u.user}`));horcolUserCache=hc.exists()?hc.val():{};}catch(e){horcolUserCache={};}
-    const diasInfoAcumRaw=await Promise.all(diasVisibles.filter(({k})=>k>=DESCUENTO_DESDE).map(async({k,d})=>{
+    // Colaborador marcado "sin acumulado": no recibe cobertura del pool ni aporta al de otros —
+    // su descuento siempre sale de su propia jornada real, sin suavizar.
+    const diasInfoAcumRaw=uObj.sinAcumulado?[]:await Promise.all(diasVisibles.filter(({k})=>k>=DESCUENTO_DESDE).map(async({k,d})=>{
       const dowNum=d.getDay(),isFer=feriados.includes(k);
       if(pagoFijoDelDia(uObj,dowNum,isFer))return null;
       const dayMarks=(histByDay[k]||[]).filter(m=>m.user===u.user);
@@ -6591,7 +6600,7 @@ async function buildRRHHData(desde,hasta){
     // Mismo pool de minutos de sobra que la Vista Semanal (ver calcularAcumuladoSemana) — para
     // que ambas vistas siempre coincidan en el monto de cada colaborador. Solo Entrada+Almuerzo.
     let horcolUserCache=null;try{const hc=await get(R(db,`${HORCOL}/${u.user}`));horcolUserCache=hc.exists()?hc.val():{};}catch(e){horcolUserCache={};}
-    const diasInfoAcumRaw=await Promise.all(diasVis.filter(({k})=>k>=DESCUENTO_DESDE).map(async({k,d})=>{
+    const diasInfoAcumRaw=uObj.sinAcumulado?[]:await Promise.all(diasVis.filter(({k})=>k>=DESCUENTO_DESDE).map(async({k,d})=>{
       const dowNum=d.getDay(),isFer=feriados.includes(k);
       if(pagoFijoDelDia(uObj,dowNum,isFer))return null;
       const marks=(histByDay[k]||[]).filter(m=>m.user===u.user);
@@ -7189,7 +7198,7 @@ el('btn-save-user').addEventListener('click',async()=>{
   const pfDias=pfOn?Array.from(document.querySelectorAll('.u-pf-dia:checked')).map(cb=>parseInt(cb.value)):[];
   const meta={...prev,nombre,user,cedula:el('u-ced').value.trim()||'',email:el('u-email').value.trim()||prev.email||'',rol:el('u-rol').value||'Colaborador',
     tarifa:{regular:parseFloat(el('u-tr').value||20)||20,domingo:parseFloat(el('u-td').value||25)||25,feriado:parseFloat(el('u-tf').value||30)||30,especial:especialOn?(parseFloat(el('u-te').value||0)||0):0},
-    pagoFijo:{activo:pfOn&&pfDias.length>0,dias:pfDias},
+    pagoFijo:{activo:pfOn&&pfDias.length>0,dias:pfDias},sinAcumulado:el('u-sinacum').checked,
     profileUrl:prev.profileUrl||'',fechaInicio:finicio};
   await setUser(user,meta);
   // Si existe una selección personalizada de "colaboradores activos" (Vista semanal →
@@ -7201,7 +7210,7 @@ el('btn-save-user').addEventListener('click',async()=>{
       await saveSemActivosRemote([...activos,user]);
     }
   }catch(e){}
-  toast('Usuario guardado ✓','ok');['u-nombre','u-user','u-ced','u-email','u-tr','u-td','u-tf','u-te','u-finicio'].forEach(id=>el(id).value='');el('u-te-on').checked=false;el('u-te-row').style.display='none';el('u-pf-on').checked=false;el('u-pf-row').style.display='none';document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);refreshUI();
+  toast('Usuario guardado ✓','ok');['u-nombre','u-user','u-ced','u-email','u-tr','u-td','u-tf','u-te','u-finicio'].forEach(id=>el(id).value='');el('u-te-on').checked=false;el('u-te-row').style.display='none';el('u-pf-on').checked=false;el('u-pf-row').style.display='none';el('u-sinacum').checked=false;document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);refreshUI();
 });
 
 // ── BITÁCORA DE PERÍODOS LABORALES ──────────────────────────────────────
@@ -7539,7 +7548,7 @@ async function buildSummary(desde,hasta,applyDisc){
     for(const u of Object.keys(summ)){
       const uObj=allM[u]||{};
       let horcolUserCache=null;try{const hc=await get(R(db,`${HORCOL}/${u}`));horcolUserCache=hc.exists()?hc.val():{};}catch(e){horcolUserCache={};}
-      const diasOrden=[...summ[u].dias].filter(k=>k>=DESCUENTO_DESDE).sort();
+      const diasOrden=uObj.sinAcumulado?[]:[...summ[u].dias].filter(k=>k>=DESCUENTO_DESDE).sort();
       const diasInfoRaw=await Promise.all(diasOrden.map(async k=>{
         const dd=summ[u].det[k];
         if(!dd||dd.jornadaDia)return null; // jornada confirmada ese día: queda fuera, como ya estaba
