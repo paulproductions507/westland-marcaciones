@@ -2027,6 +2027,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
     <h3>✏️ Editar recibo <span id="editrec-num" style="color:var(--ac)"></span></h3>
     <div class="fg" style="margin-top:8px"><label>N° de recibo</label><input class="fc" id="editrec-numero" placeholder="Ej: 407227"></div>
     <div class="fg"><label>👤 Reasignar a colaborador</label><select class="fc" id="editrec-asignado"></select></div>
+    <div class="fg"><label>🔁 Traspaso a otro departamento</label>
+      <select class="fc" id="editrec-traspaso"><option value="">No — lo trabajamos nosotros</option><option value="Nivel 200">Sí — lo trabaja Nivel 200</option><option value="Otro departamento">Sí — lo trabaja otro departamento</option></select>
+      <input class="fc" id="editrec-traspaso-nota" placeholder="¿Quién o qué departamento lo trabajó? (opcional)" style="display:none;margin-top:6px">
+    </div>
     <div class="fg2">
       <div class="fg"><label>Bultos esperados</label><input type="number" min="0" class="fc" id="editrec-bultosesp"></div>
       <div class="fg"><label>Pallets esperados</label><input type="number" min="0" class="fc" id="editrec-palletsesp"></div>
@@ -8587,9 +8591,10 @@ async function renderLogCamRec(){
       if(!v)return '';
       const recibido=v.estado==='recibido';
       const estBadge=recibido?' <span style="color:var(--ac)">✓ recibido</span>':(v.estado==='parcial'?' <span style="color:var(--wn)">⏳ parcial</span>':' <span style="color:var(--mt)">pendiente</span>');
+      const tpTag=v.traspaso?` <span style="color:var(--wn);font-weight:700">🔁 ${escHtml(v.traspaso.depto)}</span>`:'';
       return `<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;font-size:13px;margin-bottom:6px;opacity:${recibido?1:.85}">
           <input type="checkbox" disabled ${recibido?'checked':''} title="Informativo — lo marca el chequeador en Recepción" style="width:auto;accent-color:var(--mt);opacity:.55">
-          <span style="flex:1">#${v.numeroRecibo} — ${v.proveedor} — ${v.bultosEsperados} bultos${estBadge}</span>
+          <span style="flex:1">#${v.numeroRecibo} — ${v.proveedor} — ${v.bultosEsperados} bultos${estBadge}${tpTag}</span>
           <button type="button" class="btn bg bsm log-camrec-detalle" data-rec="${rk}" style="width:auto;padding:3px 8px;font-size:11px">📋 Ir al chequeo</button>
         </div>`;
     }).join('');
@@ -9175,7 +9180,7 @@ async function renderLogPendientes(){
   }
   const sel=el('log-rec-select');if(!sel)return;
   const cur=sel.value;
-  const pend=Object.entries(LOGR).filter(([,v])=>v.estado==='pendiente'||v.estado==='parcial');
+  const pend=Object.entries(LOGR).filter(([,v])=>(v.estado==='pendiente'||v.estado==='parcial')&&!v.traspaso); // los traspasados a otro departamento no los trabajamos
   sel.innerHTML='<option value="">Seleccione un recibo...</option>'+pend.map(([k,v])=>`<option value="${k}">#${v.numeroRecibo} — ${v.proveedor} — ${v.bultosEsperados} bultos${v.camionId?' 🚛':''}</option>`).join('');
   if(cur&&LOGR[cur]&&LOGR[cur].estado==='pendiente')sel.value=cur;
   else el('log-rec-form').style.display='none';
@@ -9288,9 +9293,10 @@ function fmtNum(n){return n!=null&&n!==''?Number(n).toLocaleString('es-PA'):'—
 function diffStyle(d){return d===0?'color:var(--ac)':d>0?'color:#e0a800':'color:var(--dn)';}
 
 function logItemHTML(k,v){
-  const badge=v.estado==='pendiente'?'<span class="lbadge pend">Pendiente</span>':
+  const badge0=v.estado==='pendiente'?'<span class="lbadge pend">Pendiente</span>':
     v.estado==='parcial'?`<span class="lbadge warn">Parcial ${v.equiposRecibidos||0}/${v.cantEquipos||1}</span>`:
     (v.discrepanciaBultos?'<span class="lbadge warn">Discrepancia</span>':'<span class="lbadge ok">Recibido</span>');
+  const badge=badge0+(v.traspaso?` <span class="lbadge warn">🔁 ${escHtml(v.traspaso.depto)}</span>`:'');
   // Tabla comparativa Facturado vs Recibido
   const TR='<tr style="border-bottom:1px solid var(--bd)">';
   const TH='<th style="padding:5px 8px;font-size:10px;font-weight:700;color:var(--mt);text-align:left;background:var(--sf2)">';
@@ -9325,6 +9331,7 @@ function logItemHTML(k,v){
   }
   let detail=`<div class="ldrow"><span>Proveedor</span><span>${v.proveedor} (${v.tipo})</span></div>`+
     `<div class="ldrow"><span>Departamento</span><span>${v.departamento||'—'}</span></div>`+
+    (v.traspaso?`<div class="ldrow"><span>🔁 Traspaso</span><span>Trabajado por otro departamento: ${escHtml(v.traspaso.depto)}${v.traspaso.nota?' ('+escHtml(v.traspaso.nota)+')':''}</span></div>`:'')+
     (v.tipoEquipo?`<div class="ldrow"><span>Tipo de equipo</span><span>${v.tipoEquipo}</span></div>`:'')+
     `<div class="ldrow"><span>Enviado por</span><span>${v.creadoPor||'—'} · ${v.fechaEnvio||''} ${v.horaEnvio||''}</span></div>`+
     (v.asignadoA&&v.asignadoA!=='todos'?`<div class="ldrow"><span>Asignado a</span><span>${v.asignadoA}</span></div>`:'')+
@@ -9449,10 +9456,14 @@ async function abrirEditRec(k){
   el('editrec-palletsrec').value=v.palletsRecibidos||'';
   el('editrec-piezasrec').value=v.piezasRecibidas||'';
   el('editrec-itemsrec').value=v.itemsRecibidos||'';
+  el('editrec-traspaso').value=(v.traspaso&&v.traspaso.depto)||'';
+  el('editrec-traspaso-nota').value=(v.traspaso&&v.traspaso.nota)||'';
+  el('editrec-traspaso-nota').style.display=el('editrec-traspaso').value?'block':'none';
   el('editrec-motivo').value='';
   el('m-editrec').classList.add('open');
 }
 el('editrec-cancelar')?.addEventListener('click',()=>el('m-editrec').classList.remove('open'));
+el('editrec-traspaso')?.addEventListener('change',()=>{el('editrec-traspaso-nota').style.display=el('editrec-traspaso').value?'block':'none';});
 el('editrec-guardar')?.addEventListener('click',async()=>{
   try{
     const k=EDITREC_K;if(!k||!LOGR[k]){toast('Recibo no encontrado','err');return;}
@@ -9472,6 +9483,9 @@ el('editrec-guardar')?.addEventListener('click',async()=>{
       fechaSalida:el('editrec-fechasalida').value||null,
       asignadoA:nuevoAsignado||v.asignadoA
     };
+    const tpDepto=el('editrec-traspaso').value,tpNota=el('editrec-traspaso-nota').value.trim();
+    const tpAntes=(v.traspaso&&v.traspaso.depto)||'';
+    cambios.traspaso=tpDepto?{depto:tpDepto,nota:tpNota||null,por:(v.traspaso&&v.traspaso.depto===tpDepto&&v.traspaso.por)||CU,ts:(v.traspaso&&v.traspaso.depto===tpDepto&&v.traspaso.ts)||new Date().toISOString()}:null;
     const esRecibido=v.estado==='recibido'||v.estado==='parcial';
     if(esRecibido){
       cambios.bultosRecibidos=el('editrec-bultosrec').value?parseInt(el('editrec-bultosrec').value):v.bultosRecibidos;
@@ -9481,7 +9495,7 @@ el('editrec-guardar')?.addEventListener('click',async()=>{
     }
     const reasignado=nuevoAsignado&&nuevoAsignado!==v.asignadoA;
     const renumerado=nuevoNumero!==v.numeroRecibo;
-    const bitEntry={accion:'Recibo editado'+(reasignado?' · reasignado de '+(v.asignadoA||'—')+' a '+nuevoAsignado:'')+(renumerado?' · N° cambiado de '+v.numeroRecibo+' a '+nuevoNumero:''),por:CU,ts:new Date().toISOString(),motivo};
+    const bitEntry={accion:'Recibo editado'+(reasignado?' · reasignado de '+(v.asignadoA||'—')+' a '+nuevoAsignado:'')+(renumerado?' · N° cambiado de '+v.numeroRecibo+' a '+nuevoNumero:'')+(tpDepto!==tpAntes?(tpDepto?' · traspasado a '+tpDepto+(tpNota?' ('+tpNota+')':''):' · traspaso anulado (lo trabajamos nosotros)'):''),por:CU,ts:new Date().toISOString(),motivo};
     const bita=v.bitacora?[...Object.values(v.bitacora),bitEntry]:[bitEntry];
     await set(R(db,LOGREC+'/'+k),{...v,...cambios,bitacora:bita});
     if(reasignado)await sendNotif(CU,nuevoAsignado,'📦 Recibo reasignado','Recibo #'+v.numeroRecibo+' — '+v.proveedor+' — ahora asignado a ti');
@@ -9523,7 +9537,9 @@ async function renderPiezasResultados(items){
   for(const v of items){
     totEsp+=v.piezasEsperadas||0;totRec+=v.piezasRecibidas||0;totTrab+=v.piezasTrabajadas||0;
     let manoObraHtml='<div style="color:var(--mt);font-size:11px;margin-top:6px">Sin fecha de salida registrada — no se puede cruzar con marcaciones. Agrégala en "✏️ Editar recibo".</div>';
-    if(v.fechaSalida){
+    if(v.traspaso){
+      manoObraHtml=`<div style="margin-top:8px;padding:8px 10px;background:rgba(255,184,0,.12);border:1px solid var(--wn);border-radius:8px;font-size:12px;font-weight:700">🔁 Recibo trabajado por otro departamento: ${escHtml(v.traspaso.depto)}${v.traspaso.nota?' — '+escHtml(v.traspaso.nota):''}<div style="font-weight:400;font-size:11px;color:var(--mt);margin-top:3px">No lo trabajamos nosotros, por eso no se calcula mano de obra.</div></div>`;
+    }else if(v.fechaSalida){
       const lun=getLunesDeSemana(v.fechaSalida);
       const dias=Array.from({length:7},(_,i)=>isoD(isoDateAdd(lun,i)));
       const porUser={};
