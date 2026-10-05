@@ -4677,6 +4677,8 @@ async function buildSemanalSeguro(desde,hasta){
 // Usa la misma fuente de datos que la vista en pantalla (buildRRHHData), solo cambia a marcado
 // Arial para que se vea bien en clientes de correo. nivel>=1 quita las horas trabajadas de cada
 // celda (deja solo ✅/Ausente + monto + descuento) si el HTML no cabe bajo el límite de EmailJS.
+// Monto con separador de miles: 1034.7 → 1,034.70
+function moneyRRHH(n){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 async function buildEmailRRHH(desde,hasta,nivel,modo){
   nivel=nivel||0;modo=modo||'previo';
   const data=modo==='oficial'?await buildRRHHDataOficial(desde,hasta):await buildRRHHDataConFinde(desde,hasta);
@@ -4701,21 +4703,21 @@ async function buildEmailRRHH(desde,hasta,nivel,modo){
     let tds=`<td class="emp">${f.nombre}<br><span class="sub">${f.user}</span></td><td>${f.cedula||'—'}</td>`;
     f.dias.forEach((dd,vi)=>{
       // En el correo a RRHH el pago base se muestra igual que un día completo (✅ + monto)
-      if(dd.tipo==='fijo'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">✅</span><br>${nivel>=1?'':'8.00h · '}$${dd.monto.toFixed(2)}</td>`;return;}
+      if(dd.tipo==='fijo'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">✅</span><br>${nivel>=1?'':'8.00h · '}$${moneyRRHH(dd.monto)}</td>`;return;}
       if(dd.tipo==='ausente'){tds+=`<td class="abs">Ausente</td>`;return;}
       if(dd.tipo==='libre'){tds+=`<td style="color:#999">—</td>`;return;}
-      if(dd.tipo==='manual'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">✅</span><br>${nivel>=1?'':dd.horas.toFixed(2)+'h · '}$${dd.monto.toFixed(2)}</td>`;return;}
+      if(dd.tipo==='manual'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">✅</span><br>${nivel>=1?'':dd.horas.toFixed(2)+'h · '}$${moneyRRHH(dd.monto)}</td>`;return;}
       totalPorDia[vi].monto+=dd.monto;totalPorDia[vi].desc+=dd.descuento;
       const chk=dd.tipo==='completo'?'✅':'⏳ '+dd.cnt+'/4';
       const horasLine=nivel>=1?'':`${dd.horas.toFixed(2)}h · `;
-      tds+=`<td><span class="${dd.tipo==='completo'?'ok':''}">${chk}</span><br>${horasLine}$${dd.monto.toFixed(2)}${dd.descuento>0?`<br><span class="desc">-$${dd.descuento.toFixed(2)}</span>`:''}</td>`;
+      tds+=`<td><span class="${dd.tipo==='completo'?'ok':''}">${chk}</span><br>${horasLine}$${moneyRRHH(dd.monto)}${dd.descuento>0?`<br><span class="desc">-$${moneyRRHH(dd.descuento)}</span>`:''}</td>`;
     });
-    tds+=`<td><strong>$${f.totalUsuario.toFixed(2)}</strong>${f.descUsuario>0?`<br><span class="desc">-$${f.descUsuario.toFixed(2)}</span>`:''}</td>`;
+    tds+=`<td><strong>$${moneyRRHH(f.totalUsuario)}</strong>${f.descUsuario>0?`<br><span class="desc">-$${moneyRRHH(f.descUsuario)}</span>`:''}</td>`;
     rows+=`<tr>${tds}</tr>`;
   });
   let totRow=`<tr class="tot"><td colspan="2">TOTAL GLOBAL</td>`;
-  totalPorDia.forEach(t=>{totRow+=`<td>$${t.monto.toFixed(2)}${t.desc>0?`<br><span class="desc">-$${t.desc.toFixed(2)}</span>`:''}</td>`;});
-  totRow+=`<td>$${data.totalGlobal.toFixed(2)}${data.descGlobal>0?`<br><span class="desc">-$${data.descGlobal.toFixed(2)}</span>`:''}</td></tr>`;
+  totalPorDia.forEach(t=>{totRow+=`<td>$${moneyRRHH(t.monto)}${t.desc>0?`<br><span class="desc">-$${moneyRRHH(t.desc)}</span>`:''}</td>`;});
+  totRow+=`<td>$${moneyRRHH(data.totalGlobal)}${data.descGlobal>0?`<br><span class="desc">-$${moneyRRHH(data.descGlobal)}</span>`:''}</td></tr>`;
   const tabla=data.filas.length?`<div style="overflow-x:auto"><table class="rt"><thead><tr>${thDias}</tr></thead><tbody>${rows}</tbody><tfoot>${totRow}</tfoot></table></div>`:'<p style="color:#cc3333">Sin marcaciones registradas para este período.</p>';
   let cruceHtml='';
   if(modo==='oficial'){
@@ -6685,6 +6687,7 @@ function horasEntreHM(desde,hasta){
 // el dato guardado (etapa "previo" u "oficial" según el correo). El viernes en modo "oficial"
 // nunca se sobreescribe — su valor real de marcación se deja tal cual.
 async function buildRRHHDataMerged(desde,hasta,modo){
+  await cargarUsarRealTodos();
   const base=await buildRRHHData(desde,hasta);
   const activos=RRHH_WKND_DIAS.filter(d=>el(`rrhh-wknd-${d.key}`)?.value);
   if(!activos.length)return base;
@@ -6747,12 +6750,13 @@ function montoRegWk(reg,fecha,uObj){
   const tar=dow===0?(uObj?.tarifa?.domingo||uObj?.tarifa?.regular||20):(uObj?.tarifa?.regular||20);
   return +((horas/8)*tar).toFixed(2);
 }
-const fmtAntes=m=>m==null?'No estaba en el previo':'✅ $'+m.toFixed(2);
-const fmtAhora=m=>m==null?'❌ Ausente':'✅ $'+m.toFixed(2);
+const fmtAntes=m=>m==null?'No estaba en el previo':'✅ $'+moneyRRHH(m);
+const fmtAhora=m=>m==null?'❌ Ausente':'✅ $'+moneyRRHH(m);
 // Cruce previo↔oficial de los tres días (viernes/sábado/domingo). Solo devuelve DIFERENCIAS
 // (lo que coincide no se muestra). RRHH nunca ve horas de marcación real, solo si se cumplió
 // lo solicitado, y el motivo que el admin le haya puesto a esa diferencia.
 async function buildCruceDias(){
+  await cargarUsarRealTodos();
   const motivosCache={};
   const salida=[];
   for(const d of RRHH_WKND_DIAS){
@@ -6809,6 +6813,7 @@ async function renderVistaRRHH(desde,hasta){
   c.innerHTML='<div style="color:var(--mt);font-size:13px;padding:10px">Cargando...</div>';
   if(!desde){const lun=getLunesDeSemana(null);desde=isoD(lun);hasta=isoD(isoDateAdd(lun,6));}
   if(!hasta)hasta=desde;
+  await cargarUsarRealTodos();
   const data=await buildRRHHDataConFinde(desde,hasta);
   if(!data.filas.length){c.innerHTML='<div style="color:var(--mt);font-size:13px;padding:10px 0">Sin marcaciones registradas para este período.</div>';renderCruceRRHH();return;}
   let html=`<div style="font-size:12px;color:var(--ac);font-weight:700;margin-bottom:8px">🧾 RRHH — Período: ${desde} al ${hasta}</div>`;
@@ -6828,7 +6833,7 @@ async function renderVistaRRHH(desde,hasta){
       if(dd.tipo==='fijo'){
         totalPorDia[vi].monto+=dd.monto;
         html+=`<td style="padding:5px 5px;border:1px solid var(--bd);text-align:center;vertical-align:middle">`
-          +`<div style="color:#00c9a7;font-size:10px;font-weight:700">💰 Base</div><div style="color:#00c9a7;font-size:12px;font-weight:800;margin-top:2px">$${dd.monto.toFixed(2)}</div></td>`;
+          +`<div style="color:#00c9a7;font-size:10px;font-weight:700">💰 Base</div><div style="color:#00c9a7;font-size:12px;font-weight:800;margin-top:2px">$${moneyRRHH(dd.monto)}</div></td>`;
         return;
       }
       if(dd.tipo==='ausente'){
@@ -6844,7 +6849,7 @@ async function renderVistaRRHH(desde,hasta){
         html+=`<td style="padding:5px 5px;border:1px solid var(--bd);text-align:center;vertical-align:middle">`
           +`<div style="color:#c58aff;font-size:10px;font-weight:700">🗓️ Fin de semana</div>`
           +`<div style="font-size:9.5px;color:var(--mt);margin-top:1px">${dd.horas.toFixed(2)}h (${hm12(dd.desde)}–${hm12(dd.hasta)})</div>`
-          +`<div style="font-weight:800;font-size:12px;color:var(--ac);margin-top:1px">$${dd.monto.toFixed(2)}</div></td>`;
+          +`<div style="font-weight:800;font-size:12px;color:var(--ac);margin-top:1px">$${moneyRRHH(dd.monto)}</div></td>`;
         return;
       }
       totalPorDia[vi].monto+=dd.monto;totalPorDia[vi].desc+=dd.descuento;
@@ -6852,26 +6857,26 @@ async function renderVistaRRHH(desde,hasta){
       html+=`<td style="padding:5px 5px;border:1px solid var(--bd);text-align:center;vertical-align:middle">`
         +`<div style="font-size:11px;font-weight:700">${chk}</div>`
         +`<div style="font-size:9.5px;color:var(--mt);margin-top:1px">${dd.horas.toFixed(2)}h</div>`
-        +`<div style="font-weight:800;font-size:12px;color:var(--ac);margin-top:1px">$${dd.monto.toFixed(2)}</div>`
-        +(dd.descuento>0?`<div style="color:#ff6b6b;font-size:9.5px;font-weight:700;margin-top:1px">💸 -$${dd.descuento.toFixed(2)}</div>`:'')
+        +`<div style="font-weight:800;font-size:12px;color:var(--ac);margin-top:1px">$${moneyRRHH(dd.monto)}</div>`
+        +(dd.descuento>0?`<div style="color:#ff6b6b;font-size:9.5px;font-weight:700;margin-top:1px">💸 -$${moneyRRHH(dd.descuento)}</div>`:'')
         +(dd.datosSospechosos?`<div style="color:#ffb020;font-size:9px;font-weight:700;margin-top:1px">⚠ Revisar</div>`:'')
         +`</td>`;
     });
     html+=`<td style="padding:6px 8px;border:1px solid var(--bd);background:rgba(0,201,167,.08);text-align:center;vertical-align:middle">`
-      +`<strong style="color:var(--ac);font-size:13px">$${f.totalUsuario.toFixed(2)}</strong>${f.descUsuario>0?`<div style="color:#ff6b6b;font-size:10px;font-weight:700;margin-top:2px">💸 -$${f.descUsuario.toFixed(2)}</div>`:''}</td>`;
+      +`<strong style="color:var(--ac);font-size:13px">$${moneyRRHH(f.totalUsuario)}</strong>${f.descUsuario>0?`<div style="color:#ff6b6b;font-size:10px;font-weight:700;margin-top:2px">💸 -$${moneyRRHH(f.descUsuario)}</div>`:''}</td>`;
     html+=`</tr>`;
   });
   html+=`<tr style="background:rgba(0,201,167,.10)"><td colspan="2" style="padding:7px 9px;border:1px solid var(--bd);vertical-align:middle">`
     +`<div style="font-size:11px;font-weight:800;color:var(--ac)">TOTAL GLOBAL</div>`
-    +(data.descGlobal>0?`<div style="font-size:10px;color:#ff6b6b">💸 Desc: -$${data.descGlobal.toFixed(2)}</div>`:'')
+    +(data.descGlobal>0?`<div style="font-size:10px;color:#ff6b6b">💸 Desc: -$${moneyRRHH(data.descGlobal)}</div>`:'')
     +`</td>`;
   totalPorDia.forEach(t=>{
     html+=`<td style="padding:6px 5px;border:1px solid var(--bd);background:rgba(0,201,167,.08);text-align:center;vertical-align:middle">`
-      +`<div style="font-size:12px;font-weight:800;color:var(--ac)">$${t.monto.toFixed(2)}</div>`
-      +(t.desc>0?`<div style="font-size:9.5px;color:#ff6b6b;font-weight:700">💸 -$${t.desc.toFixed(2)}</div>`:'')
+      +`<div style="font-size:12px;font-weight:800;color:var(--ac)">$${moneyRRHH(t.monto)}</div>`
+      +(t.desc>0?`<div style="font-size:9.5px;color:#ff6b6b;font-weight:700">💸 -$${moneyRRHH(t.desc)}</div>`:'')
       +`</td>`;
   });
-  html+=`<td style="padding:7px 9px;border:1px solid var(--bd);background:rgba(0,201,167,.14);text-align:center;vertical-align:middle"><strong style="color:var(--ac);font-size:13px">$${data.totalGlobal.toFixed(2)}</strong></td></tr>`;
+  html+=`<td style="padding:7px 9px;border:1px solid var(--bd);background:rgba(0,201,167,.14);text-align:center;vertical-align:middle"><strong style="color:var(--ac);font-size:13px">$${moneyRRHH(data.totalGlobal)}</strong></td></tr>`;
   html+='</table>';
   c.innerHTML=html;
   renderCruceRRHH();
@@ -7027,6 +7032,11 @@ async function cargarUsarRealDia(dayKey){
   if(!chk||!fecha)return;
   try{const s=await get(R(db,`${WKPAGO}/${fecha}/usar_real`));chk.checked=s.exists()&&s.val()===true;}catch(e){}
 }
+// Recarga desde Firebase el check "Usar marcación real" de los 3 días (según la fecha elegida de cada uno).
+// Se llama antes de pintar/enviar para que lo guardado se respete aunque se haya iniciado sesión de nuevo.
+async function cargarUsarRealTodos(){
+  for(const d of RRHH_WKND_DIAS){try{await cargarUsarRealDia(d.key);}catch(e){}}
+}
 function usarRealDia(dayKey){return !!el(`rrhh-wknd-real-${dayKey}`)?.checked;}
 async function renderRRHHWkndDayList(dayKey,etapa){
   const dayCfg=RRHH_WKND_DIAS.find(d=>d.key===dayKey);if(!dayCfg)return;
@@ -7110,6 +7120,8 @@ el('btn-rrhh-ant')?.addEventListener('click',()=>{
   const dias=Math.max(1,Math.round((dFin-dIni)/86400000)+1);
   const nIni=isoDateAdd(dIni,-dias),nFin=isoDateAdd(dFin,-dias);
   el('rrhh-desde').value=isoD(nIni);el('rrhh-hasta').value=isoD(nFin);
+  // Los días vie/sáb/dom siguen la semana que se está viendo (el check guardado se recarga solo)
+  RRHH_WKND_DIAS.forEach(d=>{const inpD=el(`rrhh-wknd-${d.key}`);if(inpD)inpD.value=isoD(isoDateAdd(nIni,d.offset));});
   renderVistaRRHH(isoD(nIni),isoD(nFin));
 });
 el('btn-rrhh-sig')?.addEventListener('click',()=>{
@@ -7119,6 +7131,8 @@ el('btn-rrhh-sig')?.addEventListener('click',()=>{
   const dias=Math.max(1,Math.round((dFin-dIni)/86400000)+1);
   const nIni=isoDateAdd(dIni,dias),nFin=isoDateAdd(dFin,dias);
   el('rrhh-desde').value=isoD(nIni);el('rrhh-hasta').value=isoD(nFin);
+  // Los días vie/sáb/dom siguen la semana que se está viendo (el check guardado se recarga solo)
+  RRHH_WKND_DIAS.forEach(d=>{const inpD=el(`rrhh-wknd-${d.key}`);if(inpD)inpD.value=isoD(isoDateAdd(nIni,d.offset));});
   renderVistaRRHH(isoD(nIni),isoD(nFin));
 });
 el('btn-rrhh-ver')?.addEventListener('click',()=>{
