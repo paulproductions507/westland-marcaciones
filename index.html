@@ -4700,10 +4700,11 @@ async function buildEmailRRHH(desde,hasta,nivel,modo){
   data.filas.forEach(f=>{
     let tds=`<td class="emp">${f.nombre}<br><span class="sub">${f.user}</span></td><td>${f.cedula||'—'}</td>`;
     f.dias.forEach((dd,vi)=>{
-      if(dd.tipo==='fijo'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">💰 Base</span><br>$${dd.monto.toFixed(2)}</td>`;return;}
+      // En el correo a RRHH el pago base se muestra igual que un día completo (✅ + monto)
+      if(dd.tipo==='fijo'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">✅</span><br>${nivel>=1?'':'8.00h · '}$${dd.monto.toFixed(2)}</td>`;return;}
       if(dd.tipo==='ausente'){tds+=`<td class="abs">Ausente</td>`;return;}
       if(dd.tipo==='libre'){tds+=`<td style="color:#999">—</td>`;return;}
-      if(dd.tipo==='manual'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">🗓️ F.Semana</span><br>${dd.horas.toFixed(2)}h (${hm12(dd.desde)}–${hm12(dd.hasta)})<br>$${dd.monto.toFixed(2)}</td>`;return;}
+      if(dd.tipo==='manual'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">✅</span><br>${nivel>=1?'':dd.horas.toFixed(2)+'h · '}$${dd.monto.toFixed(2)}</td>`;return;}
       totalPorDia[vi].monto+=dd.monto;totalPorDia[vi].desc+=dd.descuento;
       const chk=dd.tipo==='completo'?'✅':'⏳ '+dd.cnt+'/4';
       const horasLine=nivel>=1?'':`${dd.horas.toFixed(2)}h · `;
@@ -4728,7 +4729,7 @@ async function buildEmailRRHH(desde,hasta,nivel,modo){
           return`<div style="margin-bottom:10px">
             <div style="font-size:12px;font-weight:700;color:#00313C;margin-bottom:4px">${d.label}</div>
             <table style="width:100%;font-size:12px;border-collapse:collapse">
-              ${d.filas.map(f=>`<tr><td style="padding:3px 4px;border-bottom:1px solid #f0dada">${f.nombre}</td><td style="padding:3px 4px;border-bottom:1px solid #f0dada;color:#cc3333;font-weight:700">${f.estado}</td><td style="padding:3px 4px;border-bottom:1px solid #f0dada;color:#666;font-style:italic">${f.motivo||'—'}</td></tr>`).join('')}
+              ${d.filas.map(f=>`<tr><td style="padding:3px 4px;border-bottom:1px solid #f0dada">${f.nombre}</td><td style="padding:3px 4px;border-bottom:1px solid #f0dada;color:#cc3333;font-weight:700">${f.estado}</td><td style="padding:3px 4px;border-bottom:1px solid #f0dada;color:#00313C;white-space:nowrap">${f.antes||'—'} → <strong>${f.ahora||'—'}</strong></td><td style="padding:3px 4px;border-bottom:1px solid #f0dada;color:#666;font-style:italic">${f.motivo||'—'}</td></tr>`).join('')}
             </table>
           </div>`;
         }).join('')}
@@ -6738,6 +6739,16 @@ async function buildRRHHDataMerged(desde,hasta,modo){
 }
 async function buildRRHHDataConFinde(desde,hasta){return buildRRHHDataMerged(desde,hasta,'previo');}
 async function buildRRHHDataOficial(desde,hasta){return buildRRHHDataMerged(desde,hasta,'oficial');}
+// Monto que correspondería a un registro {desde,hasta} (tope 8h), igual que en buildRRHHDataMerged
+function montoRegWk(reg,fecha,uObj){
+  if(!reg)return null;
+  const horas=Math.min(horasEntreHM(reg.desde,reg.hasta),8);
+  const dow=new Date(fecha+'T00:00:00').getDay();
+  const tar=dow===0?(uObj?.tarifa?.domingo||uObj?.tarifa?.regular||20):(uObj?.tarifa?.regular||20);
+  return +((horas/8)*tar).toFixed(2);
+}
+const fmtAntes=m=>m==null?'No estaba en el previo':'✅ $'+m.toFixed(2);
+const fmtAhora=m=>m==null?'❌ Ausente':'✅ $'+m.toFixed(2);
 // Cruce previo↔oficial de los tres días (viernes/sábado/domingo). Solo devuelve DIFERENCIAS
 // (lo que coincide no se muestra). RRHH nunca ve horas de marcación real, solo si se cumplió
 // lo solicitado, y el motivo que el admin le haya puesto a esa diferencia.
@@ -6761,7 +6772,10 @@ async function buildCruceDias(){
         const esperado=!!previo[uid],marco=marcaronReal.has(uid);
         if(esperado===marco)return; // coincide, no se muestra
         const estado=esperado&&!marco?'❌ No se presentó':'➕ Marcó sin estar en el previo';
-        filas.push({uid,nombre:(users[uid]||{}).nombre||uid,estado});
+        const rowR=real.filas.find(f=>f.user===uid),ddR=rowR&&rowR.dias[0];
+        const montoAhora=marco&&ddR?ddR.monto:null;
+        filas.push({uid,nombre:(users[uid]||{}).nombre||uid,estado,
+          antes:fmtAntes(montoRegWk(previo[uid],fecha,users[uid])),ahora:fmtAhora(montoAhora)});
       });
     }else{
       const oficial=await loadWkPago(fecha,'oficial');
@@ -6778,7 +6792,8 @@ async function buildCruceDias(){
         else if(!p&&o)estado='➕ Vino sin estar en el previo';
         else if(p&&o&&(p.desde!==o.desde||p.hasta!==o.hasta))estado=`⚠️ Horario cambió (${p.desde}–${p.hasta} → ${o.desde}–${o.hasta})`;
         if(!estado)return; // coincide, no se muestra
-        filas.push({uid,nombre:(users[uid]||{}).nombre||uid,estado});
+        filas.push({uid,nombre:(users[uid]||{}).nombre||uid,estado,
+          antes:fmtAntes(montoRegWk(p,fecha,users[uid])),ahora:fmtAhora(montoRegWk(o,fecha,users[uid]))});
       });
     }
     if(!filas.length)continue;
@@ -7071,6 +7086,7 @@ async function renderCruceRRHH(){
         ${d.filas.map(f=>`<div class="rrhh-cruce-row" data-fecha="${d.fecha}" data-user="${f.uid}" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,80,80,.15)">
           <span style="flex:1 1 130px;min-width:0;color:var(--tx)">${f.nombre}</span>
           <span style="color:#ff5c5c;font-weight:700;font-size:11.5px;flex:1 1 160px">${f.estado}</span>
+          <span style="flex:1 1 100%;font-size:11.5px;color:var(--mt)">Antes (correo previo): ${f.antes||'—'} → Ahora: <strong style="color:var(--tx)">${f.ahora||'—'}</strong></span>
           <input type="text" class="fc rrhh-cruce-motivo" placeholder="Motivo (opcional)" value="${(f.motivo||'').replace(/"/g,'&quot;')}" style="flex:1 1 140px;font-size:11.5px;padding:5px 6px">
           <button class="btn bg bsm" data-cruce-guardar-motivo style="width:auto;padding:5px 10px;font-size:11px">💾</button>
         </div>`).join('')}
