@@ -188,7 +188,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .toast.show{display:block;opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.ok{border-color:rgba(0,201,167,.4);background:#001f18}
 .toast.err{border-color:rgba(255,71,87,.4);background:#200008}
-.mbd{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:9000;padding:20px;backdrop-filter:blur(4px)}
+.mbd{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:9000;padding:20px}
 .mbd.open{display:flex}
 .mbox{background:var(--sf);border:1px solid var(--bd);border-radius:20px;padding:23px;width:100%;max-width:520px;box-shadow:0 24px 80px rgba(0,0,0,.5);max-height:90vh;overflow-y:auto}
 .mbox h3{font-size:18px;font-weight:800;margin-bottom:15px}
@@ -1674,7 +1674,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
         <div class="fg2">
           <div class="fg"><label>Estado</label>
             <select class="fc" id="log-hist-filtro">
-              <option value="">Todos</option><option value="pendiente">Pendientes</option><option value="parcial">⏳ Parciales</option><option value="recibido">Recibidos</option>
+              <option value="">Todos</option><option value="pendiente">Pendientes</option><option value="parcial">⏳ Parciales</option><option value="recibido">Recibidos</option><option value="traspasado">🔁 Traspasados</option>
             </select>
           </div>
           <div class="fg"><label>Proveedor</label><select class="fc" id="log-hist-prov"><option value="">Todos</option></select></div>
@@ -9293,7 +9293,7 @@ function fmtNum(n){return n!=null&&n!==''?Number(n).toLocaleString('es-PA'):'—
 function diffStyle(d){return d===0?'color:var(--ac)':d>0?'color:#e0a800':'color:var(--dn)';}
 
 function logItemHTML(k,v){
-  const badge0=v.estado==='pendiente'?'<span class="lbadge pend">Pendiente</span>':
+  const badge0=v.traspaso?`<span class="lbadge ok">✅ Traspasado</span>`:v.estado==='pendiente'?'<span class="lbadge pend">Pendiente</span>':
     v.estado==='parcial'?`<span class="lbadge warn">Parcial ${v.equiposRecibidos||0}/${v.cantEquipos||1}</span>`:
     (v.discrepanciaBultos?'<span class="lbadge warn">Discrepancia</span>':'<span class="lbadge ok">Recibido</span>');
   const badge=badge0+(v.traspaso?` <span class="lbadge warn">🔁 ${escHtml(v.traspaso.depto)}</span>`:'');
@@ -9364,7 +9364,8 @@ async function renderLogHistorial(){
   const fhasta=el('log-hist-fhasta')?.value||'';
   const isAdm=ADMINS.includes(CU)||GERENTES.includes(CU);
   let entries=Object.entries(LOGR);
-  if(filtroE)entries=entries.filter(([,v])=>v.estado===filtroE);
+  if(filtroE==='traspasado')entries=entries.filter(([,v])=>!!v.traspaso);
+  else if(filtroE)entries=entries.filter(([,v])=>v.estado===filtroE&&!v.traspaso);
   if(filtroP)entries=entries.filter(([,v])=>v.proveedor===filtroP);
   if(fdesde)entries=entries.filter(([,v])=>(v.fechaEnvio||'')>=fdesde);
   if(fhasta)entries=entries.filter(([,v])=>(v.fechaEnvio||'')<=fhasta);
@@ -9635,8 +9636,8 @@ async function renderLogKPIs(){
   const kpiC=el('log-kpi-cards');if(!kpiC)return;
   const todos=Object.values(LOGR);
   const recibidos=todos.filter(v=>v.estado==='recibido');
-  const parciales=todos.filter(v=>v.estado==='parcial');
-  const pendientes=todos.filter(v=>v.estado==='pendiente');
+  const parciales=todos.filter(v=>v.estado==='parcial'&&!v.traspaso);
+  const pendientes=todos.filter(v=>v.estado==='pendiente'&&!v.traspaso);
   const totalBultos=recibidos.reduce((a,v)=>a+(v.bultosRecibidos||0),0);
   const totalPiezas=recibidos.reduce((a,v)=>a+(v.piezasRecibidas||0),0);
   const kpis=[
@@ -10595,7 +10596,7 @@ el('btn-log-sum-salida')?.addEventListener('click',()=>logSumGuardar(-1));
 function updateLogBadge(){
   try{
     const badge=el('log-badge');if(!badge||!LOGR)return;
-    const count=Object.values(LOGR).filter(v=>(v.estado==='pendiente'||v.estado==='parcial')&&(v.asignadoA==='todos'||v.asignadoA===CU)).length;
+    const count=Object.values(LOGR).filter(v=>(v.estado==='pendiente'||v.estado==='parcial')&&!v.traspaso&&(v.asignadoA==='todos'||v.asignadoA===CU)).length;
     if(count>0){badge.textContent=count;badge.style.display='inline';}
     else{badge.style.display='none';}
   }catch(e){}
@@ -11398,7 +11399,19 @@ el('btn-an-exportar')?.addEventListener('click',()=>{
 function listenLogistica(){
   if(logListening)return;logListening=true;
   trackedOnValue(R(db,LOGPROV),()=>{if(CU)renderLogProveedores();});
-  trackedOnValue(R(db,LOGREC),(snap)=>{if(CU){LOGR=snap.exists()?snap.val():{};renderLogPendientes();renderLogCamNuevoChecklist();renderLogCamRec();if(el('log-hist-wrap')&&el('log-hist-wrap').style.display==='block')renderLogHistorial();updateLogBadge();if(el('tab-log')&&el('tab-log').style.display!=='none')renderLogKPIs();}});
+  // Los redibujados pesados (historial, pendientes, KPIs) se juntan en uno solo y NUNCA corren mientras
+  // el usuario escribe en un campo o tiene un modal abierto: se aplazan hasta que termine.
+  let _logRefTimer=null;
+  const refrescarLogUI=()=>{
+    if(!CU)return;
+    const ae=document.activeElement,escribiendo=ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName);
+    if(escribiendo||document.querySelector('.mbd.open')){clearTimeout(_logRefTimer);_logRefTimer=setTimeout(refrescarLogUI,1500);return;}
+    renderLogPendientes();renderLogCamNuevoChecklist();renderLogCamRec();
+    if(el('log-hist-wrap')&&el('log-hist-wrap').style.display==='block')renderLogHistorial();
+    updateLogBadge();
+    if(el('tab-log')&&el('tab-log').style.display!=='none')renderLogKPIs();
+  };
+  trackedOnValue(R(db,LOGREC),(snap)=>{if(CU){LOGR=snap.exists()?snap.val():{};clearTimeout(_logRefTimer);_logRefTimer=setTimeout(refrescarLogUI,600);}});
   trackedOnValue(R(db,LOGCAM),()=>{if(CU)renderLogCamRec();});
   trackedOnValue(R(db,LOGDEPTO),()=>{if(CU){loadLogDeptos();}});
   trackedOnValue(R(db,LOGSUM_MOV),()=>{if(CU)loadLogSumMov();},(e)=>{if(!CU)return;console.error('onValue LOGSUM_MOV',e);toast('Suministro: '+(e.message||e),'err');});
