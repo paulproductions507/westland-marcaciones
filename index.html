@@ -5275,6 +5275,165 @@ async function getEffectiveSchedule(user){
   setHorarioCache(user,sch); // se guarda localmente cada vez que se confirma, para poder usarlo sin red
   return sch;
 }
+// ── GUÍA INTELIGENTE DE JORNADA (colaborador) ─────────────────────────────────────────
+// Le muestra al colaborador, al marcar Salida Alm. / Regreso Alm. / Salida Final, cuánto lleva de
+// arrastre (tardanza), cuánto es el monto pendiente de su jornada y a qué hora debe marcar para
+// evitar el descuento. NUNCA bloquea ni cambia el pago: solo informa y pide confirmación.
+// Si el colaborador confirma un permiso (check + motivo obligatorio), ya no se le muestran sugerencias.
+const MOTIVOS_PERMISO=['Cita médica','Trámite personal o legal','Emergencia familiar','Permiso autorizado por el encargado','Otro permiso autorizado'];
+const permisoKey=(user,fecha)=>`wl_permiso_${user}_${fecha}`;
+function getPermisoHoy(user,fecha,mine){
+  const m=(mine||[]).find(x=>x&&x.permiso);if(m)return{motivo:m.permiso};
+  try{const r=localStorage.getItem(permisoKey(user,fecha));return r?JSON.parse(r):null;}catch(e){return null;}
+}
+function setPermisoHoy(user,fecha,motivo){try{localStorage.setItem(permisoKey(user,fecha),JSON.stringify({motivo,ts:Date.now()}));}catch(e){}}
+const _hmMin=t=>{const p=String(t||'0:0').split(':').map(Number);return(p[0]||0)*60+(p[1]||0);};
+const _dMin=d=>d.getHours()*60+d.getMinutes()+d.getSeconds()/60;
+function _hm12(min){min=Math.round(min);let h=Math.floor(min/60)%24;const m=((min%60)+60)%60;const ap=h>=12?'PM':'AM';h=h%12||12;return`${h}:${String(m).padStart(2,'0')} ${ap}`;}
+const _usd=n=>'$'+Number(n||0).toFixed(2);
+async function analizarJornadaVivo(user,key,mine,ahora){
+  let base=null;try{base=await withTimeout(getHorarioBaseDe(user,key),3000);}catch(e){}
+  if(!base)return null;
+  let jor=null;try{jor=await withTimeout(getJornadaHoy(user),2000);}catch(e){}
+  const inicio=(jor&&jor.entrada)||base.inicio,fin=(jor&&jor.salida)||base.fin;
+  const durAlm=(base.duracionAlm!=null&&!isNaN(base.duracionAlm))?base.duracionAlm:60;
+  const dow=ahora.getDay();const tf=(CUM&&CUM.tarifa)||{};
+  const tar=dow===0?(tf.domingo||tf.regular||null):(tf.regular||null);
+  const by={};(mine||[]).forEach(m=>{if(m&&m.tipo)by[m.tipo]=new Date(m.stamp);});
+  const arrastre=by['Entrada']?Math.max(0,Math.round(_dMin(by['Entrada'])-_hmMin(inicio))):0;
+  return{inicio,fin,durAlm,tar,by,arrastre};
+}
+const _montoMin=(min,tar)=>tar?_usd((min/480)*tar):null;
+// Modal con Seguir (izquierda) / Cancelar (derecha), y opción de permiso (check + motivo obligatorio)
+function guiaModal({titulo,html,seguirTxt='Seguir',cancelTxt='Cancelar',soloInfo=false,permiso=true}){
+  return new Promise(resolve=>{
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px';
+    const opts=MOTIVOS_PERMISO.map(m=>`<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
+    ov.innerHTML=`<div style="background:var(--sf,#003542);color:var(--tx,#fff);border:1px solid var(--ac,#00c9a7);border-radius:14px;padding:18px;max-width:420px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.6)">
+      <div style="font-size:16px;font-weight:800;margin-bottom:10px">${titulo}</div>
+      <div style="font-size:13.5px;line-height:1.55">${html}</div>
+      ${permiso?`<label style="display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:12.5px;cursor:pointer"><input type="checkbox" id="gm-perm" style="width:auto;margin-top:2px;accent-color:#00c9a7"><span>Tengo un <strong>permiso autorizado</strong> hoy (ya no me muestres sugerencias de descuento)</span></label>
+      <div id="gm-permbox" style="display:none;margin-top:8px"><select id="gm-motivo" style="width:100%;padding:9px;border-radius:8px;background:var(--bg,#00252e);color:var(--tx,#fff);border:1px solid var(--ac,#00c9a7)"><option value="">Elige el motivo (obligatorio)…</option>${opts}</select></div>
+      <div id="gm-err" style="display:none;color:#ff6b6b;font-size:12px;margin-top:6px"></div>`:''}
+      <div style="display:flex;gap:10px;margin-top:16px;justify-content:space-between">
+        <button id="gm-ok" style="flex:1;padding:12px;border:none;border-radius:10px;background:#00c9a7;color:#00252e;font-weight:800;font-size:14px;cursor:pointer">${seguirTxt}</button>
+        ${soloInfo?'':`<button id="gm-no" style="flex:1;padding:12px;border:1px solid #ff6b6b;border-radius:10px;background:transparent;color:#ff6b6b;font-weight:800;font-size:14px;cursor:pointer">${cancelTxt}</button>`}
+      </div></div>`;
+    document.body.appendChild(ov);
+    const $=id=>ov.querySelector('#'+id);
+    const chk=$('gm-perm'),box=$('gm-permbox'),sel=$('gm-motivo'),err=$('gm-err');
+    if(chk)chk.addEventListener('change',()=>{box.style.display=chk.checked?'block':'none';err.style.display='none';});
+    const fin=r=>{ov.remove();resolve(r);};
+    $('gm-ok').addEventListener('click',()=>{
+      let permisoMotivo=null;
+      if(chk&&chk.checked){
+        if(!sel.value){err.textContent='Elige el motivo del permiso para continuar.';err.style.display='block';return;}
+        permisoMotivo=sel.value;
+      }
+      fin({ok:true,permiso:permisoMotivo});
+    });
+    const no=$('gm-no');if(no)no.addEventListener('click',()=>fin({ok:false,permiso:null}));
+  });
+}
+// Contexto del ACUMULADO de la semana (lunes–domingo) para decidir si se muestran avisos.
+// Mismo cálculo que usa la Vista Semanal (solo Entrada + Almuerzo; la Salida Final nunca participa).
+// - primerDia: no tiene marcas en días anteriores de esta semana → regla de excepción: no se avisa nada.
+// - poolMin: minutos de sobra de días anteriores que aún no cubrieron ningún faltante.
+// El colaborador NUNCA ve el acumulado: solo se le avisa lo que el acumulado no alcanza a absorber.
+// Devuelve null si algo falla (en ese caso no se muestra ningún aviso).
+async function contextoAcumuladoVivo(user,key){
+  try{
+    if(CUM&&CUM.sinAcumulado)return{usa:false,primerDia:false,poolMin:0}; // sin acumulado: avisos completos como siempre
+    const lun=lunesISODe(key);const dias=[];let hayPrevios=false;
+    const almGlobal=await withTimeout(loadAlmuerzoGlobal(),3000);
+    let horcolUser={};try{const hc=await withTimeout(get(R(db,`${HORCOL}/${user}`)),3000);horcolUser=hc.exists()?hc.val():{};}catch(e){}
+    for(let i=0;i<7;i++){
+      const f=isoD(isoDateAdd(new Date(lun+'T00:00:00'),i));
+      if(f>=key)break;
+      if(f<DESCUENTO_DESDE)continue;
+      const marks=((await withTimeout(getHist(f),4000))||[]).filter(m=>m.user===user);
+      if(!marks.length)continue;
+      hayPrevios=true;
+      const dow=new Date(f+'T00:00:00').getDay(),cnt=marks.length,completo=cnt>=4;
+      const almCfg=almCfgForDia(almGlobal,dow);
+      const hrsParcial=cnt<4?computeHrsParcial(marks,almCfg):computeHrs(marks,almCfg);
+      const{deficitMin,excedenteMin}=await deltaEntradaAlmuerzoDia(user,f,marks,almCfg,horcolUser,hrsParcial,completo);
+      dias.push({k:f,deficitMin,excedenteMin});
+    }
+    if(!hayPrevios)return{usa:true,primerDia:true,poolMin:0};
+    const r=calcularAcumuladoSemana(dias);
+    return{usa:true,primerDia:false,poolMin:Math.max(0,r.disponibleMin-r.usadoMin)};
+  }catch(e){console.warn('contexto acumulado',e);return null;}
+}
+// Antes de registrar: devuelve {continuar, permiso}. Cualquier error → continúa (nunca se bloquea el marcaje por esto).
+async function guiaAntesDeMarcar(tipo,user,key,mine,date){
+  try{
+    if(!['Salida Alm.','Salida Final'].includes(tipo))return{continuar:true,permiso:null};
+    if(getPermisoHoy(user,key,mine))return{continuar:true,permiso:null};
+    const g=await analizarJornadaVivo(user,key,mine,date);if(!g||!g.by['Entrada'])return{continuar:true,permiso:null};
+    const ctx=await contextoAcumuladoVivo(user,key);
+    if(!ctx||ctx.primerDia)return{continuar:true,permiso:null}; // primer día de la semana: sin avisos
+    const pool=ctx.poolMin;
+    if(tipo==='Salida Alm.'){
+      if(g.arrastre>0){
+        const cubierto=Math.min(pool,g.arrastre),residual=g.arrastre-cubierto;
+        if(residual<1)return{continuar:true,permiso:null}; // el acumulado lo absorbe: no se molesta al colaborador
+        const sugerido=Math.max(30,g.durAlm-residual);
+        const m$=_montoMin(residual,g.tar);
+        const r=await guiaModal({titulo:'⏱️ Tienes un arrastre hoy',
+          html:`Llegaste tarde y te quedan <strong>${residual} min</strong> por compensar${m$?` (<strong style="color:#ff6b6b">-${m$}</strong>)`:''}.<br><br>
+          Para evitar el descuento, toma solo <strong>${sugerido} min</strong> de almuerzo en vez de ${g.durAlm} y regresa a las <strong>${_hm12(_dMin(date)+sugerido)}</strong>.${g.durAlm-residual<30?`<br><span style="font-size:12px;opacity:.8">El resto se te avisará a la hora de tu salida.</span>`:''}<br><br>¿Registrar tu Salida Alm. ahora?`});
+        return{continuar:r.ok,permiso:r.permiso};
+      }
+      toast(`🍽️ Almuerzo de ${g.durAlm} min: regresa a las ${_hm12(_dMin(date)+g.durAlm)}`,'ok',6000);
+      return{continuar:true,permiso:null};
+    }
+    // Salida Final
+    const by=g.by;if(!by['Salida Alm.']||!by['Regreso Alm.'])return{continuar:true,permiso:null};
+    const lunch=(by['Regreso Alm.']-by['Salida Alm.'])/60000;
+    const trabajado=_dMin(date)-_dMin(by['Entrada'])-lunch;
+    const falta=Math.round(480-trabajado);
+    if(falta<1)return{continuar:true,permiso:null};
+    // Solo la parte atribuible a Entrada + Almuerzo puede ser absorbida por el acumulado (la salida temprano no)
+    const atribuible=g.arrastre+Math.max(0,Math.round(lunch-g.durAlm));
+    const cubierto=Math.min(pool,atribuible,falta),residual=falta-cubierto;
+    if(residual<1)return{continuar:true,permiso:null}; // absorbido por el acumulado: sin aviso
+    const horaOk=_dMin(by['Entrada'])+480+lunch-cubierto;
+    const tope=_hmMin(g.fin)+10; // la salida nunca puede pasar de 10 min después de su hora programada
+    const horaSug=Math.min(horaOk,tope);
+    const inevitable=Math.max(0,Math.round(horaOk-tope));
+    const m$=_montoMin(residual,g.tar);
+    const r=await guiaModal({titulo:'⚠️ ¿Seguro que quieres registrar tu salida?',
+      html:`Si marcas ahora te faltarían <strong>${residual} min</strong> de tu jornada${m$?` (<strong style="color:#ff6b6b">-${m$}</strong>)`:''}.<br><br>Para evitar el descuento debes marcar a las <strong>${_hm12(horaSug)}</strong> o después.${inevitable>0?`<br><span style="font-size:12px;opacity:.85">Ese es tu límite de salida; aun así quedarían ${inevitable} min por descontar${_montoMin(inevitable,g.tar)?` (${_montoMin(inevitable,g.tar)})`:''}.</span>`:''}`});
+    return{continuar:r.ok,permiso:r.permiso};
+  }catch(e){console.warn('guía jornada',e);return{continuar:true,permiso:null};}
+}
+// Después de registrar el Regreso Alm.: monto pendiente y hora sugerida de salida (solo si el acumulado no lo absorbe)
+async function guiaDespuesRegreso(user,key,mine,obj){
+  try{
+    if(getPermisoHoy(user,key,mine))return;
+    const g=await analizarJornadaVivo(user,key,mine,new Date(obj.stamp));
+    if(!g||!g.by['Entrada']||!g.by['Salida Alm.'])return;
+    const ctx=await contextoAcumuladoVivo(user,key);
+    if(!ctx||ctx.primerDia)return; // primer día de la semana: sin avisos
+    const regreso=new Date(obj.stamp);
+    const lunch=(regreso-g.by['Salida Alm.'])/60000;
+    const horaOk=_dMin(g.by['Entrada'])+480+lunch;
+    const needed=Math.round(horaOk-_hmMin(g.fin)); // minutos que tendría que quedarse después de su hora de salida
+    if(needed<1){toast(`✅ Todo en orden. Tu salida: a partir de las ${_hm12(Math.min(horaOk,_hmMin(g.fin)))}`,'ok',6000);return;}
+    const cubierto=Math.min(ctx.poolMin,needed),residual=needed-cubierto;
+    if(residual<1){toast('✅ Todo en orden con tu jornada de hoy','ok',5000);return;} // absorbido por el acumulado
+    const tope=_hmMin(g.fin)+10;
+    const horaSug=Math.min(horaOk-cubierto,tope);
+    const inevitable=Math.max(0,Math.round(horaOk-cubierto-tope));
+    const m$=_montoMin(residual,g.tar);
+    const exceso=Math.max(0,Math.round(lunch-g.durAlm));
+    const r=await guiaModal({titulo:'📋 Pendiente de tu jornada',soloInfo:true,seguirTxt:'Entendido',
+      html:`Tomaste <strong>${Math.round(lunch)} min</strong> de almuerzo${exceso>0?` (${exceso} min más de lo programado)`:''}${g.arrastre>0?` y llegaste ${g.arrastre} min tarde`:''}.<br><br>Pendiente: <strong>${residual} min</strong>${m$?` (<strong style="color:#ff6b6b">-${m$}</strong>)`:''}.<br>Para evitar el descuento marca tu <strong>Salida Final</strong> a las <strong>${_hm12(horaSug)}</strong> o después.${inevitable>0?`<br><span style="font-size:12px;opacity:.85">Tu límite de salida es ${_hm12(tope)}; aun así quedarían ${inevitable} min por descontar${_montoMin(inevitable,g.tar)?` (${_montoMin(inevitable,g.tar)})`:''}.</span>`:''}`});
+    if(r&&r.permiso){setPermisoHoy(user,key,r.permiso);}
+  }catch(e){console.warn('guía regreso',e);}
+}
 async function registrar(date=new Date(),user=CU,tipoForzado=null){
   if(!user){toast('Inicie sesión','err');return;}
   const key=isoD(date);
@@ -5283,6 +5442,15 @@ async function registrar(date=new Date(),user=CU,tipoForzado=null){
   if(!ADMINS.includes(user)&&FB_CONNECTED){
     try{const ok=await withTimeout(isHabilitado(user),2000);if(!ok){registrarIntentoRechazado(user,'No estaba habilitado ese día');flashBtn('No estás habilitado hoy. Contacta al encargado.');return;}}
     catch(e){/* sin respuesta a tiempo: seguimos, no bloqueamos el marcaje por esto */}
+  }
+  // SIN TURNO NO SE MARCA: un colaborador que el administrador no ha colocado en el turno de hoy no puede registrar.
+  if(user===CU&&!tipoForzado&&!ADMINS.includes(user)&&!GERENTES.includes(user)&&FB_CONNECTED){
+    const tv=await verificarTurnoAsignado(user,key);
+    if(!tv.ok){
+      registrarIntentoRechazado(user,'Sin turno asignado');
+      flashBtn('No tienes turno asignado hoy. Consulta con el administrador para que te coloque en el turno.');
+      return;
+    }
   }
   // Se valida y se arma la marcación con lo que YA tenemos en memoria cuando es el propio
   // usuario marcando (así el botón responde al instante). Si es un admin marcando manualmente
@@ -5323,6 +5491,15 @@ async function registrar(date=new Date(),user=CU,tipoForzado=null){
       }
     }catch(e){/* si falla la consulta del horario, se deja pasar y se marca normal — no se bloquea por esto */}
   }
+  // GUÍA INTELIGENTE: arrastre, monto pendiente, hora sugerida y confirmación (solo marca propia de colaborador)
+  let permisoSel=null;
+  if(esPropio&&!tipoForzado&&!ADMINS.includes(user)&&!GERENTES.includes(user)){
+    const gd=await guiaAntesDeMarcar(tipo,user,key,mine,date);
+    if(!gd.continuar){toast('Marcación cancelada. No se registró nada.','',2500);return;}
+    permisoSel=gd.permiso;
+    if(permisoSel){setPermisoHoy(user,key,permisoSel);date=new Date();} // la hora es la de la confirmación real
+    else if(tipo==='Salida Final')date=new Date();
+  }
   // Si esta es la Salida Final REAL del colaborador y tiene un crédito de hora extra pendiente
   // (asignado por un admin porque se quedó trabajando de más y no marcó esa hora), se le suma
   // aquí — sobre la hora real en que está marcando ahora mismo — y se registra en la bitácora.
@@ -5339,6 +5516,7 @@ async function registrar(date=new Date(),user=CU,tipoForzado=null){
   }
   const cid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():`c${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
   const obj={tipo,hora:fmtT(dateFinal),stamp:dateFinal.toISOString(),user,cid};
+  if(permisoSel){obj.permiso=permisoSel;obj.nota='Permiso autorizado: '+permisoSel;}
   if(extraAplicado){
     obj.extraAplicado={min:extraAplicado.min,motivo:extraAplicado.motivo,horaReal:fmtT(date)};
     addLog(`⏱ Hora extra APLICADA a la Salida Final de ${user}: marcó a las ${fmtT(date)}, se le sumaron ${extraAplicado.min} min → quedó registrada ${fmtT(dateFinal)} (motivo: "${extraAplicado.motivo}", asignado por ${extraAplicado.por})`);
@@ -5355,6 +5533,7 @@ async function registrar(date=new Date(),user=CU,tipoForzado=null){
 
   // Intento de subida en segundo plano — la pantalla ya no espera por esto.
   attemptSyncOne(key,obj);
+  if(tipo==='Regreso Alm.'&&esPropio&&!tipoForzado&&!ADMINS.includes(user)&&!GERENTES.includes(user))guiaDespuesRegreso(user,key,[...mine,obj],obj);
 }
 async function doMark(date,user,tipoForzado=null,preList=null){
   try{
@@ -7866,15 +8045,15 @@ function buildResumenIndividualHTML(u,desde,hasta,s,fila,diasVis){
     const _nts=sinMarcas?[]:notasDeMarcas(dd.marcaciones);
     const notaHtml=_nts.length?_nts.map(n=>`📝 ${escHtml(n)}`).join('<br>'):'—';
     const monto=montoDia[d]!=null?montoDia[d]:Number(dd.saldoParcial||dd.bruto||0);
-    filas+=`<tr><td style="${TD};width:15%">📅 ${fmtDiaLargo(d)}</td><td style="${TD};width:30%;font-size:12.5px;line-height:1.6">${mks}</td><td style="${TD};width:11%;text-align:center">${estado}</td><td style="${TD};width:12%;text-align:right;font-weight:700;white-space:nowrap">$${moneyRRHH(monto)}</td><td style="${TD};width:32%;min-width:200px;font-size:12.5px;color:#555;line-height:1.5">${notaHtml}</td></tr>`;
+    filas+=`<tr><td style="${TD}">📅 ${fmtDiaLargo(d)}</td><td style="${TD};font-size:12.5px;line-height:1.6">${mks}</td><td style="${TD}">${estado}</td><td style="${TD};text-align:right;font-weight:700;white-space:nowrap">$${moneyRRHH(monto)}</td><td style="${TD};font-size:12.5px;color:#555;line-height:1.5">${notaHtml}</td></tr>`;
   });
   const totalSol=fila?fila.totalUsuario:Number(s.neto||0);
   return`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Solicitud de pago</title></head>
-  <body style="font-family:Arial,Helvetica,sans-serif;color:#022;padding:16px;max-width:900px;margin:0 auto">
+  <body style="font-family:Arial,Helvetica,sans-serif;color:#022;padding:16px;max-width:940px;margin:0 auto">
     <div style="display:inline-block;background:#eaf7f2;color:#007a5e;font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:4px 10px;border-radius:20px;margin-bottom:10px">🧾 Solicitud de pago</div>
     <h2 style="color:#00313C;margin-bottom:4px">Hola ${s.nombre||u.nombre||u.user} 👋</h2>
     <p style="color:#555;margin-bottom:14px">Esta es tu solicitud de pago, con el detalle de tus marcaciones del período <strong>${fmtRangoLargo(desde,hasta)}</strong>.</p>
-    <table style="border-collapse:collapse;width:100%">
+    <table width="900" style="border-collapse:collapse;width:100%;min-width:760px;max-width:900px;table-layout:fixed"><colgroup><col width="160"><col width="270"><col width="110"><col width="120"><col width="240"></colgroup>
       <tr><th style="${TH};text-align:left">Día</th><th style="${TH};text-align:left">Marcaciones</th><th style="${TH}">Estado</th><th style="${TH}">Monto del día</th><th style="${TH};text-align:left">Notas</th></tr>
       ${filas||'<tr><td colspan="5" style="padding:10px;border:1px solid #ccc;color:#888">Sin marcaciones registradas en este período.</td></tr>'}
       <tr style="font-weight:800;background:#f0f4f5"><td colspan="3" style="padding:10px;border:1px solid #ccc">TOTAL SOLICITADO</td><td style="padding:10px;border:1px solid #ccc;text-align:right;white-space:nowrap">$${moneyRRHH(totalSol)}</td><td style="padding:10px;border:1px solid #ccc"></td></tr>
