@@ -1256,7 +1256,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="rrhh-cruce" style="margin-top:10px"></div>
             <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:12px">
               <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🗓️ Pago preliminar (Viernes / Sábado / Domingo)</div>
-              <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Para adelantarle a RRHH quién viene el viernes (antes de que todos terminen de marcar) y para sábado/domingo, que no se marcan con huella. Toca cada día para desplegarlo. Esto es solo un reporte preliminar — nunca reemplaza la marcación real de los colaboradores.</div>
+              <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Para adelantarle a RRHH quién viene el viernes (antes de que todos terminen de marcar) y para sábado/domingo, que no se marcan con huella. Toca cada día para desplegarlo. Esto es solo un reporte preliminar — nunca reemplaza la marcación real de los colaboradores. Si ya marcaron ese día, activa <strong>Usar marcación real</strong> y el reporte ignora los datos ficticios.</div>
               <div id="rrhh-wknd-days"></div>
             </div>
             <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:12px">
@@ -6690,6 +6690,7 @@ async function buildRRHHDataMerged(desde,hasta,modo){
   const wkMap={};
   for(const d of activos){
     if(modo==='oficial'&&d.key==='vie')continue; // el viernes oficial siempre es la marcación real
+    if(usarRealDia(d.key))continue; // el admin eligió usar la marcación real de este día (sin datos ficticios)
     const fecha=el(`rrhh-wknd-${d.key}`).value;
     let wk=await loadWkPago(fecha,modo==='oficial'?'oficial':'previo');
     if(modo==='oficial'&&(!wk||!Object.keys(wk).length))wk=await loadWkPago(fecha,'previo'); // respaldo si aún no confirmaron
@@ -6750,7 +6751,7 @@ async function buildCruceDias(){
     if(!previo||!Object.keys(previo).length)continue;
     let oficialSet,esComparableComoBinario=false;
     const filas=[];
-    if(d.key==='vie'){
+    if(d.key==='vie'||usarRealDia(d.key)){
       const real=await buildRRHHData(fecha,fecha);
       const marcaronReal=new Set(real.filas.filter(f=>f.dias[0]&&f.dias[0].tipo!=='ausente').map(f=>f.user));
       esComparableComoBinario=true;
@@ -6973,6 +6974,9 @@ function initRRHHWkndUI(){
     <details class="rrhh-wknd-day" style="border:1px solid var(--bd);border-radius:10px;margin-bottom:8px;overflow:hidden">
       <summary style="padding:10px 12px;cursor:pointer;font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span>${d.emoji} ${d.label}</span>
+        <label onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--mt);cursor:pointer" title="Ignora los datos ficticios (previo/oficial) de este día y usa la marcación real de los colaboradores">
+          <input type="checkbox" id="rrhh-wknd-real-${d.key}" style="width:auto;accent-color:var(--ac)">Usar marcación real
+        </label>
         <input type="date" class="fc" id="rrhh-wknd-${d.key}" style="margin-left:auto;width:auto;font-size:12px" onclick="event.stopPropagation()">
       </summary>
       <div style="padding:10px 12px;border-top:1px solid var(--bd)">
@@ -6986,11 +6990,29 @@ function initRRHHWkndUI(){
           </div>`).join('')}
       </div>
     </details>`).join('');
+  RRHH_WKND_DIAS.forEach(d=>{
+    el(`rrhh-wknd-real-${d.key}`)?.addEventListener('change',async function(){
+      const fecha=el(`rrhh-wknd-${d.key}`)?.value;
+      if(fecha){try{await set(R(db,`${WKPAGO}/${fecha}/usar_real`),this.checked?true:null);}catch(e){console.error('usar_real',e);}}
+      const v=el('rrhh-desde').value,h=el('rrhh-hasta').value;
+      if(v&&h)renderVistaRRHH(v,h);
+      toast(`${d.label}: ${this.checked?'se usará la marcación real':'se usarán los datos previo/oficial'} ✓`,'ok',2500);
+    });
+    el(`rrhh-wknd-${d.key}`)?.addEventListener('change',()=>cargarUsarRealDia(d.key));
+    cargarUsarRealDia(d.key);
+  });
   cont.addEventListener('click',e=>{
     const bc=e.target.closest('[data-wknd-cargar]');if(bc){const[dk,et]=bc.dataset.wkndCargar.split('|');renderRRHHWkndDayList(dk,et);return;}
     const bg=e.target.closest('[data-wknd-guardar]');if(bg){const[dk,et]=bg.dataset.wkndGuardar.split('|');saveRRHHWkndDay(dk,et);return;}
   });
 }
+// Lee de Firebase si ese día (fecha elegida) quedó marcado como "usar marcación real"
+async function cargarUsarRealDia(dayKey){
+  const chk=el(`rrhh-wknd-real-${dayKey}`),fecha=el(`rrhh-wknd-${dayKey}`)?.value;
+  if(!chk||!fecha)return;
+  try{const s=await get(R(db,`${WKPAGO}/${fecha}/usar_real`));chk.checked=s.exists()&&s.val()===true;}catch(e){}
+}
+function usarRealDia(dayKey){return !!el(`rrhh-wknd-real-${dayKey}`)?.checked;}
 async function renderRRHHWkndDayList(dayKey,etapa){
   const dayCfg=RRHH_WKND_DIAS.find(d=>d.key===dayKey);if(!dayCfg)return;
   const listEl=el(`rrhh-wknd-list-${dayKey}-${etapa}`);if(!listEl)return;
