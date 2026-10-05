@@ -7847,27 +7847,37 @@ function buildDetalladoHTML(usersArr,desde,hasta,rowsByUser,summs){
 function emailPersonalDe(u){
   return(u&&((u.perfil&&u.perfil.email)||u.emailPersonal)||'').trim();
 }
-function buildResumenIndividualHTML(u,desde,hasta,s){
-  const dias=Object.keys(s.det||{}).sort();
+function buildResumenIndividualHTML(u,desde,hasta,s,fila,diasVis){
+  // FUENTE ÚNICA: el monto de cada día y el total salen de buildRRHHData (el mismo cálculo del correo
+  // de RRHH y de la Vista Semanal), ya con acumulado y descuentos aplicados. Si se quita o se agrega
+  // un descuento, cambia igual en los tres lados. El colaborador ve el monto ya neto, sin etiqueta.
+  const montoDia={};
+  if(fila&&diasVis){diasVis.forEach((dv,i)=>{const dd=fila.dias[i];if(dd&&dd.tipo!=='ausente'&&dd.tipo!=='libre'&&dd.monto!=null)montoDia[dv.k]=dd.monto;});}
+  const dias=[...new Set([...Object.keys(s.det||{}),...Object.keys(montoDia)])].sort();
+  const TH='background:#00313C;color:#fff;padding:10px 8px;border:1px solid #00313C';
+  const TD='padding:9px 10px;border:1px solid #ccc;vertical-align:top';
   let filas='';
   dias.forEach(d=>{
-    const dd=s.det[d],cnt=dd.marcCount||0;
-    const estado=cnt<4?`⏳ ${cnt}/4`:'✅ Completo';
+    const dd=(s.det&&s.det[d])||{},cnt=dd.marcCount||0;
+    const sinMarcas=!(dd.marcaciones&&dd.marcaciones.length);
+    const estado=sinMarcas?'✅ Completo':(cnt<4?`⏳ ${cnt}/4`:'✅ Completo');
     const _ORD={'Entrada':0,'Salida Alm.':1,'Regreso Alm.':2,'Salida Final':3};
-    const mks=[...(dd.marcaciones||[])].sort((a,b)=>(_ORD[a.tipo]??9)-(_ORD[b.tipo]??9)).map(m=>`${m.tipo}: <strong>${fmtHoraAP(m)}</strong>`).join(' &nbsp;|&nbsp; ')||'—';
-    const _nts=notasDeMarcas(dd.marcaciones);
+    const mks=sinMarcas?'—':[...(dd.marcaciones||[])].sort((a,b)=>(_ORD[a.tipo]??9)-(_ORD[b.tipo]??9)).map(m=>`${m.tipo}: <strong>${fmtHoraAP(m)}</strong>`).join('<br>');
+    const _nts=sinMarcas?[]:notasDeMarcas(dd.marcaciones);
     const notaHtml=_nts.length?_nts.map(n=>`📝 ${escHtml(n)}`).join('<br>'):'—';
-    filas+=`<tr><td style="padding:7px 10px;border:1px solid #ccc">📅 ${fmtDiaLargo(d)}</td><td style="padding:7px 10px;border:1px solid #ccc;font-size:12px">${mks}</td><td style="padding:7px 10px;border:1px solid #ccc;text-align:center">${estado}</td><td style="padding:7px 10px;border:1px solid #ccc;font-size:12px;color:#555">${notaHtml}</td><td style="padding:7px 10px;border:1px solid #ccc;text-align:right">$${Number(dd.saldoParcial||dd.bruto||0).toFixed(2)}</td></tr>`;
+    const monto=montoDia[d]!=null?montoDia[d]:Number(dd.saldoParcial||dd.bruto||0);
+    filas+=`<tr><td style="${TD};width:15%">📅 ${fmtDiaLargo(d)}</td><td style="${TD};width:30%;font-size:12.5px;line-height:1.6">${mks}</td><td style="${TD};width:11%;text-align:center">${estado}</td><td style="${TD};width:12%;text-align:right;font-weight:700;white-space:nowrap">$${moneyRRHH(monto)}</td><td style="${TD};width:32%;min-width:200px;font-size:12.5px;color:#555;line-height:1.5">${notaHtml}</td></tr>`;
   });
-  return`<!doctype html><html><head><meta charset="utf-8"><title>Solicitud de pago</title></head>
-  <body style="font-family:Arial,Helvetica,sans-serif;color:#022;padding:20px;max-width:640px;margin:0 auto">
+  const totalSol=fila?fila.totalUsuario:Number(s.neto||0);
+  return`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Solicitud de pago</title></head>
+  <body style="font-family:Arial,Helvetica,sans-serif;color:#022;padding:16px;max-width:900px;margin:0 auto">
     <div style="display:inline-block;background:#eaf7f2;color:#007a5e;font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:4px 10px;border-radius:20px;margin-bottom:10px">🧾 Solicitud de pago</div>
     <h2 style="color:#00313C;margin-bottom:4px">Hola ${s.nombre||u.nombre||u.user} 👋</h2>
     <p style="color:#555;margin-bottom:14px">Esta es tu solicitud de pago, con el detalle de tus marcaciones del período <strong>${fmtRangoLargo(desde,hasta)}</strong>.</p>
     <table style="border-collapse:collapse;width:100%">
-      <tr><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C;text-align:left">Día</th><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C;text-align:left">Marcaciones</th><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C">Estado</th><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C">Notas</th><th style="background:#00313C;color:#fff;padding:8px;border:1px solid #00313C">Monto del día</th></tr>
+      <tr><th style="${TH};text-align:left">Día</th><th style="${TH};text-align:left">Marcaciones</th><th style="${TH}">Estado</th><th style="${TH}">Monto del día</th><th style="${TH};text-align:left">Notas</th></tr>
       ${filas||'<tr><td colspan="5" style="padding:10px;border:1px solid #ccc;color:#888">Sin marcaciones registradas en este período.</td></tr>'}
-      <tr style="font-weight:800;background:#f0f4f5"><td colspan="4" style="padding:8px;border:1px solid #ccc">TOTAL SOLICITADO</td><td style="padding:8px;border:1px solid #ccc;text-align:right">$${Number(s.neto||0).toFixed(2)}</td></tr>
+      <tr style="font-weight:800;background:#f0f4f5"><td colspan="3" style="padding:10px;border:1px solid #ccc">TOTAL SOLICITADO</td><td style="padding:10px;border:1px solid #ccc;text-align:right;white-space:nowrap">$${moneyRRHH(totalSol)}</td><td style="padding:10px;border:1px solid #ccc"></td></tr>
     </table>
     <p style="font-size:12px;color:#888;margin-top:14px">Días trabajados: <strong>${s.dias||0}</strong> · Horas: <strong>${s.horas||0}</strong></p>
     <p style="font-size:12px;color:#888">Si algo no coincide con lo que registraste, avísale a tu supervisor antes del cierre de planilla.</p>
@@ -7883,6 +7893,8 @@ async function distribuirMarcacionesIndividual(desde,hasta){
   setStatus('Generando y enviando correos individuales...','var(--wn)');
   try{
     const summ=await buildSummary(desde,hasta,false);
+    const rrhhBase=await buildRRHHData(desde,hasta); // misma fuente de montos/descuentos que RRHH
+    const rrhhPorUser={};rrhhBase.filas.forEach(f=>{rrhhPorUser[f.user]=f;});
     const users=await getUsers();
     let colab=Object.values(users).filter(u=>!GERENTES.includes(u.user));
     // Respeta el filtro de "Usuarios a mostrar esta semana" guardado en el selector — si hay
@@ -7896,7 +7908,7 @@ async function distribuirMarcacionesIndividual(desde,hasta){
       if(!s||!s.dias)continue; // sin marcaciones ese período, no le mandamos nada
       const correo=emailPersonalDe(u);
       if(!correo){sinCorreo.push(u.nombre||u.user);continue;}
-      const html=buildResumenIndividualHTML(u,desde,hasta,s);
+      const html=buildResumenIndividualHTML(u,desde,hasta,s,rrhhPorUser[u.user],rrhhBase.diasVis);
       const subject=`Solicitud de pago — ${fmtRangoLargo(desde,hasta)} — Juguetería Westland`;
       const tParams={to_email:correo,cc_email:'',subject,html_content:html,message:html,saludo:'Hola',periodo:desde+' al '+hasta,timestamp:new Date().toLocaleString('es')};
       let sent=false;
