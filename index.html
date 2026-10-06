@@ -5438,6 +5438,35 @@ async function guiaDespuesRegreso(user,key,mine,obj){
     if(r&&r.permiso){setPermisoHoy(user,key,r.permiso);}
   }catch(e){console.warn('guía regreso',e);}
 }
+// ── SIN TURNO CONFIRMADO NO SE MARCA ─────────────────────────────────────────
+// Regla base: el colaborador solo puede marcar si el día de hoy está PROGRAMADO (confirmado por un
+// administrador en turnos_semana, es decir, con _meta) y él figura con turno ese día y no tiene día libre.
+// Un día solo "en vista previa" (horario base heredado, sin confirmar) NO habilita marcar.
+// IMPORTANTE: si la lectura falla o tarda (sin señal / cuota), NO se bloquea — el colaborador debe poder
+// marcar siempre que el sistema no pueda comprobar lo contrario. Lectura mínima: solo el nodo del día.
+const _turnoOkCache={};
+async function verificarTurnoAsignado(user,key){
+  const ck=user+'|'+key,c=_turnoOkCache[ck];
+  if(c&&Date.now()-c.t<60000)return c.r;
+  try{
+    const lun=lunesISODe(key);
+    const dn=DIA_KEYS[(new Date(key+'T00:00:00').getDay()+6)%7];
+    const [snDia,libres]=await withTimeout(Promise.all([get(R(db,`${TURSEM}/${lun}/${dn}`)),loadDiaLibre(key)]),3500);
+    let r;
+    if(libres&&libres[user])r={ok:false,msg:'Hoy tienes día libre. Si te toca trabajar, avisa al encargado.'};
+    else{
+      const dia=snDia.exists()?snDia.val():null;
+      if(!dia||!dia._meta)r={ok:false,msg:'Tu turno de hoy aún no está confirmado por el administrador. Avísale para poder marcar.'};
+      else if(!dia[user]||!dia[user].inicio)r={ok:false,msg:'No tienes turno asignado hoy. Consulta con el administrador para que te coloque en el turno.'};
+      else r={ok:true};
+    }
+    _turnoOkCache[ck]={t:Date.now(),r};
+    return r;
+  }catch(e){
+    console.warn('verificarTurnoAsignado: no se pudo comprobar, se deja marcar',e);
+    return{ok:true,degradado:true};
+  }
+}
 async function registrar(date=new Date(),user=CU,tipoForzado=null){
   if(!user){toast('Inicie sesión','err');return;}
   const key=isoD(date);
@@ -5452,7 +5481,7 @@ async function registrar(date=new Date(),user=CU,tipoForzado=null){
     const tv=await verificarTurnoAsignado(user,key);
     if(!tv.ok){
       registrarIntentoRechazado(user,'Sin turno asignado');
-      flashBtn('No tienes turno asignado hoy. Consulta con el administrador para que te coloque en el turno.');
+      flashBtn(tv.msg||'No tienes turno asignado hoy. Consulta con el administrador para que te coloque en el turno.');
       return;
     }
   }
@@ -5469,7 +5498,7 @@ async function registrar(date=new Date(),user=CU,tipoForzado=null){
   if(!tipoForzado){const chk=await canMark(date,user,combinado);if(!chk.ok){registrarIntentoRechazado(user,chk.msg);flashBtn(chk.msg);return;}}
   const mine=combinado.filter(x=>x.user===user);
   const tipo=tipoForzado||tipoPorReglas(mine);
-  // ENTRADA TARDÍA → APROBACIÓN, no se marca directo. Más de 10 min después de la hora de
+  // ENTRADA TARDÍA → APROBACIÓN, no se marca directo. Más de 5 min después de la hora de
   // entrada de su turno (y todavía antes de la hora de almuerzo) se manda a revisión del
   // admin en vez de registrarse sola. El colaborador queda avisado de que está pendiente; el
   // admin la ve con la hora exacta que él marcó y puede ajustarla antes de aprobar.
@@ -5480,16 +5509,32 @@ async function registrar(date=new Date(),user=CU,tipoForzado=null){
       const progMin=hmMin(sched.inicio),realMin=date.getHours()*60+date.getMinutes();
       const almMin=sched.almInicio?hmMin(sched.almInicio):null;
       const tardanza=realMin-progMin;
-      if(tardanza>10&&(almMin===null||realMin<almMin)){
+      // Muy temprano: la entrada solo se abre 10 min antes de la hora programada.
+      if(tardanza<-10){
+        registrarIntentoRechazado(user,`Entrada antes de tiempo (${-tardanza} min antes)`);
+        flashBtn(`Aún no puedes marcar entrada. Tu turno inicia a las ${sched.inicio}; se abre 10 min antes.`);
+        return;
+      }
+      // Ventana normal: de 10 min antes a 5 min después. Pasado eso, queda sujeta a aprobación.
+      if(tardanza>5&&(almMin===null||realMin<almMin)){
+        // Turnos que arrancan más tarde ese día: el admin puede aprobar en su lugar el siguiente turno.
+        let opciones=[];
+        try{
+          const ts=await withTimeout(get(R(db,TURNOS)),3000);
+          const vistos={};
+          Object.values(ts.exists()?ts.val():{}).forEach(t=>{if(t&&t.inicio&&hmMin(t.inicio)>progMin&&!vistos[t.inicio]){vistos[t.inicio]=1;opciones.push({nombre:t.nombre||'Turno',inicio:t.inicio});}});
+          opciones.sort((a,b)=>hmMin(a.inicio)-hmMin(b.inicio));
+        }catch(e2){opciones=[];}
         const aprKey='mk_'+user+'_'+key+'_'+Date.now();
         await set(R(db,`${APR}/${aprKey}`),{
           tipo:'marcacion',subtipo:'Entrada',user,nombre:(CUM&&CUM.nombre)||user,
           hora:fmtT(date),date:key,stamp:date.toISOString(),
           reason:`Entrada tardía — ${tardanza} min después de su turno (${sched.inicio})`,
+          opciones,
           status:'pending'
         });
         await sendNotif(user,'todos_admin','⏳ Entrada pendiente de aprobación',`${(CUM&&CUM.nombre)||user} marcó entrada a las ${fmtT(date)} (turno: ${sched.inicio}) — requiere aprobación`);
-        toast(`⏳ Tu entrada (${fmtT(date)}) quedó pendiente de aprobación por llegar después de las ${sched.inicio}. Un administrador la revisará y se registrará con la hora que confirme.`,'ok',7500);
+        toast(`⏳ Tu entrada (${fmtT(date)}) quedó pendiente de aprobación por pasar de los 5 min de tolerancia (turno ${sched.inicio}). Un administrador la revisará y se registrará con la hora que confirme.`,'ok',7500);
         el('mbtn').classList.add('pulse');setTimeout(()=>el('mbtn').classList.remove('pulse'),900);
         return;
       }
@@ -6048,11 +6093,17 @@ function listenApprovals(){
           <div class="adet">${escHtml(v.reason||'')}</div>
           <div style="display:flex;align-items:center;gap:6px;margin:6px 0 4px"><label style="font-size:11px;color:var(--mt);flex-shrink:0">Hora a aprobar:</label>
           <input type="time" step="1" class="fc apr-hora-edit" data-k="${k}" value="${hhmmss(new Date(v.stamp))}" style="max-width:130px"></div>
-          <input type="text" class="fc apr-nota" data-k="${k}" placeholder="Comentario para el colaborador (obligatorio si cambias la hora)" style="margin-bottom:6px">
+          ${(v.opciones&&v.opciones.length)?`<div style="display:flex;align-items:center;gap:6px;margin:0 0 4px"><label style="font-size:11px;color:var(--mt);flex-shrink:0">Aprobar como:</label>
+          <select class="fc apr-sel" data-k="${k}"><option value="">Hora marcada (${v.hora})</option>${v.opciones.map((o,i)=>`<option value="${i}">Siguiente turno: ${escHtml(o.nombre)} (${o.inicio})</option>`).join('')}</select></div>`:''}
+          <input type="text" class="fc apr-nota" data-k="${k}" placeholder="Comentario adicional (se genera uno automático si pasas al siguiente turno; obligatorio si cambias la hora)" style="margin-bottom:6px">
           <div class="aact"><button class="btn bp bsm" data-k="${k}" data-a="approve-marc">✅ Aprobar</button><button class="btn bd bsm" data-k="${k}" data-a="reject">❌ Rechazar</button></div>`;
       }
       c.appendChild(div);
     });
+    c.querySelectorAll('.apr-sel').forEach(sel=>sel.addEventListener('change',()=>{
+      const e=all[sel.dataset.k],inp=document.querySelector(`.apr-hora-edit[data-k="${sel.dataset.k}"]`);if(!e||!inp)return;
+      inp.value=sel.value===''?hhmmss(new Date(e.stamp)):e.opciones[+sel.value].inicio+':00';
+    }));
     c.querySelectorAll('[data-a]').forEach(btn=>{
       btn.addEventListener('click',async()=>{
         const k=btn.dataset.k,a=btn.dataset.a,entry=all[k];
@@ -6065,18 +6116,23 @@ function listenApprovals(){
             toast('✓ Jornada aprobada','ok');
           }else if(a==='approve-marc'){
             const horaEdit=document.querySelector(`.apr-hora-edit[data-k="${k}"]`)?.value;
-            const nota=(document.querySelector(`.apr-nota[data-k="${k}"]`)?.value||'').trim();
+            let nota=(document.querySelector(`.apr-nota[data-k="${k}"]`)?.value||'').trim();
+            const selV=document.querySelector(`.apr-sel[data-k="${k}"]`)?.value;
+            const opSel=(selV!==undefined&&selV!==''&&entry.opciones)?entry.opciones[+selV]:null;
+            if(opSel){ // comentario obligatorio automático: va a bitácora y al colaborador
+              nota=`Tu marcación de las ${entry.hora} fue rechazada y en su lugar se aprobó el siguiente turno (${opSel.nombre}, ${opSel.inicio}).`+(nota?` ${nota}`:'');
+            }
             let stampFinal=entry.stamp;
             if(horaEdit){const[hh,mm,ss]=horaEdit.split(':').map(Number);const d=new Date(entry.date+'T00:00:00');d.setHours(hh||0,mm||0,ss||0,0);stampFinal=d.toISOString();}
             const horaFinal=fmtT(new Date(stampFinal));
             const editado=horaFinal!==entry.hora;
             if(editado&&!nota){toast('Si cambias la hora, deja un comentario para el colaborador','err');return;}
             const histKey=entry.date,list=await getHist(histKey);
-            const obj={tipo:entry.subtipo||'Entrada',hora:horaFinal,stamp:stampFinal,user:entry.user,horaSolicitada:entry.hora,aprobadoPor:CU,...(editado?{notaAprobacion:nota}:{})};
+            const obj={tipo:entry.subtipo||'Entrada',hora:horaFinal,stamp:stampFinal,user:entry.user,horaSolicitada:entry.hora,aprobadoPor:CU,...(editado?{notaAprobacion:nota}:{}),...(opSel?{turnoReemplazo:opSel.nombre}:{})};
             await saveHist(histKey,[...(list||[]),obj]);
             await set(R(db,`${APR}/${k}/status`),'approved');
             await addLog(`Marcación aprobada: ${entry.user} — ${entry.subtipo||'Entrada'} solicitó ${entry.hora}, se aprobó ${horaFinal}${editado?` (editada: "${nota}")`:''} — por ${CU}`);
-            await sendNotif(CU,entry.user,editado?'✅ Tu marca fue aprobada con un ajuste':'✅ Tu marca fue aprobada',editado?`Tu ${entry.subtipo||'Entrada'} solicitada a las ${entry.hora} quedó registrada a las ${horaFinal}. Motivo: ${nota}`:`Tu ${entry.subtipo||'Entrada'} de las ${entry.hora} fue aprobada.`);
+            await sendNotif(CU,entry.user,opSel?'❌ Tu marcación fue rechazada — se aprobó el siguiente turno':(editado?'✅ Tu marca fue aprobada con un ajuste':'✅ Tu marca fue aprobada'),opSel?nota:(editado?`Tu ${entry.subtipo||'Entrada'} solicitada a las ${entry.hora} quedó registrada a las ${horaFinal}. Motivo: ${nota}`:`Tu ${entry.subtipo||'Entrada'} de las ${entry.hora} fue aprobada.`));
             if(entry.user===CU)renderHistToday();
             toast('✓ Marcación aprobada','ok');
           }else{
