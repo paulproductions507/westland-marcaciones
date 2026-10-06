@@ -3803,7 +3803,7 @@ async function openApp(user){
   // Panel visibility
   el('admin-ctrl').style.display=(isAdm||isGer)?'block':'none';
   el('admin-panel').style.display=(isAdm||isGer)?'block':'none';
-  el('aprov-wrap').style.display=isSA?'block':'none';
+  el('aprov-wrap').style.display=isAdm?'block':'none'; // todos los administradores aprueban (antes solo provira)
   el('asistencia-card').style.display=isAdm?'block':'none';
   el('sec-usuarios').style.display=isSA?'':'none';
   el('log-config-card').style.display=isAdm?'block':'none';
@@ -3818,7 +3818,7 @@ async function openApp(user){
     el('gerente-banco-panel').style.display='none';
   }
   startSess();await refreshUI();updateConnBadge();listenNotifs();
-  if(isAdm){if(isSA){prunePersistentNodes();listenApprovals();}loadEmailCfg();loadAlmuerzoGlobalForm();renderAsistencia();}
+  if(isAdm){if(isSA)prunePersistentNodes();listenApprovals();loadEmailCfg();loadAlmuerzoGlobalForm();renderAsistencia();}
   else if(isGer){loadEmailCfg();await renderDatosBancariosGerente();}
   else{await checkAccesoColab();}
   await checkJornadaInicio(user);
