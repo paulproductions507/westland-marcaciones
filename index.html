@@ -819,6 +819,22 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="users-list" style="margin-top:13px"></div>
           </div></div>
 
+          <div class="asec" id="sec-invitados"><div class="ashdr" data-ac="ac-inv"><span>🧑‍🤝‍🧑 Colaboradores temporales</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-inv">
+            <div style="font-size:11px;color:var(--mt);margin-bottom:9px;line-height:1.45">Colaboradores sin cuenta de acceso: no inician sesión. Se registran aquí y sus marcaciones las generas tú desde "🎲 Marcación aleatoria" o "✍ Marcación manual"; se guardan en la nube con tu sesión, como las demás. Cuentan en pago, vista semanal, turnos y correos.</div>
+            <div class="fg2">
+              <div class="fg"><label>Nombre</label><input class="fc" id="inv-nombre"></div>
+              <div class="fg"><label>Usuario (identificador)</label><input class="fc" id="inv-user" placeholder="ej: jperez" autocapitalize="none"></div>
+              <div class="fg"><label>Cédula</label><input class="fc" id="inv-ced"></div>
+              <div class="fg"><label>Trabaja hasta (opcional)</label><input type="date" class="fc" id="inv-hasta"></div>
+              <div class="fg"><label>Tarifa regular (USD/día)</label><input class="fc" id="inv-tr" type="number" placeholder="20"></div>
+              <div class="fg"><label>Tarifa domingo</label><input class="fc" id="inv-td" type="number" placeholder="25"></div>
+              <div class="fg"><label>Tarifa feriado</label><input class="fc" id="inv-tf" type="number" placeholder="30"></div>
+            </div>
+            <button class="btn bp bsm" id="btn-inv-save" style="width:auto;margin-top:4px">💾 Guardar colaborador temporal</button>
+            <div id="inv-list" style="margin-top:12px"></div>
+          </div></div>
+
           <div class="asec"><div class="ashdr" data-ac="ac-baja"><span>🗃 Colaboradores dados de baja</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-baja">
             <div style="font-size:11px;color:var(--mt);margin-bottom:9px;line-height:1.45">Colaboradores que ya no están laborando. No aparecen en ninguna lista activa (turnos, pago, marcación), pero su ficha y su historial siguen intactos. Si vuelve a trabajar con nosotros, "♻ Restaurar" lo regresa tal cual estaba.</div>
@@ -7502,6 +7518,52 @@ el('btn-save-user').addEventListener('click',async()=>{
     }
   }catch(e){}
   toast('Usuario guardado ✓','ok');['u-nombre','u-user','u-ced','u-email','u-tr','u-td','u-tf','u-te','u-finicio'].forEach(id=>el(id).value='');el('u-te-on').checked=false;el('u-te-row').style.display='none';el('u-pf-on').checked=false;el('u-pf-row').style.display='none';el('u-sinacum').checked=false;document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);refreshUI();
+});
+
+// ── COLABORADORES TEMPORALES ───────────────────────────────────────────
+// Solo se guardan en users_v1 (ruta donde el admin ya escribe). No hay login ni Firebase Auth:
+// sus marcaciones las genera el administrador y van a historial_v1 con su propia sesión.
+async function renderInvitados(){
+  const box=el('inv-list');if(!box)return;
+  try{
+    invalidateUsersCache();
+    const us=Object.values(await getUsers()).filter(x=>x&&x.invitado);
+    if(!us.length){box.innerHTML='<div style="font-size:12px;color:var(--mt)">Sin colaboradores temporales registrados.</div>';return;}
+    const hoy=isoD(new Date());
+    box.innerHTML=us.map(x=>`<div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:9px 11px;margin-bottom:7px;font-size:12px">
+      <div><strong>${escHtml(x.nombre)}</strong> · <code>${escHtml(x.user)}</code>${x.invitadoHasta?(x.invitadoHasta<hoy?' · ⌛ terminó '+escHtml(x.invitadoHasta):' · hasta '+escHtml(x.invitadoHasta)):''}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        <button class="btn bg bsm" style="width:auto" data-u="${escHtml(x.user)}" data-a="ed">✏ Editar</button>
+        <button class="btn bg bsm" style="width:auto" data-u="${escHtml(x.user)}" data-n="${escHtml(x.nombre)}" data-a="baja">🗃 Dar de baja</button>
+      </div></div>`).join('');
+    box.querySelectorAll('button[data-a]').forEach(b=>b.addEventListener('click',()=>{
+      const u=b.dataset.u;
+      if(b.dataset.a==='baja'){Promise.resolve(window.deleteUser(u,b.dataset.n)).then(renderInvitados);return;}
+      const x=us.find(v=>v.user===u)||{};
+      el('inv-nombre').value=x.nombre||'';el('inv-user').value=x.user||'';el('inv-ced').value=x.cedula||'';el('inv-hasta').value=x.invitadoHasta||'';
+      el('inv-tr').value=(x.tarifa&&x.tarifa.regular)||'';el('inv-td').value=(x.tarifa&&x.tarifa.domingo)||'';el('inv-tf').value=(x.tarifa&&x.tarifa.feriado)||'';
+      el('inv-nombre').focus();
+    }));
+  }catch(e){box.innerHTML='<div style="font-size:12px;color:var(--dn)">Error al cargar: '+escHtml(e.message||e)+'</div>';}
+}
+document.querySelector('[data-ac="ac-inv"]')?.addEventListener('click',renderInvitados);
+el('btn-inv-save')?.addEventListener('click',async()=>{
+  const nombre=el('inv-nombre').value.trim(),user=el('inv-user').value.trim().toLowerCase(),hasta=el('inv-hasta').value;
+  if(!nombre||!user){toast('Nombre y usuario obligatorios','err');return;}
+  if(!/^[a-z0-9._-]{3,30}$/.test(user)){toast('Usuario: 3-30 caracteres (letras, números . _ -)','err');return;}
+  try{
+    invalidateUsersCache();
+    const prev=(await getUsers())[user]||{};
+    if(prev.user&&!prev.invitado){toast('Ese usuario ya existe como colaborador fijo','err');return;}
+    await setUser(user,{...prev,nombre,user,cedula:el('inv-ced').value.trim(),email:'',rol:'Colaborador',
+      tarifa:{regular:parseFloat(el('inv-tr').value)||20,domingo:parseFloat(el('inv-td').value)||25,feriado:parseFloat(el('inv-tf').value)||30,especial:0},
+      pagoFijo:prev.pagoFijo||{activo:false,dias:[]},sinAcumulado:false,profileUrl:prev.profileUrl||'',
+      fechaInicio:prev.fechaInicio||isoD(new Date()),invitado:true,invitadoHasta:hasta||''});
+    try{const act=await loadSemActivos();if(act.length>0&&!act.includes(user))await saveSemActivosRemote([...act,user]);}catch(e){}
+    await addLog(`🧑‍🤝‍🧑 Colaborador temporal ${user} (${nombre}) guardado${hasta?' — hasta '+hasta:''} (por ${CU})`);
+    ['inv-nombre','inv-user','inv-ced','inv-hasta','inv-tr','inv-td','inv-tf'].forEach(id=>el(id).value='');
+    toast('Colaborador temporal guardado ✓','ok');renderInvitados();refreshUI();
+  }catch(e){toast('⛔ No se pudo guardar','err');console.error(e);}
 });
 
 // ── BITÁCORA DE PERÍODOS LABORALES ──────────────────────────────────────
