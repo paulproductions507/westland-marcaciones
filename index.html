@@ -1185,6 +1185,35 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="descman-lista" style="margin-top:10px"></div>
           </div></div>
 
+          <div class="asec"><div class="ashdr" data-ac="ac-emerg"><span>🚨 Evento de emergencia (sismo / evacuación)</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-emerg">
+            <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Marca un día con emergencia (ej. el sismo del viernes 9 de octubre). <strong>No cambia ningún monto</strong>: agrega un aviso de "tema pendiente / posible descuento" en Vista RRHH, correo a RRHH, Vista Semanal (y su correo) y en "Mis marcaciones" del colaborador. Cuando RRHH responda, cambia la decisión aquí. Si resulta descuento, aplícalo con <strong>🔒 Descuento manual confirmado</strong>. Para otro día (ej. la evacuación del sábado), elige esa fecha y guárdala aparte.</div>
+            <div class="fg"><label>Fecha del evento</label><input type="date" class="fc" id="emerg-fecha"></div>
+            <div class="fg2">
+              <div class="fg"><label>Hora del evento (opcional)</label><input type="time" class="fc" id="emerg-hora"></div>
+              <div class="fg"><label>Minutos de evacuación (vacío = por confirmar)</label><input type="number" class="fc" id="emerg-min" min="0" placeholder="ej. 90"></div>
+            </div>
+            <div class="fg"><label>Descripción</label><input type="text" class="fc" id="emerg-titulo" placeholder="ej. Sismo M7.6 — evacuación del edificio"></div>
+            <div class="fg"><label>Decisión de RRHH</label><select class="fc" id="emerg-decision">
+              <option value="pendiente">⏳ Pendiente (se consulta a RRHH)</option>
+              <option value="pago_completo">✅ Se paga la jornada completa</option>
+              <option value="descuento">💸 Se aplica descuento</option>
+            </select></div>
+            <div class="fg"><label>Nota (opcional)</label><input type="text" class="fc" id="emerg-nota" placeholder="ej. Réplica 3:25 p.m., regresaron a las 4:30 p.m."></div>
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--bd)">
+              <div style="font-size:11px;font-weight:700;color:var(--mt);margin-bottom:6px">🚪 Colaboradores que se fueron y NO regresaron ese día</div>
+              <div class="fg2">
+                <div class="fg"><label>Colaborador</label><select class="fc" id="emerg-sr-user"></select></div>
+                <div class="fg"><label>Hora en que salió</label><input type="time" class="fc" id="emerg-sr-hora"></div>
+              </div>
+              <button class="btn bg bsm" id="btn-emerg-sr-add" style="width:auto">➕ Agregar a la lista</button>
+              <div id="emerg-sr-lista" style="margin-top:8px"></div>
+            </div>
+            <button class="btn bp bsm" id="btn-emerg-guardar" style="width:auto;margin-top:6px">🚨 Guardar evento</button>
+            <button class="btn bg bsm" id="btn-emerg-quitar" style="width:auto;margin-top:6px;margin-left:6px">🗑 Quitar de esta fecha</button>
+            <div id="emerg-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
+          </div></div>
+
           <div class="asec"><div class="ashdr" data-ac="ac-man"><span>✍ Marcación manual</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-man">
             <div class="fg2">
@@ -3365,6 +3394,72 @@ async function loadDescuentoManualRango(desdeISO,hastaISO){
     return out;
   }
 }
+// ── EVENTO DE EMERGENCIA (sismo, evacuación…) ─────────────────────────────────────────────────
+// Para días en que hubo una emergencia y la empresa aún no define si paga la jornada completa o
+// descuenta el tiempo de evacuación. NO cambia ningún monto: solo agrega el aviso/consulta a
+// RRHH (Vista RRHH + correo), a la Vista Semanal (+ correo) y a "Mis marcaciones" del colaborador.
+// Si luego se decide descuento, se aplica con "Descuento manual confirmado".
+// Firebase: meta_v1/emergencias/{fecha} = {hora:'HH:MM', titulo, minEvac:number|null, decision:'pendiente'|'pago_completo'|'descuento', nota, por, ts}
+const EMERG=`${META}/emergencias`;
+async function loadEmergenciasRango(desdeISO,hastaISO){
+  try{
+    const s=await get(query(R(db,EMERG),orderByKey(),startAt(desdeISO),endAt(hastaISO)));
+    return s.exists()?s.val():{};
+  }catch(e){console.warn('loadEmergenciasRango',e);return {};}
+}
+function fmtHoraEmerg(hhmm){
+  if(!hhmm||!/^\d{1,2}:\d{2}$/.test(hhmm))return '';
+  const [h,m]=hhmm.split(':').map(Number);
+  return `${((h+11)%12)+1}:${String(m).padStart(2,'0')} ${h<12?'a.m.':'p.m.'}`;
+}
+function emergEtiqueta(fecha,e){
+  const d=new Date(fecha+'T00:00:00');
+  const h=fmtHoraEmerg(e.hora);
+  return `${DIA_LARGO[d.getDay()]} ${d.getDate()} de ${MES_LARGO[d.getMonth()].toLowerCase()}`+(h?` · ${h}`:'');
+}
+function emergEvacTxt(e){
+  return (e.minEvac!=null&&e.minEvac!=='')?`${e.minEvac} min de evacuación`:'tiempo de evacuación por confirmar';
+}
+// modo: 'rrhh' (consulta a RRHH) · 'colab' (aviso al colaborador) · 'neutro' (vista del admin / correo semanal)
+// estilo: 'app' (tema de la app) · 'email' (colores fijos para correo)
+function emergBannerHtml(emerg,modo,estilo,uid){
+  const fechas=Object.keys(emerg||{}).sort();
+  if(!fechas.length)return '';
+  const em=estilo==='email';
+  const box=em?'margin-bottom:14px;border:2px solid #d98a00;border-radius:8px;padding:10px 12px;background:#fff8e6;font-family:Arial,Helvetica,sans-serif'
+              :'margin-bottom:10px;border:1px solid #ffb020;border-radius:var(--rs);padding:9px 11px;background:rgba(255,176,32,.10)';
+  const cTit=em?'#9a5b00':'#ffb020',cTxt=em?'#333':'var(--tx)',cMut=em?'#666':'var(--mt)';
+  const items=fechas.map(f=>{
+    const e=emerg[f]||{};
+    const dec=e.decision||'pendiente';
+    let estado;
+    if(dec==='pago_completo')estado=`<strong style="color:${em?'#007a5e':'#00c9a7'}">RRHH confirmó: se paga la jornada completa.</strong>`;
+    else if(dec==='descuento')estado=`<strong style="color:${em?'#cc3333':'#ff6b6b'}">RRHH confirmó: se aplica descuento por el tiempo de evacuación.</strong>`;
+    else if(modo==='rrhh')estado=`<strong>Consulta a RRHH:</strong> ¿la empresa pagará la jornada completa o se aplicará descuento por el tiempo de evacuación? Mientras tanto, el monto de ese día queda <strong>sujeto a posible descuento</strong>.`;
+    else if(modo==='colab')estado=`<strong>Tema pendiente:</strong> RRHH aún no define si se paga la jornada completa o se descuenta el tiempo de evacuación. Tu pago de ese día queda <strong>sujeto a posible descuento</strong>.`;
+    else estado=`<strong>Tema pendiente con RRHH:</strong> aún no definen si se paga la jornada completa o se descuenta el tiempo de evacuación. Los montos de ese día están <strong>sujetos a posible descuento</strong>.`;
+    const sr=e.sinRetorno||{};let srHtml='';
+    const cRojo=em?'#cc3333':'#ff6b6b';
+    if(modo==='colab'){
+      if(uid&&sr[uid])srHtml=`<br><strong style="color:${cRojo}">Saliste${sr[uid].hora?' a las '+fmtHoraEmerg(sr[uid].hora):''} con la evacuación y no regresaste ese día: ese tiempo queda sujeto a descuento, pendiente de RRHH.</strong>`;
+    }else{
+      const ks=Object.keys(sr);
+      if(ks.length)srHtml=`<br><strong style="color:${cRojo}">No regresó tras la evacuación (posible descuento):</strong> ${ks.map(k=>escHtml(sr[k].nombre||k)+(sr[k].hora?' (salió '+fmtHoraEmerg(sr[k].hora)+')':'')).join(', ')}.`;
+    }
+    return `<div style="font-size:12px;line-height:1.5;color:${cTxt};margin-top:5px"><strong>${emergEtiqueta(f,e)}</strong> — ${escHtml(e.titulo||'Evento de emergencia')} <span style="color:${cMut}">(${emergEvacTxt(e)})</span><br>${estado}${srHtml}${e.nota?`<br><span style="color:${cMut}">Nota: ${escHtml(e.nota)}</span>`:''}</div>`;
+  }).join('');
+  return `<div style="${box}"><div style="font-weight:700;font-size:13px;color:${cTit}">🚨 Evento de emergencia en este período</div>${items}</div>`;
+}
+// Etiqueta "no regresó" de un colaborador: por día (celda) o por todas las fechas del período (nombre)
+function emergSRDia(emerg,fecha,user){
+  const x=((emerg||{})[fecha]||{}).sinRetorno;const r=x&&x[user];
+  return r?`<div style="font-size:9.5px;font-weight:700;color:#e05555;margin-top:2px;line-height:1.3">🚨 Salió${r.hora?' '+fmtHoraEmerg(r.hora):''} y no regresó — posible descuento</div>`:'';
+}
+function emergSRTag(emerg,user,em){
+  const out=[];
+  Object.keys(emerg||{}).sort().forEach(f=>{const x=((emerg[f]||{}).sinRetorno||{})[user];if(x){const d=new Date(f+'T00:00:00');out.push(`${DIA_LARGO[d.getDay()].slice(0,3)} ${d.getDate()}${x.hora?' · salió '+fmtHoraEmerg(x.hora):''}`);}});
+  return out.length?`<div style="font-size:9.5px;font-weight:700;color:${em?'#cc3333':'#ff6b6b'};margin-top:2px;line-height:1.3">🚨 No regresó tras evacuación (${out.join('; ')}) — posible descuento</div>`:'';
+}
 // ── TURNOS POR SEMANA (trazables) ─────────────────────────────────────────────
 // Firebase: meta_v1/turnos_semana/{lunesISO}/{dia}/{user} = {tid,nombre,inicio,fin,almInicio,duracionAlm}
 //           meta_v1/turnos_semana/{lunesISO}/{dia}/_meta  = {por,ts}  ← quién lo programó y cuándo
@@ -4035,7 +4130,7 @@ async function renderColabBaja(){
 function fillSelects(obj){
   const users=Object.values(obj||{});
   const withAll=['gen-user','bor-user','rpt-users'];
-  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user','tcol-user','descman-user'].forEach(id=>{
+  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user','tcol-user','descman-user','emerg-sr-user'].forEach(id=>{
     const s=el(id);if(!s)return;
     s.innerHTML=withAll.includes(id)?'<option value="__ALL__">— Todos —</option>':'';
     users.filter(u=>!GERENTES.includes(u.user)).forEach(u=>s.innerHTML+=`<option value="${u.user}">${u.nombre} (${u.user})</option>`);
@@ -4619,8 +4714,9 @@ async function buildEmailSemanal(desde,hasta,nivel){
     .sw .wt2{color:#cc6600;font-size:10px}
     .sw tr.tot td{background:#d0f0e8;font-weight:800;color:#00313C}
   </style>`;
+  const emerg=await loadEmergenciasRango(desde,hasta);
   let thDias=`<th class="emp">Empleado</th>`;
-  diasVis.forEach(({d,etq,k})=>{const wk=d.getDay()===0||d.getDay()===6;thDias+=`<th${wk?' class="wk"':''}>${DIA_LARGO[d.getDay()]}<br><span style="font-weight:400;opacity:.8;font-size:10px">${d.getDate()} ${MES_LARGO[d.getMonth()]}</span></th>`;});
+  diasVis.forEach(({d,etq,k})=>{const wk=d.getDay()===0||d.getDay()===6;thDias+=`<th${wk?' class="wk"':''}>${DIA_LARGO[d.getDay()]}<br><span style="font-weight:400;opacity:.8;font-size:10px">${d.getDate()} ${MES_LARGO[d.getMonth()]}</span>${emerg[k]?'<br><span style="font-weight:700;font-size:9px;color:#ffd27a">🚨 Emergencia</span>':''}</th>`;});
   thDias+=`<th style="background:#005570">Total</th>`;
   thDias+=`<th style="background:#005570;min-width:110px">📝 Notas</th>`;
   const totalPorDia=diasVis.map(()=>({colab:0,monto:0}));
@@ -4677,6 +4773,7 @@ async function buildEmailSemanal(desde,hasta,nivel){
     +`<h2 style="color:#00313C;margin:0 0 6px 0;font-size:16px">📆 Vista Semanal de Marcaciones — Juguetería Westland Nivel 300</h2>`
     +`<p style="font-size:12px;color:#555;margin:0 0 10px 0">Período: <strong>${fmtRangoLargo(desde,hasta)}</strong> · ${userList.length} colaborador${userList.length!==1?'es':''} · <strong style="color:#00313C">Total: $${totalSemana.toFixed(2)}</strong></p>`
     +notaCompresion
+    +emergBannerHtml(emerg,'neutro','email')
     +(userList.length===0?'<p style="color:#cc3333">Sin marcaciones registradas para este período.</p>'
       :`<div style="overflow-x:auto"><table class="sw"><thead><tr>${thDias}</tr></thead><tbody>${rows}</tbody><tfoot>${totalRow}</tfoot></table></div>`)
     +`<p style="margin-top:12px;border-top:2px solid #00313C;padding-top:6px;color:#00313C;font-size:10px;font-weight:700">Planilla Camarón — Juguetería Westland · Nivel 300 · ${new Date().toLocaleString('es')}</p>`
@@ -4702,6 +4799,7 @@ function moneyRRHH(n){return Number(n||0).toLocaleString('en-US',{minimumFractio
 async function buildEmailRRHH(desde,hasta,nivel,modo){
   nivel=nivel||0;modo=modo||'previo';
   const data=modo==='oficial'?await buildRRHHDataOficial(desde,hasta):await buildRRHHDataConFinde(desde,hasta);
+  const emerg=await loadEmergenciasRango(desde,hasta);
   const css=`<style>
     .rt{border-collapse:collapse;width:100%;font-family:Arial,Helvetica,sans-serif}
     .rt th{background:#00313C;color:#fff;padding:6px 5px;font-size:11px;border:1px solid #00313C;text-align:center}
@@ -4715,12 +4813,12 @@ async function buildEmailRRHH(desde,hasta,nivel,modo){
     .rt tr.tot td{background:#d0f0e8;font-weight:800;color:#00313C}
   </style>`;
   let thDias=`<th class="emp">Colaborador</th><th>Cédula</th>`;
-  data.diasVis.forEach(({d,etq})=>{thDias+=`<th>${etq}<br><span style="font-weight:400;font-size:10px">${d.getDate()}/${d.getMonth()+1}</span></th>`;});
+  data.diasVis.forEach(({d,etq})=>{thDias+=`<th>${etq}<br><span style="font-weight:400;font-size:10px">${d.getDate()}/${d.getMonth()+1}</span>${emerg[isoD(d)]?'<br><span style="font-weight:700;font-size:9px;color:#ffd27a">🚨 Emergencia</span>':''}</th>`;});
   thDias+=`<th style="background:#005570">Total</th>`;
   const totalPorDia=data.diasVis.map(()=>({monto:0,desc:0}));
   let rows='';
   data.filas.forEach(f=>{
-    let tds=`<td class="emp">${f.nombre}<br><span class="sub">${f.user}</span></td><td>${f.cedula||'—'}</td>`;
+    let tds=`<td class="emp">${f.nombre}<br><span class="sub">${f.user}</span>${emergSRTag(emerg,f.user,true)}</td><td>${f.cedula||'—'}</td>`;
     f.dias.forEach((dd,vi)=>{
       // En el correo a RRHH el pago base se muestra igual que un día completo (✅ + monto)
       if(dd.tipo==='fijo'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">✅</span><br>${nivel>=1?'':'8.00h · '}$${moneyRRHH(dd.monto)}</td>`;return;}
@@ -4766,6 +4864,7 @@ async function buildEmailRRHH(desde,hasta,nivel,modo){
     <p style="font-size:14px;margin:0 0 8px 0">${sal},</p>
     <p style="font-size:13px;color:#555;margin:0 0 4px 0"><strong>${tituloModo}</strong> — período <strong>${desde}</strong> al <strong>${hasta}</strong>.</p>
     ${modo==='oficial'?'<p style="font-size:12px;color:#888;margin:0 0 10px 0">Este correo confirma la asistencia con datos ya definitivos, incluyendo viernes, sábado y domingo.</p>':'<p style="font-size:12px;color:#888;margin:0 0 10px 0">Este correo es un adelanto (incluye viernes, sábado y domingo); la confirmación oficial llegará el domingo.</p>'}
+    ${emergBannerHtml(emerg,'rrhh','email')}
     ${cruceHtml}
     ${tabla}
     <p style="margin-top:14px;border-top:2px solid #00313C;padding-top:8px;color:#00313C;font-size:12px;font-weight:700">Planilla Camarón — Juguetería Westland · Nivel 300 · ${new Date().toLocaleString('es')}</p>
@@ -5892,7 +5991,7 @@ async function renderMisMarcaciones(semana,forzarRefresco){
   // abrir el modal de nuevo o moverse entre semanas ya vistas NO vuelve a leer nada — solo lo
   // hace: (1) la primera vez que se mira una semana, o (2) el botón "Volver a leer del servidor".
   const cache=_misMarcasCache[lunISO];
-  if(!forzarRefresco&&cache){pintarMisMarcaciones(cache.snaps,dias_de(lun),lunISO,domISO,hoyISO,sem);return;}
+  if(!forzarRefresco&&cache){pintarMisMarcaciones(cache.snaps,dias_de(lun),lunISO,domISO,hoyISO,sem,cache.emerg||{});return;}
   body.innerHTML='<div style="color:var(--mt);font-size:12px">Leyendo del servidor...</div>';
   try{
     // Lectura DIRECTA al servidor por cada día — a propósito NO se usa LAST_HIST_TODAY ni
@@ -5900,11 +5999,13 @@ async function renderMisMarcaciones(semana,forzarRefresco){
     // el servidor tiene guardado, para confiar en que su marcación de verdad quedó registrada.
     const dias=dias_de(lun);
     const snaps=await Promise.all(dias.map(f=>get(R(db,`${HIST}/${f}`))));
-    _misMarcasCache[lunISO]={t:Date.now(),snaps};
-    pintarMisMarcaciones(snaps,dias,lunISO,domISO,hoyISO,sem);
+    const emerg=await loadEmergenciasRango(lunISO,domISO);
+    _misMarcasCache[lunISO]={t:Date.now(),snaps,emerg};
+    pintarMisMarcaciones(snaps,dias,lunISO,domISO,hoyISO,sem,emerg);
   }catch(e){console.error('renderMisMarcaciones',e);body.innerHTML='<div style="color:var(--dn);font-size:12px">No se pudo leer del servidor. Toca "Volver a leer del servidor" para reintentar.</div>';}
 }
-function pintarMisMarcaciones(snaps,dias,lunISO,domISO,hoyISO,sem){
+function pintarMisMarcaciones(snaps,dias,lunISO,domISO,hoyISO,sem,emerg){
+  emerg=emerg||{};
   const body=el('mismarcas-body');if(!body)return;
   const lun=new Date(lunISO+'T00:00:00');
   const nav=(n,txt,dis)=>`<button type="button" data-sem="${n}" ${dis?'disabled':''} style="padding:6px 12px;border-radius:var(--rs);font-size:15px;font-weight:800;cursor:${dis?'default':'pointer'};background:transparent;color:${dis?'var(--bd)':'var(--ac)'};border:1px solid ${dis?'var(--bd)':'var(--ac)'}">${txt}</button>`;
@@ -5914,7 +6015,7 @@ function pintarMisMarcaciones(snaps,dias,lunISO,domISO,hoyISO,sem){
     const mias=lista.filter(m=>m.user===CU&&m.tipo);
     const hoy=f===hoyISO;
     const wrap=`<div style="background:${hoy?'rgba(0,201,167,.12)':'var(--bg)'};border:1px solid ${hoy?'var(--ac)':'var(--bd)'};border-radius:var(--rs);padding:9px 10px;margin-bottom:8px">
-      <div style="font-size:11px;font-weight:700;color:${hoy?'var(--ac)':'var(--mt)'};text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${DIA_NOMBRE[DIA_KEYS[i]]} ${isoDateAdd(lun,i).getDate()}${hoy?' · hoy':''}</div>`;
+      <div style="font-size:11px;font-weight:700;color:${hoy?'var(--ac)':'var(--mt)'};text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${DIA_NOMBRE[DIA_KEYS[i]]} ${isoDateAdd(lun,i).getDate()}${hoy?' · hoy':''}${emerg[f]?' <span style="color:#ffb020;text-transform:none">🚨 Emergencia</span>':''}</div>`;
     if(!mias.length)return`${wrap}<div style="font-size:12.5px;color:var(--mt)">Sin marcaciones guardadas.</div></div>`;
     const porTipo={};mias.forEach(m=>{porTipo[m.tipo]=m;});
     return wrap+MISMARCAS_TIPOS.map(t=>{
@@ -5927,7 +6028,7 @@ function pintarMisMarcaciones(snaps,dias,lunISO,domISO,hoyISO,sem){
       return`<div style="font-size:12.5px;color:var(--tx);padding:2px 0">✅ ${MISMARCAS_ETIQ[t]}: <strong>${hora}</strong></div>${notaAjuste}`;
     }).join('')+'</div>';
   }).join('');
-  body.innerHTML=cab+filas+`<div style="font-size:10.5px;color:var(--mt);text-align:center;margin-top:4px">Leído del servidor: ${new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true})}</div>`;
+  body.innerHTML=cab+emergBannerHtml(emerg,'colab','app',CU)+filas+`<div style="font-size:10.5px;color:var(--mt);text-align:center;margin-top:4px">Leído del servidor: ${new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true})}</div>`;
   body.querySelectorAll('[data-sem]').forEach(b=>b.addEventListener('click',()=>{if(!b.disabled)renderMisMarcaciones(parseInt(b.dataset.sem,10));}));
 }
 el('btn-ver-marcas')?.addEventListener('click',()=>{el('m-mismarcas').classList.add('open');renderMisMarcaciones(0);});
@@ -6667,6 +6768,8 @@ async function renderVistaSemanal(refDate,hastaDate){
   // Build table
   const periodoStr=`${isoList[0]} al ${isoList[isoList.length-1]}`;
   let html=`<div style="font-size:12px;color:var(--ac);font-weight:700;margin-bottom:4px">📆 Semana: ${periodoStr}</div>`;
+  const emerg=await loadEmergenciasRango(isoList[0],isoList[isoList.length-1]);
+  html+=emergBannerHtml(emerg,'neutro','app');
   if(isoList.includes(isoD(new Date())))html+=`<div style="font-size:11px;color:var(--wn);margin-bottom:8px">⚠ Incluye el día de hoy: marcaciones muy recientes pueden tardar unos segundos en sincronizar. Si algo se ve incompleto, toca "Actualizar" en unos segundos.</div>`;
   if(!userList.length){
     c.innerHTML=html+'<div style="color:var(--mt);font-size:13px;padding:10px 0">Sin marcaciones registradas para esta semana.</div>';
@@ -6683,7 +6786,7 @@ async function renderVistaSemanal(refDate,hastaDate){
     const bg=isToday?'#005570':isWeekend?'rgba(0,201,167,.06)':'var(--sf2)';
     const col=isToday?'var(--ac)':isWeekend?'var(--ac)':'var(--tx)';
     html+=`<th style="background:${bg};color:${col};padding:6px 5px;text-align:center;border:1px solid var(--bd);min-width:104px">`
-      +`${DIA_LARGO[dowNum]}<br><span style="font-size:10px;font-weight:400;opacity:.75">${d.getDate()} ${MES_LARGO[d.getMonth()]}</span></th>`;
+      +`${DIA_LARGO[dowNum]}<br><span style="font-size:10px;font-weight:400;opacity:.75">${d.getDate()} ${MES_LARGO[d.getMonth()]}</span>${emerg[k]?'<br><span style="font-size:9.5px;color:#ffb020;font-weight:700">🚨 Emergencia</span>':''}</th>`;
   });
   html+=`<th style="background:#005570;color:var(--tx);padding:7px 9px;text-align:center;border:1px solid var(--bd);min-width:90px;font-size:12px">Total</th>`;
   html+=`<th style="background:var(--sf2);color:var(--tx);padding:7px 9px;text-align:center;border:1px solid var(--bd);min-width:130px;font-size:12px">📝 Notas</th>`;
@@ -6791,7 +6894,7 @@ async function renderVistaSemanal(refDate,hastaDate){
           +`<button type="button" class="btn-avisar-hueco" data-user="${u.user}" data-dia="${k}" data-falta="${hueco.join('|')}" style="margin-top:2px;font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid #ff6b6b;background:transparent;color:#ff6b6b;cursor:pointer">🔔 Avisar</button>`
           +(huecoAlmGenerable?` <button type="button" class="btn-generar-hueco" data-user="${u.user}" data-dia="${k}" data-falta="${hueco[0]}" style="margin-top:2px;font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid #ffb020;background:transparent;color:#ffb020;cursor:pointer">🤖 Generar</button>`:'')
           +`</div>`:'';
-        html+=`<td style="padding:5px 6px;border:1px solid var(--bd);background:${bgBase};vertical-align:top">${mLines}${badge}${descHtml}${descManHtml}${acumHtml}${huecoHtml}</td>`;
+        html+=`<td style="padding:5px 6px;border:1px solid var(--bd);background:${bgBase};vertical-align:top">${mLines}${badge}${descHtml}${descManHtml}${acumHtml}${emergSRDia(emerg,k,u.user)}${huecoHtml}</td>`;
       }
     });
     html+=`<td style="padding:6px 8px;border:1px solid var(--bd);background:rgba(0,201,167,.08);text-align:center;vertical-align:middle"><strong style="color:var(--ac);font-size:13px">$${totalUsuario.toFixed(2)}</strong>${totalDescUsuario>0?`<div style="color:#ff6b6b;font-size:10px;font-weight:700;margin-top:2px">💸 -$${totalDescUsuario.toFixed(2)}</div>`:''}${totalAcumUsrMin>0?`<div style="color:#00c9a7;font-size:9.5px;font-weight:700;margin-top:2px">💧 ${totalAcumUsrMin} min de la semana usados para cubrir faltantes</div>`:''}</td>`;
@@ -7072,17 +7175,19 @@ async function renderVistaRRHH(desde,hasta){
   const data=await buildRRHHDataConFinde(desde,hasta);
   if(!data.filas.length){c.innerHTML='<div style="color:var(--mt);font-size:13px;padding:10px 0">Sin marcaciones registradas para este período.</div>';renderCruceRRHH();return;}
   let html=`<div style="font-size:12px;color:var(--ac);font-weight:700;margin-bottom:8px">🧾 RRHH — Período: ${desde} al ${hasta}</div>`;
+  const emerg=await loadEmergenciasRango(desde,hasta);
+  html+=emergBannerHtml(emerg,'rrhh','app');
   html+=`<table style="border-collapse:collapse;width:100%;min-width:${data.diasVis.length*96+260}px;font-size:11px">`;
   html+=`<tr><th style="background:var(--sf2);color:var(--tx);padding:7px 9px;text-align:left;border:1px solid var(--bd);min-width:130px">Colaborador</th>`
     +`<th style="background:var(--sf2);color:var(--tx);padding:7px 9px;text-align:left;border:1px solid var(--bd);min-width:90px">Cédula</th>`;
   data.diasVis.forEach(({d,etq})=>{
-    html+=`<th style="background:var(--sf2);color:var(--tx);padding:6px 5px;text-align:center;border:1px solid var(--bd);min-width:94px">${etq}<br><span style="font-size:10px;font-weight:400;opacity:.75">${d.getDate()} ${MES_LARGO[d.getMonth()]}</span></th>`;
+    html+=`<th style="background:var(--sf2);color:var(--tx);padding:6px 5px;text-align:center;border:1px solid var(--bd);min-width:94px">${etq}<br><span style="font-size:10px;font-weight:400;opacity:.75">${d.getDate()} ${MES_LARGO[d.getMonth()]}</span>${emerg[isoD(d)]?'<br><span style="font-size:9.5px;color:#ffb020;font-weight:700">🚨 Emergencia</span>':''}</th>`;
   });
   html+=`<th style="background:#005570;color:var(--tx);padding:7px 9px;text-align:center;border:1px solid var(--bd);min-width:90px">Total</th></tr>`;
   const totalPorDia=data.diasVis.map(()=>({monto:0,desc:0}));
   data.filas.forEach(f=>{
     html+=`<tr><td style="padding:6px 8px;border:1px solid var(--bd);background:var(--sf);vertical-align:top">`
-      +`<div style="font-weight:700;color:var(--tx);font-size:12px">${f.nombre}</div><div style="font-size:10px;color:var(--mt)">${f.user}</div></td>`
+      +`<div style="font-weight:700;color:var(--tx);font-size:12px">${f.nombre}</div><div style="font-size:10px;color:var(--mt)">${f.user}</div>${emergSRTag(emerg,f.user,false)}</td>`
       +`<td style="padding:6px 8px;border:1px solid var(--bd);background:var(--sf);color:var(--mt);font-size:11px;vertical-align:top">${f.cedula||'—'}</td>`;
     f.dias.forEach((dd,vi)=>{
       if(dd.tipo==='fijo'){
@@ -7452,6 +7557,62 @@ el('btn-descman')?.addEventListener('click',async()=>{
     renderDescManLista(fecha);
   }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo aplicar','err');}
   btn.disabled=false;
+});
+// EMERGENCIA
+let _emergSR={};
+function renderEmergSR(){
+  const c=el('emerg-sr-lista');if(!c)return;
+  const ks=Object.keys(_emergSR);
+  if(!ks.length){c.innerHTML='<div style="font-size:11px;color:var(--mt)">Ninguno en la lista.</div>';return;}
+  c.innerHTML=ks.map(u=>`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:6px 9px;margin-bottom:5px;font-size:11.5px"><span>${escHtml(_emergSR[u].nombre||u)}${_emergSR[u].hora?' — salió '+fmtHoraEmerg(_emergSR[u].hora):''}</span><button type="button" class="btn bg bsm btn-emerg-sr-del" data-user="${escHtml(u)}" style="width:auto;padding:3px 8px;font-size:10.5px">🗑 Quitar</button></div>`).join('');
+  c.querySelectorAll('.btn-emerg-sr-del').forEach(b=>b.addEventListener('click',()=>{delete _emergSR[b.dataset.user];renderEmergSR();const st=el('emerg-status');if(st)st.textContent='Toca "Guardar evento" para aplicar el cambio.';}));
+}
+el('btn-emerg-sr-add')?.addEventListener('click',()=>{
+  const sel=el('emerg-sr-user');if(!sel||!sel.value){toast('Elige el colaborador','err');return;}
+  const txt=(sel.selectedOptions[0]?.textContent||sel.value);const nombre=txt.replace(/\s*\([^()]*\)\s*$/,'')||sel.value;
+  _emergSR[sel.value]={nombre,hora:el('emerg-sr-hora').value||''};
+  el('emerg-sr-hora').value='';renderEmergSR();
+  const st=el('emerg-status');if(st)st.textContent='Agregado a la lista. Toca "Guardar evento" para aplicarlo.';
+});
+async function cargarEmergForm(fecha){
+  const st=el('emerg-status');if(!fecha)return;
+  try{
+    const s=await get(R(db,`${EMERG}/${fecha}`));
+    const e=s.exists()?s.val():null;
+    el('emerg-hora').value=e?.hora||'';
+    el('emerg-min').value=(e&&e.minEvac!=null)?e.minEvac:'';
+    el('emerg-titulo').value=e?.titulo||'';
+    el('emerg-decision').value=e?.decision||'pendiente';
+    el('emerg-nota').value=e?.nota||'';
+    _emergSR=(e&&e.sinRetorno)?{...e.sinRetorno}:{};renderEmergSR();
+    if(st)st.textContent=e?`Ya registrado el ${fecha} (por ${e.por||'?'}). Puedes editarlo.`:'Sin evento registrado en esta fecha.';
+  }catch(err){if(st)st.textContent='⛔ Error al leer la fecha.';}
+}
+el('emerg-fecha')?.addEventListener('change',()=>cargarEmergForm(el('emerg-fecha').value));
+el('btn-emerg-guardar')?.addEventListener('click',async()=>{
+  const fecha=el('emerg-fecha').value,st=el('emerg-status');
+  if(!fecha){toast('Elige la fecha del evento','err');return;}
+  const minRaw=el('emerg-min').value.trim();
+  const minEvac=minRaw===''?null:Math.max(0,parseInt(minRaw,10)||0);
+  const data={hora:el('emerg-hora').value||'',titulo:(el('emerg-titulo').value||'').trim()||'Evento de emergencia',minEvac,decision:el('emerg-decision').value||'pendiente',nota:(el('emerg-nota').value||'').trim(),sinRetorno:Object.keys(_emergSR).length?_emergSR:null,por:CU,ts:Date.now()};
+  const btn=el('btn-emerg-guardar');btn.disabled=true;
+  try{
+    await set(R(db,`${EMERG}/${fecha}`),data);
+    await addLog(`🚨 Evento de emergencia guardado: ${fecha} ${data.hora||''} · ${data.titulo} · evacuación: ${minEvac==null?'por confirmar':minEvac+' min'} · decisión RRHH: ${data.decision} (por ${CU})`);
+    if(st)st.textContent=`✅ Guardado. Ya se ve en Vista RRHH / Vista Semanal / correos del ${fecha} (toca "Ver" o "Actualizar" para refrescar).`;
+    toast('🚨 Evento guardado ✓','ok');
+  }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo guardar','err');}
+  btn.disabled=false;
+});
+el('btn-emerg-quitar')?.addEventListener('click',async()=>{
+  const fecha=el('emerg-fecha').value,st=el('emerg-status');
+  if(!fecha){toast('Elige la fecha','err');return;}
+  try{
+    await set(R(db,`${EMERG}/${fecha}`),null);
+    await addLog(`🚨 Evento de emergencia quitado: ${fecha} (por ${CU})`);
+    ['emerg-hora','emerg-min','emerg-titulo','emerg-nota'].forEach(id=>{el(id).value='';});el('emerg-decision').value='pendiente';_emergSR={};renderEmergSR();
+    if(st)st.textContent=`Quitado de ${fecha}.`;toast('Quitado ✓','ok');
+  }catch(e){if(st)st.textContent='⛔ Error al quitar.';toast('⛔ Error','err');}
 });
 el('btn-rsync')?.addEventListener('click',async()=>{
   const user=el('rsync-user').value,st=el('rsync-status');
@@ -8148,7 +8309,8 @@ function buildDetalladoHTML(usersArr,desde,hasta,rowsByUser,summs){
 function emailPersonalDe(u){
   return(u&&((u.perfil&&u.perfil.email)||u.emailPersonal)||'').trim();
 }
-function buildResumenIndividualHTML(u,desde,hasta,s,fila,diasVis){
+function buildResumenIndividualHTML(u,desde,hasta,s,fila,diasVis,emerg){
+  emerg=emerg||{};
   // FUENTE ÚNICA: el monto de cada día y el total salen de buildRRHHData (el mismo cálculo del correo
   // de RRHH y de la Vista Semanal), ya con acumulado y descuentos aplicados. Si se quita o se agrega
   // un descuento, cambia igual en los tres lados. El colaborador ve el monto ya neto, sin etiqueta.
@@ -8167,7 +8329,7 @@ function buildResumenIndividualHTML(u,desde,hasta,s,fila,diasVis){
     const _nts=sinMarcas?[]:notasDeMarcas(dd.marcaciones);
     const notaHtml=_nts.length?_nts.map(n=>`📝 ${escHtml(n)}`).join('<br>'):'—';
     const monto=montoDia[d]!=null?montoDia[d]:Number(dd.saldoParcial||dd.bruto||0);
-    filas+=`<tr><td style="${TD}">📅 ${fmtDiaLargo(d)}</td><td style="${TD};font-size:12.5px;line-height:1.6">${mks}</td><td style="${TD}">${estado}</td><td style="${TD};text-align:right;font-weight:700;white-space:nowrap">$${moneyRRHH(monto)}</td><td style="${TD};font-size:12.5px;color:#555;line-height:1.5">${notaHtml}</td></tr>`;
+    filas+=`<tr><td style="${TD}">📅 ${fmtDiaLargo(d)}${emerg[d]?'<br><span style="font-size:11px;color:#9a5b00;font-weight:700">🚨 Emergencia</span>':''}${emergSRDia(emerg,d,u.user)}</td><td style="${TD};font-size:12.5px;line-height:1.6">${mks}</td><td style="${TD}">${estado}</td><td style="${TD};text-align:right;font-weight:700;white-space:nowrap">$${moneyRRHH(monto)}</td><td style="${TD};font-size:12.5px;color:#555;line-height:1.5">${notaHtml}</td></tr>`;
   });
   const totalSol=fila?fila.totalUsuario:Number(s.neto||0);
   return`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Solicitud de pago</title></head>
@@ -8175,6 +8337,7 @@ function buildResumenIndividualHTML(u,desde,hasta,s,fila,diasVis){
     <div style="display:inline-block;background:#eaf7f2;color:#007a5e;font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:4px 10px;border-radius:20px;margin-bottom:10px">🧾 Solicitud de pago</div>
     <h2 style="color:#00313C;margin-bottom:4px">Hola ${s.nombre||u.nombre||u.user} 👋</h2>
     <p style="color:#555;margin-bottom:14px">Esta es tu solicitud de pago, con el detalle de tus marcaciones del período <strong>${fmtRangoLargo(desde,hasta)}</strong>.</p>
+    ${emergBannerHtml(emerg,'colab','email',u.user)}${Object.keys(emerg).length?'<p style="font-size:12.5px;color:#555;margin:0 0 12px 0">Los montos de la tabla corresponden a tus marcaciones. Si RRHH decide aplicar un descuento por el tiempo de evacuación, se te informará antes del cierre de planilla.</p>':''}
     <table width="900" style="border-collapse:collapse;width:100%;min-width:760px;max-width:900px;table-layout:fixed"><colgroup><col width="160"><col width="270"><col width="110"><col width="120"><col width="240"></colgroup>
       <tr><th style="${TH};text-align:left">Día</th><th style="${TH};text-align:left">Marcaciones</th><th style="${TH}">Estado</th><th style="${TH}">Monto del día</th><th style="${TH};text-align:left">Notas</th></tr>
       ${filas||'<tr><td colspan="5" style="padding:10px;border:1px solid #ccc;color:#888">Sin marcaciones registradas en este período.</td></tr>'}
@@ -8196,6 +8359,7 @@ async function distribuirMarcacionesIndividual(desde,hasta){
     const summ=await buildSummary(desde,hasta,false);
     const rrhhBase=await buildRRHHData(desde,hasta); // misma fuente de montos/descuentos que RRHH
     const rrhhPorUser={};rrhhBase.filas.forEach(f=>{rrhhPorUser[f.user]=f;});
+    const emergInd=await loadEmergenciasRango(desde,hasta);
     const users=await getUsers();
     let colab=Object.values(users).filter(u=>!GERENTES.includes(u.user));
     // Respeta el filtro de "Usuarios a mostrar esta semana" guardado en el selector — si hay
@@ -8209,7 +8373,7 @@ async function distribuirMarcacionesIndividual(desde,hasta){
       if(!s||!s.dias)continue; // sin marcaciones ese período, no le mandamos nada
       const correo=emailPersonalDe(u);
       if(!correo){sinCorreo.push(u.nombre||u.user);continue;}
-      const html=buildResumenIndividualHTML(u,desde,hasta,s,rrhhPorUser[u.user],rrhhBase.diasVis);
+      const html=buildResumenIndividualHTML(u,desde,hasta,s,rrhhPorUser[u.user],rrhhBase.diasVis,emergInd);
       const subject=`Solicitud de pago — ${fmtRangoLargo(desde,hasta)} — Juguetería Westland`;
       const tParams={to_email:correo,cc_email:'',subject,html_content:html,message:html,saludo:'Hola',periodo:desde+' al '+hasta,timestamp:new Date().toLocaleString('es')};
       let sent=false;
