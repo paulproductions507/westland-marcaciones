@@ -1185,6 +1185,41 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="descman-lista" style="margin-top:10px"></div>
           </div></div>
 
+          <div class="asec"><div class="ashdr" data-ac="ac-adel"><span>⏩ Horas adelantadas (sábado → domingo)</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-adel">
+            <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Habilita un <strong>sábado</strong> con salida extendida. Ese día los colaboradores marcan su hora real (hasta la hora límite) y los minutos trabajados de más pasan a un saldo que cubre el faltante del <strong>domingo de la misma semana</strong> (ej. salir más temprano) sin descuento. No genera pago extra ni pasa a otra semana. Se ve en Vista Semanal, Vista RRHH y los listados, con la fecha de origen.</div>
+            <div class="fg"><label>Sábado</label><input type="date" class="fc" id="adel-fecha"></div>
+            <div class="fg"><label>Hora límite de salida</label><input type="time" class="fc" id="adel-hasta" value="19:00"></div>
+            <button class="btn bp bsm" id="btn-adel" style="width:auto;margin-top:6px">⏩ Habilitar sábado</button>
+            <button class="btn bg bsm" id="btn-adel-quitar" style="width:auto;margin-top:6px">🗑 Quitar</button>
+            <div id="adel-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
+          </div></div>
+
+          <div class="asec"><div class="ashdr" data-ac="ac-banco"><span>⏳ Horas adelantadas — banco (semanas anteriores)</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-banco">
+            <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Son las MISMAS horas adelantadas de los sábados, pero de semanas anteriores (ej. se quedaron esperando un contenedor y se les deben). <strong>No modifica sus marcaciones</strong>: se registra la fecha, los minutos y el motivo (queda en bitácora). El saldo <strong>no vence</strong> y pasa de semana en semana hasta que lo apliques a un día con faltante; al aplicarlo se consume y lo que sobre sigue disponible. Nunca paga extra: solo cubre el faltante de ese día.</div>
+            <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;margin-bottom:10px">
+              <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;font-weight:700;color:var(--tx);text-transform:none;letter-spacing:0;cursor:pointer"><input type="checkbox" id="adel-ocultar" checked style="margin-top:2px"><span>🙈 Ocultar la nota de origen a RRHH y en los listados/correos</span></label>
+              <div style="font-size:10.5px;color:var(--mt);margin-top:4px;line-height:1.4">Marcado (por defecto): RRHH ve solo el día pagado y el monto, como siempre. Desmárcalo si necesitas que vean de dónde salió la hora. Vista Semanal siempre la muestra.</div>
+            </div>
+            <div style="font-size:11.5px;font-weight:800;color:var(--ac);margin:4px 0">1) Registrar horas adelantadas</div>
+            <div class="fg"><label>Fecha en que se quedaron</label><input type="date" class="fc" id="banco-fecha"></div>
+            <div class="fg"><label>Minutos adelantados</label><input type="number" class="fc" id="banco-min" min="1" value="60"></div>
+            <div class="fg"><label>Motivo / comentario</label><input type="text" class="fc" id="banco-motivo" placeholder="ej. Esperaron 3 contenedores después de las 5:00 pm"></div>
+            <div class="fg"><label>Colaboradores (mantén presionado para elegir varios)</label><select class="fc" id="banco-users" multiple size="6"></select></div>
+            <button class="btn bg bsm" id="btn-banco-todos" type="button" style="width:auto;margin-top:4px">Seleccionar todos</button>
+            <button class="btn bp bsm" id="btn-banco-add" type="button" style="width:auto;margin-top:4px">⏳ Registrar horas adelantadas</button>
+            <div style="font-size:11.5px;font-weight:800;color:var(--ac);margin:14px 0 4px">2) Aplicar saldo a un día</div>
+            <div class="fg"><label>Colaborador</label><select class="fc" id="bancoap-user"></select></div>
+            <div id="bancoap-saldo" style="font-size:11.5px;color:var(--mt);margin-bottom:6px"></div>
+            <div class="fg"><label>Día a cubrir</label><input type="date" class="fc" id="bancoap-fecha"></div>
+            <div class="fg"><label>Minutos a aplicar</label><input type="number" class="fc" id="bancoap-min" min="1"></div>
+            <button class="btn bg bsm" id="btn-bancoap-sug" type="button" style="width:auto;margin-top:4px">💡 Sugerir faltante de ese día</button>
+            <button class="btn bp bsm" id="btn-bancoap" type="button" style="width:auto;margin-top:4px">✅ Aplicar al día</button>
+            <div id="banco-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
+            <div id="banco-detalle" style="margin-top:10px"></div>
+          </div></div>
+
           <div class="asec"><div class="ashdr" data-ac="ac-emerg"><span>🚨 Evento de emergencia (sismo / evacuación)</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-emerg">
             <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Marca un día con emergencia (ej. el sismo del viernes 9 de octubre). <strong>No cambia ningún monto</strong>: agrega un aviso de "tema pendiente / posible descuento" en Vista RRHH, correo a RRHH, Vista Semanal (y su correo) y en "Mis marcaciones" del colaborador. Cuando RRHH responda, cambia la decisión aquí. Si resulta descuento, aplícalo con <strong>🔒 Descuento manual confirmado</strong>. Para otro día (ej. la evacuación del sábado), elige esa fecha y guárdala aparte.</div>
@@ -3399,6 +3434,87 @@ async function loadDescuentoManualRango(desdeISO,hastaISO){
     return out;
   }
 }
+// ── HORAS ADELANTADAS (sábado → domingo) ───────────────────────────────────────────────────────
+// El admin habilita un sábado con salida extendida (ej. hasta las 7:00 pm). Ese día el colaborador
+// marca su hora real de salida (ya no se bloquea a +10 min del horario) y los minutos que trabajó de
+// más (hasta la hora límite) se guardan como "horas adelantadas": cubren el faltante del DOMINGO de
+// la MISMA semana (ej. salida temprano) sin descuento. Nunca generan pago extra ni pasan a otra semana.
+// Firebase: meta_v1/adelanto_horas/{fecha} = {hasta:'HH:MM', por, ts}
+const ADELANTO=`${META}/adelanto_horas`;
+const _adelCache=new Map(); // fecha -> {t,v}
+function adelantoLocalKey(f){return `wl_adel_${f}`;}
+async function getAdelantoCfg(fecha,fresh){
+  const c=_adelCache.get(fecha);
+  if(!fresh&&c&&Date.now()-c.t<10*60*1000)return c.v;
+  try{
+    const s=await get(R(db,`${ADELANTO}/${fecha}`));
+    const v=s.exists()?s.val():null;
+    _adelCache.set(fecha,{t:Date.now(),v});
+    try{if(v)localStorage.setItem(adelantoLocalKey(fecha),JSON.stringify(v));else localStorage.removeItem(adelantoLocalKey(fecha));}catch(e){}
+    return v;
+  }catch(e){
+    // Sin red: se usa lo último confirmado en este dispositivo (para no bloquear la salida del colaborador)
+    try{const raw=localStorage.getItem(adelantoLocalKey(fecha));if(raw)return JSON.parse(raw);}catch(e2){}
+    return null;
+  }
+}
+// ── BANCO DE HORAS PENDIENTES ──────────────────────────────────────────────────────────────────
+// Horas que el colaborador trabajó de más en una fecha pasada (ej. esperar un contenedor) y que se
+// le deben. El admin las registra con motivo (queda en bitácora) SIN tocar sus marcaciones. El saldo
+// no vence: pasa de una semana a otra hasta que el admin lo APLIQUE a un día con faltante. Al aplicarlo
+// se consume. Nunca genera pago extra: solo cubre el faltante de ese día (hasta completar 8h).
+// Firebase: meta_v1/banco_horas/{user} = {creditos:{id:{fecha,min,motivo,por,ts}}, consumos:{fechaDestino:{min,por,ts}}}
+const BANCO=`${META}/banco_horas`;
+const _bancoCache=new Map(); // user -> {t,v}
+async function getBancoUser(user,fresh){
+  const c=_bancoCache.get(user);
+  if(!fresh&&c&&Date.now()-c.t<2*60*1000)return c.v;
+  try{
+    const sn=await get(R(db,`${BANCO}/${user}`));
+    const v=sn.exists()?sn.val():{};
+    _bancoCache.set(user,{t:Date.now(),v});return v;
+  }catch(e){return c?c.v:{};}
+}
+function bancoSaldoMin(b){
+  const cr=Object.values((b&&b.creditos)||{}).reduce((a,x)=>a+(+x.min||0),0);
+  const co=Object.values((b&&b.consumos)||{}).reduce((a,x)=>a+(+x.min||0),0);
+  return cr-co;
+}
+async function getBancoMinDia(user,fecha){
+  try{const b=await getBancoUser(user);return +(((b.consumos||{})[fecha]||{}).min)||0;}catch(e){return 0;}
+}
+// Trazabilidad: reparte cada aplicación (consumo) contra los créditos más antiguos primero (FIFO)
+// para saber DE QUÉ FECHA salió cada hora adelantada que se aplicó a un día.
+function bancoOrigenes(b){
+  const cr=Object.values((b&&b.creditos)||{}).map(x=>({fecha:x.fecha||'',rest:+x.min||0,motivo:x.motivo||''})).sort((a,c)=>a.fecha.localeCompare(c.fecha));
+  const out={};
+  Object.entries((b&&b.consumos)||{}).sort((a,c)=>a[0].localeCompare(c[0])).forEach(([f,x])=>{
+    let need=+x.min||0;out[f]=[];
+    for(const c of cr){if(need<=0)break;if(c.rest<=0)continue;const t=Math.min(c.rest,need);c.rest-=t;need-=t;out[f].push({fecha:c.fecha,min:t,motivo:c.motivo});}
+  });
+  return out;
+}
+function fmtFechaDM(f){const a=String(f||'').split('-');return a.length===3?`${a[2]}/${a[1]}`:String(f||'');}
+function origenTxt(list){return (list||[]).map(o=>`${fmtFechaDM(o.fecha)}${o.motivo?' · '+o.motivo:''} (${o.min} min)`).join('; ');}
+// Texto de origen de las horas adelantadas que cubrieron el día k (sábado habilitado y/o banco)
+function trazaAdel(k,res,orig){
+  const parts=[];
+  if((((res&&res.mapAdel)||{})[k]||0)>0)Object.keys((res&&res.adelGen)||{}).sort().forEach(f=>parts.push(`sábado ${fmtFechaDM(f)}`));
+  if((((res&&res.mapBanco)||{})[k]||0)>0&&orig&&orig[k])parts.push(orig[k].map(o=>`${fmtFechaDM(o.fecha)}${o.motivo?' · '+o.motivo:''}`).join(', '));
+  return parts.join(' + ');
+}
+// Visibilidad de la nota de origen para RRHH y listados. POR DEFECTO OCULTA (si no hay valor guardado).
+// Firebase: meta_v1/adelanto_cfg/ocultarNota (boolean). Vista Semanal (admin) siempre la muestra.
+const ADELCFG=`${META}/adelanto_cfg`;let _notaVisCache=null;
+async function getAdelantoNotaVisible(fresh){
+  if(!fresh&&_notaVisCache&&Date.now()-_notaVisCache.t<2*60*1000)return _notaVisCache.v;
+  try{
+    const sn=await get(R(db,`${ADELCFG}/ocultarNota`));
+    const v=sn.exists()?!sn.val():false; // visible solo si el admin desmarcó "ocultar"
+    _notaVisCache={t:Date.now(),v};return v;
+  }catch(e){return _notaVisCache?_notaVisCache.v:false;}
+}
+function fmtMinHM(m){const a=Math.abs(Math.round(m));return `${Math.floor(a/60)}h ${String(a%60).padStart(2,'0')}m`;}
 // ── EVENTO DE EMERGENCIA (sismo, evacuación…) ─────────────────────────────────────────────────
 // Para días en que hubo una emergencia y la empresa aún no define si paga la jornada completa o
 // descuenta el tiempo de evacuación. NO cambia ningún monto: solo agrega el aviso/consulta a
@@ -4181,7 +4297,7 @@ async function renderColabBaja(){
 function fillSelects(obj){
   const users=Object.values(obj||{});
   const withAll=['gen-user','bor-user','rpt-users'];
-  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user','tcol-user','descman-user','emerg-sr-user'].forEach(id=>{
+  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user','tcol-user','descman-user','emerg-sr-user','banco-users','bancoap-user'].forEach(id=>{
     const s=el(id);if(!s)return;
     s.innerHTML=withAll.includes(id)?'<option value="__ALL__">— Todos —</option>':'';
     users.filter(u=>!GERENTES.includes(u.user)).forEach(u=>s.innerHTML+=`<option value="${u.user}">${u.nombre} (${u.user})</option>`);
@@ -5424,9 +5540,15 @@ async function canMark(date,user,preList){
     catch(e){sch=getHorarioCache(user);}
     if(sch&&sch.fin){
       const [fh,fm]=sch.fin.split(':').map(Number);
-      const finMin=fh*60+fm, nowMin=date.getHours()*60+date.getMinutes();
+      let finMin=fh*60+fm;const nowMin=date.getHours()*60+date.getMinutes();
+      // Sábado con horas adelantadas habilitado por el admin: la salida puede extenderse hasta la hora límite
+      if(date.getDay()===6){
+        try{const ac=await withTimeout(getAdelantoCfg(isoD(date)),3000);
+          if(ac&&ac.hasta){const[ah,am]=String(ac.hasta).split(':').map(Number);finMin=Math.max(finMin,(ah||0)*60+(am||0));}
+        }catch(e){}
+      }
       if(nowMin>finMin+10){
-        return{ok:false,msg:`No puedes marcar Salida Final: pasaron más de 10 min de tu horario de salida (${sch.fin}). Contacta al encargado.`};
+        return{ok:false,msg:`No puedes marcar Salida Final: pasaron más de 10 min de tu horario de salida (${String(Math.floor(finMin/60)).padStart(2,'0')}:${String(finMin%60).padStart(2,'0')}). Contacta al encargado.`};
       }
     }
   }
@@ -5514,7 +5636,7 @@ function guiaModal({titulo,html,seguirTxt='Seguir',cancelTxt='Cancelar',soloInfo
 // Devuelve null si algo falla (en ese caso no se muestra ningún aviso).
 async function contextoAcumuladoVivo(user,key){
   try{
-    if(CUM&&CUM.sinAcumulado)return{usa:false,primerDia:false,poolMin:0}; // sin acumulado: avisos completos como siempre
+    if(CUM&&CUM.sinAcumulado)return{usa:false,primerDia:false,poolMin:0,adelantoMin:0}; // sin acumulado: avisos completos como siempre
     const lun=lunesISODe(key);const dias=[];let hayPrevios=false;
     const almGlobal=await withTimeout(loadAlmuerzoGlobal(),3000);
     let horcolUser={};try{const hc=await withTimeout(get(R(db,`${HORCOL}/${user}`)),3000);horcolUser=hc.exists()?hc.val():{};}catch(e){}
@@ -5528,12 +5650,12 @@ async function contextoAcumuladoVivo(user,key){
       const dow=new Date(f+'T00:00:00').getDay(),cnt=marks.length,completo=cnt>=4;
       const almCfg=almCfgForDia(almGlobal,dow);
       const hrsParcial=cnt<4?computeHrsParcial(marks,almCfg):computeHrs(marks,almCfg);
-      const{deficitMin,excedenteMin}=await deltaEntradaAlmuerzoDia(user,f,marks,almCfg,horcolUser,hrsParcial,completo);
-      dias.push({k:f,deficitMin,excedenteMin});
+      const{deficitMin,excedenteMin,adelantoMin,faltaTotalMin,bancoMin}=await deltaEntradaAlmuerzoDia(user,f,marks,almCfg,horcolUser,hrsParcial,completo);
+      dias.push({k:f,deficitMin,excedenteMin,adelantoMin,faltaTotalMin,bancoMin});
     }
-    if(!hayPrevios)return{usa:true,primerDia:true,poolMin:0};
+    if(!hayPrevios)return{usa:true,primerDia:true,poolMin:0,adelantoMin:0};
     const r=calcularAcumuladoSemana(dias);
-    return{usa:true,primerDia:false,poolMin:Math.max(0,r.disponibleMin-r.usadoMin)};
+    return{usa:true,primerDia:false,poolMin:Math.max(0,r.disponibleMin-r.usadoMin),adelantoMin:Math.max(0,r.adelantoDisponibleMin||0)};
   }catch(e){console.warn('contexto acumulado',e);return null;}
 }
 // Antes de registrar: devuelve {continuar, permiso}. Cualquier error → continúa (nunca se bloquea el marcaje por esto).
@@ -5567,9 +5689,16 @@ async function guiaAntesDeMarcar(tipo,user,key,mine,date){
     if(falta<1)return{continuar:true,permiso:null};
     // Solo la parte atribuible a Entrada + Almuerzo puede ser absorbida por el acumulado (la salida temprano no)
     const atribuible=g.arrastre+Math.max(0,Math.round(lunch-g.durAlm));
-    const cubierto=Math.min(pool,atribuible,falta),residual=falta-cubierto;
-    if(residual<1)return{continuar:true,permiso:null}; // absorbido por el acumulado: sin aviso
-    const horaOk=_dMin(by['Entrada'])+480+lunch-cubierto;
+    const cubierto=Math.min(pool,atribuible,falta);
+    // Horas adelantadas del sábado: cubren lo que reste (incluida la salida temprano)
+    const adelCub0=Math.min(ctx.adelantoMin||0,falta-cubierto);
+    const bancoHoy=await getBancoMinDia(user,key),bancoCub=Math.min(bancoHoy,falta-cubierto-adelCub0);
+    const adelCub=adelCub0+bancoCub,residual=falta-cubierto-adelCub;
+    if(residual<1){
+      if(adelCub>0)toast(`⏩ Tus horas adelantadas cubren ${adelCub} min de tu salida de hoy`,'ok',7000);
+      return{continuar:true,permiso:null}; // absorbido por el acumulado / horas adelantadas: sin aviso
+    }
+    const horaOk=_dMin(by['Entrada'])+480+lunch-cubierto-adelCub;
     const tope=_hmMin(g.fin)+10; // la salida nunca puede pasar de 10 min después de su hora programada
     const horaSug=Math.min(horaOk,tope);
     const inevitable=Math.max(0,Math.round(horaOk-tope));
@@ -6662,8 +6791,8 @@ function computeHrsParcial(marks,almCfg){
 // nunca inventar más de lo que en verdad pasó ese día.
 async function deltaEntradaAlmuerzoDia(user,fechaISO,dayMarks,almCfg,horcolUser,hrsParcial,completo){
   const by={};(dayMarks||[]).forEach(m=>{if(m&&m.tipo)by[m.tipo]=new Date(m.stamp);});
-  if(!by['Entrada'])return{deficitMin:0,excedenteMin:0};
-  let base;try{base=await getHorarioBaseDe(user,fechaISO,horcolUser);}catch(e){return{deficitMin:0,excedenteMin:0};}
+  if(!by['Entrada'])return{deficitMin:0,excedenteMin:0,adelantoMin:0,faltaTotalMin:0,bancoMin:0};
+  let base;try{base=await getHorarioBaseDe(user,fechaISO,horcolUser);}catch(e){return{deficitMin:0,excedenteMin:0,adelantoMin:0,faltaTotalMin:0,bancoMin:0};}
   const[hI,mI]=String(base.inicio||'08:00').split(':').map(Number);
   const progEntradaMin=(hI||0)*60+(mI||0);
   const realEntradaMin=by['Entrada'].getHours()*60+by['Entrada'].getMinutes();
@@ -6676,9 +6805,28 @@ async function deltaEntradaAlmuerzoDia(user,fechaISO,dayMarks,almCfg,horcolUser,
   }
   const actualDeficitMin=Math.max(0,(8-hrsParcial)*60);
   const actualExcedenteMin=completo?computeHrsExcedente(dayMarks,almCfg)*60:0;
+  // HORAS ADELANTADAS: solo un sábado habilitado por el admin y con las 4 marcas. Son los minutos
+  // trabajados después de la salida programada (hasta la hora límite habilitada), sin pasar de lo
+  // que realmente trabajó de más ese día.
+  let adelantoMin=0;
+  if(completo&&by['Salida Final']&&new Date(fechaISO+'T00:00:00').getDay()===6){
+    try{
+      const ac=await getAdelantoCfg(fechaISO);
+      if(ac&&ac.hasta){
+        const[fh,fm]=String(base.fin||'17:00').split(':').map(Number);
+        const[ah,am]=String(ac.hasta).split(':').map(Number);
+        const finProg=(fh||0)*60+(fm||0),hastaMin=(ah||0)*60+(am||0);
+        const salidaReal=by['Salida Final'].getHours()*60+by['Salida Final'].getMinutes();
+        adelantoMin=Math.max(0,Math.round(Math.min(Math.min(salidaReal,hastaMin)-finProg,actualExcedenteMin)));
+      }
+    }catch(e){adelantoMin=0;}
+  }
   return{
     deficitMin:Math.min(Math.max(0,deltaEntrada)+Math.max(0,deltaAlmuerzo),actualDeficitMin),
-    excedenteMin:Math.min(Math.max(0,-deltaEntrada)+Math.max(0,-deltaAlmuerzo),actualExcedenteMin)
+    excedenteMin:Math.min(Math.max(0,-deltaEntrada)+Math.max(0,-deltaAlmuerzo),actualExcedenteMin),
+    adelantoMin,
+    faltaTotalMin:completo?Math.round(actualDeficitMin):0,
+    bancoMin:completo?await getBancoMinDia(user,fechaISO):0
   };
 }
 // computeHrsExcedente: como computeHrs, pero SIN el tope de 8h — para acotar (cap) cuánta sobra
@@ -6707,7 +6855,28 @@ function calcularAcumuladoSemana(dias){
     const usar=Math.min(pool,falta);
     if(usar>0){map[k]=usar;pool-=usar;usadoMin+=Math.round(usar*60);}
   });
-  return{map,disponibleMin,usadoMin};
+  // HORAS ADELANTADAS (sábado → días posteriores de la misma semana): se aplican DESPUÉS del
+  // acumulado normal y cubren cualquier faltante restante del día (incluida la salida temprano).
+  // Cada día primero consume lo adelantado en días anteriores y luego aporta el suyo, así nunca
+  // se cubre un día con horas adelantadas de un día posterior.
+  const mapAdel={},adelGen={};let adel=0,adelGenTotal=0,adelUsadoMin=0;
+  [...dias].sort((a,b)=>a.k.localeCompare(b.k)).forEach(d=>{
+    const faltaRest=Math.max(0,(d.faltaTotalMin||0)-Math.round((map[d.k]||0)*60));
+    if(adel>0&&faltaRest>0){
+      const u=Math.min(adel,faltaRest);
+      mapAdel[d.k]=u/60;map[d.k]=(map[d.k]||0)+u/60;adel-=u;adelUsadoMin+=u;
+    }
+    if((d.adelantoMin||0)>0){adel+=d.adelantoMin;adelGenTotal+=d.adelantoMin;adelGen[d.k]=d.adelantoMin;}
+  });
+  // BANCO DE HORAS PENDIENTES: lo que el admin aplicó a ese día cubre lo que aún falte (sin pasar de 8h).
+  const mapBanco={};
+  dias.forEach(d=>{
+    if(!((d.bancoMin||0)>0))return;
+    const faltaRest=Math.max(0,(d.faltaTotalMin||0)-Math.round((map[d.k]||0)*60));
+    const u=Math.min(d.bancoMin,faltaRest);
+    if(u>0){mapBanco[d.k]=u/60;map[d.k]=(map[d.k]||0)+u/60;}
+  });
+  return{map,disponibleMin,usadoMin,mapAdel,mapBanco,adelGen,adelantoDisponibleMin:adelGenTotal-adelUsadoMin,adelantoUsadoMin:adelUsadoMin};
 }
 
 // PAGO FIJO / SALARIO BASE — para usuarios (ej. Super Admin) que no deben marcar reloj pero
@@ -6862,12 +7031,13 @@ async function renderVistaSemanal(refDate,hastaDate){
       const cnt=dayMarks.length,completo=cnt>=4;
       const almCfg=almCfgForDia(almGlobal,dowNum);
       const hrsParcial=cnt<4?computeHrsParcial(dayMarks,almCfg):computeHrs(dayMarks,almCfg);
-      const{deficitMin,excedenteMin}=await deltaEntradaAlmuerzoDia(u.user,k,dayMarks,almCfg,horcolUserCache,hrsParcial,completo);
-      return{k,deficitMin,excedenteMin};
+      const{deficitMin,excedenteMin,adelantoMin,faltaTotalMin,bancoMin}=await deltaEntradaAlmuerzoDia(u.user,k,dayMarks,almCfg,horcolUserCache,hrsParcial,completo);
+      return{k,deficitMin,excedenteMin,adelantoMin,faltaTotalMin,bancoMin};
     }));
     const diasInfoAcum=diasInfoAcumRaw.filter(Boolean);
     const acumResult=calcularAcumuladoSemana(diasInfoAcum);
     const acumuladoSemana=acumResult.map;
+    const bancoOrigU=bancoOrigenes(await getBancoUser(u.user));
     html+=`<tr>`;
     html+=`<td style="padding:6px 8px;border:1px solid var(--bd);background:var(--sf);vertical-align:top">`
       +`<div style="font-weight:700;color:var(--tx);font-size:12px">${u.nombre}</div>`
@@ -6907,7 +7077,10 @@ async function renderVistaSemanal(refDate,hastaDate){
         // Minutos de sobra de ESTA MISMA semana (ver calcularAcumuladoSemana arriba) que cubren
         // parte o todo el faltante de este día, antes de calcular el descuento.
         const acumAplicado=(k>=DESCUENTO_DESDE)?(acumuladoSemana[k]||0):0;
-        if(acumAplicado>0){hrsParcial=Math.min(8,hrsParcial+acumAplicado);totalAcumUsrMin+=Math.round(acumAplicado*60);}
+        const adelAplic=(k>=DESCUENTO_DESDE)?((acumResult.mapAdel||{})[k]||0):0; // parte de acumAplicado que viene de horas adelantadas
+        const adelGenMin=(k>=DESCUENTO_DESDE)?((acumResult.adelGen||{})[k]||0):0;
+        const bancoAplic=(k>=DESCUENTO_DESDE)?((acumResult.mapBanco||{})[k]||0):0;
+        if(acumAplicado>0){hrsParcial=Math.min(8,hrsParcial+acumAplicado);totalAcumUsrMin+=Math.round((acumAplicado-adelAplic-bancoAplic)*60);}
         // SALVAGUARDA: si están las 4 marcas pero el resultado de horas es absurdo (ej. 0 o casi
         // 0 — señal casi segura de un dato inconsistente, como un 'stamp' interno que no coincide
         // con la hora mostrada en pantalla), NUNCA se le paga $0 a alguien que sí marcó su día
@@ -6935,7 +7108,10 @@ async function renderVistaSemanal(refDate,hastaDate){
         const badge=completo?`<div style="color:#00c9a7;font-size:10px;font-weight:700;margin-top:2px">✅ $${monto.toFixed(2)}</div>${datosSospechosos?`<div style="color:#ffb020;font-size:9px;font-weight:700;margin-top:1px">⚠ Revisar esta marca (dato inconsistente)</div>`:''}`:`<div style="color:var(--wn);font-size:10px;margin-top:2px">⏳ ${cnt}/4 · $${monto.toFixed(2)}</div>`;
         const descHtml=descAuto>0?`<div style="color:#ff6b6b;font-size:9.5px;font-weight:700;margin-top:2px">💸 Desc: -$${descAuto.toFixed(2)}</div>`:'';
         const descManHtml=descManualMonto>0?`<div style="color:#c084fc;font-size:9px;font-weight:700;margin-top:1px">🔒 Confirmado: -$${descManualMonto.toFixed(2)} (${escHtml(descManInfo.motivo||'sin motivo')}) · por ${escHtml(descManInfo.por||'?')}</div>`:'';
-        const acumHtml=acumAplicado>0?`<div style="color:#00c9a7;font-size:9px;font-weight:700;margin-top:1px">💧 +${Math.round(acumAplicado*60)} min cubiertos con sobrante de la semana</div>`:'';
+        const acumReg=acumAplicado-adelAplic-bancoAplic;
+        const acumHtml=(acumReg>0.0001?`<div style="color:#00c9a7;font-size:9px;font-weight:700;margin-top:1px">💧 +${Math.round(acumReg*60)} min cubiertos con sobrante de la semana</div>`:'')
+          +((adelAplic+bancoAplic)>0?`<div style="color:#38bdf8;font-size:9px;font-weight:700;margin-top:1px">⏩ Trabajó ${hrs.toFixed(2)}h + ${Math.round((adelAplic+bancoAplic)*60)} min adelantados</div><div style="color:var(--mt);font-size:9px;line-height:1.3">Origen: ${escHtml(trazaAdel(k,acumResult,bancoOrigU))}</div>`:'')
+          +(adelGenMin>0?`<div style="color:#38bdf8;font-size:9px;font-weight:700;margin-top:1px">⏩ ${adelGenMin} min adelantados para el domingo (sin pago extra)</div>`:'');
         // Hueco de secuencia: ej. tiene Regreso Alm. pero no Salida Alm. — esa marca probablemente
         // sigue atascada en el teléfono del colaborador. Se avisa aparte de "incompleto" (4/4
         // normal cuando aún no termina el día) para no generar falsas alarmas.
@@ -7025,10 +7201,13 @@ async function buildRRHHData(desde,hasta){
       const cnt=marks.length,completo=cnt>=4;
       const almCfg=almCfgForDia(almGlobal,dowNum);
       const hrsParcial=cnt<4?computeHrsParcial(marks,almCfg):computeHrs(marks,almCfg);
-      const{deficitMin,excedenteMin}=await deltaEntradaAlmuerzoDia(u.user,k,marks,almCfg,horcolUserCache,hrsParcial,completo);
-      return{k,deficitMin,excedenteMin};
+      const{deficitMin,excedenteMin,adelantoMin,faltaTotalMin,bancoMin}=await deltaEntradaAlmuerzoDia(u.user,k,marks,almCfg,horcolUserCache,hrsParcial,completo);
+      return{k,deficitMin,excedenteMin,adelantoMin,faltaTotalMin,bancoMin};
     }));
-    const acumuladoSemana=calcularAcumuladoSemana(diasInfoAcumRaw.filter(Boolean)).map;
+    const acumRes=calcularAcumuladoSemana(diasInfoAcumRaw.filter(Boolean));
+    const acumuladoSemana=acumRes.map;
+    const bancoOrigU=bancoOrigenes(await getBancoUser(u.user));
+    const verNotaAdel=await getAdelantoNotaVisible();
     const diasArr=diasVis.map(({k,d})=>{
       const marks=(histByDay[k]||[]).filter(m=>m.user===u.user);
       const dowNum=d.getDay();const isFer=feriados.includes(k);
@@ -7052,7 +7231,7 @@ async function buildRRHHData(desde,hasta){
       const descuento=((k>=DESCUENTO_DESDE&&!datosSospechosos)?+(tar-montoAuto).toFixed(2):0)+descManualMonto;
       const horas=datosSospechosos?8:+Math.min(hrsParcial,8).toFixed(2);
       totalUsuario+=monto;descUsuario+=descuento;
-      return{tipo:completo?'completo':'parcial',tar,cnt,monto,descuento,horas,datosSospechosos,acumAplicadoMin:acumAplicado>0?Math.round(acumAplicado*60):0};
+      return{tipo:completo?'completo':'parcial',tar,cnt,monto,descuento,horas,datosSospechosos,acumAplicadoMin:acumAplicado>0?Math.round(acumAplicado*60):0,adelNota:verNotaAdel&&(((acumRes.mapAdel||{})[k]||0)+((acumRes.mapBanco||{})[k]||0))>0?`+${Math.round((((acumRes.mapAdel||{})[k]||0)+((acumRes.mapBanco||{})[k]||0))*60)} min adelantados (${trazaAdel(k,acumRes,bancoOrigU)})`:''};
     });
     filas.push({user:u.user,nombre:u.nombre,cedula:uObj.cedula||'',dias:diasArr,totalUsuario:+totalUsuario.toFixed(2),descUsuario:+descUsuario.toFixed(2),acumUsrMin});
   }
@@ -7276,6 +7455,7 @@ async function renderVistaRRHH(desde,hasta){
       html+=`<td style="padding:5px 5px;border:1px solid var(--bd);text-align:center;vertical-align:middle">`
         +`<div style="font-size:11px;font-weight:700">${chk}</div>`
         +`<div style="font-size:9.5px;color:var(--mt);margin-top:1px">${dd.horas.toFixed(2)}h</div>`
+        +(dd.adelNota?`<div style="font-size:9px;color:#38bdf8;font-weight:700;margin-top:1px;line-height:1.3">⏩ ${escHtml(dd.adelNota)}</div>`:'')
         +`<div style="font-weight:800;font-size:12px;color:var(--ac);margin-top:1px">$${moneyRRHH(dd.monto)}</div>`
         +(dd.descuento>0?`<div style="color:#ff6b6b;font-size:9.5px;font-weight:700;margin-top:1px">💸 -$${moneyRRHH(dd.descuento)}</div>`:'')
         +(dd.datosSospechosos?`<div style="color:#ffb020;font-size:9px;font-weight:700;margin-top:1px">⚠ Revisar</div>`:'')
@@ -7619,6 +7799,130 @@ el('btn-descman')?.addEventListener('click',async()=>{
     renderDescManLista(fecha);
   }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo aplicar','err');}
   btn.disabled=false;
+});
+// BANCO DE HORAS PENDIENTES
+async function renderBancoUser(){
+  const user=el('bancoap-user')?.value,sd=el('bancoap-saldo'),det=el('banco-detalle');
+  if(!user||!sd)return;
+  const b=await getBancoUser(user,true);
+  const saldo=bancoSaldoMin(b);
+  sd.innerHTML=`Saldo disponible: <strong style="color:${saldo>0?'#f59e0b':'var(--mt)'}">${saldo>0?fmtMinHM(saldo):'0h 00m'}</strong>`;
+  if(!det)return;
+  const cr=Object.entries(b.creditos||{}).sort((a,c)=>(a[1].fecha||'').localeCompare(c[1].fecha||''));
+  const co=Object.entries(b.consumos||{}).sort((a,c)=>a[0].localeCompare(c[0]));
+  const row=(txt,attrs)=>`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:6px 9px;margin-bottom:5px;font-size:11.5px"><span>${txt}</span><button type="button" class="btn bg bsm btn-banco-del" ${attrs} style="width:auto;padding:3px 8px;font-size:10.5px">🗑 Quitar</button></div>`;
+  det.innerHTML=(cr.length?`<div style="font-size:11px;font-weight:700;color:var(--mt);margin-bottom:5px">Horas adelantadas registradas:</div>`+cr.map(([id,x])=>row(`➕ ${escHtml(x.fecha)} — ${x.min} min — ${escHtml(x.motivo||'')} <span style="color:var(--mt)">(${escHtml(x.por||'?')})</span>`,`data-tipo="cred" data-id="${escHtml(id)}"`)).join(''):'<div style="font-size:11px;color:var(--mt)">Sin horas adelantadas registradas.</div>')
+   +(co.length?`<div style="font-size:11px;font-weight:700;color:var(--mt);margin:8px 0 5px">Ya aplicadas a días:</div>`+co.map(([f,x])=>row(`➖ ${escHtml(f)} — ${x.min} min <span style="color:var(--mt)">(${escHtml(x.por||'?')}) · origen: ${escHtml(origenTxt(bancoOrigenes(b)[f])||'—')}</span>`,`data-tipo="cons" data-id="${escHtml(f)}"`)).join(''):'');
+  det.querySelectorAll('.btn-banco-del').forEach(bt=>bt.addEventListener('click',async()=>{
+    if(!confirm('¿Quitar este registro?'))return;
+    try{
+      const path=bt.dataset.tipo==='cred'?`${BANCO}/${user}/creditos/${bt.dataset.id}`:`${BANCO}/${user}/consumos/${bt.dataset.id}`;
+      await set(R(db,path),null);_bancoCache.delete(user);
+      await addLog(`⏳ Banco de horas: quitado registro (${bt.dataset.tipo==='cred'?'pendiente':'aplicación'} ${bt.dataset.id}) de ${user} (por ${CU})`);
+      toast('Quitado ✓','ok');renderBancoUser();
+    }catch(e){toast('⛔ Error al quitar','err');}
+  }));
+}
+el('bancoap-user')?.addEventListener('change',renderBancoUser);
+async function cargarOcultarNota(){
+  const c=el('adel-ocultar');if(!c)return;
+  try{const v=await getAdelantoNotaVisible(true);c.checked=!v;}catch(e){}
+}
+el('adel-ocultar')?.addEventListener('change',async()=>{
+  const c=el('adel-ocultar');
+  try{
+    await set(R(db,`${ADELCFG}/ocultarNota`),c.checked);_notaVisCache=null;
+    await addLog(`🙈 Nota de origen de horas adelantadas ${c.checked?'OCULTA':'VISIBLE'} para RRHH y listados (por ${CU})`);
+    toast(c.checked?'🙈 Oculta para RRHH ✓':'👁 Visible para RRHH ✓','ok');
+  }catch(e){c.checked=!c.checked;toast('⛔ No se pudo guardar','err');}
+});
+document.querySelector('[data-ac="ac-banco"]')?.addEventListener('click',()=>setTimeout(()=>{renderBancoUser();cargarOcultarNota();},50));
+el('btn-banco-todos')?.addEventListener('click',()=>{Array.from(el('banco-users').options).forEach(o=>{o.selected=true;});});
+el('btn-banco-add')?.addEventListener('click',async()=>{
+  const fecha=el('banco-fecha').value,min=parseInt(el('banco-min').value,10),motivo=(el('banco-motivo').value||'').trim();
+  const users=Array.from(el('banco-users').selectedOptions).map(o=>o.value);
+  const st=el('banco-status');
+  if(!fecha||!min||min<=0||!motivo||!users.length){toast('Completa fecha, minutos, motivo y colaboradores','err');return;}
+  const btn=el('btn-banco-add');btn.disabled=true;
+  try{
+    for(const u of users){
+      const id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+      await set(R(db,`${BANCO}/${u}/creditos/${id}`),{fecha,min,motivo,por:CU,ts:Date.now()});
+      _bancoCache.delete(u);
+    }
+    await addLog(`⏳ Horas adelantadas registradas: ${users.join(', ')} — ${min} min del ${fecha} — "${motivo}" (por ${CU})`);
+    if(st)st.textContent=`✅ Registrado: ${min} min para ${users.length} colaborador(es).`;
+    toast('⏳ Registrado ✓','ok');el('banco-motivo').value='';renderBancoUser();
+  }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo registrar','err');}
+  btn.disabled=false;
+});
+el('btn-bancoap-sug')?.addEventListener('click',async()=>{
+  const user=el('bancoap-user').value,fecha=el('bancoap-fecha').value,st=el('banco-status');
+  if(!user||!fecha){toast('Elige colaborador y día','err');return;}
+  try{
+    const marks=((await getHist(fecha))||[]).filter(m=>m.user===user);
+    if(marks.length<4){if(st)st.textContent='Ese día no tiene las 4 marcas completas; escribe los minutos a mano.';return;}
+    const dow=new Date(fecha+'T00:00:00').getDay();
+    const almGlobal=await loadAlmuerzoGlobal();
+    const hrs=computeHrs(marks,almCfgForDia(almGlobal,dow));
+    const falta=Math.max(0,Math.round((8-hrs)*60));
+    const saldo=bancoSaldoMin(await getBancoUser(user,true));
+    const ya=await getBancoMinDia(user,fecha);
+    const sug=Math.max(0,Math.min(saldo,falta-ya));
+    el('bancoap-min').value=sug||'';
+    if(st)st.textContent=`Faltante de ese día: ${falta} min${ya?` (ya tiene ${ya} aplicados)`:''}. Saldo: ${saldo} min. Sugerido: ${sug} min.`;
+  }catch(e){if(st)st.textContent='No se pudo calcular el faltante.';}
+});
+el('btn-bancoap')?.addEventListener('click',async()=>{
+  const user=el('bancoap-user').value,fecha=el('bancoap-fecha').value,min=parseInt(el('bancoap-min').value,10),st=el('banco-status');
+  if(!user||!fecha||!min||min<=0){toast('Completa colaborador, día y minutos','err');return;}
+  const btn=el('btn-bancoap');btn.disabled=true;
+  try{
+    const b=await getBancoUser(user,true);const saldo=bancoSaldoMin(b);
+    if(min>saldo){toast(`El saldo disponible es ${saldo} min`,'err');btn.disabled=false;return;}
+    const prev=+(((b.consumos||{})[fecha]||{}).min)||0;
+    await set(R(db,`${BANCO}/${user}/consumos/${fecha}`),{min:prev+min,por:CU,ts:Date.now()});
+    _bancoCache.delete(user);
+    const _b2=await getBancoUser(user,true);
+    await addLog(`⏳ Horas adelantadas aplicadas: ${min} min a ${user} el ${fecha} — origen: ${origenTxt(bancoOrigenes(_b2)[fecha])||'—'} — saldo restante ${saldo-min} min (por ${CU})`);
+    if(st)st.textContent=`✅ Aplicado. Saldo restante: ${fmtMinHM(saldo-min)}. Se refleja en Vista Semanal.`;
+    toast('⏳ Aplicado ✓','ok');el('bancoap-min').value='';renderBancoUser();
+  }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo aplicar','err');}
+  btn.disabled=false;
+});
+// HORAS ADELANTADAS
+async function cargarAdelForm(fecha){
+  const st=el('adel-status');if(!st||!fecha)return;
+  const dow=new Date(fecha+'T00:00:00').getDay();
+  if(dow!==6){st.textContent='⚠ Esa fecha no es sábado.';return;}
+  const v=await getAdelantoCfg(fecha,true);
+  if(v){el('adel-hasta').value=v.hasta||'19:00';st.textContent=`✅ Habilitado hasta las ${v.hasta} (por ${v.por||'?'})`;}
+  else st.textContent='Sin horas adelantadas en esta fecha.';
+}
+el('adel-fecha')?.addEventListener('change',()=>cargarAdelForm(el('adel-fecha').value));
+el('btn-adel')?.addEventListener('click',async()=>{
+  const fecha=el('adel-fecha').value,hasta=el('adel-hasta').value,st=el('adel-status');
+  if(!fecha||!hasta){toast('Elige el sábado y la hora límite','err');return;}
+  if(new Date(fecha+'T00:00:00').getDay()!==6){toast('La fecha debe ser sábado','err');return;}
+  const btn=el('btn-adel');btn.disabled=true;
+  try{
+    await set(R(db,`${ADELANTO}/${fecha}`),{hasta,por:CU,ts:Date.now()});
+    _adelCache.delete(fecha);
+    await addLog(`⏩ Horas adelantadas habilitadas: sábado ${fecha} hasta ${hasta} (por ${CU})`);
+    if(st)st.textContent=`✅ Habilitado hasta las ${hasta}. Los colaboradores ya pueden marcar su salida hasta esa hora.`;
+    toast('⏩ Sábado habilitado ✓','ok');
+  }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo guardar','err');}
+  btn.disabled=false;
+});
+el('btn-adel-quitar')?.addEventListener('click',async()=>{
+  const fecha=el('adel-fecha').value,st=el('adel-status');
+  if(!fecha){toast('Elige la fecha','err');return;}
+  try{
+    await set(R(db,`${ADELANTO}/${fecha}`),null);
+    _adelCache.delete(fecha);try{localStorage.removeItem(adelantoLocalKey(fecha));}catch(e){}
+    await addLog(`⏩ Horas adelantadas quitadas del sábado ${fecha} (por ${CU})`);
+    if(st)st.textContent='Quitado.';toast('Quitado ✓','ok');
+  }catch(e){toast('⛔ Error al quitar','err');}
 });
 // EMERGENCIA
 let _emergSR={};
@@ -8135,13 +8439,18 @@ async function buildSummary(desde,hasta,applyDisc){
         const almCfg=almCfgForDia(almGlobal,wk);
         const completo=dd.marcCount>=4;
         const hrsParcial=dd.marcCount<4?computeHrsParcial(dd.marcaciones,almCfg):dd.horas;
-        const{deficitMin,excedenteMin}=await deltaEntradaAlmuerzoDia(u,k,dd.marcaciones,almCfg,horcolUserCache,hrsParcial,completo);
-        return{k,deficitMin,excedenteMin,hrsParcial};
+        const{deficitMin,excedenteMin,adelantoMin,faltaTotalMin,bancoMin}=await deltaEntradaAlmuerzoDia(u,k,dd.marcaciones,almCfg,horcolUserCache,hrsParcial,completo);
+        return{k,deficitMin,excedenteMin,adelantoMin,faltaTotalMin,bancoMin,hrsParcial};
       }));
       const diasValidos=diasInfoRaw.filter(Boolean);
-      const acumuladoSemana=calcularAcumuladoSemana(diasValidos).map;
+      const acumRes=calcularAcumuladoSemana(diasValidos);
+      const acumuladoSemana=acumRes.map;
+      const bancoOrigU=bancoOrigenes(await getBancoUser(u));
+      const verNotaAdel=await getAdelantoNotaVisible();
       diasValidos.forEach(({k,hrsParcial})=>{
         const dd=summ[u].det[k];const tar=dd.tarifaDia;
+        {const adH=((acumRes.mapAdel||{})[k]||0)+((acumRes.mapBanco||{})[k]||0);
+         if(adH>0&&verNotaAdel)dd.diferencia=`${dd.diferencia} (+${Math.round(adH*60)} min adelantados: ${escHtml(trazaAdel(k,acumRes,bancoOrigU))})`;}
         const acum=acumuladoSemana[k]||0;
         const hrsAjustada=acum>0?Math.min(8,hrsParcial+acum):hrsParcial;
         const montoAuto=+((Math.min(hrsAjustada,8)/8)*tar).toFixed(2);
