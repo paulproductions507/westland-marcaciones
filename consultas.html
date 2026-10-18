@@ -48,10 +48,10 @@ h1,h2,h3,.sora{font-family:'Sora',sans-serif;margin:0}
 .tile{position:relative;min-width:0;border-radius:14px;overflow:hidden;border:1px solid var(--bd);background:var(--bg2)}
 .tile.part{border-color:#ffc857aa}.tile.part .hd{background:linear-gradient(135deg,#dba11f,#8f5f0c)}
 .tile.full{border-color:#58b4f7aa;box-shadow:0 0 0 1px #3fa9f533}.tile.full .hd{background:linear-gradient(135deg,#3fa9f5,#1b66b3)}
-.tile.dsp{border:2px solid #1fe48a;background:linear-gradient(180deg,#0c4a34,#073324);box-shadow:0 0 16px #1fe48a55}
+.tile.dsp{border:2px solid #1fe48a;background:linear-gradient(180deg,#0b3b2c,#062a20);box-shadow:0 0 14px #1fe48a40}
 .tile.dsp .hd{background:linear-gradient(135deg,#1fe48a,#0a8a4c)}.tile.dsp .hd b,.tile.dsp .hd small{color:#02261a}
-.tile.dsp .bd,.tile.dsp .ck{opacity:.8}.tile.dsp .ck{color:#9cf5c8}
-.tile.dsp::after{content:'';position:absolute;left:0;right:0;top:60%;height:3px;background:#eafff4;box-shadow:0 0 8px #1fe48a;pointer-events:none}
+.tile.dsp .bd{opacity:.8;text-decoration:line-through;text-decoration-color:#1fe48a;text-decoration-thickness:2px}
+.tile.dsp .ck{color:#9cf5c8}
 .tile .hd{background:linear-gradient(135deg,var(--ac2),#0b6f7d);padding:9px 6px;text-align:center}
 .tile .hd b{font:800 18px 'Sora'}.tile .hd small{display:block;font-size:10px;opacity:.85}
 .tile .bd{padding:8px 6px;font-size:11.5px;text-align:center;color:var(--mt);line-height:1.55}
@@ -80,11 +80,11 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
 .legend{display:flex;gap:6px;flex-wrap:wrap;margin:0 2px 10px}.legend .pill{font-size:10.5px}
 .trl{display:flex;flex-direction:column;gap:5px;margin-top:6px;font-size:11px;color:var(--ac);text-align:center}.trl b{font-family:'DM Mono'}
 .trow{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #17697a55}.trow b{width:74px;font:800 14px 'Sora'}.trow .tv{flex:1;font:700 14px 'DM Mono';color:var(--ac)}.trow input.f{flex:1;min-width:0;padding:9px}
-.dsp{width:100%;height:58px;border-radius:16px;border:0;font:800 17px 'Sora';color:#02343a;background:linear-gradient(135deg,var(--ac),var(--ac2));box-shadow:0 8px 22px #2de2c93a;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:width .4s,border-radius .4s,background .3s;margin:0 auto}
-.dsp:disabled{opacity:.4;box-shadow:none}
-.dsp.busy{width:58px;border-radius:50%;background:var(--sf2);border:1px solid var(--bd);pointer-events:none}.dsp.busy span{display:none}
-.dsp.busy::after{content:'';width:28px;height:28px;border:3px solid #2de2c940;border-top-color:var(--ac);border-radius:50%;animation:sp .8s linear infinite}
-.dsp.done{background:linear-gradient(135deg,#34e08a,#18b36b);box-shadow:0 8px 24px #34e08a55;animation:pop .5s}
+.dspbtn{width:100%;height:58px;border-radius:16px;border:0;font:800 17px 'Sora';color:#02343a;background:linear-gradient(135deg,var(--ac),var(--ac2));box-shadow:0 8px 22px #2de2c93a;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:width .4s,border-radius .4s,background .3s;margin:0 auto}
+.dspbtn:disabled{opacity:.4;box-shadow:none}
+.dspbtn.busy{width:58px;border-radius:50%;background:var(--sf2);border:1px solid var(--bd);pointer-events:none}.dspbtn.busy span{display:none}
+.dspbtn.busy::after{content:'';width:28px;height:28px;border:3px solid #2de2c940;border-top-color:var(--ac);border-radius:50%;animation:sp .8s linear infinite}
+.dspbtn.done{background:linear-gradient(135deg,#34e08a,#18b36b);box-shadow:0 8px 24px #34e08a55;animation:pop .5s}
 @keyframes sp{to{transform:rotate(360deg)}}@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.07)}100%{transform:scale(1)}}
 .dsp-done{display:flex;align-items:center;gap:12px;border:1px solid #34e08acc;background:linear-gradient(135deg,#34e08a22,#0f8a4e22);border-radius:16px;padding:12px 14px}
 .dsp-ck{width:42px;height:42px;flex:none;border-radius:50%;background:linear-gradient(135deg,#34e08a,#0f8a4e);display:grid;place-items:center;font:800 22px 'Sora';color:#02343a;animation:pop .5s}
@@ -481,7 +481,7 @@ function renderDsp(){
   if(!cur||DSPANIM)return;const x=cur,d=DSP[x.p],{a,s}=totalsOf(x),box=$('dspBox');
   if(d){box.innerHTML=`<div class="dsp-done"><div class="dsp-ck">✓</div><div><b style="font:800 16px 'Sora'">Despachado</b><div class="msg" style="margin:2px 0 0">${esc(d.n||d.u)} · ${new Date(d.ts).toLocaleString('es',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div>${ISADM?'<button class="btn sm" id="dspUndo" style="margin-left:auto">Reabrir</button>':''}</div>`;return}
   const no=a>0&&s===0;
-  box.innerHTML=`<button class="dsp" id="dspBtn" ${no?'disabled':''}><span>🚚 Despachar</span></button>${no?'<div class="msg" style="text-align:center">Surte al menos una tienda para poder despachar.</div>':''}`
+  box.innerHTML=`<button class="dspbtn" id="dspBtn" ${no?'disabled':''}><span>🚚 Despachar</span></button>${no?'<div class="msg" style="text-align:center">Surte al menos una tienda para poder despachar.</div>':''}`
 }
 function openDsp(){
   const x=cur,{a,s}=totalsOf(x),pend=a-s;const falt=STORES.filter(t=>Math.max(0,(x.s[t]||0)-sur(x.p,t))>0).map(L);
