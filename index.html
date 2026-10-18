@@ -1213,18 +1213,31 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div class="fg"><label>Fecha en que se quedaron</label><input type="date" class="fc" id="banco-fecha"></div>
             <div class="fg"><label>Minutos adelantados</label><input type="number" class="fc" id="banco-min" min="1" value="60"></div>
             <div class="fg"><label>Motivo / comentario</label><input type="text" class="fc" id="banco-motivo" placeholder="ej. Esperaron 3 contenedores después de las 5:00 pm"></div>
-            <div class="fg"><label>Colaboradores (mantén presionado para elegir varios)</label><select class="fc" id="banco-users" multiple size="6"></select></div>
-            <button class="btn bg bsm" id="btn-banco-todos" type="button" style="width:auto;margin-top:4px">Seleccionar todos</button>
+            <div class="fg"><label>Colaboradores que se quedaron</label>
+              <div id="banco-users-checks" style="display:flex;flex-direction:column;gap:9px;max-height:220px;overflow-y:auto;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px"></div>
+              <div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap">
+                <button class="btn bg bsm" id="btn-banco-todos" type="button" style="width:auto">Seleccionar todos</button>
+                <button class="btn bg bsm" id="btn-banco-ninguno" type="button" style="width:auto">Ninguno</button>
+                <span id="banco-sel-count" style="font-size:11px;color:var(--mt)"></span>
+              </div>
+            </div>
             <button class="btn bp bsm" id="btn-banco-add" type="button" style="width:auto;margin-top:4px">⏳ Registrar horas adelantadas</button>
-            <div style="font-size:11.5px;font-weight:800;color:var(--ac);margin:14px 0 4px">2) Aplicar saldo a un día</div>
-            <div class="fg"><label>Colaborador</label><select class="fc" id="bancoap-user"></select></div>
-            <div id="bancoap-saldo" style="font-size:11.5px;color:var(--mt);margin-bottom:6px"></div>
+            <div style="font-size:11.5px;font-weight:800;color:var(--ac);margin:14px 0 4px">2) Aplicar saldo a un día (varios colaboradores a la vez)</div>
             <div class="fg"><label>Día a cubrir</label><input type="date" class="fc" id="bancoap-fecha"></div>
-            <div class="fg"><label>Minutos a aplicar</label><input type="number" class="fc" id="bancoap-min" min="1"></div>
-            <button class="btn bg bsm" id="btn-bancoap-sug" type="button" style="width:auto;margin-top:4px">💡 Sugerir faltante de ese día</button>
-            <button class="btn bp bsm" id="btn-bancoap" type="button" style="width:auto;margin-top:4px">✅ Aplicar al día</button>
+            <div class="fg"><label>Minutos por defecto</label><input type="number" class="fc" id="bancoap-def" min="1" value="60"></div>
+            <div id="bancoap-checks" style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px"></div>
+            <div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap">
+              <button class="btn bg bsm" id="btn-bancoap-todos" type="button" style="width:auto">Marcar todos con saldo</button>
+              <button class="btn bg bsm" id="btn-bancoap-ninguno" type="button" style="width:auto">Ninguno</button>
+              <button class="btn bg bsm" id="btn-bancoap-def" type="button" style="width:auto">Poner minutos por defecto</button>
+              <span id="bancoap-sel-count" style="font-size:11px;color:var(--mt)"></span>
+            </div>
+            <button class="btn bg bsm" id="btn-bancoap-sug" type="button" style="width:auto;margin-top:6px">💡 Sugerir faltante de ese día</button>
+            <button class="btn bp bsm" id="btn-bancoap" type="button" style="width:auto;margin-top:6px">✅ Aplicar a los seleccionados</button>
             <div id="bancohrs-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
-            <div id="banco-detalle" style="margin-top:10px"></div>
+            <div class="fg" style="margin-top:12px"><label>Ver historial / saldo de</label><select class="fc" id="bancoap-user"></select></div>
+            <div id="bancoap-saldo" style="font-size:11.5px;color:var(--mt);margin-bottom:6px"></div>
+            <div id="banco-detalle" style="margin-top:6px"></div>
           </div></div>
 
           <div class="asec"><div class="ashdr" data-ac="ac-emerg"><span>🚨 Evento de emergencia (sismo / evacuación)</span><span class="ach">▾</span></div>
@@ -4319,11 +4332,12 @@ async function renderColabBaja(){
 function fillSelects(obj){
   const users=Object.values(obj||{});
   const withAll=['gen-user','bor-user','rpt-users'];
-  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user','tcol-user','descman-user','emerg-sr-user','banco-users','bancoap-user'].forEach(id=>{
+  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user','tcol-user','descman-user','emerg-sr-user','bancoap-user'].forEach(id=>{
     const s=el(id);if(!s)return;
     s.innerHTML=withAll.includes(id)?'<option value="__ALL__">— Todos —</option>':'';
-    users.filter(u=>!GERENTES.includes(u.user)).forEach(u=>s.innerHTML+=`<option value="${u.user}">${u.nombre} (${u.user})</option>`);
+    users.filter(u=>u&&typeof u==='object'&&u.user&&!GERENTES.includes(u.user)).forEach(u=>s.innerHTML+=`<option value="${u.user}">${u.nombre||u.user} (${u.user})</option>`);
   });
+  try{renderBancoChecks(obj);}catch(e){console.warn('checks banco',e);}
   try{renderEdUserChecks(obj);renderGenUserChecks(obj);renderBorUserChecks(obj);renderGenuUserChecks(obj);}catch(e){console.warn('checks usuarios',e);}
 }
 
@@ -7859,57 +7873,115 @@ el('adel-ocultar')?.addEventListener('change',async()=>{
     toast(c.checked?'🙈 Oculta para RRHH ✓':'👁 Visible para RRHH ✓','ok');
   }catch(e){c.checked=!c.checked;toast('⛔ No se pudo guardar','err');}
 });
-document.querySelector('[data-ac="ac-bancohrs"]')?.addEventListener('click',()=>setTimeout(()=>{renderBancoUser();cargarOcultarNota();},50));
-el('btn-banco-todos')?.addEventListener('click',()=>{Array.from(el('banco-users').options).forEach(o=>{o.selected=true;});});
+document.querySelector('[data-ac="ac-bancohrs"]')?.addEventListener('click',()=>setTimeout(()=>{renderBancoUser();renderBancoApplyList();cargarOcultarNota();},50));
+// ── Colaboradores con checks (registrar) y lista con saldo (aplicar) ──
+let _bancoUsersList=[];
+function bancoSelUsers(){return[...document.querySelectorAll('#banco-users-checks input[type=checkbox]:checked')].map(c=>c.dataset.user);}
+function updBancoCount(){const t=document.querySelectorAll('#banco-users-checks input[type=checkbox]').length,st=el('banco-sel-count');if(st)st.textContent=bancoSelUsers().length+' de '+t+' seleccionados';}
+function renderBancoChecks(obj){
+  const c=el('banco-users-checks');if(!c)return;
+  const prev=new Set(bancoSelUsers());
+  _bancoUsersList=Object.values(obj||{}).filter(u=>u&&typeof u==='object'&&u.user&&!GERENTES.includes(u.user)).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+  c.innerHTML=_bancoUsersList.map(u=>`<label style="display:flex;align-items:center;gap:9px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--tx);font-size:13px;margin:0"><input type="checkbox" data-user="${escHtml(u.user)}" ${prev.has(u.user)?'checked':''} style="width:auto;accent-color:var(--ac);flex-shrink:0"><span>${escHtml(u.nombre||u.user)} <span style="color:var(--mt);font-size:11px">(${escHtml(u.user)})</span></span></label>`).join('');
+  updBancoCount();
+}
+el('banco-users-checks')?.addEventListener('change',updBancoCount);
+el('btn-banco-todos')?.addEventListener('click',()=>{document.querySelectorAll('#banco-users-checks input[type=checkbox]').forEach(c=>c.checked=true);updBancoCount();});
+el('btn-banco-ninguno')?.addEventListener('click',()=>{document.querySelectorAll('#banco-users-checks input[type=checkbox]').forEach(c=>c.checked=false);updBancoCount();});
+
+// Lista de aplicar: una fila por colaborador con su saldo y sus minutos (editables)
+function bapDef(){return Math.max(1,parseInt(el('bancoap-def')?.value,10)||60);}
+function updBapCount(){const n=document.querySelectorAll('#bancoap-checks .bap-ck:checked').length,st=el('bancoap-sel-count');if(st)st.textContent=n+' seleccionados';}
+async function renderBancoApplyList(){
+  const c=el('bancoap-checks');if(!c)return;
+  const prev={};c.querySelectorAll('.bap-row').forEach(r=>{prev[r.dataset.user]={ck:r.querySelector('.bap-ck').checked,min:r.querySelector('.bap-min').value};});
+  if(!_bancoUsersList.length){c.innerHTML='<div style="font-size:12px;color:var(--mt)">Cargando colaboradores...</div>';return;}
+  const saldos=await Promise.all(_bancoUsersList.map(async u=>{try{return bancoSaldoMin(await getBancoUser(u.user,true));}catch(e){return 0;}}));
+  c.innerHTML=_bancoUsersList.map((u,i)=>{
+    const sal=saldos[i],pv=prev[u.user],def=Math.min(bapDef(),Math.max(sal,0)),dis=sal<=0;
+    return `<div class="bap-row" data-user="${escHtml(u.user)}" data-saldo="${sal}" style="display:flex;align-items:center;gap:8px;${dis?'opacity:.45':''}">
+      <input type="checkbox" class="bap-ck" ${dis?'disabled':''} ${pv&&pv.ck&&!dis?'checked':''} style="width:auto;accent-color:var(--ac);flex-shrink:0">
+      <div style="flex:1;min-width:0;font-size:12.5px;color:var(--tx);text-transform:none;letter-spacing:0">${escHtml(u.nombre||u.user)}<div style="font-size:10.5px;color:${sal>0?'#f59e0b':'var(--mt)'}">Saldo: ${sal>0?fmtMinHM(sal)+' ('+sal+' min)':'0'}</div></div>
+      <input type="number" class="fc bap-min" min="1" ${dis?'disabled':''} value="${pv&&pv.min!==''&&!dis?escHtml(pv.min):(def||'')}" placeholder="min" style="width:78px;flex-shrink:0;padding:6px 8px">
+    </div>`;}).join('');
+  updBapCount();
+}
+el('bancoap-checks')?.addEventListener('change',updBapCount);
+el('btn-bancoap-todos')?.addEventListener('click',()=>{document.querySelectorAll('#bancoap-checks .bap-ck:not(:disabled)').forEach(c=>c.checked=true);updBapCount();});
+el('btn-bancoap-ninguno')?.addEventListener('click',()=>{document.querySelectorAll('#bancoap-checks .bap-ck').forEach(c=>c.checked=false);updBapCount();});
+el('btn-bancoap-def')?.addEventListener('click',()=>{
+  const d=bapDef();
+  document.querySelectorAll('#bancoap-checks .bap-row').forEach(r=>{const sal=+r.dataset.saldo||0;if(sal>0)r.querySelector('.bap-min').value=Math.min(d,sal);});
+});
+el('bancoap-def')?.addEventListener('change',()=>el('btn-bancoap-def')?.click());
+
 el('btn-banco-add')?.addEventListener('click',async()=>{
   const fecha=el('banco-fecha').value,min=parseInt(el('banco-min').value,10),motivo=(el('banco-motivo').value||'').trim();
-  const users=Array.from(el('banco-users').selectedOptions).map(o=>o.value);
+  const users=bancoSelUsers();
   const st=el('bancohrs-status');
-  if(!fecha||!min||min<=0||!motivo||!users.length){toast('Completa fecha, minutos, motivo y colaboradores','err');return;}
+  if(!fecha||!min||min<=0||!motivo||!users.length){toast('Completa fecha, minutos, motivo y marca al menos un colaborador','err');return;}
   const btn=el('btn-banco-add');btn.disabled=true;
   try{
+    let nuevos=0;const ya=[];
     for(const u of users){
-      const id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-      await set(R(db,`${BANCO}/${u}/creditos/${id}`),{fecha,min,motivo,por:CU,ts:Date.now()});
-      _bancoCache.delete(u);
+      const id='e'+fecha.replace(/-/g,'')+'_'+u; // mismo id que "Editar marcaciones": una sola vez por colaborador y fecha
+      const bu=await getBancoUser(u,true);
+      if(bu&&bu.creditos&&bu.creditos[id]){ya.push(u);continue;}
+      await set(R(db,`${BANCO}/${u}/creditos/${id}`),{fecha,min,motivo,por:CU,ts:Date.now(),origen:'manual'});
+      _bancoCache.delete(u);nuevos++;
     }
-    await addLog(`⏳ Horas adelantadas registradas: ${users.join(', ')} — ${min} min del ${fecha} — "${motivo}" (por ${CU})`);
-    if(st)st.textContent=`✅ Registrado: ${min} min para ${users.length} colaborador(es).`;
-    toast('⏳ Registrado ✓','ok');el('banco-motivo').value='';renderBancoUser();
+    if(nuevos)await addLog(`⏳ Horas adelantadas registradas: ${users.filter(u=>!ya.includes(u)).join(', ')} — ${min} min del ${fecha} — "${motivo}" (por ${CU})`);
+    if(st)st.textContent=`✅ Registrado: ${min} min del ${fecha} para ${nuevos} colaborador(es).${ya.length?` Ya existían (no se duplican): ${ya.join(', ')}.`:''} Puedes elegir otra fecha y registrar de nuevo.`;
+    toast(`⏳ Registrado ✓ (${nuevos})${ya.length?` · ${ya.length} ya existían`:''}`,'ok',5000);
+    el('banco-motivo').value='';renderBancoUser();renderBancoApplyList();
   }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo registrar','err');}
   btn.disabled=false;
 });
 el('btn-bancoap-sug')?.addEventListener('click',async()=>{
-  const user=el('bancoap-user').value,fecha=el('bancoap-fecha').value,st=el('bancohrs-status');
-  if(!user||!fecha){toast('Elige colaborador y día','err');return;}
+  const fecha=el('bancoap-fecha').value,st=el('bancohrs-status');
+  const rows=[...document.querySelectorAll('#bancoap-checks .bap-row')].filter(r=>r.querySelector('.bap-ck').checked);
+  if(!fecha||!rows.length){toast('Elige el día y marca colaboradores','err');return;}
   try{
-    const marks=((await getHist(fecha))||[]).filter(m=>m.user===user);
-    if(marks.length<4){if(st)st.textContent='Ese día no tiene las 4 marcas completas; escribe los minutos a mano.';return;}
-    const dow=new Date(fecha+'T00:00:00').getDay();
+    const hist=(await getHist(fecha))||[];
     const almGlobal=await loadAlmuerzoGlobal();
-    const hrs=computeHrs(marks,almCfgForDia(almGlobal,dow));
-    const falta=Math.max(0,Math.round((8-hrs)*60));
-    const saldo=bancoSaldoMin(await getBancoUser(user,true));
-    const ya=await getBancoMinDia(user,fecha);
-    const sug=Math.max(0,Math.min(saldo,falta-ya));
-    el('bancoap-min').value=sug||'';
-    if(st)st.textContent=`Faltante de ese día: ${falta} min${ya?` (ya tiene ${ya} aplicados)`:''}. Saldo: ${saldo} min. Sugerido: ${sug} min.`;
+    const dow=new Date(fecha+'T00:00:00').getDay();
+    const notas=[];
+    for(const r of rows){
+      const user=r.dataset.user,sal=+r.dataset.saldo||0,marks=hist.filter(m=>m.user===user);
+      if(marks.length<4){notas.push(`${user}: sin las 4 marcas`);continue;}
+      const hrs=computeHrs(marks,almCfgForDia(almGlobal,dow));
+      const falta=Math.max(0,Math.round((8-hrs)*60));
+      const ya=await getBancoMinDia(user,fecha);
+      const sug=Math.max(0,Math.min(sal,falta-ya));
+      r.querySelector('.bap-min').value=sug||'';
+      notas.push(`${user}: falta ${falta} min → ${sug}`);
+    }
+    if(st)st.textContent='Sugerido — '+notas.join(' · ');
   }catch(e){if(st)st.textContent='No se pudo calcular el faltante.';}
 });
 el('btn-bancoap')?.addEventListener('click',async()=>{
-  const user=el('bancoap-user').value,fecha=el('bancoap-fecha').value,min=parseInt(el('bancoap-min').value,10),st=el('bancohrs-status');
-  if(!user||!fecha||!min||min<=0){toast('Completa colaborador, día y minutos','err');return;}
+  const fecha=el('bancoap-fecha').value,st=el('bancohrs-status');
+  const rows=[...document.querySelectorAll('#bancoap-checks .bap-row')].filter(r=>r.querySelector('.bap-ck').checked);
+  if(!fecha){toast('Elige el día a cubrir','err');return;}
+  if(!rows.length){toast('Marca al menos un colaborador','err');return;}
   const btn=el('btn-bancoap');btn.disabled=true;
+  const ok=[],mal=[];
   try{
-    const b=await getBancoUser(user,true);const saldo=bancoSaldoMin(b);
-    if(min>saldo){toast(`El saldo disponible es ${saldo} min`,'err');btn.disabled=false;return;}
-    const prev=+(((b.consumos||{})[fecha]||{}).min)||0;
-    await set(R(db,`${BANCO}/${user}/consumos/${fecha}`),{min:prev+min,por:CU,ts:Date.now()});
-    _bancoCache.delete(user);
-    const _b2=await getBancoUser(user,true);
-    await addLog(`⏳ Horas adelantadas aplicadas: ${min} min a ${user} el ${fecha} — origen: ${origenTxt(bancoOrigenes(_b2)[fecha])||'—'} — saldo restante ${saldo-min} min (por ${CU})`);
-    if(st)st.textContent=`✅ Aplicado. Saldo restante: ${fmtMinHM(saldo-min)}. Se refleja en Vista Semanal.`;
-    toast('⏳ Aplicado ✓','ok');el('bancoap-min').value='';renderBancoUser();
+    for(const r of rows){
+      const user=r.dataset.user,min=parseInt(r.querySelector('.bap-min').value,10);
+      if(!min||min<=0){mal.push(`${user} (sin minutos)`);continue;}
+      const b=await getBancoUser(user,true),saldo=bancoSaldoMin(b);
+      if(min>saldo){mal.push(`${user} (saldo ${saldo} min)`);continue;}
+      const prev=+(((b.consumos||{})[fecha]||{}).min)||0;
+      await set(R(db,`${BANCO}/${user}/consumos/${fecha}`),{min:prev+min,por:CU,ts:Date.now()});
+      _bancoCache.delete(user);
+      const _b2=await getBancoUser(user,true);
+      await addLog(`⏳ Horas adelantadas aplicadas: ${min} min a ${user} el ${fecha} — origen: ${origenTxt(bancoOrigenes(_b2)[fecha])||'—'} — saldo restante ${saldo-min} min (por ${CU})`);
+      ok.push(`${user} ${min}m`);
+    }
+    if(st)st.textContent=`${ok.length?`✅ Aplicado a ${ok.length}: ${ok.join(', ')}. Se refleja en Vista Semanal. `:''}${mal.length?`⚠ No aplicado: ${mal.join(', ')}.`:''}`;
+    toast(ok.length?`⏳ Aplicado a ${ok.length} ✓${mal.length?` · ${mal.length} con problema`:''}`:'⚠ No se aplicó a nadie',ok.length?'ok':'err',5000);
+    renderBancoUser();renderBancoApplyList();
   }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo aplicar','err');}
   btn.disabled=false;
 });
