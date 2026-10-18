@@ -349,7 +349,7 @@ function renderProd(){
     return `<div class="tile ${cls} ${S.on&&!cl?'sel':''}" data-t="${t}"><div class="hd"><b>${L(t)}</b><small>${x.p}</small></div>
       <div class="bd">Distribuir: <b>${fmt(a)}</b><br>Surtidas: <b>${fmt(s)}</b><br>Pendiente: <b style="color:${pend?'var(--wn)':'var(--ok)'}">${fmt(pend)}</b>${trs.length?`<div class="tr">${t==='CRISTAL'?'Proforma':'Transf'}: ${trs.map(esc).join(', ')}</div>`:''}${t==='CRISTAL'&&cl?'<div class="tr">Por proforma · clientes</div>':''}</div>
       ${cl?`<div style="padding:0 6px 8px"><button class="btn pri sm" data-cli="${x.p}" style="width:100%" ${isD?'disabled':''}>👥 Clientes</button></div>`:`<label class="ck"><input type="checkbox" data-ck="${t}" ${S.on?'checked':''} ${dis?'disabled':''}> ${dis?(a===0?'Sin asignar':isD?'Despachado':'Surtido ✓'):'Surtido'}</label>
-      <div class="ed"><input type="number" min="1" inputmode="numeric" data-q="${t}" value="${S.q}" placeholder="Cant.">${trBlock(t,S)}</div>`}</div>`}).join('');
+      <div class="ed"><input type="number" min="1" inputmode="numeric" data-q="${t}" value="${S.q}" placeholder="Cant.">${trBlock(t,S)}</div>`}${t==='CRISTAL'?`<div style="padding:0 6px 8px"><button class="btn sm" data-pz="${x.p}" style="width:100%">🏷 Etiquetas por pieza</button></div>`:''}</div>`}).join('');
   $('phist').innerHTML=histTable(entries().filter(e=>e.p===x.p).sort((a,b)=>b.ts-a.ts),true);
   renderDsp();$('chkAll').disabled=!!DSP[x.p];
   updateBar()
@@ -361,7 +361,7 @@ function histTable(list,del){
   if(!list.length)return '<div class="msg">Aún sin movimientos.</div>';
   return `<div class="scroll"><table><tr><th>Fecha</th><th>Tienda</th><th class="n">Cant.</th><th>Transf.</th><th>Surtidor</th>${del?'<th></th>':''}</tr>${list.map(e=>`<tr><td>${new Date(e.ts).toLocaleString('es',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td><td>${L(e.t)}${e.cn?`<br><small style="color:var(--mt)">${esc(e.cn)}</small>`:''}</td><td class="n">${fmt(e.q)}</td><td>${esc(e.tr||"—")}</td><td>${esc(e.n||e.u)}</td>${del?`<td>${(ISADM||e.u===USER)?`<button class="btn sm" data-del="${e.k}">✕</button>`:''}</td>`:''}</tr>`).join('')}</table></div>`}
 $('phist').addEventListener('click',async e=>{const k=e.target.dataset.del;if(!k)return;if(!confirm('¿Eliminar este movimiento de surtido?'))return;await remove(R(db,`${BASE}/${k}`));toast('Movimiento eliminado')});
-$('tiles').addEventListener('click',e=>{const b=e.target.closest('[data-cli]');if(b)openCli(b.dataset.cli);const n=e.target.closest('[data-trnew]');if(n){const t=n.dataset.trnew;sel[t].nw=true;sel[t].tr='';renderProd();const i=document.querySelector(`[data-tr="${t}"]`);if(i)i.focus()}});
+$('tiles').addEventListener('click',e=>{const pz=e.target.closest('[data-pz]');if(pz){openPz(pz.dataset.pz);return}const b=e.target.closest('[data-cli]');if(b)openCli(b.dataset.cli);const n=e.target.closest('[data-trnew]');if(n){const t=n.dataset.trnew;sel[t].nw=true;sel[t].tr='';renderProd();const i=document.querySelector(`[data-tr="${t}"]`);if(i)i.focus()}});
 $('tiles').addEventListener('change',e=>{
   const t=e.target.dataset.ck;if(t){sel[t].on=e.target.checked;renderProd();return}
   if(e.target.dataset.q){sel[e.target.dataset.q].q=parseInt(e.target.value)||0;updateBar()}
@@ -843,6 +843,55 @@ $('mlblBody').addEventListener('input',e=>{
   if(e.target.id!=='lblFrom'&&e.target.id!=='lblTo')return;
   lblSt.from=parseInt($('lblFrom').value,10)||1;lblSt.to=parseInt($('lblTo').value,10)||1;
   $('lblPrint').textContent=lblBtnTxt();$('lblPrev').innerHTML=lblPreviewHTML();paintPreview($('lblPrev'))
+});
+// ---------- Etiquetas por pieza (Cristal) · solo número de producto, 12 por hoja ----------
+let pzSt=null;
+const PZ_MAX_HOJAS=30;
+function zplPieces(p,k){
+  const out=['^XA^CI28^PW812^LL609^LH0,0','^FO274,0^GB1,609,1^FS','^FO542,0^GB1,609,1^FS'];
+  for(let r=1;r<4;r++)out.push(`^FO0,${14+r*146-8}^GB812,1,1^FS`);
+  for(let i=0;i<k;i++){const col=i%3,row=Math.floor(i/3),x=10+col*268,y=14+row*146;
+    out.push(`^FO${x},${y}^A0N,44,34^FD${zs(p)}^FS`,`^FO${x+8},${y+54}^BY2^BCN,70,N,N,N,A^FD${zs(p)}^FS`)}
+  out.push('^PQ1^XZ');return out.join('\n')
+}
+function pzSheetHTML(p,k){
+  let h='<div class="lbw"><div class="lbp">';
+  [274,542].forEach(x=>h+=`<div style="position:absolute;left:${x}px;top:0;width:1px;height:609px;background:#bbb"></div>`);
+  [1,2,3].forEach(r=>h+=`<div style="position:absolute;left:0;top:${14+r*146-8}px;width:812px;height:1px;background:#bbb"></div>`);
+  for(let i=0;i<k;i++){const col=i%3,row=Math.floor(i/3),x=10+col*268,y=14+row*146;
+    h+=`<div style="position:absolute;left:${x}px;top:${y}px;font:800 44px Arial,sans-serif;line-height:44px">${esc(p)}</div>`
+      +`<svg class="bcg" data-code="${esc(p)}" style="position:absolute;left:${x+8}px;top:${y+54}px"></svg>`}
+  return h+'</div></div>'
+}
+function pzBtnTxt(){const q=pzSt.q;return q>0?`🖨 Imprimir ${q} etiqueta(s) · ${Math.ceil(q/PER)} hoja(s)`:'🖨 Imprimir'}
+function pzPaint(){
+  const k=Math.max(0,Math.min(PER,pzSt.q));
+  $('pzPrev').innerHTML=k?pzSheetHTML(pzSt.p,k):'<div class="msg">Escribe una cantidad</div>';
+  $('pzPrint').textContent=pzBtnTxt();paintPreview($('pzPrev'))
+}
+function openPz(p){
+  const x=byProd[p];if(!x)return;
+  pzSt={p:String(x.p),ref:x.ref,q:x.s.CRISTAL||1};
+  history.pushState({c:4},'');$('mlbl').classList.remove('hide');
+  $('mlblBody').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2 style="font-size:17px">Etiquetas por pieza · Cristal</h2><button class="btn sm" id="pzX">Cerrar</button></div>
+  <div class="msg" style="margin:4px 0 10px">Estilo <b>${esc(x.ref)}</b> · Producto <b>${esc(x.p)}</b> · Cristal en recibo: <b>${fmt(x.s.CRISTAL||0)}</b> pzas. Cada hoja lleva hasta ${PER} etiquetas para recortar y pegar en cada pieza.</div>
+  <div id="pzPrev"></div>
+  <div style="margin-top:12px"><div class="lbl">Cantidad de etiquetas</div><input class="f" type="number" inputmode="numeric" min="1" id="pzQty" value="${pzSt.q}"></div>
+  <button class="btn pri" id="pzPrint" style="width:100%;margin-top:14px;padding:13px"></button>`;
+  pzPaint()
+}
+$('mlblBody').addEventListener('click',async e=>{
+  if(e.target.id==='pzX'){history.back();return}
+  if(e.target.id==='pzPrint'){
+    const q=pzSt.q;if(!(q>=1)){toast('Escribe una cantidad válida');return}
+    const sheets=Math.ceil(q/PER);if(sheets>PZ_MAX_HOJAS){toast(`Máximo ${PZ_MAX_HOJAS} hojas (${PZ_MAX_HOJAS*PER} etiquetas) por envío`);return}
+    let zpl='';for(let r=q;r>0;r-=PER)zpl+=zplPieces(pzSt.p,Math.min(PER,r))+'\n';
+    e.target.disabled=true;try{await enqueuePrint(zpl,{tr:'PIEZAS '+pzSt.p,t:'CRISTAL',n:sheets});history.back()}catch(err){toast('Error: '+(err.code||err.message));e.target.disabled=false}
+  }
+});
+$('mlblBody').addEventListener('input',e=>{
+  if(e.target.id!=='pzQty')return;
+  pzSt.q=Math.max(0,parseInt(e.target.value,10)||0);pzPaint()
 });
 $('btnPrTest').onclick=async()=>{
   if(!confirm('¿Imprimir una hoja de prueba en la Zebra?'))return;
