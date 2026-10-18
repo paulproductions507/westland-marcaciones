@@ -122,7 +122,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
           <div><div class="lbl">Despachadas</div><div class="sora" style="font-size:18px" id="gRef">0</div></div>
           <div><div class="lbl">Bultos</div><div class="sora" style="font-size:18px" id="gBul">0</div></div>
         </div>
-        <details class="card" id="trfPanel" open><summary>🚚 Transferencias por tienda <span class="pill p-aq" id="trfPanelCnt" style="margin-left:6px">0 / 0</span></summary><div id="trfPanelBody"></div></details>
+
         <div class="card">
           <div class="slbl">Escanear o escribir</div><div class="search"><label class="sbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2de2c9" stroke-width="2" stroke-linecap="round"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M7 9v6M11 9v6M14 9v6M17 9v6"/></svg><input id="q" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Código de barras, estilo o producto"></label><button class="btn pri" id="qgo" style="height:46px;padding:0 18px">Buscar</button></div>
           <div id="qmsg" class="msg">Al escanear el código se abre el producto directo.</div>
@@ -150,6 +150,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
 
     <!-- TRANSFERENCIAS -->
     <div id="v-trf" class="hide">
+      <details class="card" id="trfPanel" open><summary>🚚 Transferencias por tienda <span class="pill p-aq" id="trfPanelCnt" style="margin-left:6px">0 / 0</span></summary><div id="trfPanelBody"></div></details>
       <div class="card"><div class="search"><input id="tq" inputmode="numeric" placeholder="Buscar por # de transferencia…"></div></div>
       <div class="back hide" id="trfBack"><button class="btn sm" id="trfBackBtn">← Tiendas</button></div>
       <div id="trfList"></div>
@@ -184,6 +185,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
   </div>
 
   <div class="modal hide" id="mcli"><div id="mcliBody"></div></div>
+  <div class="modal hide" id="mask" style="align-items:center;padding:16px"><div id="maskBody" style="border-radius:20px;max-width:380px"></div></div>
   <div class="modal hide" id="mdsp" style="align-items:center;padding:16px"><div id="mdspBody" style="border-radius:20px;max-width:380px"></div></div>
   <div class="bottom hide" id="bar"><div class="sum" id="bsum"></div><button class="btn pri" id="bsave">Guardar surtido</button></div>
 </div>
@@ -234,13 +236,15 @@ async function showRecList(){
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();offLog=offCli=offDsp=offTrf=offTb=offDs=null;cur=null;RECIBO=null;$('recAdm').classList.toggle('hide',!ISADM);
   $('v-recibo').classList.add('hide');$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Consultas';
   await loadUploaded();const ids=Object.keys(RECS);
-  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><div class="lbl">Recibo</div><div class="sora" style="font-size:24px;color:var(--ac)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos</div></div><div style="text-align:right"><div class="big" id="ra-${id}" style="font:800 22px Sora;color:var(--ac)">…</div><div class="lbl">avance</div></div></div><div class="bar"><i id="rb-${id}" style="width:0"></i></div>${ISADM&&RECS[id].up?`<div style="text-align:right;margin-top:10px"><button class="btn sm" data-delrec="${id}">🗑 Quitar recibo</button></div>`:''}</div>`}).join('');
+  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><div class="lbl">Recibo</div><div class="sora" style="font-size:24px;color:var(--ac)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos</div><div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}</div></div><div style="text-align:right"><div class="big" id="ra-${id}" style="font:800 22px Sora;color:var(--ac)">…</div><div class="lbl">avance</div></div></div><div class="bar"><i id="rb-${id}" style="width:0"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn sm" data-fecharec="${id}">📅 Fecha</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
   for(const id of ids){try{const sn=await get(R(db,`meta_v1/consultas/${id}/log`));const lg=Object.values(sn.val()||{});const it=RECS[id].items,st=storesFor(it);let A=0,S=0;const m={};lg.forEach(e=>{m[e.p+'|'+e.t]=(m[e.p+'|'+e.t]||0)+(e.q||0)});it.forEach(x=>st.forEach(t=>{const a=x.s[t]||0;A+=a;S+=Math.min(m[x.p+'|'+t]||0,a)}));const pc=A?Math.round(S/A*100):0;$('ra-'+id).textContent=pc+'%';$('rb-'+id).style.width=pc+'%'}catch(e){$('ra-'+id).textContent='—'}}
 }
 $('recList').addEventListener('click',async e=>{
+  const fe=e.target.closest('[data-fecharec]');
+  if(fe){e.stopPropagation();const id=fe.dataset.fecharec;ask('Fecha de ingreso · recibo '+id,[{k:'f',label:'Fecha de ingreso',type:'date',value:FECHAS[id]||today()}],'Aplicar',async v=>{if(!v.f){toast('Elige una fecha');return false}try{await set(R(db,'meta_v1/consultas_fechas/'+id),v.f);FECHAS[id]=v.f;showRecList()}catch(err){toast('Error: '+(err.code||err.message));return false}});return}
   const d=e.target.closest('[data-delrec]');
   if(d){e.stopPropagation();const id=d.dataset.delrec;if(!confirm(`¿Quitar el recibo ${id} de la lista?\nLo ya surtido y despachado queda registrado, pero el recibo no se podrá abrir hasta subirlo de nuevo.`))return;
-    try{await remove(R(db,'meta_v1/consultas_recs/'+id));toast('Recibo quitado');showRecList()}catch(err){toast('Error: '+(err.code||err.message))}return}
+    try{await remove(R(db,'meta_v1/consultas_recs/'+id));try{await remove(R(db,'meta_v1/consultas_fechas/'+id))}catch(e2){}delete FECHAS[id];toast('Recibo quitado');showRecList()}catch(err){toast('Error: '+(err.code||err.message))}return}
   const c=e.target.closest('[data-rec]');if(c)selectRecibo(c.dataset.rec)});
 
 // ---------- sesión compartida con la app de marcaciones ----------
@@ -440,7 +444,7 @@ function trfCard(g){
 function renderTrf(){
   const box=$('trfList'),ae=document.activeElement;if(ae&&ae.tagName==='INPUT'&&ae.dataset.bk&&box.contains(ae))return;
   const q=$('tq').value.trim(),all=trfGroups(),none='<div class="msg">No hay transferencias registradas.</div>';
-  $('trfBack').classList.toggle('hide',!(trfStore&&!q));
+  $('trfBack').classList.toggle('hide',!(trfStore&&!q));$('trfPanel').classList.toggle('hide',!!trfStore||!!q);
   if(q){box.innerHTML=all.filter(g=>String(g.tr).includes(q)).sort((a,b)=>b.ts-a.ts).map(trfCard).join('')||none;return}
   if(!trfStore){box.innerHTML='<div class="grid">'+STORES.map(t=>{const gs=all.filter(g=>g.t===t);const pz=gs.reduce((a,g)=>a+gPz(g),0),bu=gs.reduce((a,g)=>a+gBul(g),0);
     return `<div class="tile" data-ts="${t}" style="cursor:pointer"><div class="hd"><b>${L(t)}</b><small>${gs.length} transf.</small></div><div class="bd">Pzas: <b>${fmt(pz)}</b><br>Bultos: <b>${fmtB(bu)}</b></div></div>`}).join('')+'</div>';return}
@@ -517,6 +521,7 @@ $('trfPanelBody').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.da
 
 // ---------- Recibos subidos por Excel ----------
 async function loadUploaded(){
+  try{const f=await get(R(db,'meta_v1/consultas_fechas'));FECHAS=f.val()||{}}catch(e){}
   try{const s=await get(R(db,'meta_v1/consultas_recs'));const v=s.val()||{};
     for(const id of Object.keys(v)){if(BUILTIN.has(id))continue;const it=Object.values(v[id].items||{}).sort((a,b)=>(a.n||0)-(b.n||0));RECS[id]={items:it.map(x=>({...x,s:x.s||{}})),up:true}}
     for(const id of Object.keys(RECS)){if(!BUILTIN.has(id)&&!(id in v))delete RECS[id]}
@@ -568,12 +573,15 @@ $('recFile').onchange=async e=>{
     const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});let res=null;
     for(const sn of wb.SheetNames){const aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});const r=parseRecibo(aoa);if(!r.err){res=r;break}res=res||r}
     if(res.err){alert(res.err+'\n\nEncabezados leídos:\n'+res.headers.join(' | ')+'\n\nBaja la plantilla para ver el formato.');return}
-    let id=prompt(`Se leyeron ${res.items.length} referencias.\n¿Número de recibo?`,(f.name.match(/\d{5,}/)||[''])[0]);if(id===null)return;
-    id=id.trim().replace(/[^A-Za-z0-9_-]/g,'');if(!id){toast('Número de recibo inválido');return}
-    if(BUILTIN.has(id)){alert('El recibo '+id+' ya viene incluido en la app. Usa otro número.');return}
-    if(!confirm(`${RECS[id]?'Se REEMPLAZARÁ':'Se cargará'} el recibo ${id}: ${fmt(res.items.length)} referencias · ${fmtB(totBul(res.items))} bultos.${res.dup?`\n(${res.dup} filas repetidas ignoradas)`:''}\n¿Continuar?`))return;
-    await set(R(db,'meta_v1/consultas_recs/'+id),{items:res.items,by:USER,ts:Date.now(),file:f.name});
-    toast('✅ Recibo '+id+' cargado');showRecList()
+    ask(`Cargar recibo · ${fmt(res.items.length)} referencias`,[{k:'id',label:'Número de recibo',type:'text',value:(f.name.match(/\d{5,}/)||[''])[0]},{k:'f',label:'Fecha de ingreso del recibo',type:'date',value:today()}],'Cargar',async v=>{
+      const id=(v.id||'').trim().replace(/[^A-Za-z0-9_-]/g,'');
+      if(!id){toast('Número de recibo inválido');return false}
+      if(!v.f){toast('Elige la fecha de ingreso');return false}
+      if(BUILTIN.has(id)){alert('El recibo '+id+' ya viene incluido en la app. Usa otro número.');return false}
+      if(!confirm(`${RECS[id]?'Se REEMPLAZARÁ':'Se cargará'} el recibo ${id} (${fdate(v.f)}): ${fmt(res.items.length)} referencias · ${fmtB(totBul(res.items))} bultos.${res.dup?`\n(${res.dup} filas repetidas ignoradas)`:''}\n¿Continuar?`))return false;
+      try{await set(R(db,'meta_v1/consultas_recs/'+id),{items:res.items,by:USER,ts:Date.now(),file:f.name,fecha:v.f});await set(R(db,'meta_v1/consultas_fechas/'+id),v.f);FECHAS[id]=v.f;toast('✅ Recibo '+id+' cargado');showRecList()}
+      catch(err){toast('Error: '+(err.code||err.message));return false}
+    })
   }catch(err){toast('No se pudo cargar el Excel: '+(err.message||err))}
 };
 
@@ -592,19 +600,35 @@ async function saveBultos(key){
     i.blur();renderTrf()}catch(err){toast('Error: '+(err.code||err.message))}
 }
 
+
+// ---------- Fechas y ventana de captura ----------
+let FECHAS={},askCb=null,dspWhen=null;
+const nowLocal=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
+const toLocalIn=ts=>{const d=new Date(ts);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
+const fdate=f=>{const d=new Date(f+'T00:00:00');return isNaN(d)?f:d.toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'})};
+const fdt=ts=>new Date(ts).toLocaleString('es',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+function ask(title,fields,okTxt,cb){
+  $('maskBody').innerHTML=`<h2 style="font-size:18px;margin-bottom:4px">${esc(title)}</h2>${fields.map(f=>`<div class="lbl" style="margin-top:12px">${esc(f.label)}</div><input class="f" id="ask_${f.k}" type="${f.type}" value="${esc(f.value||'')}" placeholder="${esc(f.ph||'')}">`).join('')}<div style="display:flex;gap:10px;margin-top:16px"><button class="btn" id="askNo" style="flex:1">Cancelar</button><button class="btn pri" id="askOk" style="flex:1">${esc(okTxt)}</button></div>`;
+  askCb=cb;$('mask').classList.remove('hide')}
+$('maskBody').addEventListener('click',async e=>{
+  if(e.target.id==='askNo'){$('mask').classList.add('hide');return}
+  if(e.target.id==='askOk'){const vals={};document.querySelectorAll('#maskBody [id^="ask_"]').forEach(i=>vals[i.id.slice(4)]=i.value);e.target.disabled=true;const r=await askCb(vals);e.target.disabled=false;if(r!==false)$('mask').classList.add('hide')}});
+
 // ---------- Despacho (lista de empaque) ----------
 const dItems=d=>Object.values(d.items||{});
 function renderDespacho(){
+  const ae=document.activeElement;if(ae&&ae.id==='dspWhen')return;
   const gs=trfGroups().filter(g=>!dspOfKey(g.key));
   const pick=STORES.map(t=>{const l=gs.filter(g=>g.t===t).sort((a,b)=>b.ts-a.ts);if(!l.length)return'';
     return `<div style="margin-top:10px"><div style="display:flex;align-items:center;justify-content:space-between"><b class="sora">${L(t)}</b><button class="btn sm" data-pall="${t}">Todas</button></div>${l.map(g=>`<label class="prow"><input type="checkbox" data-pk="${g.key}" ${dspSel.has(g.key)?'checked':''}><span class="tv">${esc(g.tr||'Sin transf.')}</span><span class="msg" style="margin:0">${gBul(g)?fmtB(gBul(g))+' bultos':'<span class="neg">sin bultos</span>'} · ${fmt(gPz(g))} pzas</span></label>`).join('')}</div>`}).join('');
   const sel=gs.filter(g=>dspSel.has(g.key));[...dspSel].forEach(k=>{if(!gs.some(g=>g.key===k))dspSel.delete(k)});
-  $('dspPick').innerHTML=(pick||'<div class="msg">No hay transferencias pendientes de despachar.</div>')+`<div style="margin-top:14px;display:flex;gap:10px;align-items:center"><div class="msg" style="flex:1;margin:0"><b>${sel.length}</b> transf. · <b>${fmtB(sel.reduce((a,g)=>a+gBul(g),0))}</b> bultos</div><button class="btn pri" id="dspCreate" ${sel.length?'':'disabled'}>Crear despacho</button></div>`;
+  $('dspPick').innerHTML=(pick||'<div class="msg">No hay transferencias pendientes de despachar.</div>')+`<div style="margin-top:14px"><div class="lbl">Fecha y hora del despacho</div><input type="datetime-local" class="f" id="dspWhen" value="${dspWhen||nowLocal()}"></div>`+`<div style="margin-top:14px;display:flex;gap:10px;align-items:center"><div class="msg" style="flex:1;margin:0"><b>${sel.length}</b> transf. · <b>${fmtB(sel.reduce((a,g)=>a+gBul(g),0))}</b> bultos</div><button class="btn pri" id="dspCreate" ${sel.length?'':'disabled'}>Crear despacho</button></div>`;
   const ds=Object.entries(DS).sort((a,b)=>(b[1].seq||0)-(a[1].seq||0));
   $('dspList').innerHTML=ds.map(([id,d])=>{const it=dItems(d),tb=it.reduce((a,i)=>a+(i.b||0),0),tp=it.reduce((a,i)=>a+(i.pz||0),0);
-    return `<details class="card" data-k="${id}" ${dspOpen.has(id)?'open':''}><summary>📦 ${esc(d.num)} <span class="pill p-aq" style="margin-left:6px">${it.length} transf. · ${fmtB(tb)} bultos</span></summary><div class="msg">${esc(d.n||d.u)} · ${d.d||''}</div><div class="scroll"><table><tr><th>Tienda</th><th>Transferencia</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${it.map(i=>`<tr><td>${L(i.t)}</td><td>${esc(i.tr||'—')}</td><td class="n">${fmtB(i.b||0)}</td><td class="n">${fmt(i.pz||0)}</td></tr>`).join('')}<tr><td colspan="2"><b>TOTAL</b></td><td class="n"><b>${fmtB(tb)}</b></td><td class="n"><b>${fmt(tp)}</b></td></tr></table></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-dx="${id}">📥 Excel</button><button class="btn sm" data-dp="${id}">🖨 Imprimir / PDF</button><button class="btn sm" data-dm="${id}">✉ Correo</button>${ISADM?`<button class="btn sm" data-dd="${id}">🗑 Eliminar</button>`:''}</div></details>`}).join('')||'<div class="msg">Aún no hay despachos.</div>'
+    return `<details class="card" data-k="${id}" ${dspOpen.has(id)?'open':''}><summary>📦 ${esc(d.num)} <span class="pill p-aq" style="margin-left:6px">${it.length} transf. · ${fmtB(tb)} bultos</span></summary><div class="msg">${esc(d.n||d.u)} · ${fdt(d.ts)}</div><div class="scroll"><table><tr><th>Tienda</th><th>Transferencia</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${it.map(i=>`<tr><td>${L(i.t)}</td><td>${esc(i.tr||'—')}</td><td class="n">${fmtB(i.b||0)}</td><td class="n">${fmt(i.pz||0)}</td></tr>`).join('')}<tr><td colspan="2"><b>TOTAL</b></td><td class="n"><b>${fmtB(tb)}</b></td><td class="n"><b>${fmt(tp)}</b></td></tr></table></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-dx="${id}">📥 Excel</button><button class="btn sm" data-dp="${id}">🖨 Imprimir / PDF</button><button class="btn sm" data-dm="${id}">✉ Correo</button>${ISADM?`<button class="btn sm" data-dt="${id}">📅 Fecha</button><button class="btn sm" data-dd="${id}">🗑 Eliminar</button>`:''}</div></details>`}).join('')||'<div class="msg">Aún no hay despachos.</div>'
 }
+$('v-dsp').addEventListener('input',e=>{if(e.target.id==='dspWhen')dspWhen=e.target.value});
 $('v-dsp').addEventListener('change',e=>{const k=e.target.dataset.pk;if(!k)return;e.target.checked?dspSel.add(k):dspSel.delete(k);renderDespacho()});
 $('v-dsp').addEventListener('toggle',e=>{const k=e.target.dataset&&e.target.dataset.k;if(!k)return;e.target.open?dspOpen.add(k):dspOpen.delete(k)},true);
 $('v-dsp').addEventListener('click',async e=>{
@@ -613,25 +637,27 @@ $('v-dsp').addEventListener('click',async e=>{
   const x=e.target.closest('[data-dx]');if(x){dspExcel(x.dataset.dx);return}
   const p=e.target.closest('[data-dp]');if(p){dspPrint(p.dataset.dp);return}
   const m=e.target.closest('[data-dm]');if(m){dspMail(m.dataset.dm);return}
+  const dt=e.target.closest('[data-dt]');if(dt){const id=dt.dataset.dt;ask('Fecha y hora · '+DS[id].num,[{k:'w',label:'Fecha y hora del despacho',type:'datetime-local',value:toLocalIn(DS[id].ts)}],'Aplicar',async v=>{const ts=new Date(v.w).getTime();if(!isFinite(ts)){toast('Fecha inválida');return false}try{await set(R(db,`${DSB}/${id}/ts`),ts);await set(R(db,`${DSB}/${id}/d`),v.w.slice(0,10))}catch(err){toast('Error: '+(err.code||err.message));return false}});return}
   const d=e.target.closest('[data-dd]');if(d){const id=d.dataset.dd;if(!confirm(`¿Eliminar el despacho ${DS[id].num}? Sus transferencias quedan libres para otro despacho.`))return;try{await remove(R(db,`${DSB}/${id}`));toast('Despacho eliminado')}catch(err){toast('Error: '+(err.code||err.message))}}
 });
 async function createDsp(){
   const rows=trfGroups().filter(g=>dspSel.has(g.key)&&!dspOfKey(g.key));if(!rows.length)return;
   const sin=rows.filter(g=>!gBul(g));
   if(sin.length&&!confirm(`${sin.length} transferencia(s) no tienen bultos globales (${sin.map(g=>L(g.t)+' '+(g.tr||'—')).join(', ')}).\n¿Crear el despacho igual?`))return;
+  const wv=($('dspWhen')&&$('dspWhen').value)||nowLocal(),wts=new Date(wv).getTime();if(!isFinite(wts)){toast('Fecha inválida');return}
   const seq=Math.max(0,...Object.values(DS).map(d=>d.seq||0))+1,id='d'+Date.now();
   const items=rows.map(g=>({key:g.key,t:g.t,tr:g.tr,b:gBul(g),pz:gPz(g),rf:gRef(g)}));
-  try{await set(R(db,`${DSB}/${id}`),{seq,num:'DSP-'+String(seq).padStart(4,'0'),ts:Date.now(),d:today(),u:USER,n:NAME,items});dspSel.clear();dspOpen.add(id);toast(`✅ Despacho DSP-${String(seq).padStart(4,'0')} creado`)}catch(err){toast('Error al crear: '+(err.code||err.message))}
+  try{await set(R(db,`${DSB}/${id}`),{seq,num:'DSP-'+String(seq).padStart(4,'0'),ts:wts,d:wv.slice(0,10),u:USER,n:NAME,items});dspWhen=null;dspSel.clear();dspOpen.add(id);toast(`✅ Despacho DSP-${String(seq).padStart(4,'0')} creado`)}catch(err){toast('Error al crear: '+(err.code||err.message))}
 }
 function dspTotals(d){const it=dItems(d);return{it,tb:it.reduce((a,i)=>a+(i.b||0),0),tp:it.reduce((a,i)=>a+(i.pz||0),0),tr:it.reduce((a,i)=>a+(i.rf||0),0)}}
 function dspExcel(id){const d=DS[id],{it,tb,tp,tr}=dspTotals(d);
-  const aoa=[['Lista de empaque',d.num],['Recibo',RECIBO],['Fecha',d.d],['Preparó',d.n||d.u],[],['Tienda','Transferencia','Bultos','Piezas','Referencias'],...it.map(i=>[L(i.t),i.tr||'',i.b||0,i.pz||0,i.rf||0]),['TOTAL','',tb,tp,tr]];
+  const aoa=[['Lista de empaque',d.num],['Recibo',RECIBO],['Fecha',fdt(d.ts)],['Preparó',d.n||d.u],[],['Tienda','Transferencia','Bultos','Piezas','Referencias'],...it.map(i=>[L(i.t),i.tr||'',i.b||0,i.pz||0,i.rf||0]),['TOTAL','',tb,tp,tr]];
   const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:16},{wch:18},{wch:10},{wch:10},{wch:12}];XLSX.utils.book_append_sheet(wb,ws,'Lista de empaque');XLSX.writeFile(wb,`lista_empaque_${d.num}.xlsx`)}
 function dspPrint(id){const d=DS[id],{it,tb,tp}=dspTotals(d);
-  const html=`<!doctype html><meta charset="utf-8"><title>${d.num}</title><style>body{font:14px Arial,sans-serif;margin:24px;color:#111}h1{font-size:20px;margin:0 0 4px}table{width:100%;border-collapse:collapse;margin-top:14px}th,td{border:1px solid #444;padding:7px 8px;text-align:left}th{background:#eee}.n{text-align:right}.sig{display:flex;gap:40px;margin-top:70px}.sig div{flex:1;border-top:1px solid #000;padding-top:6px;text-align:center}</style><h1>Lista de empaque · ${esc(d.num)}</h1><div>Recibo ${esc(RECIBO)} · ${esc(d.d||'')} · Preparó: ${esc(d.n||d.u)}</div><table><tr><th>Tienda</th><th>Transferencia</th><th class="n">Bultos</th><th class="n">Piezas</th></tr>${it.map(i=>`<tr><td>${esc(L(i.t))}</td><td>${esc(i.tr||'—')}</td><td class="n">${fmtB(i.b||0)}</td><td class="n">${fmt(i.pz||0)}</td></tr>`).join('')}<tr><th colspan="2">TOTAL</th><th class="n">${fmtB(tb)}</th><th class="n">${fmt(tp)}</th></tr></table><div class="sig"><div>Entregó</div><div>Recibió (Centro de distribución)</div></div>`;
+  const html=`<!doctype html><meta charset="utf-8"><title>${d.num}</title><style>body{font:14px Arial,sans-serif;margin:24px;color:#111}h1{font-size:20px;margin:0 0 4px}table{width:100%;border-collapse:collapse;margin-top:14px}th,td{border:1px solid #444;padding:7px 8px;text-align:left}th{background:#eee}.n{text-align:right}.sig{display:flex;gap:40px;margin-top:70px}.sig div{flex:1;border-top:1px solid #000;padding-top:6px;text-align:center}</style><h1>Lista de empaque · ${esc(d.num)}</h1><div>Recibo ${esc(RECIBO)} · ${esc(fdt(d.ts))} · Preparó: ${esc(d.n||d.u)}</div><table><tr><th>Tienda</th><th>Transferencia</th><th class="n">Bultos</th><th class="n">Piezas</th></tr>${it.map(i=>`<tr><td>${esc(L(i.t))}</td><td>${esc(i.tr||'—')}</td><td class="n">${fmtB(i.b||0)}</td><td class="n">${fmt(i.pz||0)}</td></tr>`).join('')}<tr><th colspan="2">TOTAL</th><th class="n">${fmtB(tb)}</th><th class="n">${fmt(tp)}</th></tr></table><div class="sig"><div>Entregó</div><div>Recibió (Centro de distribución)</div></div>`;
   const w=window.open('','_blank');if(!w){toast('Permite ventanas emergentes para imprimir');return}w.document.write(html);w.document.close();w.focus();setTimeout(()=>w.print(),400)}
 function dspMail(id){const d=DS[id],{it,tb,tp}=dspTotals(d);
-  const lines=[`Lista de empaque ${d.num}`,`Recibo ${RECIBO} · ${d.d||''}`,'',...it.map(i=>`${L(i.t)} · Transf. ${i.tr||'—'} · ${fmtB(i.b||0)} bultos · ${fmt(i.pz||0)} pzas`),'',`TOTAL: ${fmtB(tb)} bultos · ${fmt(tp)} pzas`];
+  const lines=[`Lista de empaque ${d.num}`,`Recibo ${RECIBO} · ${fdt(d.ts)}`,'',...it.map(i=>`${L(i.t)} · Transf. ${i.tr||'—'} · ${fmtB(i.b||0)} bultos · ${fmt(i.pz||0)} pzas`),'',`TOTAL: ${fmtB(tb)} bultos · ${fmt(tp)} pzas`];
   location.href='mailto:?subject='+encodeURIComponent(`Lista de empaque ${d.num} · Recibo ${RECIBO}`)+'&body='+encodeURIComponent(lines.join('\n'))}
 
 // ---------- Diferencias (informativo) ----------
@@ -653,6 +679,7 @@ $('dfXls').onclick=()=>{
 history.replaceState({c:0},'');history.pushState({c:1},'');
 function guard(){history.pushState({c:1},'')}
 window.addEventListener('popstate',()=>{
+  if(!$('mask').classList.contains('hide')){$('mask').classList.add('hide');guard();return}
   if(!$('mdsp').classList.contains('hide')){$('mdsp').classList.add('hide');guard();return}
   if(!$('mcli').classList.contains('hide')){closeCli();guard();return}
   if(!RECIBO){guard();return}
@@ -669,6 +696,6 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
   if(b.dataset.t!=='cons')$('bar').classList.add('hide');else updateBar();renderAll()
 });
 $('btnHome').onclick=()=>{closeCli();showRecList();window.scrollTo(0,0)};
-function renderAll(){if(!RECIBO)return;renderGlobal();renderCli();if(!$('v-list').classList.contains('hide')){renderList();renderTrfPanel()}if(cur){const ae=document.activeElement;if(!(ae&&ae.tagName==='INPUT'&&ae.closest('#tiles')))renderProd()}if(!$('v-trf').classList.contains('hide'))renderTrf();if(!$('v-dsp').classList.contains('hide'))renderDespacho();if(!$('v-dif').classList.contains('hide'))renderDif();if(!$('v-est').classList.contains('hide'))renderEst()}
+function renderAll(){if(!RECIBO)return;renderGlobal();renderCli();if(!$('v-list').classList.contains('hide')){renderList()}if(cur){const ae=document.activeElement;if(!(ae&&ae.tagName==='INPUT'&&ae.closest('#tiles')))renderProd()}if(!$('v-trf').classList.contains('hide')){renderTrfPanel();renderTrf()}if(!$('v-dsp').classList.contains('hide'))renderDespacho();if(!$('v-dif').classList.contains('hide'))renderDif();if(!$('v-est').classList.contains('hide'))renderEst()}
 </script>
 </body></html>
