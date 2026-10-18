@@ -1150,8 +1150,14 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
                   <option>Permiso o salida autorizada</option>
                   <option>Llegó tarde por causa justificada</option>
                   <option>Corrección de AM/PM</option>
+                  <option value="__adel__">⏳ Hora adelantada / extra (pasa al banco para aplicarla a otro día)</option>
                   <option value="__otro__">Otro (escribir abajo)</option>
                 </select>
+                <div id="ed-adel-box" style="display:none;margin-top:6px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:9px">
+                  <label style="font-size:11.5px;font-weight:700;color:var(--ac)">Minutos adelantados por colaborador (de esta fecha)</label>
+                  <input type="number" class="fc" id="ed-adel-min" min="1" value="60" style="margin-top:4px">
+                  <div style="font-size:11px;color:var(--mt);margin-top:5px;line-height:1.45">Se registra UNA sola vez por colaborador y fecha en el banco de horas (si ya existe, no se duplica). Luego la aplicas al día que necesites en "Horas adelantadas — banco". Si ya fue aplicada, queda marcada como consumida y no se vuelve a tomar en cuenta.</div>
+                </div>
                 <textarea class="fc" id="ed-comment" rows="2" style="margin-top:6px" placeholder="Este comentario sale en la columna Notas del correo semanal"></textarea>
               </div>
               <div style="display:flex;gap:8px;margin-top:7px">
@@ -1196,8 +1202,8 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="adel-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
           </div></div>
 
-          <div class="asec"><div class="ashdr" data-ac="ac-banco"><span>⏳ Horas adelantadas — banco (semanas anteriores)</span><span class="ach">▾</span></div>
-          <div class="asbdy" id="ac-banco">
+          <div class="asec"><div class="ashdr" data-ac="ac-bancohrs"><span>⏳ Horas adelantadas — banco (semanas anteriores)</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-bancohrs">
             <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Son las MISMAS horas adelantadas de los sábados, pero de semanas anteriores (ej. se quedaron esperando un contenedor y se les deben). <strong>No modifica sus marcaciones</strong>: se registra la fecha, los minutos y el motivo (queda en bitácora). El saldo <strong>no vence</strong> y pasa de semana en semana hasta que lo apliques a un día con faltante; al aplicarlo se consume y lo que sobre sigue disponible. Nunca paga extra: solo cubre el faltante de ese día.</div>
             <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;margin-bottom:10px">
               <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;font-weight:700;color:var(--tx);text-transform:none;letter-spacing:0;cursor:pointer"><input type="checkbox" id="adel-ocultar" checked style="margin-top:2px"><span>🙈 Ocultar la nota de origen a RRHH y en los listados/correos</span></label>
@@ -1217,7 +1223,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div class="fg"><label>Minutos a aplicar</label><input type="number" class="fc" id="bancoap-min" min="1"></div>
             <button class="btn bg bsm" id="btn-bancoap-sug" type="button" style="width:auto;margin-top:4px">💡 Sugerir faltante de ese día</button>
             <button class="btn bp bsm" id="btn-bancoap" type="button" style="width:auto;margin-top:4px">✅ Aplicar al día</button>
-            <div id="banco-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
+            <div id="bancohrs-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
             <div id="banco-detalle" style="margin-top:10px"></div>
           </div></div>
 
@@ -3496,6 +3502,21 @@ function bancoOrigenes(b){
   return out;
 }
 function fmtFechaDM(f){const a=String(f||'').split('-');return a.length===3?`${a[2]}/${a[1]}`:String(f||'');}
+// Estado de cada crédito (FIFO): cuánto ya se consumió y cuánto queda disponible
+function bancoEstados(b){
+  const cr=Object.entries((b&&b.creditos)||{}).map(([id,x])=>({id,fecha:x.fecha||'',min:+x.min||0,rest:+x.min||0})).sort((a,c)=>a.fecha.localeCompare(c.fecha));
+  Object.entries((b&&b.consumos)||{}).sort((a,c)=>a[0].localeCompare(c[0])).forEach(([f,x])=>{
+    let need=+x.min||0;
+    for(const c of cr){if(need<=0)break;if(c.rest<=0)continue;const t=Math.min(c.rest,need);c.rest-=t;need-=t;}
+  });
+  const out={};cr.forEach(c=>{out[c.id]={rest:c.rest,usado:c.min-c.rest};});return out;
+}
+function estBadge(e,min){
+  if(!e)return '';
+  if(e.rest<=0)return '<span style="color:#ef4444;font-weight:700">🔴 APLICADA</span>';
+  if(e.usado>0)return `<span style="color:#f59e0b;font-weight:700">🟡 PARCIAL (quedan ${e.rest} min)</span>`;
+  return '<span style="color:#22c55e;font-weight:700">🟢 DISPONIBLE</span>';
+}
 function origenTxt(list){return (list||[]).map(o=>`${fmtFechaDM(o.fecha)}${o.motivo?' · '+o.motivo:''} (${o.min} min)`).join('; ');}
 // Texto de origen de las horas adelantadas que cubrieron el día k (sábado habilitado y/o banco)
 function trazaAdel(k,res,orig){
@@ -7809,10 +7830,11 @@ async function renderBancoUser(){
   const saldo=bancoSaldoMin(b);
   sd.innerHTML=`Saldo disponible: <strong style="color:${saldo>0?'#f59e0b':'var(--mt)'}">${saldo>0?fmtMinHM(saldo):'0h 00m'}</strong>`;
   if(!det)return;
+  const est=bancoEstados(b);
   const cr=Object.entries(b.creditos||{}).sort((a,c)=>(a[1].fecha||'').localeCompare(c[1].fecha||''));
   const co=Object.entries(b.consumos||{}).sort((a,c)=>a[0].localeCompare(c[0]));
   const row=(txt,attrs)=>`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:6px 9px;margin-bottom:5px;font-size:11.5px"><span>${txt}</span><button type="button" class="btn bg bsm btn-banco-del" ${attrs} style="width:auto;padding:3px 8px;font-size:10.5px">🗑 Quitar</button></div>`;
-  det.innerHTML=(cr.length?`<div style="font-size:11px;font-weight:700;color:var(--mt);margin-bottom:5px">Horas adelantadas registradas:</div>`+cr.map(([id,x])=>row(`➕ ${escHtml(x.fecha)} — ${x.min} min — ${escHtml(x.motivo||'')} <span style="color:var(--mt)">(${escHtml(x.por||'?')})</span>`,`data-tipo="cred" data-id="${escHtml(id)}"`)).join(''):'<div style="font-size:11px;color:var(--mt)">Sin horas adelantadas registradas.</div>')
+  det.innerHTML=(cr.length?`<div style="font-size:11px;font-weight:700;color:var(--mt);margin-bottom:5px">Horas adelantadas registradas:</div>`+cr.map(([id,x])=>row(`${estBadge(est[id],x.min)} ➕ ${escHtml(x.fecha)} — ${x.min} min — ${escHtml(x.motivo||'')} <span style="color:var(--mt)">(${escHtml(x.por||'?')})</span>`,`data-tipo="cred" data-id="${escHtml(id)}"`)).join(''):'<div style="font-size:11px;color:var(--mt)">Sin horas adelantadas registradas.</div>')
    +(co.length?`<div style="font-size:11px;font-weight:700;color:var(--mt);margin:8px 0 5px">Ya aplicadas a días:</div>`+co.map(([f,x])=>row(`➖ ${escHtml(f)} — ${x.min} min <span style="color:var(--mt)">(${escHtml(x.por||'?')}) · origen: ${escHtml(origenTxt(bancoOrigenes(b)[f])||'—')}</span>`,`data-tipo="cons" data-id="${escHtml(f)}"`)).join(''):'');
   det.querySelectorAll('.btn-banco-del').forEach(bt=>bt.addEventListener('click',async()=>{
     if(!confirm('¿Quitar este registro?'))return;
@@ -7837,12 +7859,12 @@ el('adel-ocultar')?.addEventListener('change',async()=>{
     toast(c.checked?'🙈 Oculta para RRHH ✓':'👁 Visible para RRHH ✓','ok');
   }catch(e){c.checked=!c.checked;toast('⛔ No se pudo guardar','err');}
 });
-document.querySelector('[data-ac="ac-banco"]')?.addEventListener('click',()=>setTimeout(()=>{renderBancoUser();cargarOcultarNota();},50));
+document.querySelector('[data-ac="ac-bancohrs"]')?.addEventListener('click',()=>setTimeout(()=>{renderBancoUser();cargarOcultarNota();},50));
 el('btn-banco-todos')?.addEventListener('click',()=>{Array.from(el('banco-users').options).forEach(o=>{o.selected=true;});});
 el('btn-banco-add')?.addEventListener('click',async()=>{
   const fecha=el('banco-fecha').value,min=parseInt(el('banco-min').value,10),motivo=(el('banco-motivo').value||'').trim();
   const users=Array.from(el('banco-users').selectedOptions).map(o=>o.value);
-  const st=el('banco-status');
+  const st=el('bancohrs-status');
   if(!fecha||!min||min<=0||!motivo||!users.length){toast('Completa fecha, minutos, motivo y colaboradores','err');return;}
   const btn=el('btn-banco-add');btn.disabled=true;
   try{
@@ -7858,7 +7880,7 @@ el('btn-banco-add')?.addEventListener('click',async()=>{
   btn.disabled=false;
 });
 el('btn-bancoap-sug')?.addEventListener('click',async()=>{
-  const user=el('bancoap-user').value,fecha=el('bancoap-fecha').value,st=el('banco-status');
+  const user=el('bancoap-user').value,fecha=el('bancoap-fecha').value,st=el('bancohrs-status');
   if(!user||!fecha){toast('Elige colaborador y día','err');return;}
   try{
     const marks=((await getHist(fecha))||[]).filter(m=>m.user===user);
@@ -7875,7 +7897,7 @@ el('btn-bancoap-sug')?.addEventListener('click',async()=>{
   }catch(e){if(st)st.textContent='No se pudo calcular el faltante.';}
 });
 el('btn-bancoap')?.addEventListener('click',async()=>{
-  const user=el('bancoap-user').value,fecha=el('bancoap-fecha').value,min=parseInt(el('bancoap-min').value,10),st=el('banco-status');
+  const user=el('bancoap-user').value,fecha=el('bancoap-fecha').value,min=parseInt(el('bancoap-min').value,10),st=el('bancohrs-status');
   if(!user||!fecha||!min||min<=0){toast('Completa colaborador, día y minutos','err');return;}
   const btn=el('btn-bancoap');btn.disabled=true;
   try{
@@ -8203,8 +8225,10 @@ function genMotivoFinal(){
   return sel==='__otro__'?(ta?.value||'').trim():sel;
 }
 el('ed-preset')?.addEventListener('change',e=>{
-  const v=e.target.value,tx=el('ed-comment');
+  const v=e.target.value,tx=el('ed-comment'),box=el('ed-adel-box');
+  if(box)box.style.display=(v==='__adel__')?'block':'none';
   if(v==='__otro__'){tx.value='';tx.focus();}
+  else if(v==='__adel__'){tx.value='Hora adelantada (se quedó trabajando de más)';}
   else if(v){tx.value=v;}
 });
 // Fecha-hora de una marca: primero el stamp; si faltara, se reconstruye del texto respetando AM/PM
@@ -8327,6 +8351,8 @@ el('btn-save-ed').addEventListener('click',async()=>{
   for(const r of rows){if(!edLeerFila(r).ok){toast('Revisa la hora: horas 1-12, minutos y segundos 0-59','err',4500);r.scrollIntoView({behavior:'smooth',block:'center'});return;}}
   const cambiadas=rows.filter(edCambiada);
   if(!cambiadas.length){toast('No hay cambios para guardar','err');return;}
+  const esAdel=el('ed-preset').value==='__adel__',minAdel=parseInt(el('ed-adel-min')?.value,10)||0;
+  if(esAdel&&minAdel<=0){toast('Indica los minutos adelantados','err');return;}
   const btn=el('btn-save-ed');btn.disabled=true;
   try{
     const arr=await getHist(fecha);
@@ -8357,8 +8383,20 @@ el('btn-save-ed').addEventListener('click',async()=>{
     if(avisos.length&&!confirm(`⚠ Estas marcaciones quedarían en un orden raro (¿AM/PM?):\n\n${avisos.join('\n')}\n\n¿Guardar de todas formas?`))return;
     await saveHist(fecha,nuevo);
     for(const u of Object.keys(detalle))await addLog(`Edición: ${u} ${fecha} — ${com} [${detalle[u].join('; ')}]`);
+    let adelNuevos=0,adelYa=0;
+    if(esAdel){
+      for(const u of Object.keys(detalle)){
+        const cid='e'+fecha.replace(/-/g,'')+'_'+u;
+        const bu=await getBancoUser(u,true);
+        if(bu&&bu.creditos&&bu.creditos[cid]){adelYa++;continue;} // ya registrada: no se duplica
+        await set(R(db,`${BANCO}/${u}/creditos/${cid}`),{fecha,min:minAdel,motivo:'Hora adelantada (editar marcaciones)',por:CU,ts:Date.now(),origen:'edicion'});
+        _bancoCache.delete(u);adelNuevos++;
+        await addLog(`⏳ Hora adelantada registrada desde Editar marcaciones: ${u} — ${minAdel} min del ${fecha} (por ${CU})`);
+      }
+    }
     toast(`Guardado ✓ ${cambiadas.length} marcación(es) en ${Object.keys(detalle).length} usuario(s)`,'ok');
-    el('ed-comment').value='';el('ed-preset').value='';el('ed-list').innerHTML='';el('ed-footer').style.display='none';_edCtx=null;
+    if(esAdel)toast(`⏳ Banco: ${adelNuevos} registrada(s)${adelYa?` · ${adelYa} ya existían (no se duplican)`:''}`,'ok',6000);
+    el('ed-comment').value='';el('ed-preset').value='';if(el('ed-adel-box'))el('ed-adel-box').style.display='none';el('ed-list').innerHTML='';el('ed-footer').style.display='none';_edCtx=null;
     try{renderHistToday();}catch(e){}
   }catch(e){console.error('guardar edición',e);toast('❌ Error al guardar: '+(e.message||e),'err',5000);}
   finally{btn.disabled=false;}
@@ -8383,7 +8421,7 @@ el('btn-del-ed').addEventListener('click',async()=>{
   await saveHist(fecha,arr);
   for(const u of Object.keys(porUser))await addLog(`Borradas: ${u} ${fecha} — ${com} [${porUser[u].join('; ')}]`);
   toast('Eliminadas ✓','ok');
-  el('ed-comment').value='';el('ed-preset').value='';el('ed-list').innerHTML='';el('ed-footer').style.display='none';_edCtx=null;
+  el('ed-comment').value='';el('ed-preset').value='';if(el('ed-adel-box'))el('ed-adel-box').style.display='none';el('ed-list').innerHTML='';el('ed-footer').style.display='none';_edCtx=null;
 });
 
 // LIMPIAR
