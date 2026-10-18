@@ -848,17 +848,17 @@ $('mlblBody').addEventListener('input',e=>{
 let pzSt=null;
 const PZ_MAX_HOJAS=30;
 function zplPieces(p,k){
-  const out=['^XA^CI28^PW812^LL609^LH0,0','^FO274,0^GB1,609,1^FS','^FO542,0^GB1,609,1^FS'];
+  const out=['^XA^CI28^PW812^LL609^LH0,0','^FO276,0^GB1,609,1^FS','^FO532,0^GB1,609,1^FS'];
   for(let r=1;r<4;r++)out.push(`^FO0,${14+r*146-8}^GB812,1,1^FS`);
-  for(let i=0;i<k;i++){const col=i%3,row=Math.floor(i/3),x=10+col*268,y=14+row*146;
-    out.push(`^FO${x},${y}^A0N,44,34^FD${zs(p)}^FS`,`^FO${x+8},${y+54}^BY2^BCN,70,N,N,N,A^FD${zs(p)}^FS`)}
+  for(let i=0;i<k;i++){const col=i%3,row=Math.floor(i/3),x=34+col*256,y=14+row*146;
+    out.push(`^FO${x},${y}^A0N,44,32^FD${zs(p)}^FS`,`^FO${x+8},${y+54}^BY2^BCN,70,N,N,N,A^FD${zs(p)}^FS`)}
   out.push('^PQ1^XZ');return out.join('\n')
 }
 function pzSheetHTML(p,k){
   let h='<div class="lbw"><div class="lbp">';
-  [274,542].forEach(x=>h+=`<div style="position:absolute;left:${x}px;top:0;width:1px;height:609px;background:#bbb"></div>`);
+  [276,532].forEach(x=>h+=`<div style="position:absolute;left:${x}px;top:0;width:1px;height:609px;background:#bbb"></div>`);
   [1,2,3].forEach(r=>h+=`<div style="position:absolute;left:0;top:${14+r*146-8}px;width:812px;height:1px;background:#bbb"></div>`);
-  for(let i=0;i<k;i++){const col=i%3,row=Math.floor(i/3),x=10+col*268,y=14+row*146;
+  for(let i=0;i<k;i++){const col=i%3,row=Math.floor(i/3),x=34+col*256,y=14+row*146;
     h+=`<div style="position:absolute;left:${x}px;top:${y}px;font:800 44px Arial,sans-serif;line-height:44px">${esc(p)}</div>`
       +`<svg class="bcg" data-code="${esc(p)}" style="position:absolute;left:${x+8}px;top:${y+54}px"></svg>`}
   return h+'</div></div>'
