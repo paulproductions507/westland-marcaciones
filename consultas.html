@@ -43,12 +43,15 @@ h1,h2,h3,.sora{font-family:'Sora',sans-serif;margin:0}
 .row:active{background:var(--sf2)}.row .st{font:800 14px 'Sora'}.row .ds{font-size:12.5px;color:var(--mt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pill{font:800 11px 'DM Sans';border-radius:99px;padding:4px 9px;white-space:nowrap}
 .p-ok{background:#34e08a26;color:var(--ok)}.p-wn{background:#ffc85726;color:var(--wn)}.p-no{background:#ffffff14;color:var(--mt)}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 @media(min-width:760px){.grid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}}
-.tile{border-radius:14px;overflow:hidden;border:1px solid var(--bd);background:var(--bg2)}
+.tile{position:relative;min-width:0;border-radius:14px;overflow:hidden;border:1px solid var(--bd);background:var(--bg2)}
 .tile.part{border-color:#ffc857aa}.tile.part .hd{background:linear-gradient(135deg,#dba11f,#8f5f0c)}
 .tile.full{border-color:#58b4f7aa;box-shadow:0 0 0 1px #3fa9f533}.tile.full .hd{background:linear-gradient(135deg,#3fa9f5,#1b66b3)}
-.tile.dsp{border-color:#34e08acc;box-shadow:0 0 0 1px #34e08a33}.tile.dsp .hd{background:linear-gradient(135deg,#25c577,#0d7344)}
+.tile.dsp{border:2px solid #1fe48a;background:linear-gradient(180deg,#0c4a34,#073324);box-shadow:0 0 16px #1fe48a55}
+.tile.dsp .hd{background:linear-gradient(135deg,#1fe48a,#0a8a4c)}.tile.dsp .hd b,.tile.dsp .hd small{color:#02261a}
+.tile.dsp .bd,.tile.dsp .ck{opacity:.8}.tile.dsp .ck{color:#9cf5c8}
+.tile.dsp::after{content:'';position:absolute;left:0;right:0;top:60%;height:3px;background:#eafff4;box-shadow:0 0 8px #1fe48a;pointer-events:none}
 .tile .hd{background:linear-gradient(135deg,var(--ac2),#0b6f7d);padding:9px 6px;text-align:center}
 .tile .hd b{font:800 18px 'Sora'}.tile .hd small{display:block;font-size:10px;opacity:.85}
 .tile .bd{padding:8px 6px;font-size:11.5px;text-align:center;color:var(--mt);line-height:1.55}
@@ -87,6 +90,10 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
 .dsp-ck{width:42px;height:42px;flex:none;border-radius:50%;background:linear-gradient(135deg,#34e08a,#0f8a4e);display:grid;place-items:center;font:800 22px 'Sora';color:#02343a;animation:pop .5s}
 .prow{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #17697a55;cursor:pointer}.prow input{width:22px;height:22px;accent-color:var(--ac);flex:none}.prow .tv{flex:1;font:700 14px 'DM Mono';color:var(--ac)}
 .neg{color:var(--wn)}.pos{color:#6cc0ff}
+.tile .bd{overflow-wrap:anywhere}
+@media(max-width:420px){.tile .hd b{font-size:16px}.tile .bd{font-size:10.5px;padding:7px 3px}.tile .ck{font-size:11px;padding:6px 2px;gap:4px}.tile .ck input{width:18px;height:18px}}
+.row.st-dsp{background:linear-gradient(90deg,#34e08a1f,transparent)}
+#btnRef{font-size:18px;line-height:1;padding:8px 12px}#btnRef.spin{animation:sp .8s linear infinite}
 </style></head>
 <body>
 <div id="gate" class="gate"><h2>🔎 Consultas</h2><p id="gmsg" style="color:var(--mt)">Verificando sesión…</p><a class="btn pri" id="glink" href="index.html" style="text-decoration:none;display:none">Ir a Marcaciones</a></div>
@@ -95,6 +102,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
   <div class="top">
     <a class="btn sm" id="toMarc" href="index.html" style="text-decoration:none" title="Volver a Marcaciones">←</a>
     <div class="ttl"><h1 id="ttl">Consultas</h1><small id="who">—</small></div>
+    <button class="btn sm" id="btnRef" title="Actualizar" aria-label="Actualizar">⟳</button>
     <button class="btn sm hide" id="btnHome">Recibos</button>
   </div>
   <div class="wrap">
@@ -250,7 +258,7 @@ $('recList').addEventListener('click',async e=>{
 // ---------- sesión compartida con la app de marcaciones ----------
 function emailToUser(e){e=(e||'').toLowerCase();let m=e.match(/\+([^@]+)@gmail\.com$/);if(m)return m[1];if(e.endsWith('@saks.com.pa'))return e.split('@')[0];return e.split('@')[0]}
 onAuthStateChanged(auth,async u=>{
-  if(!u){$('gmsg').textContent='Para consultar debes iniciar sesión en la app de Marcaciones y entrar desde el icono de Consultas.';$('glink').style.display='inline-block';return}
+  if(!u){$('gmsg').textContent='Verificando sesión…';await new Promise(r=>setTimeout(r,2500));if(auth.currentUser)return;$('gmsg').textContent='Para consultar debes iniciar sesión en la app de Marcaciones y entrar desde el icono de Consultas.';$('glink').style.display='inline-block';return}
   USER=emailToUser(u.email);NAME=USER;ISADM=ADMINS.includes(USER);
   try{const s=await get(R(db,'users_v1'));if(s.exists()){const m=Object.values(s.val()).find(x=>x&&x.user===USER);if(m&&m.nombre)NAME=m.nombre}}catch(e){}
   $('who').textContent=`${NAME} · ${ISADM?'Administrador':'Surtidor'}`;
@@ -308,7 +316,7 @@ $('qgo').onclick=doSearch;
 // ---------- producto ----------
 let sel={}; // tienda -> {on,q,tr}
 const trKey=t=>`cons_tr_${RECIBO}_${t}`;
-function lastTr(t){return (TRF[t]&&TRF[t].tr)||''}
+function lastTr(t){return t==='CRISTAL'?'':(TRF[t]&&TRF[t].tr)||''}
 function openProd(p){history.pushState({c:2},'');
   cur=byProd[p];if(!cur)return;sel={};
   for(const t of STORES){const pend=Math.max(0,(cur.s[t]||0)-sur(p,t));sel[t]={on:false,q:pend,tr:lastTr(t),nw:false}}
@@ -317,26 +325,26 @@ function openProd(p){history.pushState({c:2},'');
 function closeProd(){cur=null;$('mdsp').classList.add('hide');$('v-prod').classList.add('hide');$('v-list').classList.remove('hide');$('bar').classList.add('hide');renderAll();$('q').focus()}
 $('pback').onclick=closeProd;
 function renderProd(){
-  if(!cur)return;const x=cur;for(const t of STORES){if(sel[t]&&!sel[t].nw)sel[t].tr=lastTr(t)}
+  if(!cur)return;const x=cur;for(const t of STORES){if(sel[t]&&!sel[t].nw&&t!=='CRISTAL')sel[t].tr=lastTr(t)}
   $('ppos').textContent=`#${x.n} de ${DATA.length}`;
   $('pinfo').innerHTML=`<div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;justify-content:space-between"><div><div class="lbl">Estilo</div><h2 style="font-size:24px">${esc(x.ref)}</h2></div><div style="text-align:right"><div class="lbl">Producto</div><div class="sora" style="font-size:32px;color:var(--ac);line-height:1">${x.p}</div></div></div><div style="color:var(--mt);margin-top:2px">${esc(x.d)}</div><div style="margin-top:8px">${pillFor(x)}</div>
    <div class="kv"><div><span class="lbl">Código barras</span><b style="font-family:'DM Mono'">${x.upc}</b></div><div><span class="lbl">Recibido</span><b>${fmt(x.rec)}</b></div><div><span class="lbl">Pza x bulto</span><b>${fmt(x.pb)}</b></div><div><span class="lbl">Total bultos</span><b style="color:var(--ac)">${fmtB(bul(x))}</b></div><div><span class="lbl">Precio</span><b>$${Number(x.pr||0).toFixed(2)}</b></div><div><span class="lbl">Dist. tiendas</span><b>${fmt(x.dt)}</b></div></div>
    <div class="msg" style="margin-top:8px">${esc([x.dep,x.div,x.lin,x.sub].filter(Boolean).join(' › '))}</div>`;
-  $('tiles').innerHTML=TILES().map(t=>{
+  $('tiles').innerHTML=TILES().filter(t=>t==='BODEGA'||t==='CRISTAL'||(x.s[t]||0)>0||sur(x.p,t)>0).map(t=>{
     if(t==='BODEGA'){return `<div class="tile bod"><div class="hd"><b>Bodega</b><small>${x.p}</small></div><div class="bd">Saldo<br><b style="font-size:22px;color:var(--ac)">${fmt(x.s.BODEGA||0)}</b><div class="tr" style="color:var(--mt)">Para almacenar</div>${(()=>{const df=diffNet(x);return df?`<div style="margin-top:6px;font-weight:800" class="${df<0?'neg':'pos'}">Diferencia: ${sg(df)} pzas</div><div class="tr" style="color:var(--mt)">Validar físico y solicitar ajuste</div>`:''})()}</div></div>`}
     const a=x.s[t]||0,s=sur(x.p,t),pend=Math.max(0,a-s),S=sel[t];
     const isD=!!DSP[x.p];const cls=isD?'dsp':(a>0&&s>=a?'full':s>0?'part':'');
     const trs=[...new Set(entries().filter(e=>e.p===x.p&&e.t===t&&e.tr).map(e=>e.tr))];
     const dis=a===0||pend===0||isD,cl=t==='CRISTAL'&&hasCli(x.p);
     return `<div class="tile ${cls} ${S.on&&!cl?'sel':''}" data-t="${t}"><div class="hd"><b>${L(t)}</b><small>${x.p}</small></div>
-      <div class="bd">Distribuir: <b>${fmt(a)}</b><br>Surtidas: <b>${fmt(s)}</b><br>Pendiente: <b style="color:${pend?'var(--wn)':'var(--ok)'}">${fmt(pend)}</b>${trs.length?`<div class="tr">Transf: ${trs.map(esc).join(', ')}</div>`:''}</div>
-      ${cl?`<div style="padding:0 6px 8px"><button class="btn pri sm" data-cli="${x.p}" style="width:100%">👥 Clientes</button></div>`:`<label class="ck"><input type="checkbox" data-ck="${t}" ${S.on?'checked':''} ${dis?'disabled':''}> ${dis?(a===0?'Sin asignar':isD?'Despachado':'Surtido ✓'):'Surtido'}</label>
+      <div class="bd">Distribuir: <b>${fmt(a)}</b><br>Surtidas: <b>${fmt(s)}</b><br>Pendiente: <b style="color:${pend?'var(--wn)':'var(--ok)'}">${fmt(pend)}</b>${trs.length?`<div class="tr">${t==='CRISTAL'?'Proforma':'Transf'}: ${trs.map(esc).join(', ')}</div>`:''}${t==='CRISTAL'&&cl?'<div class="tr">Por proforma · clientes</div>':''}</div>
+      ${cl?`<div style="padding:0 6px 8px"><button class="btn pri sm" data-cli="${x.p}" style="width:100%" ${isD?'disabled':''}>👥 Clientes</button></div>`:`<label class="ck"><input type="checkbox" data-ck="${t}" ${S.on?'checked':''} ${dis?'disabled':''}> ${dis?(a===0?'Sin asignar':isD?'Despachado':'Surtido ✓'):'Surtido'}</label>
       <div class="ed"><input type="number" min="1" inputmode="numeric" data-q="${t}" value="${S.q}" placeholder="Cant.">${trBlock(t,S)}</div>`}</div>`}).join('');
   $('phist').innerHTML=histTable(entries().filter(e=>e.p===x.p).sort((a,b)=>b.ts-a.ts),true);
   renderDsp();$('chkAll').disabled=!!DSP[x.p];
   updateBar()
 }
-function trBlock(t,S){const act=lastTr(t);
+function trBlock(t,S){if(t==='CRISTAL')return `<input type="text" maxlength="20" data-tr="CRISTAL" value="${esc(S.tr)}" placeholder="# proforma (opcional)">`;const act=lastTr(t);
   if(act&&!S.nw)return `<div class="trl"><span>Transf. <b>${esc(act)}</b></span><button class="btn sm" data-trnew="${t}">＋ Nueva</button></div>`;
   return `<input type="text" inputmode="numeric" maxlength="10" data-tr="${t}" value="${esc(S.tr)}" placeholder="${t==='CRISTAL'?'# transf. (opcional)':(S.nw?'# nueva transferencia':'# transferencia')}">`}
 function histTable(list,del){
@@ -347,9 +355,9 @@ $('tiles').addEventListener('click',e=>{const b=e.target.closest('[data-cli]');i
 $('tiles').addEventListener('change',e=>{
   const t=e.target.dataset.ck;if(t){sel[t].on=e.target.checked;renderProd();return}
   if(e.target.dataset.q){sel[e.target.dataset.q].q=parseInt(e.target.value)||0;updateBar()}
-  if(e.target.dataset.tr){sel[e.target.dataset.tr].tr=e.target.value.replace(/\D/g,'');updateBar()}
+  if(e.target.dataset.tr){const tt=e.target.dataset.tr;sel[tt].tr=tt==='CRISTAL'?e.target.value.replace(/[^\w-]/g,''):e.target.value.replace(/\D/g,'');updateBar()}
 });
-$('tiles').addEventListener('input',e=>{if(e.target.dataset.q){sel[e.target.dataset.q].q=parseInt(e.target.value)||0;updateBar()}if(e.target.dataset.tr){sel[e.target.dataset.tr].tr=e.target.value.replace(/\D/g,'');updateBar()}});
+$('tiles').addEventListener('input',e=>{if(e.target.dataset.q){sel[e.target.dataset.q].q=parseInt(e.target.value)||0;updateBar()}if(e.target.dataset.tr){const tt=e.target.dataset.tr;sel[tt].tr=tt==='CRISTAL'?e.target.value.replace(/[^\w-]/g,''):e.target.value.replace(/\D/g,'');updateBar()}});
 $('chkAll').onchange=e=>{for(const t of STORES){if(t==='CRISTAL'&&hasCli(cur.p))continue;const a=cur.s[t]||0,pend=Math.max(0,a-sur(cur.p,t));if(pend>0){sel[t].on=e.target.checked;sel[t].q=pend}}renderProd()};
 function updateBar(){
   if(!cur)return;const on=STORES.filter(t=>sel[t].on);const pz=on.reduce((a,t)=>a+(sel[t].q||0),0);
@@ -369,7 +377,7 @@ $('bsave').onclick=async()=>{
     const ts=Date.now(),d=today();
     for(const t of on){
       await push(R(db,BASE),{p:cur.p,r:cur.ref,t,q:sel[t].q,tr:sel[t].tr,u:USER,n:NAME,ts,d});
-      if(sel[t].tr&&sel[t].tr!==lastTr(t)){await set(R(db,`${TRFB}/${t}`),{tr:sel[t].tr,u:USER,n:NAME,ts})}
+      if(t!=='CRISTAL'&&sel[t].tr&&sel[t].tr!==lastTr(t)){await set(R(db,`${TRFB}/${t}`),{tr:sel[t].tr,u:USER,n:NAME,ts})}
     }
     toast('✅ Surtido guardado');closeProd()
   }catch(e){toast('Error al guardar: '+(e.code||e.message))}
@@ -379,7 +387,7 @@ $('bsave').onclick=async()=>{
 // ---------- Cristal: clientes ----------
 let cliP=null,cliSel={};
 function cliRows(p){return Object.entries(CLI).filter(([id,c])=>c.p===p).map(([id,c])=>{const key=ckey(c);const s=entries().filter(e=>e.p===p&&e.t==='CRISTAL'&&e.ck===key).reduce((a,e)=>a+(e.q||0),0);return{id,...c,key,s,pend:Math.max(0,c.q-s)}})}
-function openCli(p){cliP=p;cliSel={};cliTr=lastTr('CRISTAL');history.pushState({c:3},'');$('mcli').classList.remove('hide');renderCli()}
+function openCli(p){cliP=p;cliSel={};cliTr='';history.pushState({c:3},'');$('mcli').classList.remove('hide');renderCli()}
 function closeCli(){cliP=null;$('mcli').classList.add('hide')}
 function renderCli(){
   if(!cliP||$('mcli').classList.contains('hide'))return;const x=byProd[cliP],rows=cliRows(cliP);
@@ -387,7 +395,7 @@ function renderCli(){
   rows.forEach(r=>{if(!cliSel[r.key])cliSel[r.key]={on:false,q:r.pend}});
   $('mcliBody').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div class="lbl">Cristal · Estilo ${esc(x.ref)}</div><div class="sora" style="font-size:26px;color:var(--ac)">${x.p}</div></div><button class="btn sm" id="cliX">Cerrar</button></div>
   <div class="msg">Cristal en recibo: <b>${fmt(x.s.CRISTAL||0)}</b> · Pedido por clientes: <b>${fmt(ped)}</b> · Surtido: <b>${fmt(su)}</b></div>
-  <div style="margin:10px 0"><input class="f" id="cliTr" inputmode="numeric" maxlength="10" placeholder="# transferencia (opcional)" value="${esc(cliTr)}"></div>
+  <div style="margin:10px 0"><div class="lbl">Proforma</div><input class="f" id="cliTr" maxlength="20" placeholder="# proforma (opcional)" value="${esc(cliTr)}"></div>
   ${rows.map(r=>{const c=cliSel[r.key],done=r.pend===0;return `<div class="crow ${done?'full':''}"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(r.c)}</b><span class="pos">${esc(r.pos||'sin ubic.')}</span></div>
   <div class="msg" style="margin:4px 0 8px">Pedido <b>${fmt(r.q)}</b> · Surtido <b>${fmt(r.s)}</b> · Pendiente <b style="color:${done?'var(--ok)':'var(--wn)'}">${fmt(r.pend)}</b> · Recibo ${esc(r.ro||RECIBO)}${r.ro&&r.ro!==RECIBO?' <span class="pill p-wn">otro recibo</span>':''}</div>
   ${done?'<span class="pill p-ok">Completo</span>':`<label style="display:flex;gap:10px;align-items:center;font-weight:700"><input type="checkbox" data-cc="${r.key}" ${c.on?'checked':''} style="width:22px;height:22px;accent-color:#2de2c9"> Surtido <input type="number" min="1" data-cq="${r.key}" value="${c.q}"></label>`}</div>`}).join('')||'<div class="msg">No hay clientes cargados para este producto.</div>'}
@@ -395,15 +403,14 @@ function renderCli(){
 }
 let cliTr='';
 $('mcliBody').addEventListener('click',e=>{if(e.target.id==='cliX')history.back();if(e.target.id==='cliSave')saveCli()});
-$('mcliBody').addEventListener('input',e=>{if(e.target.id==='cliTr')cliTr=e.target.value.replace(/\D/g,'');if(e.target.dataset.cq)cliSel[e.target.dataset.cq].q=parseInt(e.target.value)||0});
+$('mcliBody').addEventListener('input',e=>{if(e.target.id==='cliTr')cliTr=e.target.value.replace(/[^\w-]/g,'');if(e.target.dataset.cq)cliSel[e.target.dataset.cq].q=parseInt(e.target.value)||0});
 $('mcliBody').addEventListener('change',e=>{if(e.target.dataset.cc){cliSel[e.target.dataset.cc].on=e.target.checked}});
 async function saveCli(){
   const rows=cliRows(cliP).filter(r=>cliSel[r.key]&&cliSel[r.key].on);if(!rows.length){toast('Marca al menos un cliente');return}
   for(const r of rows){const q=cliSel[r.key].q;if(!(q>0)){toast(`${r.c}: cantidad inválida`);return}if(q>r.pend&&!confirm(`${r.c}: surtes ${q} y solo quedaban ${r.pend}. ¿Continuar?`))return}
-  if(cliTr&&!/^\d{8,10}$/.test(cliTr)){toast('La transferencia debe tener 8 a 10 dígitos');return}
   const ts=Date.now(),d=today();
   try{for(const r of rows){await push(R(db,BASE),{p:cliP,r:byProd[cliP].ref,t:'CRISTAL',q:cliSel[r.key].q,tr:cliTr,u:USER,n:NAME,ts,d,ck:r.key,cn:r.c,pos:r.pos||'',ro:r.ro||''})}
-    if(cliTr&&cliTr!==lastTr('CRISTAL'))await set(R(db,`${TRFB}/CRISTAL`),{tr:cliTr,u:USER,n:NAME,ts});toast('✅ Surtido de clientes guardado');cliSel={};renderCli()}catch(e){toast('Error al guardar: '+(e.code||e.message))}
+    toast('✅ Surtido de clientes guardado');cliSel={};renderCli()}catch(e){toast('Error al guardar: '+(e.code||e.message))}
 }
 // Carga de clientes por plantilla Excel (solo administradores)
 $('btnTpl').onclick=()=>{
@@ -438,7 +445,7 @@ function dspOfKey(key){for(const d of Object.values(DS)){if(Object.values(d.item
 function trfCard(g){
   const b=TRB[g.key]&&TRB[g.key].b,d=dspOfKey(g.key),act=TRF[g.t]&&TRF[g.t].tr===g.tr&&g.tr;
   const agg={};g.items.forEach(e=>{const o=agg[e.p]=agg[e.p]||{r:e.r,p:e.p,q:0};o.q+=e.q});
-  return `<details class="card" data-k="${g.key}" ${trfOpen.has(g.key)?'open':''}><summary>${L(g.t)} · Transf. ${esc(g.tr||'—')} ${act?'<span class="pill p-bl">Activa</span>':''} ${d?`<span class="pill p-ok">${esc(d.num)}</span>`:''} <span class="pill p-aq" style="margin-left:4px">${fmt(gPz(g))} pzas · ${gRef(g)} ref.</span></summary>
+  return `<details class="card" data-k="${g.key}" ${trfOpen.has(g.key)?'open':''}><summary>${L(g.t)} · ${g.t==='CRISTAL'?'Proforma':'Transf.'} ${esc(g.tr||'—')} ${act?'<span class="pill p-bl">Activa</span>':''} ${d?`<span class="pill p-ok">${esc(d.num)}</span>`:''} <span class="pill p-aq" style="margin-left:4px">${fmt(gPz(g))} pzas · ${gRef(g)} ref.</span></summary>
   <div style="margin:8px 0"><div class="lbl">Bultos globales de esta transferencia</div><div style="display:flex;gap:8px;margin-top:5px"><input class="f" type="number" min="0" inputmode="numeric" data-bk="${g.key}" value="${b??''}" placeholder="# de bultos"><button class="btn pri sm" data-bs="${g.key}">Guardar</button></div>${b?'':'<div class="msg" style="color:var(--wn)">Aún sin bultos.</div>'}</div>
   <div class="msg">${[...g.users].map(esc).join(', ')} · ${new Date(g.ts).toLocaleString('es')}</div><div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th class="n">Cant.</th></tr>${Object.values(agg).map(e=>`<tr><td>${esc(e.r)}</td><td>${e.p}</td><td class="n">${fmt(e.q)}</td></tr>`).join('')}</table></div></details>`}
 function renderTrf(){
@@ -447,7 +454,7 @@ function renderTrf(){
   $('trfBack').classList.toggle('hide',!(trfStore&&!q));$('trfPanel').classList.toggle('hide',!!trfStore||!!q);
   if(q){box.innerHTML=all.filter(g=>String(g.tr).includes(q)).sort((a,b)=>b.ts-a.ts).map(trfCard).join('')||none;return}
   if(!trfStore){box.innerHTML='<div class="grid">'+STORES.map(t=>{const gs=all.filter(g=>g.t===t);const pz=gs.reduce((a,g)=>a+gPz(g),0),bu=gs.reduce((a,g)=>a+gBul(g),0);
-    return `<div class="tile" data-ts="${t}" style="cursor:pointer"><div class="hd"><b>${L(t)}</b><small>${gs.length} transf.</small></div><div class="bd">Pzas: <b>${fmt(pz)}</b><br>Bultos: <b>${fmtB(bu)}</b></div></div>`}).join('')+'</div>';return}
+    return `<div class="tile" data-ts="${t}" style="cursor:pointer"><div class="hd"><b>${L(t)}</b><small>${gs.length} ${t==='CRISTAL'?'proformas':'transf.'}</small></div><div class="bd">Pzas: <b>${fmt(pz)}</b><br>Bultos: <b>${fmtB(bu)}</b></div></div>`}).join('')+'</div>';return}
   const gs=all.filter(g=>g.t===trfStore).sort((a,b)=>b.ts-a.ts);
   box.innerHTML=`<div class="slbl">${L(trfStore)} · ${gs.length} transferencia(s) · ${fmtB(gs.reduce((a,g)=>a+gBul(g),0))} bultos</div>`+(gs.map(trfCard).join('')||none)
 }
@@ -503,7 +510,7 @@ function renderTrfPanel(){
   const box=$('trfPanelBody');if(!box)return;const ae=document.activeElement;if(ae&&box.contains(ae)&&ae.tagName==='INPUT')return;
   const n=STORES.filter(t=>t!=='CRISTAL'&&TRF[t]&&TRF[t].tr).length,tot=STORES.filter(t=>t!=='CRISTAL').length;
   const c=$('trfPanelCnt');c.textContent=`${n} / ${tot}`;c.className='pill '+(n>=tot?'p-ok':'p-wn');
-  box.innerHTML=STORES.map(t=>{const a=TRF[t]&&TRF[t].tr;
+  box.innerHTML=STORES.filter(t=>t!=='CRISTAL').map(t=>{const a=TRF[t]&&TRF[t].tr;
     if(a&&trfEdit!==t)return `<div class="trow"><b>${L(t)}</b><span class="tv">${esc(a)}</span><button class="btn sm" data-pe="${t}">＋ Nueva</button></div>`;
     return `<div class="trow"><b>${L(t)}</b><input class="f" inputmode="numeric" maxlength="10" data-pi="${t}" placeholder="# transferencia${t==='CRISTAL'?' (opcional)':''}"><button class="btn pri sm" data-ps="${t}">Aplicar</button>${a?'<button class="btn sm" data-pc="1">✕</button>':''}</div>`}).join('')
     +'<div class="msg">Cada tienda tiene su transferencia: todos los productos que se surtan la heredan hasta que agregues una nueva.</div>'
@@ -620,7 +627,7 @@ function renderDespacho(){
   const ae=document.activeElement;if(ae&&ae.id==='dspWhen')return;
   const gs=trfGroups().filter(g=>!dspOfKey(g.key));
   const pick=STORES.map(t=>{const l=gs.filter(g=>g.t===t).sort((a,b)=>b.ts-a.ts);if(!l.length)return'';
-    return `<div style="margin-top:10px"><div style="display:flex;align-items:center;justify-content:space-between"><b class="sora">${L(t)}</b><button class="btn sm" data-pall="${t}">Todas</button></div>${l.map(g=>`<label class="prow"><input type="checkbox" data-pk="${g.key}" ${dspSel.has(g.key)?'checked':''}><span class="tv">${esc(g.tr||'Sin transf.')}</span><span class="msg" style="margin:0">${gBul(g)?fmtB(gBul(g))+' bultos':'<span class="neg">sin bultos</span>'} · ${fmt(gPz(g))} pzas</span></label>`).join('')}</div>`}).join('');
+    return `<div style="margin-top:10px"><div style="display:flex;align-items:center;justify-content:space-between"><b class="sora">${L(t)}</b><button class="btn sm" data-pall="${t}">Todas</button></div>${l.map(g=>`<label class="prow"><input type="checkbox" data-pk="${g.key}" ${dspSel.has(g.key)?'checked':''}><span class="tv">${esc(g.tr||(g.t==='CRISTAL'?'Sin proforma':'Sin transf.'))}</span><span class="msg" style="margin:0">${gBul(g)?fmtB(gBul(g))+' bultos':'<span class="neg">sin bultos</span>'} · ${fmt(gPz(g))} pzas</span></label>`).join('')}</div>`}).join('');
   const sel=gs.filter(g=>dspSel.has(g.key));[...dspSel].forEach(k=>{if(!gs.some(g=>g.key===k))dspSel.delete(k)});
   $('dspPick').innerHTML=(pick||'<div class="msg">No hay transferencias pendientes de despachar.</div>')+`<div style="margin-top:14px"><div class="lbl">Fecha y hora del despacho</div><input type="datetime-local" class="f" id="dspWhen" value="${dspWhen||nowLocal()}"></div>`+`<div style="margin-top:14px;display:flex;gap:10px;align-items:center"><div class="msg" style="flex:1;margin:0"><b>${sel.length}</b> transf. · <b>${fmtB(sel.reduce((a,g)=>a+gBul(g),0))}</b> bultos</div><button class="btn pri" id="dspCreate" ${sel.length?'':'disabled'}>Crear despacho</button></div>`;
   const ds=Object.entries(DS).sort((a,b)=>(b[1].seq||0)-(a[1].seq||0));
@@ -674,6 +681,31 @@ $('dfXls').onclick=()=>{
   if(aoa.length===1){toast('No hay diferencias para exportar');return}
   const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:12},{wch:12},{wch:40},{wch:16},{wch:12},{wch:10},{wch:10},{wch:10},{wch:16}];XLSX.utils.book_append_sheet(wb,ws,'Diferencias');XLSX.writeFile(wb,`diferencias_recibo_${RECIBO}.xlsx`)
 };
+
+
+// ---------- Actualizar sin salir de la app ----------
+function resub(){
+  if(!RECIBO)return;for(const f of [offLog,offCli,offDsp,offTrf,offTb,offDs])if(f)f();
+  offLog=onValue(R(db,BASE),s=>{LOG=s.val()||{};renderAll()},e=>{toast('Sin acceso a datos: '+e.code)});
+  offCli=onValue(R(db,CBASE),s=>{CLI=s.val()||{};renderAll()},()=>{});
+  offDsp=onValue(R(db,DSPB),s=>{DSP=s.val()||{};renderAll()},()=>{});
+  offTrf=onValue(R(db,TRFB),s=>{TRF=s.val()||{};renderAll()},()=>{});
+  offTb=onValue(R(db,TRBB),s=>{TRB=s.val()||{};renderAll()},()=>{});
+  offDs=onValue(R(db,DSB),s=>{DS=s.val()||{};renderAll()},()=>{})
+}
+async function softRefresh(){
+  const b=$('btnRef');if(b.classList.contains('spin'))return;b.classList.add('spin');
+  try{
+    await loadUploaded();
+    if(RECIBO){
+      if(RECS[RECIBO]){DATA=RECS[RECIBO].items;STORES=storesFor(DATA);byProd=Object.fromEntries(DATA.map(x=>[x.p,x]));if(cur&&byProd[cur.p])cur=byProd[cur.p]}
+      resub()
+    }else await showRecList();
+    toast('✅ Datos actualizados')
+  }catch(e){toast('No se pudo actualizar: '+(e.code||e.message))}
+  setTimeout(()=>b.classList.remove('spin'),500)
+}
+$('btnRef').onclick=softRefresh;
 
 // ---------- botón Atrás: no sacar de la app, volver al listado ----------
 history.replaceState({c:0},'');history.pushState({c:1},'');
