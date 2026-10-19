@@ -118,7 +118,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
   <div class="wrap">
     <div id="v-rec">
       <div class="card"><h2 style="font-size:20px">Elige el recibo</h2><div class="msg" style="margin-top:4px">Selecciona el recibo que vas a trabajar.</div></div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn sm" id="recStat">📊 Estadística</button><div id="recAdm" class="hide" style="display:flex;gap:8px"><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><button class="btn sm" id="recFindProv">🔎 Buscar proveedores</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn sm" id="recStat">📊 Estadística</button><div id="recAdm" class="hide" style="display:flex;gap:8px"><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div></div>
       <div id="recTabs" style="display:flex;gap:8px;margin-bottom:12px"></div>
       <div id="recList"></div>
     </div>
@@ -289,11 +289,11 @@ async function showRecList(){
   $('v-stat').classList.add('hide');$('mst').classList.add('hide');
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();offLog=offCli=offDsp=offTrf=offTb=offDs=offBg=null;cur=null;RECIBO=null;$('recAdm').classList.toggle('hide',!ISADM);
   $('v-recibo').classList.add('hide');$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Consultas';
-  await loadUploaded();await migrateAuto(Object.keys(RECS));await autoProv();const allIds=Object.keys(RECS);const nC=allIds.filter(id=>COMP[id]).length;
+  await loadUploaded();await migrateAuto(Object.keys(RECS));autoProv().then(ch=>{if(ch&&!$('v-rec').classList.contains('hide'))showRecList()});const allIds=Object.keys(RECS);const nC=allIds.filter(id=>COMP[id]).length;
   $('recTabs').innerHTML=`<button class="btn sm ${recTab==='a'?'pri':''}" data-rtab="a">En proceso (${allIds.length-nC})</button><button class="btn sm ${recTab==='c'?'pri':''}" data-rtab="c">✔ Completados (${nC})</button>`;
   const ids=allIds.filter(id=>!!COMP[id]===(recTab==='c'));
   if(!ids.length){$('recList').innerHTML=`<div class="msg">${recTab==='c'?'Aún no hay recibos completados.':'No hay recibos en proceso.'}</div>`;return}
-  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1">${PROV[id]?`<div class="sora" style="font-size:24px;color:#fff;line-height:1.15;margin-bottom:4px">${esc(PROV[id])}</div>`:'<div class="msg" style="margin:0 0 4px;color:var(--wn)">Sin proveedor</div>'}<div class="lbl">Recibo</div><div class="sora" style="font-size:24px;color:var(--ac)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos · ${fmt(it.reduce((a,x)=>a+(x.rec||0),0))} piezas</div>${COMP[id]?`<div class="msg" style="margin:2px 0 0">✔ Completado · ${fdt(COMP[id].ts)} · ${esc(COMP[id].n||'')}</div>`:''}<div class="msg" id="ri-${id}" style="margin:2px 0 0;color:var(--tx)">Ítems …</div><div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}</div></div><div style="text-align:right;display:flex;gap:14px"><div><div class="big" id="ra-${id}" style="font:800 22px Sora;color:var(--ac)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px Sora;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar"><i id="rb-${id}" style="width:0"></i></div><div class="bar" style="margin-top:4px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">${COMP[id]?`<button class="btn sm" data-reopenrec="${id}">↩ Reabrir</button>`:''}<button class="btn sm" data-provrec="${id}">🏷 Proveedor</button><button class="btn sm" data-fecharec="${id}">📅 Fecha</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
+  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1">${PROV[id]?`<div class="sora" style="font-size:24px;color:#fff;line-height:1.15;margin-bottom:4px">${esc(PROV[id])}</div>`:'<div class="msg" style="margin:0 0 4px;color:var(--wn)">Sin proveedor</div>'}<div class="lbl">Recibo</div><div class="sora" style="font-size:24px;color:var(--ac)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos · ${fmt(it.reduce((a,x)=>a+(x.rec||0),0))} piezas</div>${COMP[id]?`<div class="msg" style="margin:2px 0 0">✔ Completado · ${fdt(COMP[id].ts)} · ${esc(COMP[id].n||'')}</div>`:''}<div class="msg" id="ri-${id}" style="margin:2px 0 0;color:var(--tx)">Ítems …</div><div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}</div></div><div style="text-align:right;display:flex;gap:14px"><div><div class="big" id="ra-${id}" style="font:800 22px Sora;color:var(--ac)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px Sora;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar"><i id="rb-${id}" style="width:0"></i></div><div class="bar" style="margin-top:4px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">${COMP[id]?`<button class="btn sm" data-reopenrec="${id}">↩ Reabrir</button>`:''}<button class="btn sm" data-fecharec="${id}">📅 Fecha</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
   let PROG={};try{PROG=(await get(R(db,'meta_v1/consultas_prog'))).val()||{}}catch(e){}
   for(const id of ids){try{let g=PROG[id];
     if(!g||g.si===undefined){ // primera vez para este recibo: se calcula una sola vez y se guarda el resumen
@@ -308,8 +308,6 @@ async function showRecList(){
 }
 $('recTabs').addEventListener('click',e=>{const b=e.target.closest('[data-rtab]');if(b){recTab=b.dataset.rtab;showRecList()}});
 $('recList').addEventListener('click',async e=>{
-  const pv=e.target.closest('[data-provrec]');
-  if(pv){e.stopPropagation();const id=pv.dataset.provrec;ask('Proveedor · recibo '+id,[{k:'pv',label:'Nombre del proveedor',type:'text',value:PROV[id]||'',ph:'Ej. HDI International',list:provList()}],'Guardar',async v=>{const n=(v.pv||'').trim();try{if(n){await set(R(db,'meta_v1/consultas_prov/'+id),n);PROV[id]=n}else{await remove(R(db,'meta_v1/consultas_prov/'+id));delete PROV[id]}showRecList()}catch(err){toast('Error: '+(err.code||err.message));return false}});return}
   const ro=e.target.closest('[data-reopenrec]');
   if(ro){e.stopPropagation();const id=ro.dataset.reopenrec;if(!confirm(`¿Reabrir el recibo ${id}? Vuelve a la lista En proceso.`))return;try{await remove(R(db,'meta_v1/consultas_comp/'+id));delete COMP[id];recTab='a';toast('Recibo reabierto');showRecList()}catch(err){toast('Error: '+(err.code||err.message))}return}
   const fe=e.target.closest('[data-fecharec]');
@@ -628,7 +626,6 @@ $('trfPanelBody').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.da
 async function loadUploaded(){
   try{const f=await get(R(db,'meta_v1/consultas_fechas'));FECHAS=f.val()||{}}catch(e){}
   try{const c=await get(R(db,'meta_v1/consultas_comp'));COMP=c.val()||{}}catch(e){}
-  try{const c=await get(R(db,'meta_v1/consultas_prov'));PROV=c.val()||{}}catch(e){}
   try{const s=await get(R(db,'meta_v1/consultas_recs'));const v=s.val()||{};
     for(const id of Object.keys(v)){if(BUILTIN.has(id))continue;const it=Object.values(v[id].items||{}).sort((a,b)=>(a.n||0)-(b.n||0));RECS[id]={items:it.map(x=>({...x,s:x.s||{}})),up:true}}
     for(const id of Object.keys(RECS)){if(!BUILTIN.has(id)&&!(id in v))delete RECS[id]}
@@ -694,20 +691,13 @@ async function findProv(idList){
     try{const snap=await get(R(db,p));tried.push(p);const before=Object.keys(out).length;scanProv(snap.val(),ids,out,'',0);if(Object.keys(out).length>before)paths.push(p)}catch(e){}}
   return{found:out,paths,keys:cand,tried}
 }
+let provBusy=false;const provTried=new Set();
 async function autoProv(){
-  if(autoTried)return;autoTried=true;
-  const miss=Object.keys(RECS).filter(id=>!PROV[id]);if(!miss.length)return;
-  try{const r=await findProv(miss);for(const [id,n] of Object.entries(r.found)){PROV[id]=n;try{await set(R(db,'meta_v1/consultas_prov/'+id),n)}catch(e){}}}catch(e){}
+  if(provBusy)return false;const miss=Object.keys(RECS).filter(id=>!PROV[id]&&!provTried.has(id));if(!miss.length)return false;
+  provBusy=true;let ch=false;miss.forEach(id=>provTried.add(id));
+  try{const r=await findProv(miss);for(const [id,n] of Object.entries(r.found)){PROV[id]=n;ch=true}}catch(e){}
+  provBusy=false;return ch
 }
-$('recFindProv').onclick=async()=>{
-  toast('Buscando proveedores en el historial de recibos…');
-  const ids=Object.keys(RECS);let r;
-  try{r=await findProv(ids)}catch(e){alert('No se pudo buscar: '+(e.code||e.message));return}
-  let ok=0;for(const [id,n] of Object.entries(r.found)){try{await set(R(db,'meta_v1/consultas_prov/'+id),n);PROV[id]=n;ok++}catch(e){PROV[id]=n}}
-  const lost=ids.filter(id=>!r.found[id]);
-  alert(`Proveedores encontrados: ${Object.keys(r.found).length} de ${ids.length}\n`+Object.entries(r.found).map(([i,n])=>`#${i} → ${n}`).join('\n')+(lost.length?`\n\nNo encontrados: ${lost.map(i=>'#'+i).join(', ')}`:'')+`\n\nRuta(s) donde se halló: ${r.paths.join(', ')||'ninguna'}\nSecciones revisadas: ${r.tried.join(', ')||'ninguna'}${r.keys.length?'':'\n(La base no permitió listar secciones.)'}`);
-  showRecList()
-};
 
 // Recibos ya trabajados: queda todo surtido y despachado, firmado por el sistema (no por un surtidor)
 const AUTO_U='consultas-erp',AUTO_N='Consultas ERP';
@@ -730,7 +720,7 @@ $('recFile').onchange=async e=>{
     const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});let res=null;
     for(const sn of wb.SheetNames){const aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});const r=parseRecibo(aoa);if(!r.err){res=r;break}res=res||r}
     if(res.err){alert(res.err+'\n\nEncabezados leídos:\n'+res.headers.join(' | ')+'\n\nSube el Excel de distribución tal como lo exporta el sistema (encabezados: Ref. Suplidor, Producto, Descripción, Pza x bult, Total Recibido, Dist Tienda, S4…S14, Cristal, Saldo, UPC…).');return}
-    ask(`Cargar recibo · ${fmt(res.items.length)} referencias`,[{k:'id',label:'Número de recibo',type:'text',value:(f.name.match(/\d{5,}/)||[''])[0]},{k:'pv',label:'Proveedor',type:'text',value:res.prov||'',ph:'Ej. HDI International',list:provList()},{k:'f',label:'Fecha de ingreso del recibo',type:'date',value:today()},{k:'h',label:'Estado del recibo',type:'select',value:'n',opts:[['n','Nuevo: pendiente de surtir'],['h','Ya trabajado: dejarlo surtido y despachado']]},{k:'w',label:'Fecha y hora de despacho (solo si ya trabajado)',type:'datetime-local',value:nowLocal()}],'Cargar',async v=>{
+    ask(`Cargar recibo · ${fmt(res.items.length)} referencias`,[{k:'id',label:'Número de recibo',type:'text',value:(f.name.match(/\d{5,}/)||[''])[0]},{k:'f',label:'Fecha de ingreso del recibo',type:'date',value:today()},{k:'h',label:'Estado del recibo',type:'select',value:'n',opts:[['n','Nuevo: pendiente de surtir'],['h','Ya trabajado: dejarlo surtido y despachado']]},{k:'w',label:'Fecha y hora de despacho (solo si ya trabajado)',type:'datetime-local',value:nowLocal()}],'Cargar',async v=>{
       const id=(v.id||'').trim().replace(/[^A-Za-z0-9_-]/g,'');
       if(!id){toast('Número de recibo inválido');return false}
       if(!v.f){toast('Elige la fecha de ingreso');return false}
@@ -740,7 +730,6 @@ $('recFile').onchange=async e=>{
       if(!confirm(`${RECS[id]?'Se REEMPLAZARÁ':'Se cargará'} el recibo ${id} (ingreso ${fdate(v.f)}): ${fmt(res.items.length)} referencias · ${fmtB(totBul(res.items))} bultos.${res.dup?`\n(${res.dup} filas repetidas ignoradas)`:''}${hist?`\n\nQuedará TODO como surtido y despachado por "Consultas ERP" el ${fdt(wts)}. Se borra cualquier surtido/despacho previo de este recibo.`:''}\n¿Continuar?`))return false;
       try{
         await set(R(db,'meta_v1/consultas_recs/'+id),{items:res.items,by:USER,ts:Date.now(),file:f.name,fecha:v.f});await set(R(db,'meta_v1/consultas_fechas/'+id),v.f);FECHAS[id]=v.f;
-        if((v.pv||'').trim()){await set(R(db,'meta_v1/consultas_prov/'+id),v.pv.trim());PROV[id]=v.pv.trim()}else{try{const r=await findProv([id]);if(r.found[id]){await set(R(db,'meta_v1/consultas_prov/'+id),r.found[id]);PROV[id]=r.found[id]}}catch(e){}}
         if(hist){await autoClose(id,res.items,wts)}else{try{await remove(R(db,'meta_v1/consultas_prog/'+id));await remove(R(db,'meta_v1/consultas_comp/'+id));delete COMP[id]}catch(e2){}}
         toast('✅ Recibo '+id+(hist?' cargado como surtido y despachado':' cargado'));showRecList()}
       catch(err){toast('Error: '+(err.code||err.message));return false}
@@ -888,7 +877,7 @@ async function openStat(){
   await statReload()
 }
 async function statReload(){
-  try{await loadUploaded();await Promise.all(Object.keys(RECS).map(async id=>{try{const [a,b]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);STC[id]={log:a.val()||{},desp:b.val()||{}}}catch(e){STC[id]={log:{},desp:{}}}}));
+  try{await loadUploaded();await autoProv();await Promise.all(Object.keys(RECS).map(async id=>{try{const [a,b]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);STC[id]={log:a.val()||{},desp:b.val()||{}}}catch(e){STC[id]={log:{},desp:{}}}}));
     buildEv();buildFilters();renderStat()}catch(e){$('stBody').innerHTML='<div class="msg">No se pudo cargar: '+esc(e.code||e.message)+'</div>'}
 }
 function buildEv(){
