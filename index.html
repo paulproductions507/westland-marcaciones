@@ -1150,14 +1150,8 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
                   <option>Permiso o salida autorizada</option>
                   <option>Llegó tarde por causa justificada</option>
                   <option>Corrección de AM/PM</option>
-                  <option value="__adel__">⏳ Hora adelantada / extra (pasa al banco para aplicarla a otro día)</option>
                   <option value="__otro__">Otro (escribir abajo)</option>
                 </select>
-                <div id="ed-adel-box" style="display:none;margin-top:6px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:9px">
-                  <label style="font-size:11.5px;font-weight:700;color:var(--ac)">Minutos adelantados por colaborador (de esta fecha)</label>
-                  <input type="number" class="fc" id="ed-adel-min" min="1" value="60" style="margin-top:4px">
-                  <div style="font-size:11px;color:var(--mt);margin-top:5px;line-height:1.45">Se registra UNA sola vez por colaborador y fecha en el banco de horas (si ya existe, no se duplica). Luego la aplicas al día que necesites en "Horas adelantadas — banco". Si ya fue aplicada, queda marcada como consumida y no se vuelve a tomar en cuenta.</div>
-                </div>
                 <textarea class="fc" id="ed-comment" rows="2" style="margin-top:6px" placeholder="Este comentario sale en la columna Notas del correo semanal"></textarea>
               </div>
               <div style="display:flex;gap:8px;margin-top:7px">
@@ -1202,8 +1196,8 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="adel-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
           </div></div>
 
-          <div class="asec"><div class="ashdr" data-ac="ac-bancohrs"><span>⏳ Horas adelantadas — banco (semanas anteriores)</span><span class="ach">▾</span></div>
-          <div class="asbdy" id="ac-bancohrs">
+          <div class="asec"><div class="ashdr" data-ac="ac-banco"><span>⏳ Horas adelantadas — banco (semanas anteriores)</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-banco">
             <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Son las MISMAS horas adelantadas de los sábados, pero de semanas anteriores (ej. se quedaron esperando un contenedor y se les deben). <strong>No modifica sus marcaciones</strong>: se registra la fecha, los minutos y el motivo (queda en bitácora). El saldo <strong>no vence</strong> y pasa de semana en semana hasta que lo apliques a un día con faltante; al aplicarlo se consume y lo que sobre sigue disponible. Nunca paga extra: solo cubre el faltante de ese día.</div>
             <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;margin-bottom:10px">
               <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;font-weight:700;color:var(--tx);text-transform:none;letter-spacing:0;cursor:pointer"><input type="checkbox" id="adel-ocultar" checked style="margin-top:2px"><span>🙈 Ocultar la nota de origen a RRHH y en los listados/correos</span></label>
@@ -1213,31 +1207,18 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div class="fg"><label>Fecha en que se quedaron</label><input type="date" class="fc" id="banco-fecha"></div>
             <div class="fg"><label>Minutos adelantados</label><input type="number" class="fc" id="banco-min" min="1" value="60"></div>
             <div class="fg"><label>Motivo / comentario</label><input type="text" class="fc" id="banco-motivo" placeholder="ej. Esperaron 3 contenedores después de las 5:00 pm"></div>
-            <div class="fg"><label>Colaboradores que se quedaron</label>
-              <div id="banco-users-checks" style="display:flex;flex-direction:column;gap:9px;max-height:220px;overflow-y:auto;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px"></div>
-              <div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap">
-                <button class="btn bg bsm" id="btn-banco-todos" type="button" style="width:auto">Seleccionar todos</button>
-                <button class="btn bg bsm" id="btn-banco-ninguno" type="button" style="width:auto">Ninguno</button>
-                <span id="banco-sel-count" style="font-size:11px;color:var(--mt)"></span>
-              </div>
-            </div>
+            <div class="fg"><label>Colaboradores (mantén presionado para elegir varios)</label><select class="fc" id="banco-users" multiple size="6"></select></div>
+            <button class="btn bg bsm" id="btn-banco-todos" type="button" style="width:auto;margin-top:4px">Seleccionar todos</button>
             <button class="btn bp bsm" id="btn-banco-add" type="button" style="width:auto;margin-top:4px">⏳ Registrar horas adelantadas</button>
-            <div style="font-size:11.5px;font-weight:800;color:var(--ac);margin:14px 0 4px">2) Aplicar saldo a un día (varios colaboradores a la vez)</div>
-            <div class="fg"><label>Día a cubrir</label><input type="date" class="fc" id="bancoap-fecha"></div>
-            <div class="fg"><label>Minutos por defecto</label><input type="number" class="fc" id="bancoap-def" min="1" value="60"></div>
-            <div id="bancoap-checks" style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px"></div>
-            <div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap">
-              <button class="btn bg bsm" id="btn-bancoap-todos" type="button" style="width:auto">Marcar todos con saldo</button>
-              <button class="btn bg bsm" id="btn-bancoap-ninguno" type="button" style="width:auto">Ninguno</button>
-              <button class="btn bg bsm" id="btn-bancoap-def" type="button" style="width:auto">Poner minutos por defecto</button>
-              <span id="bancoap-sel-count" style="font-size:11px;color:var(--mt)"></span>
-            </div>
-            <button class="btn bg bsm" id="btn-bancoap-sug" type="button" style="width:auto;margin-top:6px">💡 Sugerir faltante de ese día</button>
-            <button class="btn bp bsm" id="btn-bancoap" type="button" style="width:auto;margin-top:6px">✅ Aplicar a los seleccionados</button>
-            <div id="bancohrs-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
-            <div class="fg" style="margin-top:12px"><label>Ver historial / saldo de</label><select class="fc" id="bancoap-user"></select></div>
+            <div style="font-size:11.5px;font-weight:800;color:var(--ac);margin:14px 0 4px">2) Aplicar saldo a un día</div>
+            <div class="fg"><label>Colaborador</label><select class="fc" id="bancoap-user"></select></div>
             <div id="bancoap-saldo" style="font-size:11.5px;color:var(--mt);margin-bottom:6px"></div>
-            <div id="banco-detalle" style="margin-top:6px"></div>
+            <div class="fg"><label>Día a cubrir</label><input type="date" class="fc" id="bancoap-fecha"></div>
+            <div class="fg"><label>Minutos a aplicar</label><input type="number" class="fc" id="bancoap-min" min="1"></div>
+            <button class="btn bg bsm" id="btn-bancoap-sug" type="button" style="width:auto;margin-top:4px">💡 Sugerir faltante de ese día</button>
+            <button class="btn bp bsm" id="btn-bancoap" type="button" style="width:auto;margin-top:4px">✅ Aplicar al día</button>
+            <div id="banco-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
+            <div id="banco-detalle" style="margin-top:10px"></div>
           </div></div>
 
           <div class="asec"><div class="ashdr" data-ac="ac-emerg"><span>🚨 Evento de emergencia (sismo / evacuación)</span><span class="ach">▾</span></div>
@@ -2297,7 +2278,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import{getAuth,signInWithEmailAndPassword,signOut,EmailAuthProvider,reauthenticateWithCredential,updatePassword}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
-import{getDatabase,ref as R,set,push,get,onValue,remove,update,query,limitToLast,orderByKey,startAt,endAt}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+import{getDatabase,ref as R,set,push,get,onValue,remove,update,query,limitToLast,orderByKey,orderByChild,equalTo,startAt,endAt}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 const FB={apiKey:"AIzaSyCn7bUx8PdK-1TCmOnffWJYLouC5vdGMIE",authDomain:"westland-marcaciones.firebaseapp.com",projectId:"westland-marcaciones",storageBucket:"westland-marcaciones.appspot.com",messagingSenderId:"477907187320",appId:"1:477907187320:web:c04ef5b3b8ff5773b99f8d",databaseURL:"https://westland-marcaciones-default-rtdb.firebaseio.com"};
 const app=initializeApp(FB),auth=getAuth(app),db=getDatabase(app);
@@ -2314,6 +2295,9 @@ let FB_CONNECTED=true,fbWasDown=false;
 // auth != null), incluso estando ya en la pantalla de login.
 let ACTIVE_DB_LISTENERS=[];
 function trackedOnValue(path,cb,errCb){const unsub=onValue(path,cb,errCb);ACTIVE_DB_LISTENERS.push(unsub);return unsub;}
+// Ahorro de tráfico: si la escucha (onValue) ya trajo el dato, se reutiliza en vez de volver a descargar el mismo nodo.
+const _sn=(snap,path)=>(snap&&typeof snap.exists==='function')?snap:get(R(db,path));
+let LOGR_FRESH=false,LOGCAM_FRESH=false;
 function detachTrackedListeners(){ACTIVE_DB_LISTENERS.forEach(u=>{try{u();}catch(e){}});ACTIVE_DB_LISTENERS=[];}
 onValue(R(db,'.info/connected'),(snap)=>{
   FB_CONNECTED=snap.val()===true;
@@ -2425,7 +2409,8 @@ const NOTIF='notif_v1';
 // Se ejecuta una vez por sesión de admin (ver openApp), no en un intervalo.
 async function prunePersistentNodes(){
   try{
-    const nSnap=await get(R(db,NOTIF));
+    // Solo se bajan las notificaciones de más de 7 días (las únicas que se pueden podar), no todo el nodo.
+    const nSnap=await get(query(R(db,NOTIF),orderByKey(),endAt('notif_'+(Date.now()-7*86400000))));
     if(nSnap.exists()){
       const v=nSnap.val(),cutoff=Date.now()-7*86400000,dels=[];
       Object.entries(v).forEach(([k,n])=>{if(n.leido&&new Date(n.ts).getTime()<cutoff)dels.push(remove(R(db,NOTIF+'/'+k)));});
@@ -2450,7 +2435,7 @@ async function sendNotif(from,to,titulo,mensaje){
 async function checkNotifs(){
   if(!CU)return;
   try{
-    const snap=await get(R(db,NOTIF));if(!snap.exists())return;
+    const snap=await get(query(R(db,NOTIF),orderByKey(),startAt('notif_'+(Date.now()-7*86400000))));if(!snap.exists())return;
     const notifs=Object.entries(snap.val()).filter(([,v])=>{
       return !v.leido&&(v.to===CU||v.to==='todos'||(v.to==='todos_admin'&&ADMINS.includes(CU)));
     });
@@ -2468,7 +2453,8 @@ async function checkNotifs(){
 let notifListening=false;
 function listenNotifs(){
   if(!CU||notifListening)return;notifListening=true;
-  trackedOnValue(R(db,NOTIF),async snap=>{
+  // Solo escucha la última hora: el listener únicamente avisa de notificaciones de los últimos 30 segundos.
+  trackedOnValue(query(R(db,NOTIF),orderByKey(),startAt('notif_'+(Date.now()-3600000))),async snap=>{
     if(!snap.exists())return;
     const now=Date.now();
     Object.entries(snap.val()).forEach(([k,v])=>{
@@ -2595,7 +2581,7 @@ const u2e=u=>{
     ? `${uu}@saks.com.pa`
     : `westlandoutletjugueterianivel+${uu}@gmail.com`;
 };
-const doLogout=()=>{clearInterval(sTimer);clearInterval(autoSchedInt);detachTrackedListeners();logListening=false;notifListening=false;approvalsListening=false;return signOut(auth).then(closeApp);};
+const doLogout=()=>{clearInterval(sTimer);clearInterval(autoSchedInt);detachTrackedListeners();logListening=false;LOGR_FRESH=false;LOGCAM_FRESH=false;notifListening=false;approvalsListening=false;return signOut(auth).then(closeApp);};
 function closeApp(){el('app').style.display='none';el('login-scr').style.display='flex';el('lu').value='';el('lp').value='';CU=null;CUM=null;el('sess-bar').style.display='none';if(el('tab-reloj')){el('tab-reloj').style.display='block';el('tab-log').style.display='none';el('tabbtn-reloj').classList.add('active');el('tabbtn-log').classList.remove('active');}}
 
 // GPS
@@ -3167,19 +3153,22 @@ async function renderAsistencia(){
   // Auto-habilitar colaboradores activos según horario (10 min antes de entrada)
   const nowPA=getNowPanama();
   const nowMin=nowPA.getHours()*60+nowPA.getMinutes();
+  // Ahorro de tráfico: HORCOL se lee una sola vez (compartido 2 min) en vez de una lectura por colaborador en cada pasada
+  let hcv={};try{const hcS=await getSharedSnap(HORCOL,120000);hcv=hcS.exists()?hcS.val():{};}catch(e){}
+  let huboAuto=false;
   for(const u of colab){
-    const base=await getHorarioBaseDe(u.user,today);
+    const base=await getHorarioBaseDe(u.user,today,hcv[u.user]||null);
     if(!base||!base.inicio)continue;
     const[eh,em]=base.inicio.split(':').map(Number);
     const entMin=eh*60+em;
     const ventanaAbierta=nowMin>=(entMin-10)&&nowMin<=(entMin+30); // 10 min antes hasta 30 min después
     if(ventanaAbierta&&ast[u.user]?.habilitado!==true){
       // Auto-habilitar silenciosamente
-      await setHabilitado(u.user,true,'sistema-auto');
+      await setHabilitado(u.user,true,'sistema-auto');huboAuto=true;
     }
   }
-  // Refrescar asistencia tras auto-habilitar
-  const astFresh=await getAsistenciaHoy();
+  // Refrescar asistencia solo si el auto-habilitado cambió algo
+  const astFresh=huboAuto?await getAsistenciaHoy():ast;
   c.innerHTML='';
   let habCount=0;
   colab.forEach(u=>{
@@ -3252,18 +3241,23 @@ function getNowPanama(){
 let astAutoRefreshInt=null;
 function startAstAutoRefresh(){
   if(astAutoRefreshInt)return;
+  let astTick=0;
   astAutoRefreshInt=setInterval(()=>{
-    if(el('ast-list')&&ADMINS.includes(CU)){renderAsistencia();}
-    // También verificar acceso del colaborador
-    if(!ADMINS.includes(CU))checkAccesoColab();
-  },60000); // cada 60 segundos
+    astTick++;
+    // Admin: la ventana de habilitación va de 10 min antes a 30 min después de la entrada, así que cada 3 min basta
+    if(ADMINS.includes(CU)){if(astTick%3===0&&el('ast-list'))renderAsistencia();return;}
+    // Colaborador: solo con la pantalla visible; cada minuto mientras no esté habilitado, cada 5 min cuando ya lo está
+    if(document.hidden)return;
+    if(!window.__colabOk||astTick%5===0)checkAccesoColab();
+  },60000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&CU&&!ADMINS.includes(CU))checkAccesoColab();});
 }
 
 // Para colaboradores: mostrar countdown si aún no está en ventana
 async function checkAccesoColabConCountdown(){
   if(ADMINS.includes(CU)){el('acceso-card').style.display='none';return;}
   el('acceso-card').style.display='block';
-  const ok=await isHabilitado(CU);
+  const ok=await isHabilitado(CU);window.__colabOk=!!ok;
   const msg=el('acceso-msg');
   if(ok){
     msg.innerHTML='✅ Acceso habilitado — puedes marcar hoy';
@@ -3515,21 +3509,6 @@ function bancoOrigenes(b){
   return out;
 }
 function fmtFechaDM(f){const a=String(f||'').split('-');return a.length===3?`${a[2]}/${a[1]}`:String(f||'');}
-// Estado de cada crédito (FIFO): cuánto ya se consumió y cuánto queda disponible
-function bancoEstados(b){
-  const cr=Object.entries((b&&b.creditos)||{}).map(([id,x])=>({id,fecha:x.fecha||'',min:+x.min||0,rest:+x.min||0})).sort((a,c)=>a.fecha.localeCompare(c.fecha));
-  Object.entries((b&&b.consumos)||{}).sort((a,c)=>a[0].localeCompare(c[0])).forEach(([f,x])=>{
-    let need=+x.min||0;
-    for(const c of cr){if(need<=0)break;if(c.rest<=0)continue;const t=Math.min(c.rest,need);c.rest-=t;need-=t;}
-  });
-  const out={};cr.forEach(c=>{out[c.id]={rest:c.rest,usado:c.min-c.rest};});return out;
-}
-function estBadge(e,min){
-  if(!e)return '';
-  if(e.rest<=0)return '<span style="color:#ef4444;font-weight:700">🔴 APLICADA</span>';
-  if(e.usado>0)return `<span style="color:#f59e0b;font-weight:700">🟡 PARCIAL (quedan ${e.rest} min)</span>`;
-  return '<span style="color:#22c55e;font-weight:700">🟢 DISPONIBLE</span>';
-}
 function origenTxt(list){return (list||[]).map(o=>`${fmtFechaDM(o.fecha)}${o.motivo?' · '+o.motivo:''} (${o.min} min)`).join('; ');}
 // Texto de origen de las horas adelantadas que cubrieron el día k (sábado habilitado y/o banco)
 function trazaAdel(k,res,orig){
@@ -4122,7 +4101,8 @@ async function openApp(user){
   el('log-config-card').style.display=isAdm?'block':'none';
   el('log-nuevo-card').style.display=isAdm?'block':'none';
   el('log-camnuevo-card').style.display=isAdm?'block':'none';
-  tabSwitch('reloj');renderLogProveedores();await renderLogPendientes();loadLogDeptos();fillLogAsignadoSelect();fillLogCamAsignadoSelect();renderLogCamNuevoChecklist();renderLogCamRec();listenLogistica();loadLogSumMov();loadLogSumTam();loadLogSumCat();loadLogSumResp();loadLogSumReq();loadLogSumAreas();loadLogSumAcuses();loadAnSemanas();
+  // Ahorro de tráfico: listenLogistica() ya trae y pinta proveedores, deptos, camiones, recibos y suministro; antes se bajaba todo dos veces al entrar.
+  tabSwitch('reloj');fillLogAsignadoSelect();fillLogCamAsignadoSelect();renderLogCamNuevoChecklist();listenLogistica();
   // Gerente: hide buttons they shouldn't see
   if(isGer){
     ['btn-limpiar'].forEach(id=>{if(el(id))el(id).style.display='none';});
@@ -4332,12 +4312,11 @@ async function renderColabBaja(){
 function fillSelects(obj){
   const users=Object.values(obj||{});
   const withAll=['gen-user','bor-user','rpt-users'];
-  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user','tcol-user','descman-user','emerg-sr-user','bancoap-user'].forEach(id=>{
+  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user','tcol-user','descman-user','emerg-sr-user','banco-users','bancoap-user'].forEach(id=>{
     const s=el(id);if(!s)return;
     s.innerHTML=withAll.includes(id)?'<option value="__ALL__">— Todos —</option>':'';
-    users.filter(u=>u&&typeof u==='object'&&u.user&&!GERENTES.includes(u.user)).forEach(u=>s.innerHTML+=`<option value="${u.user}">${u.nombre||u.user} (${u.user})</option>`);
+    users.filter(u=>!GERENTES.includes(u.user)).forEach(u=>s.innerHTML+=`<option value="${u.user}">${u.nombre} (${u.user})</option>`);
   });
-  try{renderBancoChecks(obj);}catch(e){console.warn('checks banco',e);}
   try{renderEdUserChecks(obj);renderGenUserChecks(obj);renderBorUserChecks(obj);renderGenuUserChecks(obj);}catch(e){console.warn('checks usuarios',e);}
 }
 
@@ -6407,7 +6386,7 @@ function hhmmss(d){return String(d.getHours()).padStart(2,'0')+':'+String(d.getM
 let approvalsListening=false;
 function listenApprovals(){
   if(approvalsListening)return;approvalsListening=true;
-  trackedOnValue(R(db,APR),async snap=>{
+  trackedOnValue(query(R(db,APR),orderByChild('status'),equalTo('pending')),async snap=>{
     const c=el('aprov-list');c.innerHTML='';
     if(!snap.exists()){c.innerHTML='<div style="color:var(--mt);font-size:13px">Sin solicitudes</div>';el('pbadge').textContent='0';return;}
     const all=snap.val();
@@ -7844,11 +7823,10 @@ async function renderBancoUser(){
   const saldo=bancoSaldoMin(b);
   sd.innerHTML=`Saldo disponible: <strong style="color:${saldo>0?'#f59e0b':'var(--mt)'}">${saldo>0?fmtMinHM(saldo):'0h 00m'}</strong>`;
   if(!det)return;
-  const est=bancoEstados(b);
   const cr=Object.entries(b.creditos||{}).sort((a,c)=>(a[1].fecha||'').localeCompare(c[1].fecha||''));
   const co=Object.entries(b.consumos||{}).sort((a,c)=>a[0].localeCompare(c[0]));
   const row=(txt,attrs)=>`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:6px 9px;margin-bottom:5px;font-size:11.5px"><span>${txt}</span><button type="button" class="btn bg bsm btn-banco-del" ${attrs} style="width:auto;padding:3px 8px;font-size:10.5px">🗑 Quitar</button></div>`;
-  det.innerHTML=(cr.length?`<div style="font-size:11px;font-weight:700;color:var(--mt);margin-bottom:5px">Horas adelantadas registradas:</div>`+cr.map(([id,x])=>row(`${estBadge(est[id],x.min)} ➕ ${escHtml(x.fecha)} — ${x.min} min — ${escHtml(x.motivo||'')} <span style="color:var(--mt)">(${escHtml(x.por||'?')})</span>`,`data-tipo="cred" data-id="${escHtml(id)}"`)).join(''):'<div style="font-size:11px;color:var(--mt)">Sin horas adelantadas registradas.</div>')
+  det.innerHTML=(cr.length?`<div style="font-size:11px;font-weight:700;color:var(--mt);margin-bottom:5px">Horas adelantadas registradas:</div>`+cr.map(([id,x])=>row(`➕ ${escHtml(x.fecha)} — ${x.min} min — ${escHtml(x.motivo||'')} <span style="color:var(--mt)">(${escHtml(x.por||'?')})</span>`,`data-tipo="cred" data-id="${escHtml(id)}"`)).join(''):'<div style="font-size:11px;color:var(--mt)">Sin horas adelantadas registradas.</div>')
    +(co.length?`<div style="font-size:11px;font-weight:700;color:var(--mt);margin:8px 0 5px">Ya aplicadas a días:</div>`+co.map(([f,x])=>row(`➖ ${escHtml(f)} — ${x.min} min <span style="color:var(--mt)">(${escHtml(x.por||'?')}) · origen: ${escHtml(origenTxt(bancoOrigenes(b)[f])||'—')}</span>`,`data-tipo="cons" data-id="${escHtml(f)}"`)).join(''):'');
   det.querySelectorAll('.btn-banco-del').forEach(bt=>bt.addEventListener('click',async()=>{
     if(!confirm('¿Quitar este registro?'))return;
@@ -7873,115 +7851,57 @@ el('adel-ocultar')?.addEventListener('change',async()=>{
     toast(c.checked?'🙈 Oculta para RRHH ✓':'👁 Visible para RRHH ✓','ok');
   }catch(e){c.checked=!c.checked;toast('⛔ No se pudo guardar','err');}
 });
-document.querySelector('[data-ac="ac-bancohrs"]')?.addEventListener('click',()=>setTimeout(()=>{renderBancoUser();renderBancoApplyList();cargarOcultarNota();},50));
-// ── Colaboradores con checks (registrar) y lista con saldo (aplicar) ──
-let _bancoUsersList=[];
-function bancoSelUsers(){return[...document.querySelectorAll('#banco-users-checks input[type=checkbox]:checked')].map(c=>c.dataset.user);}
-function updBancoCount(){const t=document.querySelectorAll('#banco-users-checks input[type=checkbox]').length,st=el('banco-sel-count');if(st)st.textContent=bancoSelUsers().length+' de '+t+' seleccionados';}
-function renderBancoChecks(obj){
-  const c=el('banco-users-checks');if(!c)return;
-  const prev=new Set(bancoSelUsers());
-  _bancoUsersList=Object.values(obj||{}).filter(u=>u&&typeof u==='object'&&u.user&&!GERENTES.includes(u.user)).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
-  c.innerHTML=_bancoUsersList.map(u=>`<label style="display:flex;align-items:center;gap:9px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--tx);font-size:13px;margin:0"><input type="checkbox" data-user="${escHtml(u.user)}" ${prev.has(u.user)?'checked':''} style="width:auto;accent-color:var(--ac);flex-shrink:0"><span>${escHtml(u.nombre||u.user)} <span style="color:var(--mt);font-size:11px">(${escHtml(u.user)})</span></span></label>`).join('');
-  updBancoCount();
-}
-el('banco-users-checks')?.addEventListener('change',updBancoCount);
-el('btn-banco-todos')?.addEventListener('click',()=>{document.querySelectorAll('#banco-users-checks input[type=checkbox]').forEach(c=>c.checked=true);updBancoCount();});
-el('btn-banco-ninguno')?.addEventListener('click',()=>{document.querySelectorAll('#banco-users-checks input[type=checkbox]').forEach(c=>c.checked=false);updBancoCount();});
-
-// Lista de aplicar: una fila por colaborador con su saldo y sus minutos (editables)
-function bapDef(){return Math.max(1,parseInt(el('bancoap-def')?.value,10)||60);}
-function updBapCount(){const n=document.querySelectorAll('#bancoap-checks .bap-ck:checked').length,st=el('bancoap-sel-count');if(st)st.textContent=n+' seleccionados';}
-async function renderBancoApplyList(){
-  const c=el('bancoap-checks');if(!c)return;
-  const prev={};c.querySelectorAll('.bap-row').forEach(r=>{prev[r.dataset.user]={ck:r.querySelector('.bap-ck').checked,min:r.querySelector('.bap-min').value};});
-  if(!_bancoUsersList.length){c.innerHTML='<div style="font-size:12px;color:var(--mt)">Cargando colaboradores...</div>';return;}
-  const saldos=await Promise.all(_bancoUsersList.map(async u=>{try{return bancoSaldoMin(await getBancoUser(u.user,true));}catch(e){return 0;}}));
-  c.innerHTML=_bancoUsersList.map((u,i)=>{
-    const sal=saldos[i],pv=prev[u.user],def=Math.min(bapDef(),Math.max(sal,0)),dis=sal<=0;
-    return `<div class="bap-row" data-user="${escHtml(u.user)}" data-saldo="${sal}" style="display:flex;align-items:center;gap:8px;${dis?'opacity:.45':''}">
-      <input type="checkbox" class="bap-ck" ${dis?'disabled':''} ${pv&&pv.ck&&!dis?'checked':''} style="width:auto;accent-color:var(--ac);flex-shrink:0">
-      <div style="flex:1;min-width:0;font-size:12.5px;color:var(--tx);text-transform:none;letter-spacing:0">${escHtml(u.nombre||u.user)}<div style="font-size:10.5px;color:${sal>0?'#f59e0b':'var(--mt)'}">Saldo: ${sal>0?fmtMinHM(sal)+' ('+sal+' min)':'0'}</div></div>
-      <input type="number" class="fc bap-min" min="1" ${dis?'disabled':''} value="${pv&&pv.min!==''&&!dis?escHtml(pv.min):(def||'')}" placeholder="min" style="width:78px;flex-shrink:0;padding:6px 8px">
-    </div>`;}).join('');
-  updBapCount();
-}
-el('bancoap-checks')?.addEventListener('change',updBapCount);
-el('btn-bancoap-todos')?.addEventListener('click',()=>{document.querySelectorAll('#bancoap-checks .bap-ck:not(:disabled)').forEach(c=>c.checked=true);updBapCount();});
-el('btn-bancoap-ninguno')?.addEventListener('click',()=>{document.querySelectorAll('#bancoap-checks .bap-ck').forEach(c=>c.checked=false);updBapCount();});
-el('btn-bancoap-def')?.addEventListener('click',()=>{
-  const d=bapDef();
-  document.querySelectorAll('#bancoap-checks .bap-row').forEach(r=>{const sal=+r.dataset.saldo||0;if(sal>0)r.querySelector('.bap-min').value=Math.min(d,sal);});
-});
-el('bancoap-def')?.addEventListener('change',()=>el('btn-bancoap-def')?.click());
-
+document.querySelector('[data-ac="ac-banco"]')?.addEventListener('click',()=>setTimeout(()=>{renderBancoUser();cargarOcultarNota();},50));
+el('btn-banco-todos')?.addEventListener('click',()=>{Array.from(el('banco-users').options).forEach(o=>{o.selected=true;});});
 el('btn-banco-add')?.addEventListener('click',async()=>{
   const fecha=el('banco-fecha').value,min=parseInt(el('banco-min').value,10),motivo=(el('banco-motivo').value||'').trim();
-  const users=bancoSelUsers();
-  const st=el('bancohrs-status');
-  if(!fecha||!min||min<=0||!motivo||!users.length){toast('Completa fecha, minutos, motivo y marca al menos un colaborador','err');return;}
+  const users=Array.from(el('banco-users').selectedOptions).map(o=>o.value);
+  const st=el('banco-status');
+  if(!fecha||!min||min<=0||!motivo||!users.length){toast('Completa fecha, minutos, motivo y colaboradores','err');return;}
   const btn=el('btn-banco-add');btn.disabled=true;
   try{
-    let nuevos=0;const ya=[];
     for(const u of users){
-      const id='e'+fecha.replace(/-/g,'')+'_'+u; // mismo id que "Editar marcaciones": una sola vez por colaborador y fecha
-      const bu=await getBancoUser(u,true);
-      if(bu&&bu.creditos&&bu.creditos[id]){ya.push(u);continue;}
-      await set(R(db,`${BANCO}/${u}/creditos/${id}`),{fecha,min,motivo,por:CU,ts:Date.now(),origen:'manual'});
-      _bancoCache.delete(u);nuevos++;
+      const id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+      await set(R(db,`${BANCO}/${u}/creditos/${id}`),{fecha,min,motivo,por:CU,ts:Date.now()});
+      _bancoCache.delete(u);
     }
-    if(nuevos)await addLog(`⏳ Horas adelantadas registradas: ${users.filter(u=>!ya.includes(u)).join(', ')} — ${min} min del ${fecha} — "${motivo}" (por ${CU})`);
-    if(st)st.textContent=`✅ Registrado: ${min} min del ${fecha} para ${nuevos} colaborador(es).${ya.length?` Ya existían (no se duplican): ${ya.join(', ')}.`:''} Puedes elegir otra fecha y registrar de nuevo.`;
-    toast(`⏳ Registrado ✓ (${nuevos})${ya.length?` · ${ya.length} ya existían`:''}`,'ok',5000);
-    el('banco-motivo').value='';renderBancoUser();renderBancoApplyList();
+    await addLog(`⏳ Horas adelantadas registradas: ${users.join(', ')} — ${min} min del ${fecha} — "${motivo}" (por ${CU})`);
+    if(st)st.textContent=`✅ Registrado: ${min} min para ${users.length} colaborador(es).`;
+    toast('⏳ Registrado ✓','ok');el('banco-motivo').value='';renderBancoUser();
   }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo registrar','err');}
   btn.disabled=false;
 });
 el('btn-bancoap-sug')?.addEventListener('click',async()=>{
-  const fecha=el('bancoap-fecha').value,st=el('bancohrs-status');
-  const rows=[...document.querySelectorAll('#bancoap-checks .bap-row')].filter(r=>r.querySelector('.bap-ck').checked);
-  if(!fecha||!rows.length){toast('Elige el día y marca colaboradores','err');return;}
+  const user=el('bancoap-user').value,fecha=el('bancoap-fecha').value,st=el('banco-status');
+  if(!user||!fecha){toast('Elige colaborador y día','err');return;}
   try{
-    const hist=(await getHist(fecha))||[];
-    const almGlobal=await loadAlmuerzoGlobal();
+    const marks=((await getHist(fecha))||[]).filter(m=>m.user===user);
+    if(marks.length<4){if(st)st.textContent='Ese día no tiene las 4 marcas completas; escribe los minutos a mano.';return;}
     const dow=new Date(fecha+'T00:00:00').getDay();
-    const notas=[];
-    for(const r of rows){
-      const user=r.dataset.user,sal=+r.dataset.saldo||0,marks=hist.filter(m=>m.user===user);
-      if(marks.length<4){notas.push(`${user}: sin las 4 marcas`);continue;}
-      const hrs=computeHrs(marks,almCfgForDia(almGlobal,dow));
-      const falta=Math.max(0,Math.round((8-hrs)*60));
-      const ya=await getBancoMinDia(user,fecha);
-      const sug=Math.max(0,Math.min(sal,falta-ya));
-      r.querySelector('.bap-min').value=sug||'';
-      notas.push(`${user}: falta ${falta} min → ${sug}`);
-    }
-    if(st)st.textContent='Sugerido — '+notas.join(' · ');
+    const almGlobal=await loadAlmuerzoGlobal();
+    const hrs=computeHrs(marks,almCfgForDia(almGlobal,dow));
+    const falta=Math.max(0,Math.round((8-hrs)*60));
+    const saldo=bancoSaldoMin(await getBancoUser(user,true));
+    const ya=await getBancoMinDia(user,fecha);
+    const sug=Math.max(0,Math.min(saldo,falta-ya));
+    el('bancoap-min').value=sug||'';
+    if(st)st.textContent=`Faltante de ese día: ${falta} min${ya?` (ya tiene ${ya} aplicados)`:''}. Saldo: ${saldo} min. Sugerido: ${sug} min.`;
   }catch(e){if(st)st.textContent='No se pudo calcular el faltante.';}
 });
 el('btn-bancoap')?.addEventListener('click',async()=>{
-  const fecha=el('bancoap-fecha').value,st=el('bancohrs-status');
-  const rows=[...document.querySelectorAll('#bancoap-checks .bap-row')].filter(r=>r.querySelector('.bap-ck').checked);
-  if(!fecha){toast('Elige el día a cubrir','err');return;}
-  if(!rows.length){toast('Marca al menos un colaborador','err');return;}
+  const user=el('bancoap-user').value,fecha=el('bancoap-fecha').value,min=parseInt(el('bancoap-min').value,10),st=el('banco-status');
+  if(!user||!fecha||!min||min<=0){toast('Completa colaborador, día y minutos','err');return;}
   const btn=el('btn-bancoap');btn.disabled=true;
-  const ok=[],mal=[];
   try{
-    for(const r of rows){
-      const user=r.dataset.user,min=parseInt(r.querySelector('.bap-min').value,10);
-      if(!min||min<=0){mal.push(`${user} (sin minutos)`);continue;}
-      const b=await getBancoUser(user,true),saldo=bancoSaldoMin(b);
-      if(min>saldo){mal.push(`${user} (saldo ${saldo} min)`);continue;}
-      const prev=+(((b.consumos||{})[fecha]||{}).min)||0;
-      await set(R(db,`${BANCO}/${user}/consumos/${fecha}`),{min:prev+min,por:CU,ts:Date.now()});
-      _bancoCache.delete(user);
-      const _b2=await getBancoUser(user,true);
-      await addLog(`⏳ Horas adelantadas aplicadas: ${min} min a ${user} el ${fecha} — origen: ${origenTxt(bancoOrigenes(_b2)[fecha])||'—'} — saldo restante ${saldo-min} min (por ${CU})`);
-      ok.push(`${user} ${min}m`);
-    }
-    if(st)st.textContent=`${ok.length?`✅ Aplicado a ${ok.length}: ${ok.join(', ')}. Se refleja en Vista Semanal. `:''}${mal.length?`⚠ No aplicado: ${mal.join(', ')}.`:''}`;
-    toast(ok.length?`⏳ Aplicado a ${ok.length} ✓${mal.length?` · ${mal.length} con problema`:''}`:'⚠ No se aplicó a nadie',ok.length?'ok':'err',5000);
-    renderBancoUser();renderBancoApplyList();
+    const b=await getBancoUser(user,true);const saldo=bancoSaldoMin(b);
+    if(min>saldo){toast(`El saldo disponible es ${saldo} min`,'err');btn.disabled=false;return;}
+    const prev=+(((b.consumos||{})[fecha]||{}).min)||0;
+    await set(R(db,`${BANCO}/${user}/consumos/${fecha}`),{min:prev+min,por:CU,ts:Date.now()});
+    _bancoCache.delete(user);
+    const _b2=await getBancoUser(user,true);
+    await addLog(`⏳ Horas adelantadas aplicadas: ${min} min a ${user} el ${fecha} — origen: ${origenTxt(bancoOrigenes(_b2)[fecha])||'—'} — saldo restante ${saldo-min} min (por ${CU})`);
+    if(st)st.textContent=`✅ Aplicado. Saldo restante: ${fmtMinHM(saldo-min)}. Se refleja en Vista Semanal.`;
+    toast('⏳ Aplicado ✓','ok');el('bancoap-min').value='';renderBancoUser();
   }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo aplicar','err');}
   btn.disabled=false;
 });
@@ -8297,10 +8217,8 @@ function genMotivoFinal(){
   return sel==='__otro__'?(ta?.value||'').trim():sel;
 }
 el('ed-preset')?.addEventListener('change',e=>{
-  const v=e.target.value,tx=el('ed-comment'),box=el('ed-adel-box');
-  if(box)box.style.display=(v==='__adel__')?'block':'none';
+  const v=e.target.value,tx=el('ed-comment');
   if(v==='__otro__'){tx.value='';tx.focus();}
-  else if(v==='__adel__'){tx.value='Hora adelantada (se quedó trabajando de más)';}
   else if(v){tx.value=v;}
 });
 // Fecha-hora de una marca: primero el stamp; si faltara, se reconstruye del texto respetando AM/PM
@@ -8423,8 +8341,6 @@ el('btn-save-ed').addEventListener('click',async()=>{
   for(const r of rows){if(!edLeerFila(r).ok){toast('Revisa la hora: horas 1-12, minutos y segundos 0-59','err',4500);r.scrollIntoView({behavior:'smooth',block:'center'});return;}}
   const cambiadas=rows.filter(edCambiada);
   if(!cambiadas.length){toast('No hay cambios para guardar','err');return;}
-  const esAdel=el('ed-preset').value==='__adel__',minAdel=parseInt(el('ed-adel-min')?.value,10)||0;
-  if(esAdel&&minAdel<=0){toast('Indica los minutos adelantados','err');return;}
   const btn=el('btn-save-ed');btn.disabled=true;
   try{
     const arr=await getHist(fecha);
@@ -8455,20 +8371,8 @@ el('btn-save-ed').addEventListener('click',async()=>{
     if(avisos.length&&!confirm(`⚠ Estas marcaciones quedarían en un orden raro (¿AM/PM?):\n\n${avisos.join('\n')}\n\n¿Guardar de todas formas?`))return;
     await saveHist(fecha,nuevo);
     for(const u of Object.keys(detalle))await addLog(`Edición: ${u} ${fecha} — ${com} [${detalle[u].join('; ')}]`);
-    let adelNuevos=0,adelYa=0;
-    if(esAdel){
-      for(const u of Object.keys(detalle)){
-        const cid='e'+fecha.replace(/-/g,'')+'_'+u;
-        const bu=await getBancoUser(u,true);
-        if(bu&&bu.creditos&&bu.creditos[cid]){adelYa++;continue;} // ya registrada: no se duplica
-        await set(R(db,`${BANCO}/${u}/creditos/${cid}`),{fecha,min:minAdel,motivo:'Hora adelantada (editar marcaciones)',por:CU,ts:Date.now(),origen:'edicion'});
-        _bancoCache.delete(u);adelNuevos++;
-        await addLog(`⏳ Hora adelantada registrada desde Editar marcaciones: ${u} — ${minAdel} min del ${fecha} (por ${CU})`);
-      }
-    }
     toast(`Guardado ✓ ${cambiadas.length} marcación(es) en ${Object.keys(detalle).length} usuario(s)`,'ok');
-    if(esAdel)toast(`⏳ Banco: ${adelNuevos} registrada(s)${adelYa?` · ${adelYa} ya existían (no se duplican)`:''}`,'ok',6000);
-    el('ed-comment').value='';el('ed-preset').value='';if(el('ed-adel-box'))el('ed-adel-box').style.display='none';el('ed-list').innerHTML='';el('ed-footer').style.display='none';_edCtx=null;
+    el('ed-comment').value='';el('ed-preset').value='';el('ed-list').innerHTML='';el('ed-footer').style.display='none';_edCtx=null;
     try{renderHistToday();}catch(e){}
   }catch(e){console.error('guardar edición',e);toast('❌ Error al guardar: '+(e.message||e),'err',5000);}
   finally{btn.disabled=false;}
@@ -8493,7 +8397,7 @@ el('btn-del-ed').addEventListener('click',async()=>{
   await saveHist(fecha,arr);
   for(const u of Object.keys(porUser))await addLog(`Borradas: ${u} ${fecha} — ${com} [${porUser[u].join('; ')}]`);
   toast('Eliminadas ✓','ok');
-  el('ed-comment').value='';el('ed-preset').value='';if(el('ed-adel-box'))el('ed-adel-box').style.display='none';el('ed-list').innerHTML='';el('ed-footer').style.display='none';_edCtx=null;
+  el('ed-comment').value='';el('ed-preset').value='';el('ed-list').innerHTML='';el('ed-footer').style.display='none';_edCtx=null;
 });
 
 // LIMPIAR
@@ -9032,8 +8936,8 @@ function tabSwitch(tab){
 el('tabbtn-reloj').addEventListener('click',()=>tabSwitch('reloj'));
 el('tabbtn-log').addEventListener('click',()=>tabSwitch('log'));
 
-async function renderLogProveedores(){
-  const s=await get(R(db,LOGPROV));LOGP=s.exists()?s.val():{};
+async function renderLogProveedores(snap){
+  const s=await _sn(snap,LOGPROV);LOGP=s.exists()?s.val():{};
   const c=el('log-prov-list');
   if(c){
     const keys=Object.keys(LOGP);
@@ -9086,8 +8990,8 @@ el('log-nv-prov-search')?.addEventListener('input',function(){
 
 // ── DEPARTAMENTOS ──────────────────────────────────────────────────────
 let LOGD={};
-async function loadLogDeptos(){
-  const s=await get(R(db,LOGDEPTO));LOGD=s.exists()?s.val():{};
+async function loadLogDeptos(snap){
+  const s=await _sn(snap,LOGDEPTO);LOGD=s.exists()?s.val():{};
   renderLogDeptos();fillLogDeptoSelect();
 }
 function renderLogDeptos(){
@@ -9318,12 +9222,12 @@ el('btn-log-cam-crear')?.addEventListener('click',async()=>{
 
 // Vista de recepción: informativa. El estado real (✓ recibido) de cada recibo lo marca el chequeador
 // desde "Recepción" (log-rec-jump); aquí solo se refleja, no se puede editar.
-async function renderLogCamRec(){
+async function renderLogCamRec(snap,useCache){
   if(!CU)return; // sin sesión activa (ej. justo después de cerrar sesión) — no hay nada que cargar ni error que mostrar
   const c=el('log-cam-lista');
   const cComp=el('log-cam-completados-lista');
   try{
-    const s=await get(R(db,LOGCAM));LOGCAMS=s.exists()?s.val():{};
+    const s=(useCache===true&&LOGCAM_FRESH)?{exists:()=>true,val:()=>LOGCAMS}:await _sn(snap,LOGCAM);LOGCAMS=s.exists()?s.val():{};
   }catch(e){
     console.error('renderLogCamRec: fallo al leer LOGCAM',e);
     if(c)c.innerHTML='<div style="color:var(--dn);font-size:12px">❌ No se pudo cargar la lista de camiones: '+(e&&e.message?e.message:e)+'</div>';
@@ -9939,9 +9843,9 @@ el('btn-log-nv-enviar')?.addEventListener('click',async()=>{
   renderLogPendientes();
 });
 
-async function renderLogPendientes(){
+async function renderLogPendientes(useCache){
   try{
-    const s=await get(R(db,LOGREC));LOGR=s.exists()?s.val():{};
+    const s=(useCache===true&&LOGR_FRESH)?{exists:()=>true,val:()=>LOGR}:await get(R(db,LOGREC));LOGR=s.exists()?s.val():{};
   }catch(e){
     console.error('renderLogPendientes: fallo al leer LOGREC',e);
     toast('❌ Error cargando recibos: '+(e&&e.message?e.message:e),'err',6000);
@@ -10123,8 +10027,8 @@ function logItemHTML(k,v){
   </div>`;
 }
 
-async function renderLogHistorial(){
-  const s=await get(R(db,LOGREC));LOGR=s.exists()?s.val():{};
+async function renderLogHistorial(useCache){
+  const s=(useCache===true&&LOGR_FRESH)?{exists:()=>true,val:()=>LOGR}:await get(R(db,LOGREC));LOGR=s.exists()?s.val():{};
   const list=el('log-hist-list');if(!list)return;
   const filtroE=el('log-hist-filtro')?.value||'';
   const filtroP=el('log-hist-prov')?.value||'';
@@ -10400,8 +10304,8 @@ el('log-hist-fdesde')?.addEventListener('change',renderLogHistorial);
 el('log-hist-fhasta')?.addEventListener('change',renderLogHistorial);
 
 // KPIs logísticos
-async function renderLogKPIs(){
-  const s=await get(R(db,LOGREC));LOGR=s.exists()?s.val():{};
+async function renderLogKPIs(useCache){
+  const s=(useCache===true&&LOGR_FRESH)?{exists:()=>true,val:()=>LOGR}:await get(R(db,LOGREC));LOGR=s.exists()?s.val():{};
   const kpiC=el('log-kpi-cards');if(!kpiC)return;
   const todos=Object.values(LOGR);
   const recibidos=todos.filter(v=>v.estado==='recibido');
@@ -10478,9 +10382,9 @@ function fillLogSumNombresDatalist(){
   fillSumItemSelect();
 }
 
-async function loadLogSumCat(){
+async function loadLogSumCat(snap){
   try{
-    const s=await get(R(db,LOGSUM_CAT));LOGSUMCAT=s.exists()?s.val():{};
+    const s=await _sn(snap,LOGSUM_CAT);LOGSUMCAT=s.exists()?s.val():{};
   }catch(e){console.error('loadLogSumCat',e);LOGSUMCAT={};toast('No se pudo cargar el catálogo: '+(e.message||e),'err');}
   renderLogSumCatList();fillLogSumNombresDatalist();
 }
@@ -10508,9 +10412,9 @@ el('btn-log-sumcat-add')?.addEventListener('click',async()=>{
   }catch(e){console.error('add sumcat',e);toast('Error al agregar rubro: '+(e.message||e),'err');}
 });
 
-async function loadLogSumAreas(){
+async function loadLogSumAreas(snap){
   try{
-    const s=await get(R(db,LOGSUM_AREA));LOGSUMAREAS=s.exists()?s.val():{};
+    const s=await _sn(snap,LOGSUM_AREA);LOGSUMAREAS=s.exists()?s.val():{};
   }catch(e){console.error('loadLogSumAreas',e);LOGSUMAREAS={};toast('No se pudieron cargar las áreas: '+(e.message||e),'err');}
   renderLogSumAreaList();
 }
@@ -10538,9 +10442,9 @@ el('btn-log-sumarea-add')?.addEventListener('click',async()=>{
   }catch(e){console.error('add area',e);toast('Error al agregar área: '+(e.message||e),'err');}
 });
 
-async function loadLogSumTam(){
+async function loadLogSumTam(snap){
   try{
-    const s=await get(R(db,LOGSUM_TAM));LOGSUMTAMS=s.exists()?s.val():{};
+    const s=await _sn(snap,LOGSUM_TAM);LOGSUMTAMS=s.exists()?s.val():{};
   }catch(e){console.error('loadLogSumTam',e);LOGSUMTAMS={};toast('No se pudieron cargar los tamaños: '+(e.message||e),'err');}
   renderLogSumTam();fillLogSumTamSelect();
 }
@@ -10572,9 +10476,9 @@ el('btn-log-sumtam-add')?.addEventListener('click',async()=>{
   }catch(e){console.error('add tamaño',e);toast('Error al agregar tamaño: '+(e.message||e),'err');}
 });
 
-async function loadLogSumMov(){
+async function loadLogSumMov(snap){
   try{
-    const s=await get(R(db,LOGSUM_MOV));LOGSUMMOVS=s.exists()?s.val():{};
+    const s=await _sn(snap,LOGSUM_MOV);LOGSUMMOVS=s.exists()?s.val():{};
   }catch(e){console.error('loadLogSumMov',e);LOGSUMMOVS={};toast('No se pudo cargar el listado de suministros: '+(e.message||e),'err');}
   renderLogSumStock();renderLogSumMovList();fillLogSumNombresDatalist();fillLogSumUbicDatalist();
 }
@@ -11049,8 +10953,8 @@ async function enviarAcusePorCorreo(acuse){
 }
 
 let LOGSUMACUSES={};
-async function loadLogSumAcuses(){
-  try{const s=await get(R(db,LOGSUM_ACUSE));LOGSUMACUSES=s.exists()?s.val():{};}
+async function loadLogSumAcuses(snap){
+  try{const s=await _sn(snap,LOGSUM_ACUSE);LOGSUMACUSES=s.exists()?s.val():{};}
   catch(e){console.error('loadLogSumAcuses',e);LOGSUMACUSES={};}
   renderLogSumAcusesList();
 }
@@ -11416,9 +11320,9 @@ function fillSumItemSelect(){
   if(cur)sel.value=cur;
 }
 
-async function loadLogSumResp(){
+async function loadLogSumResp(snap){
   try{
-    const s=await get(R(db,LOGSUM_RESP));LOGSUMRESP=s.exists()?s.val():{};
+    const s=await _sn(snap,LOGSUM_RESP);LOGSUMRESP=s.exists()?s.val():{};
   }catch(e){console.error('loadLogSumResp',e);LOGSUMRESP={};toast('No se pudo cargar responsables: '+(e.message||e),'err');}
   renderLogSumRespList();renderLogSumRoleView();
 }
@@ -11447,9 +11351,9 @@ el('btn-log-sumresp-add')?.addEventListener('click',async()=>{
 });
 
 // ── SOLICITUDES DE SUMINISTRO ───────────────────────────────────────
-async function loadLogSumReq(){
+async function loadLogSumReq(snap){
   try{
-    const s=await get(R(db,LOGSUM_REQ));LOGSUMREQ=s.exists()?s.val():{};
+    const s=await _sn(snap,LOGSUM_REQ);LOGSUMREQ=s.exists()?s.val():{};
   }catch(e){console.error('loadLogSumReq',e);LOGSUMREQ={};toast('No se pudieron cargar las solicitudes: '+(e.message||e),'err');}
   renderLogSumReqPend();renderLogSumReqMias();renderLogSumPorColaborador();renderLogSumConsumoHist();renderLogSumStock();
 }
@@ -11836,9 +11740,9 @@ el('btn-an-sem-cargar')?.addEventListener('click',async()=>{
   }catch(e){console.error('cargar semana análisis',e);toast('❌ No se guardó: '+(e.message||e),'err',5000);}
 });
 
-async function loadAnSemanas(){
+async function loadAnSemanas(snap){
   try{
-    const s=await get(R(db,LOGAN_SEM));
+    const s=await _sn(snap,LOGAN_SEM);
     AN_SEMANAS=s.exists()?s.val():{};
   }catch(e){console.error('loadAnSemanas',e);AN_SEMANAS={};toast('No se pudieron cargar las semanas: '+(e.message||e),'err');}
   renderAnSemanas();fillAnSemanaSelects();
@@ -12167,7 +12071,7 @@ el('btn-an-exportar')?.addEventListener('click',()=>{
 
 function listenLogistica(){
   if(logListening)return;logListening=true;
-  trackedOnValue(R(db,LOGPROV),()=>{if(CU)renderLogProveedores();});
+  trackedOnValue(R(db,LOGPROV),(snap)=>{if(CU)renderLogProveedores(snap);});
   // Los redibujados pesados (historial, pendientes, KPIs) se juntan en uno solo y NUNCA corren mientras
   // el usuario escribe en un campo o tiene un modal abierto: se aplazan hasta que termine.
   let _logRefTimer=null;
@@ -12175,22 +12079,22 @@ function listenLogistica(){
     if(!CU)return;
     const ae=document.activeElement,escribiendo=ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName);
     if(escribiendo||document.querySelector('.mbd.open')){clearTimeout(_logRefTimer);_logRefTimer=setTimeout(refrescarLogUI,1500);return;}
-    renderLogPendientes();renderLogCamNuevoChecklist();renderLogCamRec();
-    if(el('log-hist-wrap')&&el('log-hist-wrap').style.display==='block')renderLogHistorial();
+    renderLogPendientes(true);renderLogCamNuevoChecklist();renderLogCamRec(null,true);
+    if(el('log-hist-wrap')&&el('log-hist-wrap').style.display==='block')renderLogHistorial(true);
     updateLogBadge();
-    if(el('tab-log')&&el('tab-log').style.display!=='none')renderLogKPIs();
+    if(el('tab-log')&&el('tab-log').style.display!=='none')renderLogKPIs(true);
   };
-  trackedOnValue(R(db,LOGREC),(snap)=>{if(CU){LOGR=snap.exists()?snap.val():{};clearTimeout(_logRefTimer);_logRefTimer=setTimeout(refrescarLogUI,600);}});
-  trackedOnValue(R(db,LOGCAM),()=>{if(CU)renderLogCamRec();});
-  trackedOnValue(R(db,LOGDEPTO),()=>{if(CU){loadLogDeptos();}});
-  trackedOnValue(R(db,LOGSUM_MOV),()=>{if(CU)loadLogSumMov();},(e)=>{if(!CU)return;console.error('onValue LOGSUM_MOV',e);toast('Suministro: '+(e.message||e),'err');});
-  trackedOnValue(R(db,LOGSUM_TAM),()=>{if(CU)loadLogSumTam();},(e)=>{if(!CU)return;console.error('onValue LOGSUM_TAM',e);toast('Tamaños: '+(e.message||e),'err');});
-  trackedOnValue(R(db,LOGSUM_CAT),()=>{if(CU)loadLogSumCat();},(e)=>{if(!CU)return;console.error('onValue LOGSUM_CAT',e);toast('Catálogo: '+(e.message||e),'err');});
-  trackedOnValue(R(db,LOGSUM_RESP),()=>{if(CU)loadLogSumResp();},(e)=>{if(!CU)return;console.error('onValue LOGSUM_RESP',e);toast('Responsables: '+(e.message||e),'err');});
-  trackedOnValue(R(db,LOGSUM_REQ),()=>{if(CU)loadLogSumReq();},(e)=>{if(!CU)return;console.error('onValue LOGSUM_REQ',e);toast('Solicitudes: '+(e.message||e),'err');});
-  trackedOnValue(R(db,LOGSUM_AREA),()=>{if(CU)loadLogSumAreas();},(e)=>{if(!CU)return;console.error('onValue LOGSUM_AREA',e);toast('Áreas: '+(e.message||e),'err');});
-  trackedOnValue(R(db,LOGSUM_ACUSE),()=>{if(CU)loadLogSumAcuses();},(e)=>{if(!CU)return;console.error('onValue LOGSUM_ACUSE',e);toast('Acuses: '+(e.message||e),'err');});
-  trackedOnValue(R(db,LOGAN_SEM),()=>{if(CU)loadAnSemanas();},(e)=>{if(!CU)return;console.error('onValue LOGAN_SEM',e);toast('Análisis semanas: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGREC),(snap)=>{if(CU){LOGR=snap.exists()?snap.val():{};LOGR_FRESH=true;clearTimeout(_logRefTimer);_logRefTimer=setTimeout(refrescarLogUI,600);}});
+  trackedOnValue(R(db,LOGCAM),(snap)=>{if(CU){LOGCAM_FRESH=true;renderLogCamRec(snap);}});
+  trackedOnValue(R(db,LOGDEPTO),(snap)=>{if(CU){loadLogDeptos(snap);}});
+  trackedOnValue(R(db,LOGSUM_MOV),(snap)=>{if(CU)loadLogSumMov(snap);},(e)=>{if(!CU)return;console.error('onValue LOGSUM_MOV',e);toast('Suministro: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGSUM_TAM),(snap)=>{if(CU)loadLogSumTam(snap);},(e)=>{if(!CU)return;console.error('onValue LOGSUM_TAM',e);toast('Tamaños: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGSUM_CAT),(snap)=>{if(CU)loadLogSumCat(snap);},(e)=>{if(!CU)return;console.error('onValue LOGSUM_CAT',e);toast('Catálogo: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGSUM_RESP),(snap)=>{if(CU)loadLogSumResp(snap);},(e)=>{if(!CU)return;console.error('onValue LOGSUM_RESP',e);toast('Responsables: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGSUM_REQ),(snap)=>{if(CU)loadLogSumReq(snap);},(e)=>{if(!CU)return;console.error('onValue LOGSUM_REQ',e);toast('Solicitudes: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGSUM_AREA),(snap)=>{if(CU)loadLogSumAreas(snap);},(e)=>{if(!CU)return;console.error('onValue LOGSUM_AREA',e);toast('Áreas: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGSUM_ACUSE),(snap)=>{if(CU)loadLogSumAcuses(snap);},(e)=>{if(!CU)return;console.error('onValue LOGSUM_ACUSE',e);toast('Acuses: '+(e.message||e),'err');});
+  trackedOnValue(R(db,LOGAN_SEM),(snap)=>{if(CU)loadAnSemanas(snap);},(e)=>{if(!CU)return;console.error('onValue LOGAN_SEM',e);toast('Análisis semanas: '+(e.message||e),'err');});
 }
 
 // BOOTSTRAP

@@ -94,6 +94,12 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
 .tile .bd{overflow-wrap:anywhere}
 @media(max-width:420px){.tile .hd b{font-size:16px}.tile .bd{font-size:10.5px;padding:7px 3px}.tile .ck{font-size:11px;padding:6px 2px;gap:4px}.tile .ck input{width:18px;height:18px}}
 .row.st-dsp{background:linear-gradient(90deg,#34e08a1f,transparent)}
+/* Color por estatus de cada ítem: nuevo/sin surtir (aqua) · parcial (ámbar) · surtido (azul) · despachado (verde) · sin asignar (apagado) */
+.row.st-no{border-left:5px solid var(--ac);background:linear-gradient(90deg,#2de2c91c,transparent)}
+.row.st-wn{border-left:5px solid var(--wn);background:linear-gradient(90deg,#ffc85729,transparent)}
+.row.st-ok{border-left:5px solid #3fa9f5;background:linear-gradient(90deg,#3fa9f52b,transparent)}
+.row.st-dsp{border-left:5px solid var(--ok);background:linear-gradient(90deg,#34e08a38,transparent)}
+.row.st-none{border-left:5px solid #ffffff22;opacity:.62}
 #btnRef{font-size:18px;line-height:1;padding:8px 12px}#btnRef.spin{animation:sp .8s linear infinite}
 .lbw{position:relative;width:100%;padding-top:75%;background:#fff;border-radius:8px;overflow:hidden}
 .lbp{position:absolute;left:0;top:0;width:812px;height:609px;transform-origin:0 0;background:#fff;color:#000}
@@ -252,10 +258,10 @@ const hasCli=p=>Object.values(CLI).some(c=>c.p===p);
 function selectRecibo(id){
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();
   RECIBO=id;DATA=RECS[id].items;BASE=`meta_v1/consultas/${id}/log`;CBASE=`meta_v1/consultas/${id}/clientes`;DSPB=`meta_v1/consultas/${id}/desp`;TRFB=`meta_v1/consultas/${id}/trf`;TRBB=`meta_v1/consultas/${id}/trfb`;DSB=`meta_v1/consultas/${id}/dsps`;BGB=`meta_v1/consultas/${id}/bgen`;
-  STORES=storesFor(DATA);byProd=Object.fromEntries(DATA.map(x=>[x.p,x]));LOG={};CLI={};DSP={};TRF={};TRB={};DS={};BG={};trfEdit=null;trfStore=null;dspSel.clear();cur=null;shown=40;
-  offLog=onValue(R(db,BASE),s=>{LOG=s.val()||{};renderAll()},e=>{toast('Sin acceso a datos: '+e.code)});
+  STORES=storesFor(DATA);byProd=Object.fromEntries(DATA.map(x=>[x.p,x]));LD.log=0;LD.dsp=0;LOG={};CLI={};DSP={};TRF={};TRB={};DS={};BG={};trfEdit=null;trfStore=null;dspSel.clear();cur=null;shown=40;
+  offLog=onValue(R(db,BASE),s=>{LD.log=1;LOG=s.val()||{};renderAll()},e=>{toast('Sin acceso a datos: '+e.code)});
   offCli=onValue(R(db,CBASE),s=>{CLI=s.val()||{};renderAll()},()=>{});
-  offDsp=onValue(R(db,DSPB),s=>{DSP=s.val()||{};renderAll()},()=>{});
+  offDsp=onValue(R(db,DSPB),s=>{LD.dsp=1;DSP=s.val()||{};renderAll()},()=>{});
   offTrf=onValue(R(db,TRFB),s=>{TRF=s.val()||{};renderAll()},()=>{});
   offTb=onValue(R(db,TRBB),s=>{TRB=s.val()||{};renderAll()},()=>{});
   offDs=onValue(R(db,DSB),s=>{DS=s.val()||{};renderAll()},()=>{});
@@ -269,8 +275,18 @@ async function showRecList(){
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();offLog=offCli=offDsp=offTrf=offTb=offDs=offBg=null;cur=null;RECIBO=null;$('recAdm').classList.toggle('hide',!ISADM);
   $('v-recibo').classList.add('hide');$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Consultas';
   await loadUploaded();const ids=Object.keys(RECS);
-  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><div class="lbl">Recibo</div><div class="sora" style="font-size:24px;color:var(--ac)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos</div><div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}</div></div><div style="text-align:right"><div class="big" id="ra-${id}" style="font:800 22px Sora;color:var(--ac)">…</div><div class="lbl">avance</div></div></div><div class="bar"><i id="rb-${id}" style="width:0"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn sm" data-fecharec="${id}">📅 Fecha</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
-  for(const id of ids){try{const sn=await get(R(db,`meta_v1/consultas/${id}/log`));const lg=Object.values(sn.val()||{});const it=RECS[id].items,st=storesFor(it);let A=0,S=0;const m={};lg.forEach(e=>{m[e.p+'|'+e.t]=(m[e.p+'|'+e.t]||0)+(e.q||0)});it.forEach(x=>st.forEach(t=>{const a=x.s[t]||0;A+=a;S+=Math.min(m[x.p+'|'+t]||0,a)}));const pc=A?Math.round(S/A*100):0;$('ra-'+id).textContent=pc+'%';$('rb-'+id).style.width=pc+'%'}catch(e){$('ra-'+id).textContent='—'}}
+  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><div class="lbl">Recibo</div><div class="sora" style="font-size:24px;color:var(--ac)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos</div><div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}</div></div><div style="text-align:right;display:flex;gap:14px"><div><div class="big" id="ra-${id}" style="font:800 22px Sora;color:var(--ac)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px Sora;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar"><i id="rb-${id}" style="width:0"></i></div><div class="bar" style="margin-top:4px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn sm" data-fecharec="${id}">📅 Fecha</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
+  let PROG={};try{PROG=(await get(R(db,'meta_v1/consultas_prog'))).val()||{}}catch(e){}
+  for(const id of ids){try{let g=PROG[id];
+    if(!g){ // primera vez para este recibo: se calcula una sola vez y se guarda el resumen
+      const [sn,dn]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);
+      const lg=Object.values(sn.val()||{}),dd=dn.val()||{},it=RECS[id].items,st=storesFor(it);let A=0,S=0;const m={};
+      lg.forEach(e=>{m[e.p+'|'+e.t]=(m[e.p+'|'+e.t]||0)+(e.q||0)});
+      it.forEach(x=>st.forEach(t=>{const a=x.s[t]||0;A+=a;S+=Math.min(m[x.p+'|'+t]||0,a)}));
+      const refs=it.filter(x=>dd[x.p]).length;
+      g={s:A?Math.round(S/A*100):0,d:it.length?Math.round(refs/it.length*100):0,r:refs,n:it.length,ts:Date.now()};
+      set(R(db,'meta_v1/consultas_prog/'+id),g).catch(()=>{})}
+    $('ra-'+id).textContent=g.s+'%';$('rb-'+id).style.width=g.s+'%';$('da-'+id).textContent=g.d+'%';$('db-'+id).style.width=g.d+'%'}catch(e){$('ra-'+id).textContent='—';$('da-'+id).textContent='—'}}
 }
 $('recList').addEventListener('click',async e=>{
   const fe=e.target.closest('[data-fecharec]');
@@ -302,8 +318,13 @@ function renderGlobal(){
   let A=0,S=0,refs=0;const bySur={};for(const e of entries()){bySur[e.p+'|'+e.t]=(bySur[e.p+'|'+e.t]||0)+(e.q||0)}
   for(const x of DATA){for(const t of STORES){const a=x.s[t]||0;A+=a;S+=Math.min(bySur[x.p+'|'+t]||0,a)}if(DSP[x.p])refs++}
   $('gPz').textContent=`${fmt(S)} / ${fmt(A)}`;$('gBul').textContent=fmtB(totBul(DATA));$('gRef').textContent=`${fmt(refs)} / ${fmt(DATA.length)}`;
-  const pc=A?Math.round(S/A*100):0;$('gAv').textContent=pc+'%';$('gBar').style.width=pc+'%'
+  const pc=A?Math.round(S/A*100):0;$('gAv').textContent=pc+'%';$('gBar').style.width=pc+'%';
+  saveProg(RECIBO,pc,DATA.length?Math.round(refs/DATA.length*100):0,refs,DATA.length)
 }
+// Resumen de avance por recibo (surtido y despacho): la lista lo lee en vez de bajar el registro completo de cada recibo
+const LD={log:0,dsp:0};let progT=null;const progLast={};
+function saveProg(id,sv,dv,r,n){if(!id||!LD.log||!LD.dsp)return;const k=sv+'|'+dv+'|'+r;if(progLast[id]===k)return;clearTimeout(progT);
+  progT=setTimeout(()=>{progLast[id]=k;set(R(db,'meta_v1/consultas_prog/'+id),{s:sv,d:dv,r,n,ts:Date.now()}).catch(()=>{})},4000)}
 function norm(s){return String(s||'').replace(/\D/g,'')}
 function matchCode(raw){
   const q=raw.trim().toLowerCase();if(!q)return[];const d=norm(q);
@@ -312,7 +333,7 @@ function matchCode(raw){
   return r
 }
 function stFull(x){return DSP[x.p]?'dsp':stateOf(x)}
-function pillFor(x){const s=stFull(x);return s==='dsp'?'<span class="pill p-ok">Despachado ✓</span>':s==='ok'?'<span class="pill p-bl">Surtido</span>':s==='wn'?'<span class="pill p-wn">Parcial</span>':s==='none'?'<span class="pill p-no">Sin asignar</span>':'<span class="pill p-no">Pendiente</span>'}
+function pillFor(x){const s=stFull(x);return s==='dsp'?'<span class="pill p-ok">Despachado ✓</span>':s==='ok'?'<span class="pill p-bl">Surtido</span>':s==='wn'?'<span class="pill p-wn">Parcial</span>':s==='none'?'<span class="pill p-no">Sin asignar</span>':'<span class="pill p-aq">Pendiente</span>'}
 function renderList(){
   const q=$('q').value.trim().toLowerCase();
   filtered=q?DATA.filter(x=>[x.p,x.ref,x.d,x.upc].join(' ').toLowerCase().includes(q)):DATA;
@@ -740,9 +761,9 @@ $('dfXls').onclick=()=>{
 // ---------- Actualizar sin salir de la app ----------
 function resub(){
   if(!RECIBO)return;for(const f of [offLog,offCli,offDsp,offTrf,offTb,offDs,offBg])if(f)f();
-  offLog=onValue(R(db,BASE),s=>{LOG=s.val()||{};renderAll()},e=>{toast('Sin acceso a datos: '+e.code)});
+  offLog=onValue(R(db,BASE),s=>{LD.log=1;LOG=s.val()||{};renderAll()},e=>{toast('Sin acceso a datos: '+e.code)});
   offCli=onValue(R(db,CBASE),s=>{CLI=s.val()||{};renderAll()},()=>{});
-  offDsp=onValue(R(db,DSPB),s=>{DSP=s.val()||{};renderAll()},()=>{});
+  offDsp=onValue(R(db,DSPB),s=>{LD.dsp=1;DSP=s.val()||{};renderAll()},()=>{});
   offTrf=onValue(R(db,TRFB),s=>{TRF=s.val()||{};renderAll()},()=>{});
   offTb=onValue(R(db,TRBB),s=>{TRB=s.val()||{};renderAll()},()=>{});
   offDs=onValue(R(db,DSB),s=>{DS=s.val()||{};renderAll()},()=>{});
@@ -1016,11 +1037,13 @@ function embCalc(e){
 }
 function embHTML(e){
   const c=embCalc(e),th='style="background:#0b3b5c;color:#fff;padding:8px 10px;text-align:left;font-size:12px"',thn='style="background:#0b3b5c;color:#fff;padding:8px 10px;text-align:right;font-size:12px"',td='style="padding:7px 10px;border-bottom:1px solid #d9e1e8;font-size:13px"',tdn='style="padding:7px 10px;border-bottom:1px solid #d9e1e8;font-size:13px;text-align:right"';
-  const kpi=(l,v)=>`<td style="background:#eef3f7;border:1px solid #d9e1e8;padding:12px 6px;text-align:center;width:20%"><div style="font:700 22px Arial,sans-serif;color:#0b3b5c">${fmt(v)}</div><div style="font:11px Arial,sans-serif;color:#5a6b7a;text-transform:uppercase;letter-spacing:.5px">${l}</div></td>`;
+  const kpi=(l,v,col)=>`<td style="background:#f4f8fb;border:1px solid #d9e1e8;border-top:4px solid ${col};padding:14px 6px;text-align:center;width:20%"><div style="font:800 26px Arial,sans-serif;color:#0b3b5c">${fmt(v)}</div><div style="font:11px Arial,sans-serif;color:#5a6b7a;text-transform:uppercase;letter-spacing:.5px">${l}</div></td>`;
   return `<div style="font-family:Arial,sans-serif;color:#1c2b36;max-width:760px;margin:0 auto">
   <div style="background:#0b3b5c;color:#fff;padding:18px 22px"><div style="font-size:12px;letter-spacing:1px;text-transform:uppercase;opacity:.8">Aviso de despacho · Logística</div><div style="font-size:22px;font-weight:700;margin-top:4px">${esc(e.num)}</div><div style="font-size:12px;opacity:.85;margin-top:4px">${esc(fdt(e.ts))} · Prepara: ${esc(e.n||e.u||'')}</div></div>
-  <table style="width:100%;border-collapse:collapse;margin:14px 0"><tr>${kpi('Camiones',c.cams.length)}${kpi('Palets',c.np)}${kpi('Bultos',c.tb)}${kpi('Piezas',c.tp)}${kpi('Tiendas',c.st.length)}</tr></table>
-  <div style="font-size:15px;font-weight:700;margin:16px 0 6px">Resumen por tienda</div>
+  <table style="width:100%;border-collapse:collapse;margin:14px 0"><tr>${kpi('Camiones',c.cams.length,'#0b3b5c')}${kpi('Palets',c.np,'#1f7ae0')}${kpi('Bultos',c.tb,'#17a589')}${kpi('Piezas',c.tp,'#f39c12')}${kpi('Tiendas',c.st.length,'#8e44ad')}</tr></table>
+  <div style="font-size:15px;font-weight:700;margin:16px 0 6px">Distribución por tienda · piezas</div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${(()=>{const mx=Math.max(1,...c.st.map(x=>x.pz));return c.st.map(x=>{const w=Math.max(3,Math.round(x.pz/mx*100));return `<tr><td style="padding:5px 8px 5px 0;font-size:13px;width:70px"><b>${esc(L(x.t))}</b></td><td style="padding:5px 0"><table width="100%" cellpadding="0" cellspacing="0" style="background:#e6edf3"><tr><td width="${w}%" bgcolor="#1f7ae0" style="background:#1f7ae0;height:16px;line-height:16px;font-size:1px">&nbsp;</td><td style="font-size:1px">&nbsp;</td></tr></table></td><td style="padding:5px 0 5px 8px;font-size:12px;white-space:nowrap;text-align:right">${fmt(x.pz)} pzas · ${fmt(x.b)} bultos</td></tr>`}).join('')})()}</table>
+  <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Resumen por tienda</div>
   <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Tienda</th><th ${thn}>Transferencias</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.st.map(s=>`<tr><td ${td}><b>${esc(LN(s.t))}</b></td><td ${tdn}>${s.tf}</td><td ${tdn}>${fmt(s.b)}</td><td ${tdn}>${fmt(s.pz)}</td></tr>`).join('')}<tr><td ${td}><b>TOTAL</b></td><td ${tdn}><b>${c.tf.length}</b></td><td ${tdn}><b>${fmt(c.tb)}</b></td><td ${tdn}><b>${fmt(c.tp)}</b></td></tr></table>
   <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Detalle por transferencia</div>
   <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Tienda</th><th ${th}>Transferencia</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.tf.map(a=>`<tr><td ${td}>${esc(L(a.t))}</td><td ${td}>${esc(a.tr||'—')}</td><td ${tdn}>${a.b}${a.b<a.N?' de '+a.N:''}</td><td ${tdn}>${fmt(a.pz)}</td></tr>`).join('')}</table>
