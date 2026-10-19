@@ -118,6 +118,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
     <div id="v-rec">
       <div class="card"><h2 style="font-size:20px">Elige el recibo</h2><div class="msg" style="margin-top:4px">Selecciona el recibo que vas a trabajar.</div></div>
       <div id="recAdm" class="hide" style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div>
+      <div id="recTabs" style="display:flex;gap:8px;margin-bottom:12px"></div>
       <div id="recList"></div>
     </div>
     <div id="v-recibo" class="hide">
@@ -142,6 +143,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
           <div><div class="lbl">Despachadas</div><div class="sora" style="font-size:18px" id="gRef">0</div></div>
           <div><div class="lbl">Bultos</div><div class="sora" style="font-size:18px" id="gBul">0</div></div>
         </div>
+        <div id="compBox"></div>
 
         <div class="card">
           <div class="slbl">Escanear o escribir</div><div class="search"><label class="sbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2de2c9" stroke-width="2" stroke-linecap="round"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M7 9v6M11 9v6M14 9v6M17 9v6"/></svg><input id="q" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Código de barras, estilo o producto"></label><button class="btn pri" id="qgo" style="height:46px;padding:0 18px">Buscar</button></div>
@@ -273,11 +275,20 @@ function selectRecibo(id){
   $('v-prod').classList.add('hide');$('v-list').classList.remove('hide');$('q').value='';
   document.querySelector('[data-t=cons]').click();window.scrollTo(0,0);renderAll()
 }
+async function migrateAuto(ids){
+  let PG={};try{PG=(await get(R(db,'meta_v1/consultas_prog'))).val()||{}}catch(e){return}
+  for(const id of ids){if(COMP[id])continue;const g=PG[id];if(!g||g.s!==100||g.d!==100)continue;
+    try{const dd=(await get(R(db,`meta_v1/consultas/${id}/desp`))).val()||{},v=Object.values(dd);
+      if(v.length&&v.every(x=>x.au)){const o={u:AUTO_U,n:AUTO_N,ts:v[0].ts||Date.now(),au:1};await set(R(db,'meta_v1/consultas_comp/'+id),o);COMP[id]=o}}catch(e){}}
+}
 async function showRecList(){
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();offLog=offCli=offDsp=offTrf=offTb=offDs=offBg=null;cur=null;RECIBO=null;$('recAdm').classList.toggle('hide',!ISADM);
   $('v-recibo').classList.add('hide');$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Consultas';
-  await loadUploaded();const ids=Object.keys(RECS);
-  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><div class="lbl">Recibo</div><div class="sora" style="font-size:24px;color:var(--ac)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos</div><div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}</div></div><div style="text-align:right;display:flex;gap:14px"><div><div class="big" id="ra-${id}" style="font:800 22px Sora;color:var(--ac)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px Sora;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar"><i id="rb-${id}" style="width:0"></i></div><div class="bar" style="margin-top:4px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn sm" data-fecharec="${id}">📅 Fecha</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
+  await loadUploaded();await migrateAuto(Object.keys(RECS));const allIds=Object.keys(RECS);const nC=allIds.filter(id=>COMP[id]).length;
+  $('recTabs').innerHTML=`<button class="btn sm ${recTab==='a'?'pri':''}" data-rtab="a">En proceso (${allIds.length-nC})</button><button class="btn sm ${recTab==='c'?'pri':''}" data-rtab="c">✔ Completados (${nC})</button>`;
+  const ids=allIds.filter(id=>!!COMP[id]===(recTab==='c'));
+  if(!ids.length){$('recList').innerHTML=`<div class="msg">${recTab==='c'?'Aún no hay recibos completados.':'No hay recibos en proceso.'}</div>`;return}
+  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><div class="lbl">Recibo</div><div class="sora" style="font-size:24px;color:var(--ac)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos · ${fmt(it.reduce((a,x)=>a+(x.rec||0),0))} piezas</div>${COMP[id]?`<div class="msg" style="margin:2px 0 0">✔ Completado · ${fdt(COMP[id].ts)} · ${esc(COMP[id].n||'')}</div>`:''}<div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}</div></div><div style="text-align:right;display:flex;gap:14px"><div><div class="big" id="ra-${id}" style="font:800 22px Sora;color:var(--ac)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px Sora;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar"><i id="rb-${id}" style="width:0"></i></div><div class="bar" style="margin-top:4px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">${COMP[id]?`<button class="btn sm" data-reopenrec="${id}">↩ Reabrir</button>`:''}<button class="btn sm" data-fecharec="${id}">📅 Fecha</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
   let PROG={};try{PROG=(await get(R(db,'meta_v1/consultas_prog'))).val()||{}}catch(e){}
   for(const id of ids){try{let g=PROG[id];
     if(!g){ // primera vez para este recibo: se calcula una sola vez y se guarda el resumen
@@ -290,7 +301,10 @@ async function showRecList(){
       set(R(db,'meta_v1/consultas_prog/'+id),g).catch(()=>{})}
     $('ra-'+id).textContent=g.s+'%';$('rb-'+id).style.width=g.s+'%';$('da-'+id).textContent=g.d+'%';$('db-'+id).style.width=g.d+'%'}catch(e){$('ra-'+id).textContent='—';$('da-'+id).textContent='—'}}
 }
+$('recTabs').addEventListener('click',e=>{const b=e.target.closest('[data-rtab]');if(b){recTab=b.dataset.rtab;showRecList()}});
 $('recList').addEventListener('click',async e=>{
+  const ro=e.target.closest('[data-reopenrec]');
+  if(ro){e.stopPropagation();const id=ro.dataset.reopenrec;if(!confirm(`¿Reabrir el recibo ${id}? Vuelve a la lista En proceso.`))return;try{await remove(R(db,'meta_v1/consultas_comp/'+id));delete COMP[id];recTab='a';toast('Recibo reabierto');showRecList()}catch(err){toast('Error: '+(err.code||err.message))}return}
   const fe=e.target.closest('[data-fecharec]');
   if(fe){e.stopPropagation();const id=fe.dataset.fecharec;ask('Fecha de ingreso · recibo '+id,[{k:'f',label:'Fecha de ingreso',type:'date',value:FECHAS[id]||today()}],'Aplicar',async v=>{if(!v.f){toast('Elige una fecha');return false}try{await set(R(db,'meta_v1/consultas_fechas/'+id),v.f);FECHAS[id]=v.f;showRecList()}catch(err){toast('Error: '+(err.code||err.message));return false}});return}
   const d=e.target.closest('[data-delrec]');
@@ -321,6 +335,10 @@ function renderGlobal(){
   for(const x of DATA){for(const t of STORES){const a=x.s[t]||0;A+=a;S+=Math.min(bySur[x.p+'|'+t]||0,a)}if(DSP[x.p])refs++}
   $('gPz').textContent=`${fmt(S)} / ${fmt(A)}`;$('gBul').textContent=fmtB(totBul(DATA));$('gRef').textContent=`${fmt(refs)} / ${fmt(DATA.length)}`;
   const pc=A?Math.round(S/A*100):0;$('gAv').textContent=pc+'%';$('gBar').style.width=pc+'%';const pd=DATA.length?Math.round(refs/DATA.length*100):0;$('gDv').textContent=pd+'%';$('gDBar').style.width=pd+'%';
+  const cb=$('compBox'),cd=COMP[RECIBO];
+  if(cd){cb.innerHTML=`<div class="card" style="display:flex;align-items:center;gap:10px"><div style="flex:1"><b class="sora">✔ Recibo completado</b><div class="msg" style="margin:2px 0 0">${fdt(cd.ts)} · ${esc(cd.n||'')}</div></div>${ISADM?'<button class="btn sm" id="compUndo">↩ Reabrir</button>':''}</div>`}
+  else if(!ISADM){cb.innerHTML=''}
+  else{const ok=DATA.length>0&&refs===DATA.length;cb.innerHTML=`<div class="card"><button class="btn pri" id="compBtn" style="width:100%" ${ok?'':'disabled'}>✔ Completar recibo</button><div class="msg" style="margin:6px 0 0;text-align:center">${ok?'Todas las referencias están despachadas. Al completar, el recibo pasa a Completados.':`Se habilita cuando todas las referencias estén despachadas (${fmt(refs)} de ${fmt(DATA.length)}).`}</div></div>`}
   saveProg(RECIBO,pc,DATA.length?Math.round(refs/DATA.length*100):0,refs,DATA.length)
 }
 // Resumen de avance por recibo (surtido y despacho): la lista lo lee en vez de bajar el registro completo de cada recibo
@@ -560,6 +578,12 @@ async function runDsp(){
   }catch(e){b.classList.remove('busy');toast('Error al despachar: '+(e.code||e.message))}
   DSPANIM=false;renderDsp();if(cur)renderProd()
 }
+$('compBox').addEventListener('click',async e=>{
+  if(e.target.closest('#compBtn')){if(!DATA.every(x=>DSP[x.p])){toast('Faltan referencias por despachar');return}
+    if(!confirm(`¿Completar el recibo ${RECIBO}? Pasará a la pestaña Completados.`))return;
+    try{const o={u:USER,n:NAME,ts:Date.now()};await set(R(db,'meta_v1/consultas_comp/'+RECIBO),o);COMP[RECIBO]=o;toast('✅ Recibo completado');recTab='c';$('btnHome').click()}catch(err){toast('Error: '+(err.code||err.message))}return}
+  if(e.target.closest('#compUndo')){if(!confirm('¿Reabrir este recibo?'))return;try{await remove(R(db,'meta_v1/consultas_comp/'+RECIBO));delete COMP[RECIBO];renderGlobal();toast('Recibo reabierto')}catch(err){toast('Error: '+(err.code||err.message))}}
+});
 $('dspBox').addEventListener('click',async e=>{
   if(e.target.closest('#dspBtn')){openDsp();return}
   if(e.target.closest('#dspUndo')){if(!cur||!confirm('¿Reabrir esta referencia?'))return;try{await remove(R(db,`${DSPB}/${cur.p}`));toast('Referencia reabierta')}catch(err){toast('Error: '+(err.code||err.message))}}
@@ -591,6 +615,7 @@ $('trfPanelBody').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.da
 // ---------- Recibos subidos por Excel ----------
 async function loadUploaded(){
   try{const f=await get(R(db,'meta_v1/consultas_fechas'));FECHAS=f.val()||{}}catch(e){}
+  try{const c=await get(R(db,'meta_v1/consultas_comp'));COMP=c.val()||{}}catch(e){}
   try{const s=await get(R(db,'meta_v1/consultas_recs'));const v=s.val()||{};
     for(const id of Object.keys(v)){if(BUILTIN.has(id))continue;const it=Object.values(v[id].items||{}).sort((a,b)=>(a.n||0)-(b.n||0));RECS[id]={items:it.map(x=>({...x,s:x.s||{}})),up:true}}
     for(const id of Object.keys(RECS)){if(!BUILTIN.has(id)&&!(id in v))delete RECS[id]}
@@ -638,7 +663,8 @@ async function autoClose(id,items,ts){
     dp[x.p]={u:AUTO_U,n:AUTO_N,ts,d:dd,r:x.ref,au:1,b:bul(x)};tb+=bul(x);n++}
   const put=async(path,o)=>{const k=Object.keys(o);for(let i=0;i<k.length;i+=400){const part={};k.slice(i,i+400).forEach(z=>part[z]=o[z]);await update(R(db,path),part)}};
   await put(base+'/log',lg);await put(base+'/desp',dp);
-  await set(R(db,'meta_v1/consultas_prog/'+id),{s:100,d:100,r:n,n,ts:Date.now()})
+  await set(R(db,'meta_v1/consultas_prog/'+id),{s:100,d:100,r:n,n,ts:Date.now()});
+  const o={u:AUTO_U,n:AUTO_N,ts,au:1};await set(R(db,'meta_v1/consultas_comp/'+id),o);COMP[id]=o
 }
 $('recUp').onclick=()=>$('recFile').click();
 $('recFile').onchange=async e=>{
@@ -657,7 +683,7 @@ $('recFile').onchange=async e=>{
       if(!confirm(`${RECS[id]?'Se REEMPLAZARÁ':'Se cargará'} el recibo ${id} (ingreso ${fdate(v.f)}): ${fmt(res.items.length)} referencias · ${fmtB(totBul(res.items))} bultos.${res.dup?`\n(${res.dup} filas repetidas ignoradas)`:''}${hist?`\n\nQuedará TODO como surtido y despachado por "Consultas ERP" el ${fdt(wts)}. Se borra cualquier surtido/despacho previo de este recibo.`:''}\n¿Continuar?`))return false;
       try{
         await set(R(db,'meta_v1/consultas_recs/'+id),{items:res.items,by:USER,ts:Date.now(),file:f.name,fecha:v.f});await set(R(db,'meta_v1/consultas_fechas/'+id),v.f);FECHAS[id]=v.f;
-        if(hist){await autoClose(id,res.items,wts)}else{try{await remove(R(db,'meta_v1/consultas_prog/'+id))}catch(e2){}}
+        if(hist){await autoClose(id,res.items,wts)}else{try{await remove(R(db,'meta_v1/consultas_prog/'+id));await remove(R(db,'meta_v1/consultas_comp/'+id));delete COMP[id]}catch(e2){}}
         toast('✅ Recibo '+id+(hist?' cargado como surtido y despachado':' cargado'));showRecList()}
       catch(err){toast('Error: '+(err.code||err.message));return false}
     })
@@ -697,7 +723,7 @@ async function saveBultos(key){
 
 
 // ---------- Fechas y ventana de captura ----------
-let FECHAS={},askCb=null,dspWhen=null;
+let FECHAS={},askCb=null,dspWhen=null,COMP={},recTab='a';
 const nowLocal=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
 const toLocalIn=ts=>{const d=new Date(ts);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
 const fdate=f=>{const d=new Date(f+'T00:00:00');return isNaN(d)?f:d.toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'})};
