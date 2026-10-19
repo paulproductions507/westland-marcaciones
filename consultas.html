@@ -117,7 +117,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
   <div class="wrap">
     <div id="v-rec">
       <div class="card"><h2 style="font-size:20px">Elige el recibo</h2><div class="msg" style="margin-top:4px">Selecciona el recibo que vas a trabajar.</div></div>
-      <div id="recAdm" class="hide" style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><button class="btn sm" id="recTpl">📄 Plantilla</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div>
+      <div id="recAdm" class="hide" style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div>
       <div id="recList"></div>
     </div>
     <div id="v-recibo" class="hide">
@@ -241,7 +241,7 @@ const RECS={"408158":{"items":[{"n":1,"ref":"BB192","p":"1637118","d":"ORL Torre
 const BUILTIN=new Set(Object.keys(RECS));
 const $=id=>document.getElementById(id);
 const fmt=n=>Number(n||0).toLocaleString('en-US');
-const bul=x=>x.pb>0?x.rec/x.pb:0;const totBul=it=>it.reduce((a,x)=>a+bul(x),0);const fmtB=n=>Number((+n||0).toFixed(2)).toLocaleString('en-US');
+const bul=x=>x.pb>0?Math.floor(x.rec/x.pb):0;const totBul=it=>it.reduce((a,x)=>a+bul(x),0);const fmtB=n=>Number((+n||0).toFixed(2)).toLocaleString('en-US');
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 function toast(t){const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
@@ -485,7 +485,7 @@ $('cliFile').onchange=async e=>{
 // ---------- transferencias ----------
 const trfOpen=new Set(),dspOpen=new Set(),dspSel=new Set();let trfStore=null;
 const sg=n=>(n>0?'+':'')+fmt(n);
-function trfGroups(){const g={};for(const e of entries()){const tr=e.tr||'';const k=e.t+'|'+tr;(g[k]=g[k]||{t:e.t,tr,key:e.t+'_'+(tr||'sin'),items:[],ts:0,users:new Set()});g[k].items.push(e);g[k].ts=Math.max(g[k].ts,e.ts);g[k].users.add(e.n||e.u)}return Object.values(g)}
+function trfGroups(){const g={};for(const e of entries()){if(e.au)continue;const tr=e.tr||'';const k=e.t+'|'+tr;(g[k]=g[k]||{t:e.t,tr,key:e.t+'_'+(tr||'sin'),items:[],ts:0,users:new Set()});g[k].items.push(e);g[k].ts=Math.max(g[k].ts,e.ts);g[k].users.add(e.n||e.u)}return Object.values(g)}
 const gPz=g=>g.items.reduce((a,e)=>a+e.q,0);
 const gRef=g=>new Set(g.items.map(e=>e.p)).size;
 const gBul=g=>(TRB[g.key]&&TRB[g.key].b)||0;
@@ -598,7 +598,7 @@ async function loadUploaded(){
 }
 // <parse>
 function normH(s){return String(s??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'')}
-const HDR={ref:['estilo','style','ref','referencia'],p:['producto','product','sku','item','codproducto','codigoproducto','nproducto'],d:['descripcion','descripcionproducto','nombre','description','desc'],upc:['codigobarras','codigodebarras','codbarras','upc','ean','barcode','codigobarra','cbarras'],rec:['recibido','recibidas','cantidadrecibida','received','rec','cantrecibida','piezasrecibidas'],pb:['pzaxbulto','pzasxbulto','pzxbulto','piezasporbulto','pzaporbulto','pxb','unidadesporbulto','unidxbulto','pack','pzabulto','pzasbulto','cantidadporbulto'],pr:['precio','price','pvp','preciounitario'],dt:['disttiendas','distribuciontiendas','distribuirtiendas','distribuir','dist','totaldistribuir','distribucion'],sal:['saldo','saldototal'],cr:['cristal'],sc:['bodega','saldosincristal','saldobodega','sc','paraalmacenar','paraguardar'],dep:['departamento','depto','dep'],div:['division','div'],lin:['linea','lin'],sub:['sublinea','subclase','subcategoria','sub']};
+const HDR={ref:['estilo','style','ref','referencia','refsuplidor','refsuplidor1','refproveedor'],p:['producto','product','sku','item','codproducto','codigoproducto','nproducto'],d:['descripcion','descripcionproducto','nombre','description','desc'],upc:['codigobarras','codigodebarras','codbarras','upc','ean','barcode','codigobarra','cbarras'],rec:['recibido','totalrecibido','totalrecibidas','recibidas','cantidadrecibida','received','rec','cantrecibida','piezasrecibidas'],pb:['pzaxbult','pzasxbult','pzxbult','pzaxbulto','pzasxbulto','pzxbulto','piezasporbulto','pzaporbulto','pxb','unidadesporbulto','unidxbulto','pack','pzabulto','pzasbulto','cantidadporbulto'],pr:['precio','price','pvp','preciounitario'],dt:['disttienda','disttiendas','distribuciontiendas','distribuirtiendas','distribuir','dist','totaldistribuir','distribucion'],sal:['saldo','saldototal'],cr:['cristal'],sc:['bodega','saldosincristal','saldobodega','sc','paraalmacenar','paraguardar'],dep:['departamento','depto','dep'],div:['division','div'],lin:['linea','lin'],sub:['sublinea','subclase','subcategoria','sub']};
 const idStr=v=>typeof v==='number'?v.toLocaleString('fullwide',{useGrouping:false,maximumFractionDigits:0}):String(v??'').trim().replace(/\.0+$/,'');
 const strv=v=>String(v??'').trim();
 const numv=v=>{const n=parseFloat(String(v??'').replace(/[$,\s]/g,''));return isFinite(n)?n:0};
@@ -608,7 +608,7 @@ function parseRecibo(aoa){
   for(let i=0;i<Math.min(aoa.length,25);i++){const hs=(aoa[i]||[]).map(normH);const has=k=>HDR[k].some(a=>hs.includes(a));if(has('p')&&(has('ref')||has('rec')||has('upc'))){hi=i;break}}
   if(hi<0)return{err:'No encontré la fila de encabezados (debe tener al menos "Producto" y "Estilo" o "Recibido").',headers:(aoa[0]||[]).map(String)};
   const hs=aoa[hi],col={},st={};
-  hs.forEach((h,j)=>{const n=normH(h);if(!n)return;const s=storeOf(h);if(s&&st[s]===undefined)st[s]=j;for(const k in HDR){if(col[k]===undefined&&HDR[k].includes(n)){col[k]=j;break}}});
+  hs.forEach((h,j)=>{const n=normH(h);if(!n)return;if(n==='saldo'&&col.sal!==undefined&&col.sc===undefined&&st.CRISTAL!==undefined&&j>st.CRISTAL){col.sc=j;return}const s=storeOf(h);if(s&&st[s]===undefined)st[s]=j;for(const k in HDR){if(col[k]===undefined&&HDR[k].includes(n)){col[k]=j;break}}});
   const miss=[];if(col.p===undefined)miss.push('Producto');if(col.ref===undefined)miss.push('Estilo');if(col.rec===undefined)miss.push('Recibido');if(col.upc===undefined)miss.push('Código barras');
   if(!Object.keys(st).some(t=>t!=='CRISTAL'&&t!=='ECOM'))miss.push('columnas de tiendas (S4…S14)');
   if(miss.length)return{err:'Faltan columnas: '+miss.join(', ')+'.',headers:hs.map(String)};
@@ -617,7 +617,7 @@ function parseRecibo(aoa){
     const s={};for(const t of BASE_ST)s[t]=st[t]!==undefined?numv(r[st[t]]):0;
     const cr=s.CRISTAL,rec=numv(r[col.rec]);
     const dtSum=BASE_ST.filter(t=>t!=='CRISTAL').reduce((a,t)=>a+s[t],0);
-    const dt=col.dt!==undefined?numv(r[col.dt]):dtSum;
+    const dt=dtSum;
     const sal=col.sal!==undefined?numv(r[col.sal]):Math.max(0,rec-dt);
     const sc=col.sc!==undefined?numv(r[col.sc]):Math.max(0,sal-cr);
     s.BODEGA=sc;
@@ -627,28 +627,38 @@ function parseRecibo(aoa){
   return{items,dup}
 }
 // </parse>
+// Recibos ya trabajados: queda todo surtido y despachado, firmado por el sistema (no por un surtidor)
+const AUTO_U='consultas-erp',AUTO_N='Consultas ERP';
+async function autoClose(id,items,ts){
+  const base=`meta_v1/consultas/${id}`,d=new Date(ts),dd=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,st=storesFor(items);
+  await remove(R(db,base+'/log'));await remove(R(db,base+'/desp'));
+  const lg={},dp={};let n=0,tb=0;
+  for(const x of items){
+    for(const t of st){const q=x.s[t]||0;if(q>0)lg[push(R(db,base+'/log')).key]={p:x.p,r:x.ref,t,q,tr:'',u:AUTO_U,n:AUTO_N,ts,d:dd,au:1}}
+    dp[x.p]={u:AUTO_U,n:AUTO_N,ts,d:dd,r:x.ref,au:1,b:bul(x)};tb+=bul(x);n++}
+  const put=async(path,o)=>{const k=Object.keys(o);for(let i=0;i<k.length;i+=400){const part={};k.slice(i,i+400).forEach(z=>part[z]=o[z]);await update(R(db,path),part)}};
+  await put(base+'/log',lg);await put(base+'/desp',dp);
+  await set(R(db,'meta_v1/consultas_prog/'+id),{s:100,d:100,r:n,n,ts:Date.now()})
+}
 $('recUp').onclick=()=>$('recFile').click();
-$('recTpl').onclick=()=>{
-  const ej=(Object.values(RECS)[0]||{items:[]}).items.slice(0,5);
-  const SN=BASE_ST.filter(t=>t!=='ECOM'&&t!=='CRISTAL');
-  const head=['Estilo','Producto','Descripción','Código barras','Recibido','Pza x bulto','Precio','Dist. tiendas','Saldo','E-commerce',...SN,'Cristal','Bodega','Departamento','División','Línea','Sublínea'];
-  const aoa=[head,...ej.map(x=>[x.ref,Number(x.p),x.d,x.upc,x.rec,x.pb,x.pr,x.dt,x.sal,x.s.ECOM||0,...SN.map(t=>x.s[t]||0),x.s.CRISTAL||0,x.s.BODEGA||0,x.dep,x.div,x.lin,x.sub])];
-  const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=head.map((h,i)=>({wch:i===2?40:14}));
-  XLSX.utils.book_append_sheet(wb,ws,'Recibo');XLSX.writeFile(wb,'plantilla_recibo.xlsx')
-};
 $('recFile').onchange=async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
   try{
     const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});let res=null;
     for(const sn of wb.SheetNames){const aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});const r=parseRecibo(aoa);if(!r.err){res=r;break}res=res||r}
-    if(res.err){alert(res.err+'\n\nEncabezados leídos:\n'+res.headers.join(' | ')+'\n\nBaja la plantilla para ver el formato.');return}
-    ask(`Cargar recibo · ${fmt(res.items.length)} referencias`,[{k:'id',label:'Número de recibo',type:'text',value:(f.name.match(/\d{5,}/)||[''])[0]},{k:'f',label:'Fecha de ingreso del recibo',type:'date',value:today()}],'Cargar',async v=>{
+    if(res.err){alert(res.err+'\n\nEncabezados leídos:\n'+res.headers.join(' | ')+'\n\nSube el Excel de distribución tal como lo exporta el sistema (encabezados: Ref. Suplidor, Producto, Descripción, Pza x bult, Total Recibido, Dist Tienda, S4…S14, Cristal, Saldo, UPC…).');return}
+    ask(`Cargar recibo · ${fmt(res.items.length)} referencias`,[{k:'id',label:'Número de recibo',type:'text',value:(f.name.match(/\d{5,}/)||[''])[0]},{k:'f',label:'Fecha de ingreso del recibo',type:'date',value:today()},{k:'h',label:'Estado del recibo',type:'select',value:'n',opts:[['n','Nuevo: pendiente de surtir'],['h','Ya trabajado: dejarlo surtido y despachado']]},{k:'w',label:'Fecha y hora de despacho (solo si ya trabajado)',type:'datetime-local',value:nowLocal()}],'Cargar',async v=>{
       const id=(v.id||'').trim().replace(/[^A-Za-z0-9_-]/g,'');
       if(!id){toast('Número de recibo inválido');return false}
       if(!v.f){toast('Elige la fecha de ingreso');return false}
       if(BUILTIN.has(id)){alert('El recibo '+id+' ya viene incluido en la app. Usa otro número.');return false}
-      if(!confirm(`${RECS[id]?'Se REEMPLAZARÁ':'Se cargará'} el recibo ${id} (${fdate(v.f)}): ${fmt(res.items.length)} referencias · ${fmtB(totBul(res.items))} bultos.${res.dup?`\n(${res.dup} filas repetidas ignoradas)`:''}\n¿Continuar?`))return false;
-      try{await set(R(db,'meta_v1/consultas_recs/'+id),{items:res.items,by:USER,ts:Date.now(),file:f.name,fecha:v.f});await set(R(db,'meta_v1/consultas_fechas/'+id),v.f);FECHAS[id]=v.f;toast('✅ Recibo '+id+' cargado');showRecList()}
+      const hist=v.h==='h';let wts=Date.now();
+      if(hist){wts=new Date(v.w).getTime();if(!isFinite(wts)){toast('Fecha de despacho inválida');return false}}
+      if(!confirm(`${RECS[id]?'Se REEMPLAZARÁ':'Se cargará'} el recibo ${id} (ingreso ${fdate(v.f)}): ${fmt(res.items.length)} referencias · ${fmtB(totBul(res.items))} bultos.${res.dup?`\n(${res.dup} filas repetidas ignoradas)`:''}${hist?`\n\nQuedará TODO como surtido y despachado por "Consultas ERP" el ${fdt(wts)}. Se borra cualquier surtido/despacho previo de este recibo.`:''}\n¿Continuar?`))return false;
+      try{
+        await set(R(db,'meta_v1/consultas_recs/'+id),{items:res.items,by:USER,ts:Date.now(),file:f.name,fecha:v.f});await set(R(db,'meta_v1/consultas_fechas/'+id),v.f);FECHAS[id]=v.f;
+        if(hist){await autoClose(id,res.items,wts)}else{try{await remove(R(db,'meta_v1/consultas_prog/'+id))}catch(e2){}}
+        toast('✅ Recibo '+id+(hist?' cargado como surtido y despachado':' cargado'));showRecList()}
       catch(err){toast('Error: '+(err.code||err.message));return false}
     })
   }catch(err){toast('No se pudo cargar el Excel: '+(err.message||err))}
@@ -693,7 +703,7 @@ const toLocalIn=ts=>{const d=new Date(ts);d.setMinutes(d.getMinutes()-d.getTimez
 const fdate=f=>{const d=new Date(f+'T00:00:00');return isNaN(d)?f:d.toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'})};
 const fdt=ts=>new Date(ts).toLocaleString('es',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
 function ask(title,fields,okTxt,cb){
-  $('maskBody').innerHTML=`<h2 style="font-size:18px;margin-bottom:4px">${esc(title)}</h2>${fields.map(f=>`<div class="lbl" style="margin-top:12px">${esc(f.label)}</div><input class="f" id="ask_${f.k}" type="${f.type}" value="${esc(f.value||'')}" placeholder="${esc(f.ph||'')}">`).join('')}<div style="display:flex;gap:10px;margin-top:16px"><button class="btn" id="askNo" style="flex:1">Cancelar</button><button class="btn pri" id="askOk" style="flex:1">${esc(okTxt)}</button></div>`;
+  $('maskBody').innerHTML=`<h2 style="font-size:18px;margin-bottom:4px">${esc(title)}</h2>${fields.map(f=>`<div class="lbl" style="margin-top:12px">${esc(f.label)}</div>${f.type==='select'?`<select class="f" id="ask_${f.k}">${f.opts.map(o=>`<option value="${o[0]}" ${o[0]===f.value?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`:`<input class="f" id="ask_${f.k}" type="${f.type}" value="${esc(f.value||'')}" placeholder="${esc(f.ph||'')}">`}`).join('')}<div style="display:flex;gap:10px;margin-top:16px"><button class="btn" id="askNo" style="flex:1">Cancelar</button><button class="btn pri" id="askOk" style="flex:1">${esc(okTxt)}</button></div>`;
   askCb=cb;$('mask').classList.remove('hide')}
 $('maskBody').addEventListener('click',async e=>{
   if(e.target.id==='askNo'){$('mask').classList.add('hide');return}
