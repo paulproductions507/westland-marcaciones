@@ -118,7 +118,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
   <div class="wrap">
     <div id="v-rec">
       <div class="card"><h2 style="font-size:20px">Elige el recibo</h2><div class="msg" style="margin-top:4px">Selecciona el recibo que vas a trabajar.</div></div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn sm" id="recStat">📊 Estadística</button><div id="recAdm" class="hide" style="display:flex;gap:8px"><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn sm" id="recStat">📊 Estadística</button><div id="recAdm" class="hide" style="display:flex;gap:8px"><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><button class="btn sm" id="recFindProv">🔎 Buscar proveedores</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div></div>
       <div id="recTabs" style="display:flex;gap:8px;margin-bottom:12px"></div>
       <div id="recList"></div>
     </div>
@@ -289,7 +289,7 @@ async function showRecList(){
   $('v-stat').classList.add('hide');$('mst').classList.add('hide');
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();offLog=offCli=offDsp=offTrf=offTb=offDs=offBg=null;cur=null;RECIBO=null;$('recAdm').classList.toggle('hide',!ISADM);
   $('v-recibo').classList.add('hide');$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Consultas';
-  await loadUploaded();await migrateAuto(Object.keys(RECS));const allIds=Object.keys(RECS);const nC=allIds.filter(id=>COMP[id]).length;
+  await loadUploaded();await migrateAuto(Object.keys(RECS));await autoProv();const allIds=Object.keys(RECS);const nC=allIds.filter(id=>COMP[id]).length;
   $('recTabs').innerHTML=`<button class="btn sm ${recTab==='a'?'pri':''}" data-rtab="a">En proceso (${allIds.length-nC})</button><button class="btn sm ${recTab==='c'?'pri':''}" data-rtab="c">✔ Completados (${nC})</button>`;
   const ids=allIds.filter(id=>!!COMP[id]===(recTab==='c'));
   if(!ids.length){$('recList').innerHTML=`<div class="msg">${recTab==='c'?'Aún no hay recibos completados.':'No hay recibos en proceso.'}</div>`;return}
@@ -666,6 +666,49 @@ function parseRecibo(aoa){
   return{items,dup,prov:pv}
 }
 // </parse>
+// ---------- Proveedor heredado del "Historial de recibos" (misma base de datos que la app de marcaciones) ----------
+const DBURL='https://westland-marcaciones-default-rtdb.firebaseio.com';let autoTried=false;
+async function shallowKeys(path){try{const tk=await auth.currentUser.getIdToken();const r=await fetch(`${DBURL}/${path?path+'/':''}.json?shallow=true&auth=${tk}`);if(!r.ok)return null;const j=await r.json();return j&&typeof j==='object'?Object.keys(j):null}catch(e){return null}}
+function scanProv(node,ids,out,key,depth){
+  if(node==null||depth>8)return;
+  if(typeof node==='string'){const m=node.match(/^\s*#?\s*(\d{5,})\s*[—–-]+\s*(\S.*)$/);if(m&&ids.has(m[1])&&!out[m[1]])out[m[1]]=m[2].trim();return}
+  if(typeof node!=='object')return;
+  if(!Array.isArray(node)){
+    let num=null,pv=null;
+    for(const [k,v] of Object.entries(node)){
+      if(v==null||typeof v==='object')continue;
+      if(/recib|^(num|numero|número|nro|n|id|rec)$/i.test(k)){const d=String(v).replace(/\D/g,'');if(ids.has(d))num=d}
+      if(typeof v==='string'&&/prov|suplid|vendor|supplier/i.test(k)&&v.trim())pv=v.trim()}
+    if(!num&&key&&ids.has(String(key).replace(/\D/g,''))&&/^\D*\d{5,}\D*$/.test(String(key)))num=String(key).replace(/\D/g,'');
+    if(num&&pv&&!out[num])out[num]=pv}
+  for(const [k,v] of Object.entries(node))scanProv(v,ids,out,k,depth+1)
+}
+// Busca los números de recibo en la base de datos y devuelve {found:{recibo:proveedor}, paths:[...], keys:[...]}
+async function findProv(idList){
+  const ids=new Set(idList.map(String)),out={},paths=[],tried=[];
+  const root=await shallowKeys('')||[],meta=await shallowKeys('meta_v1')||[];
+  const cand=[...root.filter(k=>k!=='meta_v1').map(k=>k),...meta.map(k=>'meta_v1/'+k)].filter(p=>!/(^|\/)consultas/i.test(p));
+  const good=/recib|hist|consol|logist|import|compra|embarq|aduan|trafico|pedido/i,bad=/marc|asist|user|usuar|colab|turno|cfg|config|email|bitacor|auth|planilla|nomina|nómina|temporal/i;
+  const order=[...cand.filter(p=>good.test(p)),...cand.filter(p=>!good.test(p)&&!bad.test(p))].slice(0,40);
+  for(const p of order){if(Object.keys(out).length>=ids.size)break;
+    try{const snap=await get(R(db,p));tried.push(p);const before=Object.keys(out).length;scanProv(snap.val(),ids,out,'',0);if(Object.keys(out).length>before)paths.push(p)}catch(e){}}
+  return{found:out,paths,keys:cand,tried}
+}
+async function autoProv(){
+  if(autoTried)return;autoTried=true;
+  const miss=Object.keys(RECS).filter(id=>!PROV[id]);if(!miss.length)return;
+  try{const r=await findProv(miss);for(const [id,n] of Object.entries(r.found)){PROV[id]=n;try{await set(R(db,'meta_v1/consultas_prov/'+id),n)}catch(e){}}}catch(e){}
+}
+$('recFindProv').onclick=async()=>{
+  toast('Buscando proveedores en el historial de recibos…');
+  const ids=Object.keys(RECS);let r;
+  try{r=await findProv(ids)}catch(e){alert('No se pudo buscar: '+(e.code||e.message));return}
+  let ok=0;for(const [id,n] of Object.entries(r.found)){try{await set(R(db,'meta_v1/consultas_prov/'+id),n);PROV[id]=n;ok++}catch(e){PROV[id]=n}}
+  const lost=ids.filter(id=>!r.found[id]);
+  alert(`Proveedores encontrados: ${Object.keys(r.found).length} de ${ids.length}\n`+Object.entries(r.found).map(([i,n])=>`#${i} → ${n}`).join('\n')+(lost.length?`\n\nNo encontrados: ${lost.map(i=>'#'+i).join(', ')}`:'')+`\n\nRuta(s) donde se halló: ${r.paths.join(', ')||'ninguna'}\nSecciones revisadas: ${r.tried.join(', ')||'ninguna'}${r.keys.length?'':'\n(La base no permitió listar secciones.)'}`);
+  showRecList()
+};
+
 // Recibos ya trabajados: queda todo surtido y despachado, firmado por el sistema (no por un surtidor)
 const AUTO_U='consultas-erp',AUTO_N='Consultas ERP';
 async function autoClose(id,items,ts){
@@ -697,7 +740,7 @@ $('recFile').onchange=async e=>{
       if(!confirm(`${RECS[id]?'Se REEMPLAZARÁ':'Se cargará'} el recibo ${id} (ingreso ${fdate(v.f)}): ${fmt(res.items.length)} referencias · ${fmtB(totBul(res.items))} bultos.${res.dup?`\n(${res.dup} filas repetidas ignoradas)`:''}${hist?`\n\nQuedará TODO como surtido y despachado por "Consultas ERP" el ${fdt(wts)}. Se borra cualquier surtido/despacho previo de este recibo.`:''}\n¿Continuar?`))return false;
       try{
         await set(R(db,'meta_v1/consultas_recs/'+id),{items:res.items,by:USER,ts:Date.now(),file:f.name,fecha:v.f});await set(R(db,'meta_v1/consultas_fechas/'+id),v.f);FECHAS[id]=v.f;
-        if((v.pv||'').trim()){await set(R(db,'meta_v1/consultas_prov/'+id),v.pv.trim());PROV[id]=v.pv.trim()}
+        if((v.pv||'').trim()){await set(R(db,'meta_v1/consultas_prov/'+id),v.pv.trim());PROV[id]=v.pv.trim()}else{try{const r=await findProv([id]);if(r.found[id]){await set(R(db,'meta_v1/consultas_prov/'+id),r.found[id]);PROV[id]=r.found[id]}}catch(e){}}
         if(hist){await autoClose(id,res.items,wts)}else{try{await remove(R(db,'meta_v1/consultas_prog/'+id));await remove(R(db,'meta_v1/consultas_comp/'+id));delete COMP[id]}catch(e2){}}
         toast('✅ Recibo '+id+(hist?' cargado como surtido y despachado':' cargado'));showRecList()}
       catch(err){toast('Error: '+(err.code||err.message));return false}
