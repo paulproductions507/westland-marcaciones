@@ -103,6 +103,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
 #btnRef{font-size:18px;line-height:1;padding:8px 12px}#btnRef.spin{animation:sp .8s linear infinite}
 .lbw{position:relative;width:100%;padding-top:75%;background:#fff;border-radius:8px;overflow:hidden}
 .lbp{position:absolute;left:0;top:0;width:812px;height:609px;transform-origin:0 0;background:#fff;color:#000}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px}@media(min-width:760px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}.kpi{background:linear-gradient(160deg,var(--sf2),var(--sf));border:1px solid var(--bd);border-radius:16px;padding:12px}.kpi b{display:block;font:800 24px 'Sora';color:var(--ac);margin-top:4px}.kpi.am b{color:#f5a623}.kpi small{font-size:13px;color:var(--mt)}
 </style></head>
 <body>
 <div id="gate" class="gate"><h2>🔎 Consultas</h2><p id="gmsg" style="color:var(--mt)">Verificando sesión…</p><a class="btn pri" id="glink" href="index.html" style="text-decoration:none;display:none">Ir a Marcaciones</a></div>
@@ -117,10 +118,11 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
   <div class="wrap">
     <div id="v-rec">
       <div class="card"><h2 style="font-size:20px">Elige el recibo</h2><div class="msg" style="margin-top:4px">Selecciona el recibo que vas a trabajar.</div></div>
-      <div id="recAdm" class="hide" style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn sm" id="recStat">📊 Estadística</button><div id="recAdm" class="hide" style="display:flex;gap:8px"><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div></div>
       <div id="recTabs" style="display:flex;gap:8px;margin-bottom:12px"></div>
       <div id="recList"></div>
     </div>
+    <div id="v-stat" class="hide"><div id="stFil"></div><div id="stBody"></div></div>
     <div id="v-recibo" class="hide">
     <div class="tabs">
       <button class="tab on" data-t="cons">🔎 Consulta</button>
@@ -148,6 +150,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
         <div class="card">
           <div class="slbl">Escanear o escribir</div><div class="search"><label class="sbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2de2c9" stroke-width="2" stroke-linecap="round"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M7 9v6M11 9v6M14 9v6M17 9v6"/></svg><input id="q" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Código de barras, estilo o producto"></label><button class="btn pri" id="qgo" style="height:46px;padding:0 18px">Buscar</button></div>
           <div id="qmsg" class="msg">Al escanear el código se abre el producto directo.</div>
+          <div id="stChips" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"></div>
         </div>
         <div id="admCli" class="hide" style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm" id="btnCli">📥 Cargar clientes (Excel)</button><button class="btn sm" id="btnTpl">📄 Plantilla</button><input type="file" id="cliFile" accept=".xlsx,.xls,.csv" class="hide"></div>
         <div class="msg" id="cnt" style="margin:0 2px 8px;font-weight:700"></div>
@@ -224,6 +227,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
   <div class="modal hide" id="mpal"><div id="mpalBody"></div></div>
   <div class="modal hide" id="mlbl" style="align-items:center;padding:12px"><div id="mlblBody" style="border-radius:20px;max-width:460px"></div></div>
   <div class="modal hide" id="mask" style="align-items:center;padding:16px"><div id="maskBody" style="border-radius:20px;max-width:380px"></div></div>
+  <div class="modal hide" id="mst" style="align-items:center;padding:12px"><div id="mstBody" class="card" style="max-width:560px;width:100%;max-height:88vh;overflow:auto;margin:0"></div></div>
   <div class="modal hide" id="mdsp" style="align-items:center;padding:16px"><div id="mdspBody" style="border-radius:20px;max-width:380px"></div></div>
   <div class="bottom hide" id="bar"><div class="sum" id="bsum"></div><button class="btn pri" id="bsave">Guardar surtido</button></div>
 </div>
@@ -271,7 +275,7 @@ function selectRecibo(id){
   offDs=onValue(R(db,DSB),s=>{DS=s.val()||{};renderAll()},()=>{});
   offBg=onValue(R(db,BGB),s=>{BG=s.val()||{};renderAll()},()=>{});
   $('v-rec').classList.add('hide');$('v-recibo').classList.remove('hide');$('btnHome').classList.remove('hide');
-  $('ttl').textContent='Recibo '+id;$('admCli').classList.toggle('hide',!ISADM);
+  $('ttl').textContent='Recibo '+id+(PROV[id]?' · '+PROV[id]:'');$('admCli').classList.toggle('hide',!ISADM);
   $('v-prod').classList.add('hide');$('v-list').classList.remove('hide');$('q').value='';
   document.querySelector('[data-t=cons]').click();window.scrollTo(0,0);renderAll()
 }
@@ -282,27 +286,30 @@ async function migrateAuto(ids){
       if(v.length&&v.every(x=>x.au)){const o={u:AUTO_U,n:AUTO_N,ts:v[0].ts||Date.now(),au:1};await set(R(db,'meta_v1/consultas_comp/'+id),o);COMP[id]=o}}catch(e){}}
 }
 async function showRecList(){
+  $('v-stat').classList.add('hide');$('mst').classList.add('hide');
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();offLog=offCli=offDsp=offTrf=offTb=offDs=offBg=null;cur=null;RECIBO=null;$('recAdm').classList.toggle('hide',!ISADM);
   $('v-recibo').classList.add('hide');$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Consultas';
   await loadUploaded();await migrateAuto(Object.keys(RECS));const allIds=Object.keys(RECS);const nC=allIds.filter(id=>COMP[id]).length;
   $('recTabs').innerHTML=`<button class="btn sm ${recTab==='a'?'pri':''}" data-rtab="a">En proceso (${allIds.length-nC})</button><button class="btn sm ${recTab==='c'?'pri':''}" data-rtab="c">✔ Completados (${nC})</button>`;
   const ids=allIds.filter(id=>!!COMP[id]===(recTab==='c'));
   if(!ids.length){$('recList').innerHTML=`<div class="msg">${recTab==='c'?'Aún no hay recibos completados.':'No hay recibos en proceso.'}</div>`;return}
-  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><div class="lbl">Recibo</div><div class="sora" style="font-size:24px;color:var(--ac)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos · ${fmt(it.reduce((a,x)=>a+(x.rec||0),0))} piezas</div>${COMP[id]?`<div class="msg" style="margin:2px 0 0">✔ Completado · ${fdt(COMP[id].ts)} · ${esc(COMP[id].n||'')}</div>`:''}<div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}</div></div><div style="text-align:right;display:flex;gap:14px"><div><div class="big" id="ra-${id}" style="font:800 22px Sora;color:var(--ac)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px Sora;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar"><i id="rb-${id}" style="width:0"></i></div><div class="bar" style="margin-top:4px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">${COMP[id]?`<button class="btn sm" data-reopenrec="${id}">↩ Reabrir</button>`:''}<button class="btn sm" data-fecharec="${id}">📅 Fecha</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
+  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1">${PROV[id]?`<div class="sora" style="font-size:24px;color:#fff;line-height:1.15;margin-bottom:4px">${esc(PROV[id])}</div>`:'<div class="msg" style="margin:0 0 4px;color:var(--wn)">Sin proveedor</div>'}<div class="lbl">Recibo</div><div class="sora" style="font-size:24px;color:var(--ac)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos · ${fmt(it.reduce((a,x)=>a+(x.rec||0),0))} piezas</div>${COMP[id]?`<div class="msg" style="margin:2px 0 0">✔ Completado · ${fdt(COMP[id].ts)} · ${esc(COMP[id].n||'')}</div>`:''}<div class="msg" id="ri-${id}" style="margin:2px 0 0;color:var(--tx)">Ítems …</div><div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}</div></div><div style="text-align:right;display:flex;gap:14px"><div><div class="big" id="ra-${id}" style="font:800 22px Sora;color:var(--ac)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px Sora;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar"><i id="rb-${id}" style="width:0"></i></div><div class="bar" style="margin-top:4px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">${COMP[id]?`<button class="btn sm" data-reopenrec="${id}">↩ Reabrir</button>`:''}<button class="btn sm" data-provrec="${id}">🏷 Proveedor</button><button class="btn sm" data-fecharec="${id}">📅 Fecha</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
   let PROG={};try{PROG=(await get(R(db,'meta_v1/consultas_prog'))).val()||{}}catch(e){}
   for(const id of ids){try{let g=PROG[id];
-    if(!g){ // primera vez para este recibo: se calcula una sola vez y se guarda el resumen
+    if(!g||g.si===undefined){ // primera vez para este recibo: se calcula una sola vez y se guarda el resumen
       const [sn,dn]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);
       const lg=Object.values(sn.val()||{}),dd=dn.val()||{},it=RECS[id].items,st=storesFor(it);let A=0,S=0;const m={};
       lg.forEach(e=>{m[e.p+'|'+e.t]=(m[e.p+'|'+e.t]||0)+(e.q||0)});
       it.forEach(x=>st.forEach(t=>{const a=x.s[t]||0;A+=a;S+=Math.min(m[x.p+'|'+t]||0,a)}));
-      const refs=it.filter(x=>dd[x.p]).length;
-      g={s:A?Math.round(S/A*100):0,d:it.length?Math.round(refs/it.length*100):0,r:refs,n:it.length,ts:Date.now()};
+      const refs=it.filter(x=>dd[x.p]).length;const si=it.filter(x=>{if(dd[x.p])return true;let a=0,s=0;st.forEach(t=>{const q=x.s[t]||0;a+=q;s+=Math.min(m[x.p+'|'+t]||0,q)});return a>0&&s>=a}).length;
+      g={s:A?Math.round(S/A*100):0,d:it.length?Math.round(refs/it.length*100):0,r:refs,n:it.length,si,ts:Date.now()};
       set(R(db,'meta_v1/consultas_prog/'+id),g).catch(()=>{})}
-    $('ra-'+id).textContent=g.s+'%';$('rb-'+id).style.width=g.s+'%';$('da-'+id).textContent=g.d+'%';$('db-'+id).style.width=g.d+'%'}catch(e){$('ra-'+id).textContent='—';$('da-'+id).textContent='—'}}
+    $('ra-'+id).textContent=g.s+'%';$('rb-'+id).style.width=g.s+'%';$('da-'+id).textContent=g.d+'%';$('ri-'+id).innerHTML=`Ítems surtidos <b>${fmt(g.si||0)}/${fmt(g.n||0)}</b> · despachados <b>${fmt(g.r||0)}/${fmt(g.n||0)}</b>`;$('db-'+id).style.width=g.d+'%'}catch(e){$('ra-'+id).textContent='—';$('da-'+id).textContent='—'}}
 }
 $('recTabs').addEventListener('click',e=>{const b=e.target.closest('[data-rtab]');if(b){recTab=b.dataset.rtab;showRecList()}});
 $('recList').addEventListener('click',async e=>{
+  const pv=e.target.closest('[data-provrec]');
+  if(pv){e.stopPropagation();const id=pv.dataset.provrec;ask('Proveedor · recibo '+id,[{k:'pv',label:'Nombre del proveedor',type:'text',value:PROV[id]||'',ph:'Ej. HDI International',list:provList()}],'Guardar',async v=>{const n=(v.pv||'').trim();try{if(n){await set(R(db,'meta_v1/consultas_prov/'+id),n);PROV[id]=n}else{await remove(R(db,'meta_v1/consultas_prov/'+id));delete PROV[id]}showRecList()}catch(err){toast('Error: '+(err.code||err.message));return false}});return}
   const ro=e.target.closest('[data-reopenrec]');
   if(ro){e.stopPropagation();const id=ro.dataset.reopenrec;if(!confirm(`¿Reabrir el recibo ${id}? Vuelve a la lista En proceso.`))return;try{await remove(R(db,'meta_v1/consultas_comp/'+id));delete COMP[id];recTab='a';toast('Recibo reabierto');showRecList()}catch(err){toast('Error: '+(err.code||err.message))}return}
   const fe=e.target.closest('[data-fecharec]');
@@ -339,12 +346,12 @@ function renderGlobal(){
   if(cd){cb.innerHTML=`<div class="card" style="display:flex;align-items:center;gap:10px"><div style="flex:1"><b class="sora">✔ Recibo completado</b><div class="msg" style="margin:2px 0 0">${fdt(cd.ts)} · ${esc(cd.n||'')}</div></div>${ISADM?'<button class="btn sm" id="compUndo">↩ Reabrir</button>':''}</div>`}
   else if(!ISADM){cb.innerHTML=''}
   else{const ok=DATA.length>0&&refs===DATA.length;cb.innerHTML=`<div class="card"><button class="btn pri" id="compBtn" style="width:100%" ${ok?'':'disabled'}>✔ Completar recibo</button><div class="msg" style="margin:6px 0 0;text-align:center">${ok?'Todas las referencias están despachadas. Al completar, el recibo pasa a Completados.':`Se habilita cuando todas las referencias estén despachadas (${fmt(refs)} de ${fmt(DATA.length)}).`}</div></div>`}
-  saveProg(RECIBO,pc,DATA.length?Math.round(refs/DATA.length*100):0,refs,DATA.length)
+  saveProg(RECIBO,pc,DATA.length?Math.round(refs/DATA.length*100):0,refs,DATA.length,DATA.filter(x=>DSP[x.p]||stateOf(x)==='ok').length)
 }
 // Resumen de avance por recibo (surtido y despacho): la lista lo lee en vez de bajar el registro completo de cada recibo
 const LD={log:0,dsp:0};let progT=null;const progLast={};
-function saveProg(id,sv,dv,r,n){if(!id||!LD.log||!LD.dsp)return;const k=sv+'|'+dv+'|'+r;if(progLast[id]===k)return;clearTimeout(progT);
-  progT=setTimeout(()=>{progLast[id]=k;set(R(db,'meta_v1/consultas_prog/'+id),{s:sv,d:dv,r,n,ts:Date.now()}).catch(()=>{})},4000)}
+function saveProg(id,sv,dv,r,n,si){if(!id||!LD.log||!LD.dsp)return;const k=sv+'|'+dv+'|'+r+'|'+si;if(progLast[id]===k)return;clearTimeout(progT);
+  progT=setTimeout(()=>{progLast[id]=k;set(R(db,'meta_v1/consultas_prog/'+id),{s:sv,d:dv,r,n,si,ts:Date.now()}).catch(()=>{})},4000)}
 function norm(s){return String(s||'').replace(/\D/g,'')}
 function matchCode(raw){
   const q=raw.trim().toLowerCase();if(!q)return[];const d=norm(q);
@@ -354,14 +361,20 @@ function matchCode(raw){
 }
 function stFull(x){return DSP[x.p]?'dsp':stateOf(x)}
 function pillFor(x){const s=stFull(x);return s==='dsp'?'<span class="pill p-ok">Despachado ✓</span>':s==='ok'?'<span class="pill p-bl">Surtido</span>':s==='wn'?'<span class="pill p-wn">Parcial</span>':s==='none'?'<span class="pill p-no">Sin asignar</span>':'<span class="pill p-aq">Pendiente</span>'}
+let STSF='all';
+const STLBL={all:'Todos',no:'Nuevo',wn:'Parcial',ok:'Surtido',dsp:'Despachado',none:'Sin asignar'};
 function renderList(){
   const q=$('q').value.trim().toLowerCase();
-  filtered=q?DATA.filter(x=>[x.p,x.ref,x.d,x.upc].join(' ').toLowerCase().includes(q)):DATA;
+  const base=q?DATA.filter(x=>[x.p,x.ref,x.d,x.upc].join(' ').toLowerCase().includes(q)):DATA;
+  const cn={all:base.length,no:0,wn:0,ok:0,dsp:0,none:0};base.forEach(x=>cn[stFull(x)]++);
+  $('stChips').innerHTML=Object.keys(STLBL).map(k=>`<button class="btn sm ${STSF===k?'pri':''}" data-sf="${k}">${STLBL[k]} (${fmt(cn[k])})</button>`).join('');
+  filtered=STSF==='all'?base:base.filter(x=>stFull(x)===STSF);
   const sl=filtered.slice(0,shown);
   $('list').innerHTML=sl.map(x=>{const{a,s}=totalsOf(x);return `<div class="row st-${stFull(x)}" data-p="${x.p}"><div style="flex:1;min-width:0"><div class="st">${esc(x.ref)} <span style="color:var(--mt);font-weight:500;font-size:12px">· ${x.p}</span></div><div class="ds">${esc(x.d)}</div><div class="ds" style="font-family:'DM Mono';font-size:11px">${x.upc}</div></div><div style="text-align:right">${pillFor(x)}<div class="ds" style="margin-top:4px">${fmt(s)}/${fmt(a)}</div></div></div>`}).join('')||'<div class="msg">Sin resultados.</div>';
   $('more').classList.toggle('hide',filtered.length<=shown);$('all').classList.toggle('hide',filtered.length<=shown);
-  $('cnt').textContent=`Mostrando ${fmt(Math.min(shown,filtered.length))} de ${fmt(filtered.length)} productos${q?' (filtrado)':` en el recibo`}`
+  $('cnt').textContent=`Mostrando ${fmt(Math.min(shown,filtered.length))} de ${fmt(filtered.length)} productos${q||STSF!=='all'?' (filtrado'+(STSF!=='all'?': '+STLBL[STSF]:'')+')':` en el recibo`}`
 }
+$('stChips').addEventListener('click',e=>{const b=e.target.closest('[data-sf]');if(b){STSF=b.dataset.sf;shown=40;renderList()}});
 $('list').addEventListener('click',e=>{const r=e.target.closest('.row');if(r)openProd(r.dataset.p)});
 $('more').onclick=()=>{shown+=60;renderList()};
 $('all').onclick=()=>{shown=filtered.length;renderList();setTimeout(()=>window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'}),50)};
@@ -558,7 +571,6 @@ let DSPANIM=false,trfEdit=null;
 function renderDsp(){
   if(!cur||DSPANIM)return;const x=cur,d=DSP[x.p],{a,s}=totalsOf(x),box=$('dspBox');
   if(d){box.innerHTML=`<div class="dsp-done"><div class="dsp-ck">✓</div><div><b style="font:800 16px 'Sora'">Despachado</b><div class="msg" style="margin:2px 0 0">${esc(d.n||d.u)} · ${new Date(d.ts).toLocaleString('es',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div>${ISADM?'<button class="btn sm" id="dspUndo" style="margin-left:auto">Reabrir</button>':''}</div>`;return}
-  if(!ISADM){box.innerHTML='';return}
   const no=a>0&&s===0;
   box.innerHTML=`<button class="dspbtn" id="dspBtn" ${no?'disabled':''}><span>🚚 Despachar</span></button>${no?'<div class="msg" style="text-align:center">Surte al menos una tienda para poder despachar.</div>':''}`
 }
@@ -616,6 +628,7 @@ $('trfPanelBody').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.da
 async function loadUploaded(){
   try{const f=await get(R(db,'meta_v1/consultas_fechas'));FECHAS=f.val()||{}}catch(e){}
   try{const c=await get(R(db,'meta_v1/consultas_comp'));COMP=c.val()||{}}catch(e){}
+  try{const c=await get(R(db,'meta_v1/consultas_prov'));PROV=c.val()||{}}catch(e){}
   try{const s=await get(R(db,'meta_v1/consultas_recs'));const v=s.val()||{};
     for(const id of Object.keys(v)){if(BUILTIN.has(id))continue;const it=Object.values(v[id].items||{}).sort((a,b)=>(a.n||0)-(b.n||0));RECS[id]={items:it.map(x=>({...x,s:x.s||{}})),up:true}}
     for(const id of Object.keys(RECS)){if(!BUILTIN.has(id)&&!(id in v))delete RECS[id]}
@@ -623,7 +636,7 @@ async function loadUploaded(){
 }
 // <parse>
 function normH(s){return String(s??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'')}
-const HDR={ref:['estilo','style','ref','referencia','refsuplidor','refsuplidor1','refproveedor'],p:['producto','product','sku','item','codproducto','codigoproducto','nproducto'],d:['descripcion','descripcionproducto','nombre','description','desc'],upc:['codigobarras','codigodebarras','codbarras','upc','ean','barcode','codigobarra','cbarras'],rec:['recibido','totalrecibido','totalrecibidas','recibidas','cantidadrecibida','received','rec','cantrecibida','piezasrecibidas'],pb:['pzaxbult','pzasxbult','pzxbult','pzaxbulto','pzasxbulto','pzxbulto','piezasporbulto','pzaporbulto','pxb','unidadesporbulto','unidxbulto','pack','pzabulto','pzasbulto','cantidadporbulto'],pr:['precio','price','pvp','preciounitario'],dt:['disttienda','disttiendas','distribuciontiendas','distribuirtiendas','distribuir','dist','totaldistribuir','distribucion'],sal:['saldo','saldototal'],cr:['cristal'],sc:['bodega','saldosincristal','saldobodega','sc','paraalmacenar','paraguardar'],dep:['departamento','depto','dep'],div:['division','div'],lin:['linea','lin'],sub:['sublinea','subclase','subcategoria','sub']};
+const HDR={ref:['estilo','style','ref','referencia','refsuplidor','refsuplidor1','refproveedor'],p:['producto','product','sku','item','codproducto','codigoproducto','nproducto'],d:['descripcion','descripcionproducto','nombre','description','desc'],upc:['codigobarras','codigodebarras','codbarras','upc','ean','barcode','codigobarra','cbarras'],rec:['recibido','totalrecibido','totalrecibidas','recibidas','cantidadrecibida','received','rec','cantrecibida','piezasrecibidas'],pb:['pzaxbult','pzasxbult','pzxbult','pzaxbulto','pzasxbulto','pzxbulto','piezasporbulto','pzaporbulto','pxb','unidadesporbulto','unidxbulto','pack','pzabulto','pzasbulto','cantidadporbulto'],pr:['precio','price','pvp','preciounitario'],dt:['disttienda','disttiendas','distribuciontiendas','distribuirtiendas','distribuir','dist','totaldistribuir','distribucion'],sal:['saldo','saldototal'],cr:['cristal'],sc:['bodega','saldosincristal','saldobodega','sc','paraalmacenar','paraguardar'],dep:['departamento','depto','dep'],div:['division','div'],lin:['linea','lin'],prov:['proveedor','suplidor','vendor','supplier','nombreproveedor'],sub:['sublinea','subclase','subcategoria','sub']};
 const idStr=v=>typeof v==='number'?v.toLocaleString('fullwide',{useGrouping:false,maximumFractionDigits:0}):String(v??'').trim().replace(/\.0+$/,'');
 const strv=v=>String(v??'').trim();
 const numv=v=>{const n=parseFloat(String(v??'').replace(/[$,\s]/g,''));return isFinite(n)?n:0};
@@ -649,7 +662,8 @@ function parseRecibo(aoa){
     const g=k=>col[k]!==undefined?strv(r[col[k]]):'';
     items.push({n:items.length+1,ref:strv(r[col.ref]),p,d:g('d'),pb:(col.pb!==undefined&&numv(r[col.pb]))||1,pr:col.pr!==undefined?numv(r[col.pr]):0,rec,sal,dt,upc:idStr(r[col.upc]),cr,sc,dep:g('dep'),div:g('div'),lin:g('lin'),sub:g('sub'),s})}
   if(!items.length)return{err:'No encontré filas con número de producto.',headers:hs.map(String)};
-  return{items,dup}
+  const pv=col.prov!==undefined?(aoa.slice(hi+1).map(r=>strv((r||[])[col.prov])).find(Boolean)||''):'';
+  return{items,dup,prov:pv}
 }
 // </parse>
 // Recibos ya trabajados: queda todo surtido y despachado, firmado por el sistema (no por un surtidor)
@@ -663,7 +677,7 @@ async function autoClose(id,items,ts){
     dp[x.p]={u:AUTO_U,n:AUTO_N,ts,d:dd,r:x.ref,au:1,b:bul(x)};tb+=bul(x);n++}
   const put=async(path,o)=>{const k=Object.keys(o);for(let i=0;i<k.length;i+=400){const part={};k.slice(i,i+400).forEach(z=>part[z]=o[z]);await update(R(db,path),part)}};
   await put(base+'/log',lg);await put(base+'/desp',dp);
-  await set(R(db,'meta_v1/consultas_prog/'+id),{s:100,d:100,r:n,n,ts:Date.now()});
+  await set(R(db,'meta_v1/consultas_prog/'+id),{s:100,d:100,r:n,n,si:n,ts:Date.now()});
   const o={u:AUTO_U,n:AUTO_N,ts,au:1};await set(R(db,'meta_v1/consultas_comp/'+id),o);COMP[id]=o
 }
 $('recUp').onclick=()=>$('recFile').click();
@@ -673,7 +687,7 @@ $('recFile').onchange=async e=>{
     const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});let res=null;
     for(const sn of wb.SheetNames){const aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});const r=parseRecibo(aoa);if(!r.err){res=r;break}res=res||r}
     if(res.err){alert(res.err+'\n\nEncabezados leídos:\n'+res.headers.join(' | ')+'\n\nSube el Excel de distribución tal como lo exporta el sistema (encabezados: Ref. Suplidor, Producto, Descripción, Pza x bult, Total Recibido, Dist Tienda, S4…S14, Cristal, Saldo, UPC…).');return}
-    ask(`Cargar recibo · ${fmt(res.items.length)} referencias`,[{k:'id',label:'Número de recibo',type:'text',value:(f.name.match(/\d{5,}/)||[''])[0]},{k:'f',label:'Fecha de ingreso del recibo',type:'date',value:today()},{k:'h',label:'Estado del recibo',type:'select',value:'n',opts:[['n','Nuevo: pendiente de surtir'],['h','Ya trabajado: dejarlo surtido y despachado']]},{k:'w',label:'Fecha y hora de despacho (solo si ya trabajado)',type:'datetime-local',value:nowLocal()}],'Cargar',async v=>{
+    ask(`Cargar recibo · ${fmt(res.items.length)} referencias`,[{k:'id',label:'Número de recibo',type:'text',value:(f.name.match(/\d{5,}/)||[''])[0]},{k:'pv',label:'Proveedor',type:'text',value:res.prov||'',ph:'Ej. HDI International',list:provList()},{k:'f',label:'Fecha de ingreso del recibo',type:'date',value:today()},{k:'h',label:'Estado del recibo',type:'select',value:'n',opts:[['n','Nuevo: pendiente de surtir'],['h','Ya trabajado: dejarlo surtido y despachado']]},{k:'w',label:'Fecha y hora de despacho (solo si ya trabajado)',type:'datetime-local',value:nowLocal()}],'Cargar',async v=>{
       const id=(v.id||'').trim().replace(/[^A-Za-z0-9_-]/g,'');
       if(!id){toast('Número de recibo inválido');return false}
       if(!v.f){toast('Elige la fecha de ingreso');return false}
@@ -683,6 +697,7 @@ $('recFile').onchange=async e=>{
       if(!confirm(`${RECS[id]?'Se REEMPLAZARÁ':'Se cargará'} el recibo ${id} (ingreso ${fdate(v.f)}): ${fmt(res.items.length)} referencias · ${fmtB(totBul(res.items))} bultos.${res.dup?`\n(${res.dup} filas repetidas ignoradas)`:''}${hist?`\n\nQuedará TODO como surtido y despachado por "Consultas ERP" el ${fdt(wts)}. Se borra cualquier surtido/despacho previo de este recibo.`:''}\n¿Continuar?`))return false;
       try{
         await set(R(db,'meta_v1/consultas_recs/'+id),{items:res.items,by:USER,ts:Date.now(),file:f.name,fecha:v.f});await set(R(db,'meta_v1/consultas_fechas/'+id),v.f);FECHAS[id]=v.f;
+        if((v.pv||'').trim()){await set(R(db,'meta_v1/consultas_prov/'+id),v.pv.trim());PROV[id]=v.pv.trim()}
         if(hist){await autoClose(id,res.items,wts)}else{try{await remove(R(db,'meta_v1/consultas_prog/'+id));await remove(R(db,'meta_v1/consultas_comp/'+id));delete COMP[id]}catch(e2){}}
         toast('✅ Recibo '+id+(hist?' cargado como surtido y despachado':' cargado'));showRecList()}
       catch(err){toast('Error: '+(err.code||err.message));return false}
@@ -723,13 +738,13 @@ async function saveBultos(key){
 
 
 // ---------- Fechas y ventana de captura ----------
-let FECHAS={},askCb=null,dspWhen=null,COMP={},recTab='a';
+let FECHAS={},askCb=null,dspWhen=null,COMP={},recTab='a',PROV={};
 const nowLocal=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
 const toLocalIn=ts=>{const d=new Date(ts);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
 const fdate=f=>{const d=new Date(f+'T00:00:00');return isNaN(d)?f:d.toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'})};
 const fdt=ts=>new Date(ts).toLocaleString('es',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
 function ask(title,fields,okTxt,cb){
-  $('maskBody').innerHTML=`<h2 style="font-size:18px;margin-bottom:4px">${esc(title)}</h2>${fields.map(f=>`<div class="lbl" style="margin-top:12px">${esc(f.label)}</div>${f.type==='select'?`<select class="f" id="ask_${f.k}">${f.opts.map(o=>`<option value="${o[0]}" ${o[0]===f.value?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`:`<input class="f" id="ask_${f.k}" type="${f.type}" value="${esc(f.value||'')}" placeholder="${esc(f.ph||'')}">`}`).join('')}<div style="display:flex;gap:10px;margin-top:16px"><button class="btn" id="askNo" style="flex:1">Cancelar</button><button class="btn pri" id="askOk" style="flex:1">${esc(okTxt)}</button></div>`;
+  $('maskBody').innerHTML=`<h2 style="font-size:18px;margin-bottom:4px">${esc(title)}</h2>${fields.map(f=>`<div class="lbl" style="margin-top:12px">${esc(f.label)}</div>${f.type==='select'?`<select class="f" id="ask_${f.k}">${f.opts.map(o=>`<option value="${o[0]}" ${o[0]===f.value?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`:`<input class="f" id="ask_${f.k}" type="${f.type}" value="${esc(f.value||'')}" placeholder="${esc(f.ph||'')}" ${f.list?`list="dl_${f.k}"`:''}>${f.list?`<datalist id="dl_${f.k}">${f.list.map(o=>`<option value="${esc(o)}">`).join('')}</datalist>`:''}`}`).join('')}<div style="display:flex;gap:10px;margin-top:16px"><button class="btn" id="askNo" style="flex:1">Cancelar</button><button class="btn pri" id="askOk" style="flex:1">${esc(okTxt)}</button></div>`;
   askCb=cb;$('mask').classList.remove('hide')}
 $('maskBody').addEventListener('click',async e=>{
   if(e.target.id==='askNo'){$('mask').classList.add('hide');return}
@@ -820,6 +835,110 @@ async function softRefresh(){
   }catch(e){toast('No se pudo actualizar: '+(e.code||e.message))}
   setTimeout(()=>b.classList.remove('spin'),500)
 }
+// ---------- Estadística global (todos los recibos) ----------
+let STC={},STEV={sv:[],dv:[]},STF={m:'',d1:'',d2:'',u:'',t:'',v:'',r:'',q:''};
+const provList=()=>[...new Set(Object.values(PROV).filter(Boolean))].sort();
+const mlabel=m=>{const [y,mo]=m.split('-');const t=new Date(+y,+mo-1,1).toLocaleDateString('es',{month:'long',year:'numeric'});return t.charAt(0).toUpperCase()+t.slice(1)};
+async function openStat(){
+  $('v-rec').classList.add('hide');$('v-stat').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent='Estadística';
+  $('stFil').innerHTML='';$('stBody').innerHTML='<div class="msg">Cargando datos de todos los recibos…</div>';window.scrollTo(0,0);
+  await statReload()
+}
+async function statReload(){
+  try{await loadUploaded();await Promise.all(Object.keys(RECS).map(async id=>{try{const [a,b]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);STC[id]={log:a.val()||{},desp:b.val()||{}}}catch(e){STC[id]={log:{},desp:{}}}}));
+    buildEv();buildFilters();renderStat()}catch(e){$('stBody').innerHTML='<div class="msg">No se pudo cargar: '+esc(e.code||e.message)+'</div>'}
+}
+function buildEv(){
+  const sv=[],dv=[];
+  for(const id of Object.keys(RECS)){const c=STC[id];if(!c)continue;const it=RECS[id].items,by=Object.fromEntries(it.map(x=>[x.p,x])),st=storesFor(it),prov=PROV[id]||'',sp={};
+    for(const e of Object.values(c.log||{})){const q=e.q||0;sp[e.p+'|'+e.t]=(sp[e.p+'|'+e.t]||0)+q;const x=by[e.p];sv.push({id,prov,p:e.p,r:e.r||(x&&x.ref)||'',ds:(x&&x.d)||'',t:e.t,q,b:0,u:e.n||e.u||'—',uu:e.u||'',d:e.d||'',ts:e.ts||0})}
+    for(const [p,dd] of Object.entries(c.desp||{})){const x=by[p];if(!x)continue;const bu=dd.b!=null?dd.b:bul(x);let tot=0;st.forEach(t=>tot+=sp[p+'|'+t]||0);
+      const base={id,prov,p,r:dd.r||x.ref,ds:x.d||'',u:dd.n||dd.u||'—',uu:dd.u||'',d:dd.d||'',ts:dd.ts||0};
+      if(!tot){dv.push({...base,t:'—',q:0,b:bu});continue}
+      st.forEach(t=>{const q=sp[p+'|'+t]||0;if(q>0)dv.push({...base,t,q,b:bu*q/tot})})}}
+  STEV={sv,dv}
+}
+function okEv(e,skipT){const f=STF;
+  if(!ISADM&&e.uu!==USER)return false;
+  if(f.m&&(e.d||'').slice(0,7)!==f.m)return false;if(f.d1&&e.d<f.d1)return false;if(f.d2&&e.d>f.d2)return false;
+  if(f.u&&e.u!==f.u)return false;if(!skipT&&f.t&&e.t!==f.t)return false;if(f.v&&e.prov!==f.v)return false;if(f.r&&e.id!==f.r)return false;
+  if(f.q){const h=[e.u,e.id,e.prov,e.p,e.r,e.ds,e.t,L(e.t),NAMES[e.t]||''].join(' ').toLowerCase();if(!f.q.toLowerCase().split(/\s+/).every(w=>h.includes(w)))return false}
+  return true}
+function buildFilters(){
+  const ev=[...STEV.sv,...STEV.dv].filter(e=>ISADM||e.uu===USER),uq=f=>[...new Set(ev.map(f).filter(Boolean))].sort();
+  const opt=(a,sel,fn)=>a.map(v=>`<option value="${esc(v)}" ${v===sel?'selected':''}>${esc(fn?fn(v):v)}</option>`).join('');
+  const ms=uq(e=>(e.d||'').slice(0,7)).reverse(),ts=[...BASE_ST,'—'].filter(t=>ev.some(e=>e.t===t));
+  const sel=(k,all,body)=>`<div><div class="lbl">${all[0]}</div><select class="f" data-sf="${k}"><option value="">${all[1]}</option>${body}</select></div>`;
+  $('stFil').innerHTML=`<div class="card"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+    ${sel('m',['Mes','Todos'],opt(ms,STF.m,mlabel))}
+    <div><div class="lbl">Desde</div><input class="f" type="date" data-sf="d1" value="${STF.d1}"></div><div><div class="lbl">Hasta</div><input class="f" type="date" data-sf="d2" value="${STF.d2}"></div>
+    ${ISADM?sel('u',['Surtidor','Todos'],opt(uq(e=>e.u),STF.u)):''}
+    ${sel('t',['Tienda','Todas'],opt(ts,STF.t,t=>t==='—'?'Sin tienda':LN(t)))}
+    ${sel('v',['Proveedor','Todos'],opt(uq(e=>e.prov),STF.v))}
+    ${sel('r',['Recibo','Todos'],opt(uq(e=>e.id),STF.r,x=>'#'+x))}</div>
+    <div class="search" style="margin-top:10px"><input id="stQ" class="f" placeholder="Buscar usuario, recibo, proveedor, tienda, referencia…" value="${esc(STF.q)}"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn sm" id="stClr">✖ Limpiar</button><button class="btn sm" id="stRef">⟳ Actualizar</button><button class="btn sm" id="stXls">📥 Excel</button></div></div>`
+}
+$('stFil').addEventListener('change',e=>{const k=e.target.dataset.sf;if(!k)return;STF[k]=e.target.value;if(k==='m'&&e.target.value){STF.d1=STF.d2='';buildFilters()}renderStat()});
+$('stFil').addEventListener('input',e=>{if(e.target.id==='stQ'){STF.q=e.target.value.trim();renderStat()}});
+$('stFil').addEventListener('click',e=>{
+  if(e.target.id==='stClr'){STF={m:'',d1:'',d2:'',u:'',t:'',v:'',r:'',q:''};buildFilters();renderStat()}
+  if(e.target.id==='stRef'){$('stBody').innerHTML='<div class="msg">Actualizando…</div>';statReload()}
+  if(e.target.id==='stXls')statExcel()});
+function statExcel(){
+  const rows=[...STEV.sv.filter(e=>okEv(e)).map(e=>['Surtido',...xr(e)]),...STEV.dv.filter(e=>okEv(e)).map(e=>['Despacho',...xr(e)])].sort((a,b)=>String(a[1]).localeCompare(String(b[1])));
+  if(!rows.length){toast('No hay datos con este filtro');return}
+  const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet([['Tipo','Fecha','Recibo','Proveedor','Tienda','Estilo','Producto','Descripción','Piezas','Bultos','Usuario'],...rows]);ws['!cols']=[10,12,10,22,16,14,12,40,9,9,20].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws,'Movimientos');XLSX.writeFile(wb,`estadistica_${today()}.xlsx`)}
+const xr=e=>[e.d,e.id,e.prov,LN(e.t),e.r,e.p,e.ds,e.q,Math.round(e.b*100)/100,e.u];
+const sumF=(a,f)=>a.reduce((s,e)=>s+f(e),0);
+function grpBy(sv,dv,f){const m={};sv.forEach(e=>{const k=f(e);if(k==null||k==='')return;(m[k]=m[k]||{s:0,d:0,b:0,n:0,rec:new Set()}).s+=e.q;m[k].n++;m[k].rec.add(e.id)});dv.forEach(e=>{const k=f(e);if(k==null||k==='')return;const o=(m[k]=m[k]||{s:0,d:0,b:0,n:0,rec:new Set()});o.d+=e.q;o.b+=e.b;o.rec.add(e.id)});return m}
+const kpi=(l,v,c)=>`<div class="kpi ${c||''}"><span class="lbl">${l}</span><b>${v}</b></div>`;
+function dualTbl(h,rows,mx,lbl){return `<div class="scroll"><table><tr><th>${h}</th><th class="n">Surtido</th><th class="n">Despacho</th><th class="n">Bultos</th><th style="width:22%"></th></tr>${rows.map(([k,o])=>`<tr><td>${lbl?lbl(k):esc(k)}</td><td class="n">${fmt(o.s)}</td><td class="n">${fmt(o.d)}</td><td class="n">${fmt(Math.round(o.b))}</td><td><div class="bar" style="margin:0"><i style="width:${Math.max(2,Math.round(Math.max(o.s,o.d)/mx*100))}%"></i></div><div class="bar" style="margin:2px 0 0;height:5px"><i style="width:${Math.max(o.d?2:0,Math.round(o.d/mx*100))}%;background:#f5a623"></i></div></td></tr>`).join('')||'<tr><td colspan="5" class="msg">Sin datos con este filtro.</td></tr>'}</table></div>`}
+const mxOf=r=>Math.max(1,...r.map(([k,o])=>Math.max(o.s,o.d)));
+function renderStat(){
+  const sv=STEV.sv.filter(e=>okEv(e)),dv=STEV.dv.filter(e=>okEv(e));
+  const Spz=sumF(sv,e=>e.q),Dpz=sumF(dv,e=>e.q),Dbu=sumF(dv,e=>e.b),Drf=new Set(dv.map(e=>e.id+'|'+e.p)).size;
+  const rids=new Set([...sv,...dv].map(e=>e.id)),sts=new Set([...sv,...dv].map(e=>e.t).filter(t=>t!=='—')),us=new Set(sv.map(e=>e.u)),days=new Set(dv.map(e=>e.d));
+  const scope=Object.keys(RECS).filter(id=>(!STF.v||PROV[id]===STF.v)&&(!STF.r||id===STF.r));
+  let rec=0,dist=0;scope.forEach(id=>{const it=RECS[id].items,st=storesFor(it);it.forEach(x=>{rec+=x.rec||0;st.forEach(t=>{if(!STF.t||STF.t===t)dist+=x.s[t]||0})})});
+  const noDate=!STF.m&&!STF.d1&&!STF.d2&&!STF.u&&!STF.q;
+  const pc=dist&&noDate?Math.min(100,Math.round(Dpz/dist*100))+'%':'—';
+  const byT=grpBy(sv,dv,e=>e.t==='—'?null:e.t);
+  const tOrder=[...BASE_ST].filter(t=>byT[t]);const mxT=Math.max(1,...tOrder.map(t=>Math.max(byT[t].s,byT[t].d)));
+  const byM=Object.entries(grpBy(sv,dv,e=>(e.d||'').slice(0,7))).sort((a,b)=>b[0].localeCompare(a[0]));
+  const byU=Object.entries(grpBy(sv,dv.map(e=>e),e=>e.u)).sort((a,b)=>(b[1].s+b[1].d)-(a[1].s+a[1].d));
+  const byV=Object.entries(grpBy(sv,dv,e=>e.prov||'Sin proveedor')).sort((a,b)=>b[1].d-a[1].d||b[1].s-a[1].s);
+  const byR=Object.entries(grpBy(sv,dv,e=>e.id)).sort((a,b)=>b[0].localeCompare(a[0]));
+  const byD=Object.entries(grpBy(sv,dv,e=>e.d)).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,31);
+  $('stBody').innerHTML=`<div class="kpis">${kpi('Piezas surtidas',fmt(Spz))}${kpi('Piezas despachadas',fmt(Dpz),'am')}${kpi('Bultos despachados',fmt(Math.round(Dbu)),'am')}${kpi('Referencias despachadas',fmt(Drf))}
+    ${kpi('Recibos',fmt(rids.size)+' <small>/ '+fmt(Object.keys(RECS).length)+'</small>')}${kpi('Tiendas atendidas',fmt(sts.size))}${kpi('Surtidores',fmt(us.size))}${kpi('Avance despacho',pc,'am')}</div>
+    <div class="msg" style="margin:-4px 2px 12px">Piezas recibidas en los recibos del filtro: <b>${fmt(rec)}</b> · a distribuir a tiendas: <b>${fmt(dist)}</b>${noDate?'':' · el avance solo se calcula sin filtros de fecha, surtidor ni búsqueda'}</div>
+    <div class="slbl">Tiendas · toca una para ver el detalle por mes</div>
+    <div class="grid" style="margin-bottom:14px">${tOrder.map(t=>`<div class="tile" data-ss="${t}" style="cursor:pointer"><div class="hd"><b>${L(t)}</b>${NAMES[t]?`<small>${NAMES[t]}</small>`:''}</div><div class="bd">Surtido: <b>${fmt(byT[t].s)}</b><br>Despacho: <b style="color:#f5a623">${fmt(byT[t].d)}</b><div class="bar"><i style="width:${Math.round(byT[t].s/mxT*100)}%"></i></div><div class="bar" style="margin-top:3px;height:5px"><i style="width:${Math.round(byT[t].d/mxT*100)}%;background:#f5a623"></i></div></div></div>`).join('')||'<div class="msg">Sin movimientos con este filtro.</div>'}</div>
+    <div class="card"><div class="slbl">Por mes</div>${dualTbl('Mes',byM,mxOf(byM),mlabel)}</div>
+    <div class="card"><div class="slbl">Por proveedor</div>${dualTbl('Proveedor',byV,mxOf(byV))}</div>
+    <div class="card"><div class="slbl">Por recibo</div>${dualTbl('Recibo',byR,mxOf(byR),k=>`<b>#${esc(k)}</b>${PROV[k]?`<div class="msg" style="margin:0">${esc(PROV[k])}</div>`:''}`)}</div>
+    ${ISADM?`<div class="card"><div class="slbl">Por surtidor / usuario</div>${dualTbl('Usuario',byU,mxOf(byU))}</div>`:''}
+    <div class="card"><div class="slbl">Por día (últimos ${byD.length})</div>${dualTbl('Día',byD,mxOf(byD),k=>esc(fdate(k)))}</div>`
+}
+$('stBody').addEventListener('click',e=>{const t=e.target.closest('[data-ss]');if(t)openStoreModal(t.dataset.ss)});
+function openStoreModal(t){
+  const sv=STEV.sv.filter(e=>e.t===t&&okEv(e,true)),dv=STEV.dv.filter(e=>e.t===t&&okEv(e,true));
+  const byM=Object.entries(grpBy(sv,dv,e=>(e.d||'').slice(0,7))).sort((a,b)=>b[0].localeCompare(a[0])),byR=Object.entries(grpBy(sv,dv,e=>e.id)).sort((a,b)=>b[0].localeCompare(a[0])),byV=Object.entries(grpBy(sv,dv,e=>e.prov||'Sin proveedor')).sort((a,b)=>b[1].d-a[1].d);
+  const byU=Object.entries(grpBy(sv,dv,e=>e.u)).sort((a,b)=>(b[1].s+b[1].d)-(a[1].s+a[1].d)),byD=Object.entries(grpBy(sv,dv,e=>e.d)).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,15);
+  $('mstBody').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><div class="lbl">Tienda</div><h2 class="sora" style="font-size:22px">${esc(LN(t))}</h2></div><button class="btn sm" id="mstX">Cerrar</button></div>
+   <div class="kpis" style="margin-top:10px">${kpi('Pzas surtidas',fmt(sumF(sv,e=>e.q)))}${kpi('Pzas despachadas',fmt(sumF(dv,e=>e.q)),'am')}</div>
+   <div class="slbl">Enviado por mes</div>${dualTbl('Mes',byM,mxOf(byM),mlabel)}
+   <div class="slbl" style="margin-top:12px">Por recibo</div>${dualTbl('Recibo',byR,mxOf(byR),k=>`<b>#${esc(k)}</b>${PROV[k]?`<div class="msg" style="margin:0">${esc(PROV[k])}</div>`:''}`)}
+   <div class="slbl" style="margin-top:12px">Por proveedor</div>${dualTbl('Proveedor',byV,mxOf(byV))}
+   ${ISADM?`<div class="slbl" style="margin-top:12px">Por usuario</div>${dualTbl('Usuario',byU,mxOf(byU))}`:''}
+   <div class="slbl" style="margin-top:12px">Últimos días</div>${dualTbl('Día',byD,mxOf(byD),k=>esc(fdate(k)))}`;
+  $('mst').classList.remove('hide')
+}
+$('mst').addEventListener('click',e=>{if(e.target.id==='mst'||e.target.id==='mstX')$('mst').classList.add('hide')});
+$('recStat').onclick=openStat;
+
 $('btnRef').onclick=softRefresh;
 
 
