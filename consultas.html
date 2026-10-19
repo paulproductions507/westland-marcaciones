@@ -663,33 +663,16 @@ function parseRecibo(aoa){
   return{items,dup,prov:pv}
 }
 // </parse>
-// ---------- Proveedor heredado del "Historial de recibos" (misma base de datos que la app de marcaciones) ----------
-const DBURL='https://westland-marcaciones-default-rtdb.firebaseio.com';let autoTried=false;
-async function shallowKeys(path){try{const tk=await auth.currentUser.getIdToken();const r=await fetch(`${DBURL}/${path?path+'/':''}.json?shallow=true&auth=${tk}`);if(!r.ok)return null;const j=await r.json();return j&&typeof j==='object'?Object.keys(j):null}catch(e){return null}}
-function scanProv(node,ids,out,key,depth){
-  if(node==null||depth>8)return;
-  if(typeof node==='string'){const m=node.match(/^\s*#?\s*(\d{5,})\s*[—–-]+\s*(\S.*)$/);if(m&&ids.has(m[1])&&!out[m[1]])out[m[1]]=m[2].trim();return}
-  if(typeof node!=='object')return;
-  if(!Array.isArray(node)){
-    let num=null,pv=null;
-    for(const [k,v] of Object.entries(node)){
-      if(v==null||typeof v==='object')continue;
-      if(/recib|^(num|numero|número|nro|n|id|rec)$/i.test(k)){const d=String(v).replace(/\D/g,'');if(ids.has(d))num=d}
-      if(typeof v==='string'&&/prov|suplid|vendor|supplier/i.test(k)&&v.trim())pv=v.trim()}
-    if(!num&&key&&ids.has(String(key).replace(/\D/g,''))&&/^\D*\d{5,}\D*$/.test(String(key)))num=String(key).replace(/\D/g,'');
-    if(num&&pv&&!out[num])out[num]=pv}
-  for(const [k,v] of Object.entries(node))scanProv(v,ids,out,k,depth+1)
-}
-// Busca los números de recibo en la base de datos y devuelve {found:{recibo:proveedor}, paths:[...], keys:[...]}
+// ---------- Proveedor: se lee del Historial de recibos (Control Logístico), por número de recibo. No se guarda nada. ----------
+const LOGREC='logistica_recibos_v1';
 async function findProv(idList){
-  const ids=new Set(idList.map(String)),out={},paths=[],tried=[];
-  const root=await shallowKeys('')||[],meta=await shallowKeys('meta_v1')||[];
-  const cand=[...root.filter(k=>k!=='meta_v1').map(k=>k),...meta.map(k=>'meta_v1/'+k)].filter(p=>!/(^|\/)consultas/i.test(p));
-  const good=/recib|hist|consol|logist|import|compra|embarq|aduan|trafico|pedido/i,bad=/marc|asist|user|usuar|colab|turno|cfg|config|email|bitacor|auth|planilla|nomina|nómina|temporal/i;
-  const order=[...cand.filter(p=>good.test(p)),...cand.filter(p=>!good.test(p)&&!bad.test(p))].slice(0,40);
-  for(const p of order){if(Object.keys(out).length>=ids.size)break;
-    try{const snap=await get(R(db,p));tried.push(p);const before=Object.keys(out).length;scanProv(snap.val(),ids,out,'',0);if(Object.keys(out).length>before)paths.push(p)}catch(e){}}
-  return{found:out,paths,keys:cand,tried}
+  const ids=new Set(idList.map(String)),found={};
+  const snap=await get(R(db,LOGREC)),all=snap.val()||{};
+  for(const v of Object.values(all)){
+    if(!v||typeof v!=='object')continue;
+    const mm=String(v.numeroRecibo||'').match(/\d{5,}/),n=mm?mm[0]:'';
+    if(ids.has(n)&&v.proveedor&&!found[n])found[n]=String(v.proveedor).trim()}
+  return{found}
 }
 let provBusy=false;const provTried=new Set();
 async function autoProv(){
