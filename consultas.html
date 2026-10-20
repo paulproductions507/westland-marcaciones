@@ -118,10 +118,15 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
   <div class="wrap">
     <div id="v-rec">
       <div class="card"><h2 style="font-size:20px">Elige el recibo</h2><div class="msg" style="margin-top:4px">Selecciona el recibo que vas a trabajar.</div></div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn sm" id="recStat">📊 Estadística</button><div id="recAdm" class="hide" style="display:flex;gap:8px"><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn sm" id="recStat">📊 Estadística</button><div id="recAdm" class="hide" style="display:flex;gap:8px"><button class="btn sm" id="recAuto">⚡ Pedidos automáticos</button><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div></div>
       <div id="recTabs" style="display:flex;gap:8px;margin-bottom:12px"></div>
       <div id="recList"></div>
     </div>
+    <div id="v-auto" class="hide"><div class="card"><h3 style="font-size:16px">Cargar transferencia del Gestor de Bodega</h3>
+      <div class="msg">Sube el PDF (o una captura PNG/JPG) de la pantalla de Chequeo. La app lee la transferencia, la tienda y los productos; tú revisas y guardas.</div>
+      <div class="lbl" style="margin-top:10px">Origen de la transferencia</div><select class="f" id="auSrc"><option value="auto">⚡ Automático (pedido automático)</option><option value="tun">🚇 Túnel (ya está en los recibos)</option></select>
+      <div class="lbl" style="margin-top:10px">PDF o captura</div><input class="f" type="file" id="auFile" accept=".pdf,image/*"><div class="msg" id="auMsg"></div></div>
+    <div id="auReview"></div><div class="card"><div class="slbl">Transferencias cargadas</div><div id="auList"></div></div></div>
     <div id="v-stat" class="hide"><div id="stFil"></div><div id="stBody"></div></div>
     <div id="v-recibo" class="hide">
     <div class="tabs">
@@ -286,10 +291,10 @@ async function migrateAuto(ids){
       if(v.length&&v.every(x=>x.au)){const o={u:AUTO_U,n:AUTO_N,ts:v[0].ts||Date.now(),au:1};await set(R(db,'meta_v1/consultas_comp/'+id),o);COMP[id]=o}}catch(e){}}
 }
 async function showRecList(){
-  $('v-stat').classList.add('hide');$('mst').classList.add('hide');
+  $('v-stat').classList.add('hide');$('v-auto').classList.add('hide');$('mst').classList.add('hide');
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();offLog=offCli=offDsp=offTrf=offTb=offDs=offBg=null;cur=null;RECIBO=null;$('recAdm').classList.toggle('hide',!ISADM);
   $('v-recibo').classList.add('hide');$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Consultas';
-  await loadUploaded();await migrateAuto(Object.keys(RECS));autoProv().then(ch=>{if(ch&&!$('v-rec').classList.contains('hide'))showRecList()});const allIds=Object.keys(RECS);const nC=allIds.filter(id=>COMP[id]).length;
+  await loadUploaded();if(RECS.AUTO)PROV.AUTO='PEDIDOS AUTOMÁTICOS';await migrateAuto(Object.keys(RECS));autoProv().then(ch=>{if(ch&&!$('v-rec').classList.contains('hide'))showRecList()});const allIds=Object.keys(RECS);const nC=allIds.filter(id=>COMP[id]).length;
   $('recTabs').innerHTML=`<button class="btn sm ${recTab==='a'?'pri':''}" data-rtab="a">En proceso (${allIds.length-nC})</button><button class="btn sm ${recTab==='c'?'pri':''}" data-rtab="c">✔ Completados (${nC})</button>`;
   const ids=allIds.filter(id=>!!COMP[id]===(recTab==='c'));
   if(!ids.length){$('recList').innerHTML=`<div class="msg">${recTab==='c'?'Aún no hay recibos completados.':'No hay recibos en proceso.'}</div>`;return}
@@ -514,7 +519,7 @@ $('cliFile').onchange=async e=>{
 // ---------- transferencias ----------
 const trfOpen=new Set(),dspOpen=new Set(),dspSel=new Set();let trfStore=null;
 const sg=n=>(n>0?'+':'')+fmt(n);
-function trfGroups(){const g={};for(const e of entries()){if(e.au)continue;const tr=e.tr||'';const k=e.t+'|'+tr;(g[k]=g[k]||{t:e.t,tr,key:e.t+'_'+(tr||'sin'),items:[],ts:0,users:new Set()});g[k].items.push(e);g[k].ts=Math.max(g[k].ts,e.ts);g[k].users.add(e.n||e.u)}return Object.values(g)}
+function trfGroups(){const g={};for(const e of entries()){if(e.au&&!e.tr)continue;const tr=e.tr||'';const k=e.t+'|'+tr;(g[k]=g[k]||{t:e.t,tr,key:e.t+'_'+(tr||'sin'),items:[],ts:0,users:new Set()});g[k].items.push(e);g[k].ts=Math.max(g[k].ts,e.ts);g[k].users.add(e.n||e.u)}return Object.values(g)}
 const gPz=g=>g.items.reduce((a,e)=>a+e.q,0);
 const gRef=g=>new Set(g.items.map(e=>e.p)).size;
 const gBul=g=>(TRB[g.key]&&TRB[g.key].b)||0;
@@ -524,7 +529,7 @@ function trfCard(g){
   const agg={};g.items.forEach(e=>{const o=agg[e.p]=agg[e.p]||{r:e.r,p:e.p,q:0};o.q+=e.q});
   return `<details class="card" data-k="${g.key}" ${trfOpen.has(g.key)?'open':''}><summary>${L(g.t)} · ${g.t==='CRISTAL'?'Proforma':'Transf.'} ${esc(g.tr||'—')} ${act?'<span class="pill p-bl">Activa</span>':''} ${d?`<span class="pill p-ok">${esc(d.num)}</span>`:''} <span class="pill p-aq" style="margin-left:4px">${fmt(gPz(g))} pzas · ${gRef(g)} ref.</span></summary>
   <div style="margin:8px 0"><div class="lbl">Total de bultos de esta transferencia</div><div style="display:flex;gap:8px;margin-top:5px"><input class="f" type="number" min="1" max="200" inputmode="numeric" data-bk="${g.key}" value="${b??''}" placeholder="Ej. 15"><button class="btn pri sm" data-bs="${g.key}">${g.t==='CRISTAL'?'Guardar':bg?'Actualizar':'Generar bultos'}</button></div>${bg&&g.t!=='CRISTAL'?`<div class="msg">✅ ${bg.n} bultos generados · ${gbCode(bg.first)} a ${gbCode(bg.first+bg.n-1)}</div><button class="btn sm" data-lbl="${g.key}" style="margin-top:8px;width:100%">🖨 Imprimir hoja de bultos (${bg.n})</button>`:b?'':'<div class="msg" style="color:var(--wn)">Aún sin bultos.</div>'}</div>
-  <div class="msg">${[...g.users].map(esc).join(', ')} · ${new Date(g.ts).toLocaleString('es')}</div><div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th class="n">Cant.</th></tr>${Object.values(agg).map(e=>`<tr><td>${esc(e.r)}</td><td>${e.p}</td><td class="n">${fmt(e.q)}</td></tr>`).join('')}</table></div></details>`}
+  <div class="msg">${[...g.users].map(esc).join(', ')} · ${new Date(g.ts).toLocaleString('es')}</div><div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th class="n">Cant.</th><th></th></tr>${Object.values(agg).map(e=>`<tr><td>${esc(e.r)}</td><td>${e.p}</td><td class="n">${fmt(e.q)}</td><td><button class="btn sm" data-mv="${g.key}|${e.p}" title="Mover a otra transferencia">↔</button></td></tr>`).join('')}</table></div></details>`}
 function renderTrf(){
   const box=$('trfList'),ae=document.activeElement;if(ae&&ae.tagName==='INPUT'&&ae.dataset.bk&&box.contains(ae))return;
   const q=$('tq').value.trim(),all=trfGroups(),none='<div class="msg">No hay transferencias registradas.</div>';
@@ -841,7 +846,7 @@ function resub(){
 async function softRefresh(){
   const b=$('btnRef');if(b.classList.contains('spin'))return;b.classList.add('spin');
   try{
-    await loadUploaded();
+    await loadUploaded();if(RECS.AUTO)PROV.AUTO='PEDIDOS AUTOMÁTICOS';
     if(RECIBO){
       if(RECS[RECIBO]){DATA=RECS[RECIBO].items;STORES=storesFor(DATA);byProd=Object.fromEntries(DATA.map(x=>[x.p,x]));if(cur&&byProd[cur.p])cur=byProd[cur.p]}
       resub()
@@ -860,7 +865,7 @@ async function openStat(){
   await statReload()
 }
 async function statReload(){
-  try{await loadUploaded();await autoProv();await Promise.all(Object.keys(RECS).map(async id=>{try{const [a,b]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);STC[id]={log:a.val()||{},desp:b.val()||{}}}catch(e){STC[id]={log:{},desp:{}}}}));
+  try{await loadUploaded();if(RECS.AUTO)PROV.AUTO='PEDIDOS AUTOMÁTICOS';await autoProv();await Promise.all(Object.keys(RECS).map(async id=>{try{const [a,b]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);STC[id]={log:a.val()||{},desp:b.val()||{}}}catch(e){STC[id]={log:{},desp:{}}}}));
     buildEv();buildFilters();renderStat()}catch(e){$('stBody').innerHTML='<div class="msg">No se pudo cargar: '+esc(e.code||e.message)+'</div>'}
 }
 function buildEv(){
@@ -954,6 +959,126 @@ function openStoreModal(t){
 $('mst').addEventListener('click',e=>{if(e.target.id==='mst'||e.target.id==='mstX')$('mst').classList.add('hide')});
 $('recStat').onclick=openStat;
 
+// ---------- Pedidos automáticos / Túnel: carga de transferencias del Gestor de Bodega (PDF o captura) ----------
+const AUID='AUTO',AUB='meta_v1/consultas_auto';let AU=null,AUL={};
+const guessStore=d=>{const m=(d||'').match(/SAKS\s*#?\s*(\d+)/i);if(m&&BASE_ST.includes('S'+m[1]))return 'S'+m[1];if(/online|e-?com|virtual/i.test(d||''))return 'ECOM';return ''};
+function parseTs(s){const m=(s||'').match(/(\d+)\/(\d+)\/(\d{4})\s+(\d+):(\d+)(?::\d+)?\s*([AP]M)?/i);if(!m)return Date.now();let h=+m[4];if(/pm/i.test(m[6]||'')&&h<12)h+=12;if(/am/i.test(m[6]||'')&&h===12)h=0;return new Date(+m[3],+m[1]-1,+m[2],h,+m[5]).getTime()}
+async function loadLib(src,ok){if(ok())return;await new Promise((r,j)=>{const s=document.createElement('script');s.src=src;s.onload=r;s.onerror=()=>j(new Error('No se pudo cargar la librería de lectura (revisa internet)'));document.head.appendChild(s)})}
+async function pdfText(f){const V='3.11.174',B=`https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${V}/`;await loadLib(B+'pdf.min.js',()=>window.pdfjsLib);
+  const w=await (await fetch(B+'pdf.worker.min.js')).text();pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([w],{type:'text/javascript'}));
+  const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let t='';for(let i=1;i<=pdf.numPages;i++){const c=await (await pdf.getPage(i)).getTextContent();t+=c.items.map(x=>x.str).join(' ')+' '}return t}
+async function imgText(f){await loadLib('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',()=>window.Tesseract);
+  const r=await Tesseract.recognize(f,'eng',{logger:m=>{if(m.status==='recognizing text')$('auMsg').textContent='Leyendo la imagen… '+Math.round(m.progress*100)+'%'}});return r.data.text}
+function parseTransfer(t){
+  t=t.replace(/\s+/g,' ');const g=re=>{const m=t.match(re);return m?m[1].trim():''};
+  const tr=g(/Transferencia\s*#?\s*(\d{5,})/i),fs=g(/Fecha solicitad[oa]:?\s*([\d\/]+\s+[\d:]+\s*[AP]?M?)/i),sur=g(/Surtidor:?\s*([^\s]+)/i),org=g(/Origen\s*(\[.*?\].*?)\s+Destino/i),des=g(/Destino\s*(\[.*?\].*?)\s+Nota/i),nota=g(/Nota:?\s*(.*?)\s*(?:C[óo]d\.?\s*BARRA|$)/i),tot=+g(/Total unidades surtidas\s*(\d+)/i)||0;
+  const i0=t.search(/Descripci[óo]n/i);let b=i0>=0?t.slice(i0+11):t;const e=b.search(/REBAJA|Total unidades/i);if(e>0)b=b.slice(0,e);
+  const re=/(?:([A-Z0-9][A-Z0-9\-\/\.]{3,})\s+)?(?<!\d)(\d{7})(?!\d)\s+(-?\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+(?:\.\d+)?)/g,ms=[...b.matchAll(re)];
+  const lines=ms.map((m,i)=>({ref:m[1]||'',p:m[2],inv:+m[3],sol:+m[4],res:+m[5],desp:+m[6],bul:+m[7],pr:+m[8],d:b.slice(m.index+m[0].length,ms[i+1]?ms[i+1].index:b.length).replace(/[▼▲\s]+$/,'').trim()}));
+  return{tr,ts:parseTs(fs),sur,org,des,nota,t:guessStore(des),lines,tot}}
+$('recAuto').onclick=async()=>{$('v-rec').classList.add('hide');$('v-auto').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent='Pedidos automáticos';window.scrollTo(0,0);AU=null;$('auReview').innerHTML='';$('auMsg').textContent='';auList()};
+$('auFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  $('auMsg').textContent='Leyendo '+f.name+'…';$('auReview').innerHTML='';
+  try{const txt=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)?await pdfText(f):await imgText(f);AU=parseTransfer(txt);AU.src=$('auSrc').value;AU.file=f.name;
+    if(!AU.tr||!AU.lines.length){$('auMsg').textContent=`No pude leer ${!AU.tr?'el número de transferencia':'las líneas'}. ${/pdf/i.test(f.type)?'Usa el PDF generado desde el navegador (Imprimir → Guardar como PDF).':'Prueba con una captura más grande y nítida, o con el PDF.'}`;if(!AU.lines.length)return}
+    else $('auMsg').textContent='';
+    AUL={};if(AU.src==='tun')await auLoadLogs();auRender()}catch(err){$('auMsg').textContent='Error: '+(err.message||err)}};
+async function auLoadLogs(){await Promise.all(Object.keys(RECS).filter(id=>id!==AUID).map(async id=>{try{AUL[id]=(await get(R(db,`meta_v1/consultas/${id}/log`))).val()||{}}catch(e){AUL[id]={}}}))}
+function auMatch(l){ // túnel: entradas de surtido de ese producto y tienda en los recibos
+  const r=[];for(const [id,lg] of Object.entries(AUL)){const hit=Object.entries(lg).filter(([,e])=>e.p===l.p&&e.t===AU.t);if(hit.length)r.push({id,hit,q:hit.reduce((a,[,e])=>a+(e.q||0),0),has:hit.some(([,e])=>e.tr&&e.tr!==AU.tr)})}return r}
+function auRender(){
+  const a=AU,tun=a.src==='tun',sum=a.lines.reduce((x,l)=>x+(l.desp||0),0),bu=a.lines.reduce((x,l)=>x+(l.bul||0),0);
+  const rows=a.lines.map((l,i)=>{let st='';if(tun){const m=l.desp>0&&a.t?auMatch(l):[];st=!a.t?'—':!l.desp?'Sin despacho':!m.length?'<span class="pill p-no">No está en recibos</span>':m.map(x=>`<span class="pill ${x.has?'p-wn':x.q===l.desp?'p-ok':'p-wn'}">#${x.id} · surtido ${x.q}${x.has?' · ya tiene otra transf.':x.q!==l.desp?' ≠ '+l.desp:''}</span>`).join(' ')}
+    return `<tr><td>${esc(l.ref)}<div class="msg" style="margin:0">${esc(l.p)}</div></td><td>${esc(l.d)}</td><td class="n"><input class="f" type="number" min="0" data-ad="${i}" value="${l.desp}" style="width:70px;padding:6px"></td><td class="n">${l.bul}</td>${tun?`<td>${st}</td>`:''}<td><button class="btn sm" data-arm="${i}">✖</button></td></tr>`}).join('');
+  $('auReview').innerHTML=`<div class="card"><div class="slbl">${tun?'🚇 Túnel':'⚡ Automático'} · revisa antes de guardar</div>
+   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+    <div><div class="lbl">Transferencia #</div><input class="f" data-af="tr" value="${esc(a.tr)}"></div>
+    <div><div class="lbl">Tienda destino</div><select class="f" data-af="t"><option value="">Elige…</option>${BASE_ST.map(t=>`<option value="${t}" ${a.t===t?'selected':''}>${esc(LN(t))}</option>`).join('')}</select></div>
+    <div><div class="lbl">Fecha y hora</div><input class="f" type="datetime-local" data-af="ts" value="${toLocalIn(a.ts)}"></div>
+    <div><div class="lbl">Surtidor (Gestor)</div><input class="f" data-af="sur" value="${esc(a.sur)}"></div></div>
+   <div class="msg">Destino: ${esc(a.des||'—')} · Origen: ${esc(a.org||'—')}${a.nota?' · Nota: '+esc(a.nota):''}</div>
+   <div class="scroll"><table><tr><th>Estilo / Producto</th><th>Descripción</th><th class="n">Desp.</th><th class="n">Bultos</th>${tun?'<th>Relación con recibos</th>':''}<th></th></tr>${rows}</table></div>
+   <div class="msg">${fmt(a.lines.length)} líneas · <b>${fmt(sum)}</b> piezas despachadas · ${fmt(bu)} bultos en el Gestor${a.tot&&a.tot!==sum?` · <span style="color:var(--wn)">⚠ el Gestor indica ${fmt(a.tot)} unidades surtidas</span>`:''}</div>
+   <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" id="auSave" style="flex:1">${tun?'Relacionar con los recibos':'Guardar pedido automático'}</button><button class="btn" id="auCancel">Cancelar</button></div></div>`}
+$('auReview').addEventListener('input',e=>{const d=e.target.dataset;if(!AU)return;if(d.ad!==undefined){AU.lines[+d.ad].desp=Math.max(0,parseInt(e.target.value)||0)}else if(d.af==='ts'){AU.ts=new Date(e.target.value).getTime()||AU.ts}else if(d.af==='tr'||d.af==='sur'){AU[d.af]=e.target.value.trim()}});
+$('auReview').addEventListener('change',e=>{const d=e.target.dataset;if(AU&&d.af==='t'){AU.t=e.target.value;auRender()}else if(AU&&d.ad!==undefined)auRender()});
+$('auReview').addEventListener('click',async e=>{
+  if(e.target.closest('#auCancel')){AU=null;$('auReview').innerHTML='';return}
+  const rm=e.target.closest('[data-arm]');if(rm){AU.lines.splice(+rm.dataset.arm,1);auRender();return}
+  if(e.target.closest('#auSave'))auSave(e.target.closest('#auSave'))});
+async function auPut(path,o){const k=Object.keys(o);for(let i=0;i<k.length;i+=400){const p={};k.slice(i,i+400).forEach(z=>p[z]=o[z]);await update(R(db,path),p)}}
+async function auSave(btn){
+  const a=AU;if(!a.tr){toast('Falta el número de transferencia');return}if(!a.t){toast('Elige la tienda destino');return}
+  const lines=a.lines.filter(l=>l.desp>0);if(!lines.length){toast('No hay piezas despachadas');return}
+  const dd=(()=>{const d=new Date(a.ts);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`})();
+  btn.disabled=true;
+  try{
+    const old=(await get(R(db,`${AUB}/${a.tr}`))).val();
+    if(old&&!confirm(`La transferencia ${a.tr} ya fue cargada (${old.mode==='tun'?'túnel':'automático'}). ¿Reemplazarla?`)){btn.disabled=false;return}
+    if(old)await auUndo(a.tr,old);
+    const meta={tr:a.tr,t:a.t,ts:a.ts,sur:a.sur,org:a.org,des:a.des,nota:a.nota,mode:a.src,pz:lines.reduce((x,l)=>x+l.desp,0),bul:a.lines.reduce((x,l)=>x+(l.bul||0),0),n:lines.length,by:USER,ldt:Date.now(),file:a.file};
+    if(a.src==='tun'){
+      await auLoadLogs();const up={},recs=new Set();let ok=0,no=0;
+      for(const l of lines){const m=auMatch(l);if(!m.length){no++;continue}
+        for(const x of m){x.hit.forEach(([k,e])=>{if(!e.tr||e.tr===a.tr){(up[x.id]=up[x.id]||{})[k+'/tr']=a.tr}});recs.add(x.id);(up[x.id]=up[x.id]||{});up[x.id]['__d/'+l.p+'/'+a.t]=a.tr}ok++}
+      for(const [id,u] of Object.entries(up)){const lg={},dp={};for(const [k,v] of Object.entries(u)){if(k.startsWith('__d/')){const [,p,t]=k.split('/');dp[`${p}/trs/${t}`]=v}else lg[k]=v}
+        if(Object.keys(lg).length)await update(R(db,`meta_v1/consultas/${id}/log`),lg);
+        if(Object.keys(dp).length)await update(R(db,`meta_v1/consultas/${id}/desp`),dp);
+        try{await remove(R(db,'meta_v1/consultas_prog/'+id))}catch(e){}}
+      meta.recs=[...recs];meta.ok=ok;meta.no=no;await set(R(db,`${AUB}/${a.tr}`),meta);
+      toast(`✅ ${ok} línea(s) relacionadas${no?` · ${no} sin recibo`:''} → recibos ${[...recs].map(r=>'#'+r).join(', ')}`)
+    }else{
+      const base=`meta_v1/consultas/${AUID}`,items=RECS[AUID]?RECS[AUID].items.map(x=>({...x,s:{...x.s}})):[],by={};items.forEach(x=>by[x.p]=x);
+      const lg={},dp={},u='gestor-'+(a.sur||'bodega'),n=a.sur||'Gestor de Bodega';
+      for(const l of lines){let x=by[l.p];if(!x){x={n:items.length+1,ref:l.ref,p:l.p,d:l.d,pb:0,pr:l.pr,rec:0,sal:0,dt:0,upc:'',cr:0,sc:0,dep:'',div:'',lin:'',sub:'',s:{}};items.push(x);by[l.p]=x}
+        x.s[a.t]=(x.s[a.t]||0)+l.desp;x.rec+=l.desp;x.dt+=l.desp;
+        lg[push(R(db,base+'/log')).key]={p:l.p,r:l.ref||x.ref,t:a.t,q:l.desp,tr:a.tr,u,n,ts:a.ts,d:dd,ax:1};dp[l.p]={u,n,ts:a.ts,d:dd,r:l.ref||x.ref,ax:1,b:0}}
+      await set(R(db,'meta_v1/consultas_recs/'+AUID),{items,by:USER,ts:Date.now(),file:'Pedidos automáticos',fecha:dd,auto:1});RECS[AUID]={items};
+      await auPut(base+'/log',lg);await auPut(base+'/desp',dp);
+      await set(R(db,'meta_v1/consultas_fechas/'+AUID),dd);FECHAS[AUID]=dd;try{await remove(R(db,'meta_v1/consultas_prog/'+AUID));await remove(R(db,'meta_v1/consultas_comp/'+AUID));delete COMP[AUID]}catch(e){}
+      await set(R(db,`${AUB}/${a.tr}`),meta);PROV[AUID]='PEDIDOS AUTOMÁTICOS';
+      toast(`✅ Transferencia ${a.tr} guardada en Pedidos automáticos (${fmt(meta.pz)} pzas)`)}
+    AU=null;$('auReview').innerHTML='';auList()
+  }catch(err){toast('Error: '+(err.code||err.message));btn.disabled=false}
+}
+async function auUndo(tr,m){ // deshace una carga anterior de esa transferencia
+  if(m.mode==='tun'){for(const id of (m.recs||[])){const lg=(await get(R(db,`meta_v1/consultas/${id}/log`))).val()||{},up={};Object.entries(lg).forEach(([k,e])=>{if(e.tr===tr)up[k+'/tr']=null});if(Object.keys(up).length)await update(R(db,`meta_v1/consultas/${id}/log`),up);
+    const dp=(await get(R(db,`meta_v1/consultas/${id}/desp`))).val()||{},ud={};Object.entries(dp).forEach(([p,d])=>Object.entries(d.trs||{}).forEach(([t,v])=>{if(v===tr)ud[`${p}/trs/${t}`]=null}));if(Object.keys(ud).length)await update(R(db,`meta_v1/consultas/${id}/desp`),ud)}}
+  else{const lg=(await get(R(db,`meta_v1/consultas/${AUID}/log`))).val()||{},up={},items=RECS[AUID]?RECS[AUID].items:[];
+    Object.entries(lg).forEach(([k,e])=>{if(e.tr===tr){up[k]=null;const x=items.find(i=>i.p===e.p);if(x){x.s[e.t]=Math.max(0,(x.s[e.t]||0)-e.q);x.rec=Math.max(0,x.rec-e.q);x.dt=Math.max(0,x.dt-e.q)}}});
+    if(Object.keys(up).length){await update(R(db,`meta_v1/consultas/${AUID}/log`),up);await set(R(db,`meta_v1/consultas_recs/${AUID}/items`),items)}}
+  await remove(R(db,`${AUB}/${tr}`))}
+async function auList(){
+  const box=$('auList');box.innerHTML='<div class="msg">Cargando…</div>';let all={};try{all=(await get(R(db,AUB))).val()||{}}catch(e){}
+  const rows=Object.values(all).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  box.innerHTML=rows.map(m=>`<div class="card" style="margin:0 0 8px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b class="sora">${esc(m.tr)}</b><span class="pill ${m.mode==='tun'?'p-bl':'p-aq'}">${m.mode==='tun'?'🚇 Túnel':'⚡ Automático'}</span></div>
+    <div class="msg" style="margin:4px 0 0">${esc(LN(m.t))} · ${fdt(m.ts)} · ${esc(m.sur||'')} · ${fmt(m.n||0)} líneas · ${fmt(m.pz||0)} pzas${m.mode==='tun'?` · recibos ${(m.recs||[]).map(r=>'#'+r).join(', ')||'—'}${m.no?` · ${m.no} sin recibo`:''}`:''}</div>
+    <div style="text-align:right;margin-top:6px"><button class="btn sm" data-adel="${esc(m.tr)}">🗑 Quitar</button></div></div>`).join('')||'<div class="msg">Aún no hay transferencias cargadas.</div>';
+  box.onclick=async e=>{const d=e.target.closest('[data-adel]');if(!d)return;const tr=d.dataset.adel;if(!confirm(`¿Quitar la transferencia ${tr}? ${all[tr]&&all[tr].mode==='tun'?'Los recibos quedan como estaban (sin esa transferencia).':'Se borra su surtido de Pedidos automáticos.'}`))return;
+    try{await auUndo(tr,all[tr]);toast('Transferencia quitada');auList()}catch(err){toast('Error: '+(err.code||err.message))}}
+}
+
+// ---------- Mover productos entre transferencias de la misma tienda ----------
+const trStatus=g=>{const a=[];if(g.tr&&TRF[g.t]&&TRF[g.t].tr===g.tr)a.push('Activa');const d=dspOfKey(g.key);if(d)a.push('Despachada ('+d.num+')');if(BG[g.key]||(TRB[g.key]&&TRB[g.key].b))a.push('Surtida, con bultos generados');return a};
+$('trfList').addEventListener('click',e=>{const b=e.target.closest('[data-mv]');if(!b)return;e.preventDefault();e.stopPropagation();
+  const [key,p]=b.dataset.mv.split('|'),all=trfGroups(),g=all.find(x=>x.key===key);if(!g)return;
+  const rows=g.items.filter(x=>x.p===p),tot=rows.reduce((a,x)=>a+x.q,0),oth=all.filter(x=>x.t===g.t&&x.key!==key);
+  ask(`Mover producto ${p} · ${L(g.t)}`,[
+    {k:'dst',label:`Pasar de la transferencia ${g.tr||'sin número'} a…`,type:'select',value:oth[0]?(oth[0].tr||'__sin'):'__new',opts:[...oth.map(x=>[x.tr||'__sin',`${x.tr?'Transf. '+x.tr:'Sin transferencia'} · ${fmt(gPz(x))} pzas${trStatus(x).length?' · '+trStatus(x).join(', '):''}`]),['__new','➕ Otra transferencia (escribir número)']]},
+    {k:'nw',label:'Número de la nueva transferencia (solo si elegiste “Otra”)',type:'text',value:'',ph:'Ej. 10317836'},
+    {k:'q',label:`Cantidad a mover (máx. ${fmt(tot)})`,type:'number',value:String(tot)}],'Mover',async v=>{
+    const tr=v.dst==='__new'?(v.nw||'').trim():v.dst==='__sin'?'':v.dst,qty=parseInt(v.q,10);
+    if(v.dst==='__new'&&!tr){toast('Escribe el número de la nueva transferencia');return false}
+    if(tr===(g.tr||'')){toast('Elige una transferencia distinta');return false}
+    if(!(qty>=1&&qty<=tot)){toast('La cantidad debe estar entre 1 y '+tot);return false}
+    const tg=oth.find(x=>(x.tr||'')===tr),st=[...trStatus(g).map(s=>`Origen ${g.tr||'sin número'}: ${s}`),...(tg?trStatus(tg).map(s=>`Destino ${tr||'sin número'}: ${s}`):[])];
+    if(st.length&&!confirm(`Vas a mover ${fmt(qty)} pza(s) del producto ${p} (${LN(g.t)}) de la transferencia ${g.tr||'—'} a ${tr||'sin número'}.\n\n⚠ Estado:\n- ${st.join('\n- ')}\n\nLos bultos y etiquetas ya generados no cambian. ¿Continuar?`))return false;
+    try{let rem=qty;const up={};
+      for(const x of rows){if(rem<=0)break;const take=Math.min(x.q,rem);rem-=take;
+        if(take===x.q)up[x.k+'/tr']=tr;else{up[x.k+'/q']=x.q-take;const {k,...c}=x;up[push(R(db,BASE)).key]={...c,q:take,tr}}}
+      await update(R(db,BASE),up);toast(`✅ ${fmt(qty)} pza(s) movidas a ${tr||'sin transferencia'}`)}
+    catch(err){toast('Error: '+(err.code||err.message));return false}})});
+
 $('btnRef').onclick=softRefresh;
 
 
@@ -967,6 +1092,7 @@ const PER=12;
 let srchTok=0,RNG=null,RNGAt=0;
 const rangeIdx=(f,t)=>{const a=[];for(let n=f;n<=t;n++)a.push(n);return a};
 function zplSheet(t,tr,name,N,first,idxs){
+  tr=(RECIBO===AUID?'AUT ':'')+tr;
   const out=['^XA^CI28^PW812^LL609^LH0,0','^FO276,0^GB1,609,1^FS','^FO532,0^GB1,609,1^FS'];
   for(let r=1;r<4;r++)out.push(`^FO0,${14+r*146-8}^GB812,1,1^FS`);
   const tw=Math.max(12,Math.min(22,Math.floor(136/Math.max(1,String(tr).length))));
@@ -979,6 +1105,7 @@ function zplSheet(t,tr,name,N,first,idxs){
   out.push('^PQ1^XZ');return out.join('\n')
 }
 function sheetHTML(t,tr,name,N,first,idxs){
+  tr=(RECIBO===AUID?'AUT ':'')+tr;
   const tw=Math.max(12,Math.min(22,Math.floor(136/Math.max(1,String(tr).length))));
   let h='<div class="lbw"><div class="lbp">';
   [276,532].forEach(x=>h+=`<div style="position:absolute;left:${x}px;top:0;width:1px;height:609px;background:#bbb"></div>`);
