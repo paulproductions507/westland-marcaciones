@@ -124,7 +124,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
     </div>
     <div id="v-auto" class="hide"><div class="card"><h3 style="font-size:16px">Cargar transferencia del Gestor de Bodega</h3>
       <div class="msg">Sube el PDF (o una captura PNG/JPG) de la pantalla de Chequeo. La app lee la transferencia, la tienda y los productos; tú revisas y guardas.</div>
-      <div class="lbl" style="margin-top:10px">Origen de la transferencia</div><select class="f" id="auSrc"><option value="auto">⚡ Automático (pedido automático)</option><option value="tun">🚇 Túnel (ya está en los recibos)</option></select>
+      <div class="lbl" style="margin-top:10px">Origen de la transferencia</div><select class="f" id="auSrc"><option value="auto">⚡ Automático (pedido automático)</option><option value="tun" disabled>🚇 Túnel (próximamente)</option></select>
       <div class="lbl" style="margin-top:10px">PDF o captura</div><input class="f" type="file" id="auFile" accept=".pdf,image/*"><div class="msg" id="auMsg"></div></div>
     <div id="auReview"></div><div class="card"><div class="slbl">Transferencias cargadas</div><div id="auList"></div></div></div>
     <div id="v-stat" class="hide"><div id="stFil"></div><div id="stBody"></div></div>
@@ -270,7 +270,7 @@ const hasCli=p=>Object.values(CLI).some(c=>c.p===p);
 // Ruta dentro de meta_v1: ya tiene permiso de escritura en las reglas actuales (no hay que tocar Firebase)
 function selectRecibo(id){
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();
-  RECIBO=id;DATA=RECS[id].items;BASE=`meta_v1/consultas/${id}/log`;CBASE=`meta_v1/consultas/${id}/clientes`;DSPB=`meta_v1/consultas/${id}/desp`;TRFB=`meta_v1/consultas/${id}/trf`;TRBB=`meta_v1/consultas/${id}/trfb`;DSB=`meta_v1/consultas/${id}/dsps`;BGB=`meta_v1/consultas/${id}/bgen`;
+  RECIBO=id;DATA=dataOf(id);BASE=`meta_v1/consultas/${id}/log`;CBASE=`meta_v1/consultas/${id}/clientes`;DSPB=`meta_v1/consultas/${id}/desp`;TRFB=`meta_v1/consultas/${id}/trf`;TRBB=`meta_v1/consultas/${id}/trfb`;DSB=`meta_v1/consultas/${id}/dsps`;BGB=`meta_v1/consultas/${id}/bgen`;
   STORES=storesFor(DATA);byProd=Object.fromEntries(DATA.map(x=>[x.p,x]));LD.log=0;LD.dsp=0;LOG={};CLI={};DSP={};TRF={};TRB={};DS={};BG={};trfEdit=null;trfStore=null;dspSel.clear();cur=null;shown=40;
   offLog=onValue(R(db,BASE),s=>{LD.log=1;LOG=s.val()||{};renderAll()},e=>{toast('Sin acceso a datos: '+e.code)});
   offCli=onValue(R(db,CBASE),s=>{CLI=s.val()||{};renderAll()},()=>{});
@@ -848,7 +848,7 @@ async function softRefresh(){
   try{
     await loadUploaded();if(RECS.AUTO)PROV.AUTO='PEDIDOS AUTOMÁTICOS';
     if(RECIBO){
-      if(RECS[RECIBO]){DATA=RECS[RECIBO].items;STORES=storesFor(DATA);byProd=Object.fromEntries(DATA.map(x=>[x.p,x]));if(cur&&byProd[cur.p])cur=byProd[cur.p]}
+      if(RECS[RECIBO]){DATA=dataOf(RECIBO);STORES=storesFor(DATA);byProd=Object.fromEntries(DATA.map(x=>[x.p,x]));if(cur&&byProd[cur.p])cur=byProd[cur.p]}
       resub()
     }else await showRecList();
     toast('✅ Datos actualizados')
@@ -1014,8 +1014,9 @@ async function auSave(btn){
   btn.disabled=true;
   try{
     const old=(await get(R(db,`${AUB}/${a.tr}`))).val();
-    if(old&&!confirm(`La transferencia ${a.tr} ya fue cargada (${old.mode==='tun'?'túnel':'automático'}). ¿Reemplazarla?`)){btn.disabled=false;return}
-    if(old)await auUndo(a.tr,old);
+    if(old&&old.mode!=='tun'&&old.st!=='new'){alert(`La transferencia ${a.tr} ya fue incluida en el recibo de pedidos automáticos. No se puede cargar de nuevo. Si necesitas rehacerla, quítala primero en la pestaña "Cargadas en el recibo".`);btn.disabled=false;return}
+    if(old&&!confirm(`La transferencia ${a.tr} ya estaba cargada como nueva. ¿Reemplazarla?`)){btn.disabled=false;return}
+    if(old&&old.st!=='new')await auUndo(a.tr,old);
     const meta={tr:a.tr,t:a.t,ts:a.ts,sur:a.sur,org:a.org,des:a.des,nota:a.nota,mode:a.src,pz:lines.reduce((x,l)=>x+l.desp,0),bul:a.lines.reduce((x,l)=>x+(l.bul||0),0),n:lines.length,by:USER,ldt:Date.now(),file:a.file};
     if(a.src==='tun'){
       await auLoadLogs();const up={},recs=new Set();let ok=0,no=0;
@@ -1028,16 +1029,8 @@ async function auSave(btn){
       meta.recs=[...recs];meta.ok=ok;meta.no=no;await set(R(db,`${AUB}/${a.tr}`),meta);
       toast(`✅ ${ok} línea(s) relacionadas${no?` · ${no} sin recibo`:''} → recibos ${[...recs].map(r=>'#'+r).join(', ')}`)
     }else{
-      const base=`meta_v1/consultas/${AUID}`,items=RECS[AUID]?RECS[AUID].items.map(x=>({...x,s:{...x.s}})):[],by={};items.forEach(x=>by[x.p]=x);
-      const lg={},dp={},u='gestor-'+(a.sur||'bodega'),n=a.sur||'Gestor de Bodega';
-      for(const l of lines){let x=by[l.p];if(!x){x={n:items.length+1,ref:l.ref,p:l.p,d:l.d,pb:0,pr:l.pr,rec:0,sal:0,dt:0,upc:'',cr:0,sc:0,dep:'',div:'',lin:'',sub:'',s:{}};items.push(x);by[l.p]=x}
-        x.s[a.t]=(x.s[a.t]||0)+l.desp;x.rec+=l.desp;x.dt+=l.desp;
-        lg[push(R(db,base+'/log')).key]={p:l.p,r:l.ref||x.ref,t:a.t,q:l.desp,tr:a.tr,u,n,ts:a.ts,d:dd,ax:1};dp[l.p]={u,n,ts:a.ts,d:dd,r:l.ref||x.ref,ax:1,b:0}}
-      await set(R(db,'meta_v1/consultas_recs/'+AUID),{items,by:USER,ts:Date.now(),file:'Pedidos automáticos',fecha:dd,auto:1});RECS[AUID]={items};
-      await auPut(base+'/log',lg);await auPut(base+'/desp',dp);
-      await set(R(db,'meta_v1/consultas_fechas/'+AUID),dd);FECHAS[AUID]=dd;try{await remove(R(db,'meta_v1/consultas_prog/'+AUID));await remove(R(db,'meta_v1/consultas_comp/'+AUID));delete COMP[AUID]}catch(e){}
-      await set(R(db,`${AUB}/${a.tr}`),meta);PROV[AUID]='PEDIDOS AUTOMÁTICOS';
-      toast(`✅ Transferencia ${a.tr} guardada en Pedidos automáticos (${fmt(meta.pz)} pzas)`)}
+      await set(R(db,`${AUB}/${a.tr}`),{...meta,st:'new',lines:lines.map(l=>({p:l.p,ref:l.ref,d:l.d,desp:l.desp,bul:l.bul,pr:l.pr}))});
+      toast(`✅ Transferencia ${a.tr} guardada como nueva (${fmt(meta.pz)} pzas). Falta completar para agregarla al recibo.`)}
     AU=null;$('auReview').innerHTML='';auList()
   }catch(err){toast('Error: '+(err.code||err.message));btn.disabled=false}
 }
@@ -1048,14 +1041,46 @@ async function auUndo(tr,m){ // deshace una carga anterior de esa transferencia
     Object.entries(lg).forEach(([k,e])=>{if(e.tr===tr){up[k]=null;const x=items.find(i=>i.p===e.p);if(x){x.s[e.t]=Math.max(0,(x.s[e.t]||0)-e.q);x.rec=Math.max(0,x.rec-e.q);x.dt=Math.max(0,x.dt-e.q)}}});
     if(Object.keys(up).length){await update(R(db,`meta_v1/consultas/${AUID}/log`),up);await set(R(db,`meta_v1/consultas_recs/${AUID}/items`),items)}}
   await remove(R(db,`${AUB}/${tr}`))}
+const dataOf=id=>id==='AUTO'?[...RECS[id].items].sort((a,b)=>(b.ts||0)-(a.ts||0)):RECS[id].items;
+const AUOFF=new Set();let AUTAB='n';
+const ymd=ts=>{const d=new Date(ts);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 async function auList(){
-  const box=$('auList');box.innerHTML='<div class="msg">Cargando…</div>';let all={};try{all=(await get(R(db,AUB))).val()||{}}catch(e){}
-  const rows=Object.values(all).sort((a,b)=>(b.ts||0)-(a.ts||0));
-  box.innerHTML=rows.map(m=>`<div class="card" style="margin:0 0 8px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b class="sora">${esc(m.tr)}</b><span class="pill ${m.mode==='tun'?'p-bl':'p-aq'}">${m.mode==='tun'?'🚇 Túnel':'⚡ Automático'}</span></div>
-    <div class="msg" style="margin:4px 0 0">${esc(LN(m.t))} · ${fdt(m.ts)} · ${esc(m.sur||'')} · ${fmt(m.n||0)} líneas · ${fmt(m.pz||0)} pzas${m.mode==='tun'?` · recibos ${(m.recs||[]).map(r=>'#'+r).join(', ')||'—'}${m.no?` · ${m.no} sin recibo`:''}`:''}</div>
-    <div style="text-align:right;margin-top:6px"><button class="btn sm" data-adel="${esc(m.tr)}">🗑 Quitar</button></div></div>`).join('')||'<div class="msg">Aún no hay transferencias cargadas.</div>';
-  box.onclick=async e=>{const d=e.target.closest('[data-adel]');if(!d)return;const tr=d.dataset.adel;if(!confirm(`¿Quitar la transferencia ${tr}? ${all[tr]&&all[tr].mode==='tun'?'Los recibos quedan como estaban (sin esa transferencia).':'Se borra su surtido de Pedidos automáticos.'}`))return;
-    try{await auUndo(tr,all[tr]);toast('Transferencia quitada');auList()}catch(err){toast('Error: '+(err.code||err.message))}}
+  const box=$('auList');box.innerHTML='<div class="msg">Cargando…</div>';let all={},hist={};
+  try{all=(await get(R(db,AUB))).val()||{};hist=(await get(R(db,'meta_v1/consultas_auto_hist'))).val()||{}}catch(e){}
+  const rows=Object.values(all).sort((a,b)=>(b.ts||0)-(a.ts||0)),nw=rows.filter(m=>m.st==='new'),inc=rows.filter(m=>m.st!=='new'),show=AUTAB==='n'?nw:inc,hs=Object.values(hist).sort((a,b)=>b.ts-a.ts);
+  const card=m=>`<div class="card" style="margin:0 0 8px"><div style="display:flex;gap:10px;align-items:center">${AUTAB==='n'?`<input type="checkbox" data-asel="${esc(m.tr)}" ${AUOFF.has(m.tr)?'':'checked'} style="width:22px;height:22px">`:''}<div style="flex:1"><b class="sora">${esc(m.tr)}</b> <span class="pill p-aq">${esc(LN(m.t))}</span>${m.mode==='tun'?' <span class="pill p-bl">🚇 Túnel</span>':''}<div class="msg" style="margin:4px 0 0">${fdt(m.ts)} · ${esc(m.sur||'')} · ${fmt(m.n||0)} ítems · ${fmt(m.pz||0)} pzas · ${fmt(m.bul||0)} bultos${AUTAB==='i'&&m.mode!=='tun'?` · agregada ${fdt(m.inc||m.ldt||m.ts)}`:''}${m.mode==='tun'?` · recibos ${(m.recs||[]).map(r=>'#'+r).join(', ')||'—'}`:''}</div></div></div><div style="text-align:right;margin-top:6px"><button class="btn sm" data-adel="${esc(m.tr)}">🗑 Quitar</button></div></div>`;
+  box.innerHTML=`<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><button class="btn sm ${AUTAB==='n'?'pri':''}" data-atab="n">Nuevas (${nw.length})</button><button class="btn sm ${AUTAB==='i'?'pri':''}" data-atab="i">Cargadas en el recibo (${inc.length})</button></div>`
+    +(show.map(card).join('')||`<div class="msg">${AUTAB==='n'?'No hay transferencias nuevas. Sube un PDF arriba.':'Aún no hay transferencias cargadas en el recibo.'}</div>`)
+    +(AUTAB==='n'&&nw.length?`<button class="btn pri" id="auDone" style="width:100%;margin-top:6px">${RECS[AUID]?'🔄 Actualizar recibo de pedidos automáticos':'✔ Completar y crear recibo de pedidos automáticos'}</button><div class="msg" style="text-align:center">Se agregan solo las marcadas. Todas vienen marcadas por defecto.</div>`:'')
+    +(AUTAB==='i'&&hs.length?`<div class="slbl" style="margin-top:12px">Historial de actualizaciones</div>`+hs.map(h=>`<div class="msg" style="margin:3px 0">${fdt(h.ts)} · ${esc(h.by||'')} · ${h.nTr} transf. · <b>${fmt(h.nuevos)}</b> ítems nuevos · ${fmt(h.pz)} pzas · ${fmt(h.total)} ítems en el recibo</div>`).join(''):'');
+  box.onchange=e=>{const c=e.target.dataset.asel;if(c){e.target.checked?AUOFF.delete(c):AUOFF.add(c)}};
+  box.onclick=async e=>{
+    const tb=e.target.closest('[data-atab]');if(tb){AUTAB=tb.dataset.atab;auList();return}
+    if(e.target.closest('#auDone')){auComplete(e.target.closest('#auDone'),nw);return}
+    const d=e.target.closest('[data-adel]');if(!d)return;const tr=d.dataset.adel,m=all[tr];
+    if(!confirm(`¿Quitar la transferencia ${tr}? ${m&&m.mode==='tun'?'Los recibos quedan como estaban (sin esa transferencia).':m&&m.st==='new'?'Todavía no está en el recibo.':'Se borra su surtido del recibo de pedidos automáticos.'}`))return;
+    try{await auUndo(tr,m);toast('Transferencia quitada');auList()}catch(err){toast('Error: '+(err.code||err.message))}}
+}
+async function auComplete(btn,nw){
+  const trs=nw.filter(m=>!AUOFF.has(m.tr));if(!trs.length){toast('Marca al menos una transferencia');return}
+  if(!confirm(`${RECS[AUID]?'Se actualizará':'Se creará'} el recibo PEDIDOS AUTOMÁTICOS con ${trs.length} transferencia(s) (${fmt(trs.reduce((a,m)=>a+(m.pz||0),0))} pzas). ¿Continuar?`))return;
+  btn.disabled=true;
+  try{
+    const now=Date.now(),base=`meta_v1/consultas/${AUID}`,items=RECS[AUID]?RECS[AUID].items.map(x=>({...x,s:{...x.s}})):[],by={};items.forEach(x=>by[x.p]=x);
+    const lg={},dp={},tb={};let nuevos=0,pz=0;
+    for(const m of trs){const dd=ymd(m.ts),u='gestor-'+(m.sur||'bodega'),n=m.sur||'Gestor de Bodega';
+      for(const l of (m.lines||[])){let x=by[l.p];if(!x){x={n:items.length+1,ref:l.ref,p:l.p,d:l.d,pb:0,pr:l.pr,rec:0,sal:0,dt:0,upc:'',cr:0,sc:0,dep:'',div:'',lin:'',sub:'',s:{}};items.push(x);by[l.p]=x;nuevos++}
+        x.s[m.t]=(x.s[m.t]||0)+l.desp;x.rec+=l.desp;x.dt+=l.desp;x.ts=now;pz+=l.desp;
+        lg[push(R(db,base+'/log')).key]={p:l.p,r:l.ref||x.ref,t:m.t,q:l.desp,tr:m.tr,u,n,ts:m.ts,d:dd,ax:1};dp[l.p]={u,n,ts:m.ts,d:dd,r:l.ref||x.ref,ax:1,b:0}}
+      if(m.bul>=1)tb[`${m.t}_${m.tr}`]={b:m.bul,u:USER,n:NAME,ts:now,ax:1}}
+    await set(R(db,'meta_v1/consultas_recs/'+AUID),{items,by:USER,ts:now,file:'Pedidos automáticos',fecha:FECHAS[AUID]||ymd(now),auto:1});RECS[AUID]={items};
+    await auPut(base+'/log',lg);await auPut(base+'/desp',dp);if(Object.keys(tb).length)await auPut(base+'/trfb',tb);
+    const up={};trs.forEach(m=>{up[m.tr+'/st']='inc';up[m.tr+'/inc']=now});await update(R(db,AUB),up);
+    await set(R(db,'meta_v1/consultas_auto_hist/'+now),{ts:now,by:USER,nTr:trs.length,trs:trs.map(m=>m.tr),nuevos,pz,total:items.length});
+    if(!FECHAS[AUID]){FECHAS[AUID]=ymd(now);await set(R(db,'meta_v1/consultas_fechas/'+AUID),FECHAS[AUID])}
+    PROV[AUID]='PEDIDOS AUTOMÁTICOS';try{await remove(R(db,'meta_v1/consultas_prog/'+AUID));await remove(R(db,'meta_v1/consultas_comp/'+AUID));delete COMP[AUID]}catch(e){}
+    toast(`✅ Recibo de pedidos automáticos actualizado: ${nuevos} ítems nuevos`);AUOFF.clear();auList()
+  }catch(err){toast('Error: '+(err.code||err.message));btn.disabled=false}
 }
 
 // ---------- Mover productos entre transferencias de la misma tienda ----------
