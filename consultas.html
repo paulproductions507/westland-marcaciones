@@ -124,7 +124,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
     </div>
     <div id="v-auto" class="hide"><div class="card"><h3 style="font-size:16px">Cargar transferencia del Gestor de Bodega</h3>
       <div class="msg">Sube el PDF (o una captura PNG/JPG) de la pantalla de Chequeo. La app lee la transferencia, la tienda y los productos; tú revisas y guardas.</div>
-      <div class="lbl" style="margin-top:10px">Origen de la transferencia</div><select class="f" id="auSrc"><option value="auto">⚡ Automático (pedido automático)</option><option value="tun" disabled>🚇 Túnel (próximamente)</option></select>
+      <div class="lbl" style="margin-top:10px">Tipo (si el PDF es del sistema, se detecta solo)</div><select class="f" id="auSrc"><option value="auto">⚡ Automático (pedido automático)</option><option value="tun">🚇 Túnel (transferencia de un recibo)</option></select>
       <div class="lbl" style="margin-top:10px">PDF o captura</div><input class="f" type="file" id="auFile" accept=".pdf,image/*"><div class="msg" id="auMsg"></div></div>
     <div id="auReview"></div><div class="card"><div class="slbl">Transferencias cargadas</div><div id="auList"></div></div></div>
     <div id="v-stat" class="hide"><div id="stFil"></div><div id="stBody"></div></div>
@@ -519,7 +519,7 @@ $('cliFile').onchange=async e=>{
 // ---------- transferencias ----------
 const trfOpen=new Set(),dspOpen=new Set(),dspSel=new Set();let trfStore=null;
 const sg=n=>(n>0?'+':'')+fmt(n);
-function trfGroups(){const g={};for(const e of entries()){if(e.au&&!e.tr)continue;const tr=e.tr||'';const k=e.t+'|'+tr;(g[k]=g[k]||{t:e.t,tr,key:e.t+'_'+(tr||'sin'),items:[],ts:0,users:new Set()});g[k].items.push(e);g[k].ts=Math.max(g[k].ts,e.ts);g[k].users.add(e.n||e.u)}return Object.values(g)}
+function trfGroups(){const g={};for(const e of entries()){if((e.au&&!e.tr)||e.mir)continue;const tr=e.tr||'';const k=e.t+'|'+tr;(g[k]=g[k]||{t:e.t,tr,key:e.t+'_'+(tr||'sin'),items:[],ts:0,users:new Set()});g[k].items.push(e);g[k].ts=Math.max(g[k].ts,e.ts);g[k].users.add(e.n||e.u)}return Object.values(g)}
 const gPz=g=>g.items.reduce((a,e)=>a+e.q,0);
 const gRef=g=>new Set(g.items.map(e=>e.p)).size;
 const gBul=g=>(TRB[g.key]&&TRB[g.key].b)||0;
@@ -871,10 +871,11 @@ async function statReload(){
 function buildEv(){
   const sv=[],dv=[];
   for(const id of Object.keys(RECS)){const c=STC[id];if(!c)continue;const it=RECS[id].items,by=Object.fromEntries(it.map(x=>[x.p,x])),st=storesFor(it),prov=PROV[id]||'',sp={};
-    for(const e of Object.values(c.log||{})){const q=e.q||0;sp[e.p+'|'+e.t]=(sp[e.p+'|'+e.t]||0)+q;const x=by[e.p];sv.push({id,prov,p:e.p,r:e.r||(x&&x.ref)||'',ds:(x&&x.d)||'',t:e.t,q,b:0,u:e.n||e.u||'—',uu:e.u||'',d:e.d||'',ts:e.ts||0})}
+    const mp=new Set();
+    for(const e of Object.values(c.log||{})){if(e.mir){mp.add(e.p);continue}const q=e.q||0;sp[e.p+'|'+e.t]=(sp[e.p+'|'+e.t]||0)+q;const x=by[e.p];sv.push({id,prov,p:e.p,r:e.r||(x&&x.ref)||'',ds:(x&&x.d)||'',t:e.t,q,b:0,u:e.n||e.u||'—',uu:e.u||'',d:e.d||'',ts:e.ts||0})}
     for(const [p,dd] of Object.entries(c.desp||{})){const x=by[p];if(!x)continue;const bu=dd.b!=null?dd.b:bul(x);let tot=0;st.forEach(t=>tot+=sp[p+'|'+t]||0);
       const base={id,prov,p,r:dd.r||x.ref,ds:x.d||'',u:dd.n||dd.u||'—',uu:dd.u||'',d:dd.d||'',ts:dd.ts||0};
-      if(!tot){dv.push({...base,t:'—',q:0,b:bu});continue}
+      if(!tot){if(!mp.has(p))dv.push({...base,t:'—',q:0,b:bu});continue}
       st.forEach(t=>{const q=sp[p+'|'+t]||0;if(q>0)dv.push({...base,t,q,b:bu*q/tot})})}}
   STEV={sv,dv}
 }
@@ -969,8 +970,22 @@ async function pdfText(f){const V='3.11.174',B=`https://cdnjs.cloudflare.com/aja
   const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let t='';for(let i=1;i<=pdf.numPages;i++){const c=await (await pdf.getPage(i)).getTextContent();t+=c.items.map(x=>x.str).join(' ')+' '}return t}
 async function imgText(f){await loadLib('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',()=>window.Tesseract);
   const r=await Tesseract.recognize(f,'eng',{logger:m=>{if(m.status==='recognizing text')$('auMsg').textContent='Leyendo la imagen… '+Math.round(m.progress*100)+'%'}});return r.data.text}
+function parseErp(t){
+  if(!/Distribuci[oó]n de Mercanc|Transferencia de Mercanc/i.test(t))return null;
+  const num=(t.match(/N[úu]mero:?\s*(\d{5,})/i)||[])[1];if(!num)return null;
+  const rc=(t.match(/DISTRIBUCION RECIBO\s*(\d{5,})/i)||t.match(/Recibo\s*N[º°o]\.?:?\s*(\d{5,})/i)||[])[1]||'',tun=/TUNNEL|T[ÚU]NEL/i.test(t)||!!rc;
+  const dst=(t.match(/SAKS\s*#?\s*\d+/i)||[''])[0];let ts=0;
+  for(const m of t.matchAll(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*([ap])\.?\s*m\.?/gi)){let h=+m[4];if(/p/i.test(m[6])&&h<12)h+=12;if(/a/i.test(m[6])&&h===12)h=0;const v=new Date(+m[3],+m[2]-1,+m[1],h,+m[5]).getTime();if(v>ts)ts=v}
+  const fo=t.match(/AUTORIZADO\s+DESPACHADO\s+CHEQUEADO\s+BULTOS\s+(?:\d{2}\/\w{3}\/\d{4}\s+[\d:]+\s*[ap]\.?m\.?\s+)?(\S+)\s+(\d+)/i),tot=+((t.match(/Total:\s*\d+\s+(\d+)/)||[])[1]||0),est=(t.match(/Estatus:\s*\(\w\)\s*(\w+)/i)||[])[1]||'';
+  const reB=/(?<!\d)(\d{1,3})\s+(\d+)\s*-\s*(\d+)\s+([A-Z]{1,3}\d{4,}[A-Z0-9\-]*)\s+(?<!\d)(\d{7})(?!\d)\s+(.*?)\s+COLOR=.*?TALLAS=.*?\s(-?\d+)\s+PZA\s+(\d+)\s+(\d+)\s+(\d+(?:\.\d+)?)\s+(\d+)/g;
+  const reA=/(?<!\d)(\d{1,3})\s+(?<!\d)(\d{7})(?!\d)\s+(\d+)\s+(\d+)\s+(.*?)\s+(?:PZA\s+(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s+PZA)\s+COLOR=[^]*?TALLAS=([^]*?)\s([A-Z]{1,3}\d{4,}[A-Z0-9\-]*)\s+(\d+)(?=\s+\d{1,3}\s+\d{7}|\s+Page|\s+Total|\s+AUTORIZADO|$)/g;
+  let lines=[...t.matchAll(reB)].map(m=>({ref:m[4],p:m[5],inv:0,sol:+m[9],res:0,desp:+m[9],bul:+m[3]>0?+m[3]-+m[2]+1:0,pr:+m[10],d:m[6].trim()}));
+  if(!lines.length)lines=[...t.matchAll(reA)].map(m=>({ref:m[9],p:m[2],inv:0,sol:+m[3],res:0,desp:+m[4],bul:0,pr:+(m[6]||m[7]),d:m[5].trim()}));
+  const bul=fo?+fo[2]:lines.reduce((a,l)=>a+l.bul,0);
+  return{tr:num,ts:ts||Date.now(),sur:fo?fo[1]:'',org:'BODEGA FRANGIPANI',des:dst,nota:tun?('TÚNEL'+(rc?' · Recibo '+rc:'')):'',t:guessStore(dst),lines,tot,src:tun?'tun':'auto',det:1,rc,bul,est}
+}
 function parseTransfer(t){
-  t=t.replace(/\s+/g,' ');const g=re=>{const m=t.match(re);return m?m[1].trim():''};
+  t=t.replace(/\s+/g,' ');{const er=parseErp(t);if(er&&er.lines.length)return er}const g=re=>{const m=t.match(re);return m?m[1].trim():''};
   const tr=g(/Transferencia\s*#?\s*(\d{5,})/i),fs=g(/Fecha solicitad[oa]:?\s*([\d\/]+\s+[\d:]+\s*[AP]?M?)/i),sur=g(/Surtidor:?\s*([^\s]+)/i),org=g(/Origen\s*(\[.*?\].*?)\s+Destino/i),des=g(/Destino\s*(\[.*?\].*?)\s+Nota/i),nota=g(/Nota:?\s*(.*?)\s*(?:C[óo]d\.?\s*BARRA|$)/i),tot=+g(/Total unidades surtidas\s*(\d+)/i)||0;
   const i0=t.search(/Descripci[óo]n/i);let b=i0>=0?t.slice(i0+11):t;const e=b.search(/REBAJA|Total unidades/i);if(e>0)b=b.slice(0,e);
   const re=/(?:([A-Z0-9][A-Z0-9\-\/\.]{3,})\s+)?(?<!\d)(\d{7})(?!\d)\s+(-?\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+(?:\.\d+)?)/g,ms=[...b.matchAll(re)];
@@ -979,13 +994,13 @@ function parseTransfer(t){
 $('recAuto').onclick=async()=>{$('v-rec').classList.add('hide');$('v-auto').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent='Pedidos automáticos';window.scrollTo(0,0);AU=null;$('auReview').innerHTML='';$('auMsg').textContent='';auList()};
 $('auFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
   $('auMsg').textContent='Leyendo '+f.name+'…';$('auReview').innerHTML='';
-  try{const txt=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)?await pdfText(f):await imgText(f);AU=parseTransfer(txt);AU.src=$('auSrc').value;AU.file=f.name;
+  try{const txt=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)?await pdfText(f):await imgText(f);AU=parseTransfer(txt);if(!AU.det){AU.src=$('auSrc').value;AU.rc='';AU.bul=AU.lines.reduce((x,l)=>x+(l.bul||0),0)}else $('auSrc').value=AU.src;AU.file=f.name;
     if(!AU.tr||!AU.lines.length){$('auMsg').textContent=`No pude leer ${!AU.tr?'el número de transferencia':'las líneas'}. ${/pdf/i.test(f.type)?'Usa el PDF generado desde el navegador (Imprimir → Guardar como PDF).':'Prueba con una captura más grande y nítida, o con el PDF.'}`;if(!AU.lines.length)return}
     else $('auMsg').textContent='';
     AUL={};if(AU.src==='tun')await auLoadLogs();auRender()}catch(err){$('auMsg').textContent='Error: '+(err.message||err)}};
-async function auLoadLogs(){await Promise.all(Object.keys(RECS).filter(id=>id!==AUID).map(async id=>{try{AUL[id]=(await get(R(db,`meta_v1/consultas/${id}/log`))).val()||{}}catch(e){AUL[id]={}}}))}
+async function auLoadLogs(){await Promise.all(Object.keys(RECS).filter(id=>id!==AUID&&(!AU||!AU.rc||id===AU.rc)).map(async id=>{try{AUL[id]=(await get(R(db,`meta_v1/consultas/${id}/log`))).val()||{}}catch(e){AUL[id]={}}}))}
 function auMatch(l){ // túnel: entradas de surtido de ese producto y tienda en los recibos
-  const r=[];for(const [id,lg] of Object.entries(AUL)){const hit=Object.entries(lg).filter(([,e])=>e.p===l.p&&e.t===AU.t);if(hit.length)r.push({id,hit,q:hit.reduce((a,[,e])=>a+(e.q||0),0),has:hit.some(([,e])=>e.tr&&e.tr!==AU.tr)})}return r}
+  const r=[];for(const [id,lg] of Object.entries(AUL)){if(AU.rc&&id!==AU.rc)continue;const hit=Object.entries(lg).filter(([,e])=>e.p===l.p&&e.t===AU.t);if(hit.length)r.push({id,hit,q:hit.reduce((a,[,e])=>a+(e.q||0),0),has:hit.some(([,e])=>e.tr&&e.tr!==AU.tr)})}return r}
 function auRender(){
   const a=AU,tun=a.src==='tun',sum=a.lines.reduce((x,l)=>x+(l.desp||0),0),bu=a.lines.reduce((x,l)=>x+(l.bul||0),0);
   const rows=a.lines.map((l,i)=>{let st='';if(tun){const m=l.desp>0&&a.t?auMatch(l):[];st=!a.t?'—':!l.desp?'Sin despacho':!m.length?'<span class="pill p-no">No está en recibos</span>':m.map(x=>`<span class="pill ${x.has?'p-wn':x.q===l.desp?'p-ok':'p-wn'}">#${x.id} · surtido ${x.q}${x.has?' · ya tiene otra transf.':x.q!==l.desp?' ≠ '+l.desp:''}</span>`).join(' ')}
@@ -995,13 +1010,18 @@ function auRender(){
     <div><div class="lbl">Transferencia #</div><input class="f" data-af="tr" value="${esc(a.tr)}"></div>
     <div><div class="lbl">Tienda destino</div><select class="f" data-af="t"><option value="">Elige…</option>${BASE_ST.map(t=>`<option value="${t}" ${a.t===t?'selected':''}>${esc(LN(t))}</option>`).join('')}</select></div>
     <div><div class="lbl">Fecha y hora</div><input class="f" type="datetime-local" data-af="ts" value="${toLocalIn(a.ts)}"></div>
-    <div><div class="lbl">Surtidor (Gestor)</div><input class="f" data-af="sur" value="${esc(a.sur)}"></div></div>
+    <div><div class="lbl">Surtidor / despachó</div><input class="f" data-af="sur" value="${esc(a.sur)}"></div>
+    <div><div class="lbl">Tipo</div><select class="f" data-af="src"><option value="auto" ${a.src==='auto'?'selected':''}>⚡ Automático</option><option value="tun" ${a.src==='tun'?'selected':''}>🚇 Túnel</option></select></div>
+    ${tun?`<div><div class="lbl">Recibo del túnel</div><input class="f" data-af="rc" value="${esc(a.rc||'')}" placeholder="Ej. 408114"></div>`:''}
+    <div><div class="lbl">Bultos (del PDF)</div><input class="f" type="number" min="0" data-af="bul" value="${a.bul||0}"></div></div>
+   ${a.est&&!/despach/i.test(a.est)?`<div class="msg" style="color:var(--wn)">⚠ El estatus en el PDF es “${esc(a.est)}”, no Despachada.</div>`:''}
+   ${tun?`<div class="msg">${a.rc&&RECS[a.rc]?`Recibo #${esc(a.rc)} está en la app: sus piezas que coincidan quedan como <b>informativas</b> (surtido normal) y la transferencia se maneja desde Pedidos automáticos, sin duplicar piezas.`:a.rc?`El recibo #${esc(a.rc)} no está en la app: la transferencia se carga igual, sin mapear.`:'Escribe el número de recibo para mapearlo.'}</div>`:''}
    <div class="msg">Destino: ${esc(a.des||'—')} · Origen: ${esc(a.org||'—')}${a.nota?' · Nota: '+esc(a.nota):''}</div>
    <div class="scroll"><table><tr><th>Estilo / Producto</th><th>Descripción</th><th class="n">Desp.</th><th class="n">Bultos</th>${tun?'<th>Relación con recibos</th>':''}<th></th></tr>${rows}</table></div>
    <div class="msg">${fmt(a.lines.length)} líneas · <b>${fmt(sum)}</b> piezas despachadas · ${fmt(bu)} bultos en el Gestor${a.tot&&a.tot!==sum?` · <span style="color:var(--wn)">⚠ el Gestor indica ${fmt(a.tot)} unidades surtidas</span>`:''}</div>
    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" id="auSave" style="flex:1">${tun?'Relacionar con los recibos':'Guardar pedido automático'}</button><button class="btn" id="auCancel">Cancelar</button></div></div>`}
-$('auReview').addEventListener('input',e=>{const d=e.target.dataset;if(!AU)return;if(d.ad!==undefined){AU.lines[+d.ad].desp=Math.max(0,parseInt(e.target.value)||0)}else if(d.af==='ts'){AU.ts=new Date(e.target.value).getTime()||AU.ts}else if(d.af==='tr'||d.af==='sur'){AU[d.af]=e.target.value.trim()}});
-$('auReview').addEventListener('change',e=>{const d=e.target.dataset;if(AU&&d.af==='t'){AU.t=e.target.value;auRender()}else if(AU&&d.ad!==undefined)auRender()});
+$('auReview').addEventListener('input',e=>{const d=e.target.dataset;if(!AU)return;if(d.ad!==undefined){AU.lines[+d.ad].desp=Math.max(0,parseInt(e.target.value)||0)}else if(d.af==='ts'){AU.ts=new Date(e.target.value).getTime()||AU.ts}else if(d.af==='tr'||d.af==='sur'||d.af==='rc'){AU[d.af]=e.target.value.trim()}else if(d.af==='bul'){AU.bul=Math.max(0,parseInt(e.target.value)||0)}});
+$('auReview').addEventListener('change',e=>{const d=e.target.dataset;if(AU&&(d.af==='t'||d.af==='src')){AU[d.af]=e.target.value;if(d.af==='src'&&AU.src==='tun'&&!AU.rc)AU.rc='';auRender()}else if(AU&&d.af==='rc'){auRender()}else if(AU&&d.ad!==undefined)auRender()});
 $('auReview').addEventListener('click',async e=>{
   if(e.target.closest('#auCancel')){AU=null;$('auReview').innerHTML='';return}
   const rm=e.target.closest('[data-arm]');if(rm){AU.lines.splice(+rm.dataset.arm,1);auRender();return}
@@ -1017,29 +1037,20 @@ async function auSave(btn){
     if(old&&old.mode!=='tun'&&old.st!=='new'){alert(`La transferencia ${a.tr} ya fue incluida en el recibo de pedidos automáticos. No se puede cargar de nuevo. Si necesitas rehacerla, quítala primero en la pestaña "Cargadas en el recibo".`);btn.disabled=false;return}
     if(old&&!confirm(`La transferencia ${a.tr} ya estaba cargada como nueva. ¿Reemplazarla?`)){btn.disabled=false;return}
     if(old&&old.st!=='new')await auUndo(a.tr,old);
-    const meta={tr:a.tr,t:a.t,ts:a.ts,sur:a.sur,org:a.org,des:a.des,nota:a.nota,mode:a.src,pz:lines.reduce((x,l)=>x+l.desp,0),bul:a.lines.reduce((x,l)=>x+(l.bul||0),0),n:lines.length,by:USER,ldt:Date.now(),file:a.file};
-    if(a.src==='tun'){
-      await auLoadLogs();const up={},recs=new Set();let ok=0,no=0;
-      for(const l of lines){const m=auMatch(l);if(!m.length){no++;continue}
-        for(const x of m){x.hit.forEach(([k,e])=>{if(!e.tr||e.tr===a.tr){(up[x.id]=up[x.id]||{})[k+'/tr']=a.tr}});recs.add(x.id);(up[x.id]=up[x.id]||{});up[x.id]['__d/'+l.p+'/'+a.t]=a.tr}ok++}
-      for(const [id,u] of Object.entries(up)){const lg={},dp={};for(const [k,v] of Object.entries(u)){if(k.startsWith('__d/')){const [,p,t]=k.split('/');dp[`${p}/trs/${t}`]=v}else lg[k]=v}
-        if(Object.keys(lg).length)await update(R(db,`meta_v1/consultas/${id}/log`),lg);
-        if(Object.keys(dp).length)await update(R(db,`meta_v1/consultas/${id}/desp`),dp);
-        try{await remove(R(db,'meta_v1/consultas_prog/'+id))}catch(e){}}
-      meta.recs=[...recs];meta.ok=ok;meta.no=no;await set(R(db,`${AUB}/${a.tr}`),meta);
-      toast(`✅ ${ok} línea(s) relacionadas${no?` · ${no} sin recibo`:''} → recibos ${[...recs].map(r=>'#'+r).join(', ')}`)
-    }else{
+    const meta={tr:a.tr,t:a.t,ts:a.ts,sur:a.sur,org:a.org,des:a.des,nota:a.nota,mode:a.src,pz:lines.reduce((x,l)=>x+l.desp,0),bul:a.bul||0,rc:a.src==='tun'?(a.rc||''):'',n:lines.length,by:USER,ldt:Date.now(),file:a.file};
+    {
       await set(R(db,`${AUB}/${a.tr}`),{...meta,st:'new',lines:lines.map(l=>({p:l.p,ref:l.ref,d:l.d,desp:l.desp,bul:l.bul,pr:l.pr}))});
       toast(`✅ Transferencia ${a.tr} guardada como nueva (${fmt(meta.pz)} pzas). Falta completar para agregarla al recibo.`)}
     AU=null;$('auReview').innerHTML='';auList()
   }catch(err){toast('Error: '+(err.code||err.message));btn.disabled=false}
 }
 async function auUndo(tr,m){ // deshace una carga anterior de esa transferencia
-  if(m.mode==='tun'){for(const id of (m.recs||[])){const lg=(await get(R(db,`meta_v1/consultas/${id}/log`))).val()||{},up={};Object.entries(lg).forEach(([k,e])=>{if(e.tr===tr)up[k+'/tr']=null});if(Object.keys(up).length)await update(R(db,`meta_v1/consultas/${id}/log`),up);
+  if(m.mode==='tun'&&m.recs){for(const id of (m.recs||[])){const lg=(await get(R(db,`meta_v1/consultas/${id}/log`))).val()||{},up={};Object.entries(lg).forEach(([k,e])=>{if(e.tr===tr)up[k+'/tr']=null});if(Object.keys(up).length)await update(R(db,`meta_v1/consultas/${id}/log`),up);
     const dp=(await get(R(db,`meta_v1/consultas/${id}/desp`))).val()||{},ud={};Object.entries(dp).forEach(([p,d])=>Object.entries(d.trs||{}).forEach(([t,v])=>{if(v===tr)ud[`${p}/trs/${t}`]=null}));if(Object.keys(ud).length)await update(R(db,`meta_v1/consultas/${id}/desp`),ud)}}
   else{const lg=(await get(R(db,`meta_v1/consultas/${AUID}/log`))).val()||{},up={},items=RECS[AUID]?RECS[AUID].items:[];
     Object.entries(lg).forEach(([k,e])=>{if(e.tr===tr){up[k]=null;const x=items.find(i=>i.p===e.p);if(x){x.s[e.t]=Math.max(0,(x.s[e.t]||0)-e.q);x.rec=Math.max(0,x.rec-e.q);x.dt=Math.max(0,x.dt-e.q)}}});
     if(Object.keys(up).length){await update(R(db,`meta_v1/consultas/${AUID}/log`),up);await set(R(db,`meta_v1/consultas_recs/${AUID}/items`),items)}}
+  if(m.rc&&RECS[m.rc]){try{const rl=(await get(R(db,`meta_v1/consultas/${m.rc}/log`))).val()||{},mu={};Object.entries(rl).forEach(([k,e])=>{if(e.mir===tr)mu[k+'/mir']=null});if(Object.keys(mu).length)await update(R(db,`meta_v1/consultas/${m.rc}/log`),mu);await remove(R(db,'meta_v1/consultas_prog/'+m.rc))}catch(e){}}
   await remove(R(db,`${AUB}/${tr}`))}
 const dataOf=id=>id==='AUTO'?[...RECS[id].items].sort((a,b)=>(b.ts||0)-(a.ts||0)):RECS[id].items;
 const AUOFF=new Set();let AUTAB='n';
@@ -1048,7 +1059,7 @@ async function auList(){
   const box=$('auList');box.innerHTML='<div class="msg">Cargando…</div>';let all={},hist={};
   try{all=(await get(R(db,AUB))).val()||{};hist=(await get(R(db,'meta_v1/consultas_auto_hist'))).val()||{}}catch(e){}
   const rows=Object.values(all).sort((a,b)=>(b.ts||0)-(a.ts||0)),nw=rows.filter(m=>m.st==='new'),inc=rows.filter(m=>m.st!=='new'),show=AUTAB==='n'?nw:inc,hs=Object.values(hist).sort((a,b)=>b.ts-a.ts);
-  const card=m=>`<div class="card" style="margin:0 0 8px"><div style="display:flex;gap:10px;align-items:center">${AUTAB==='n'?`<input type="checkbox" data-asel="${esc(m.tr)}" ${AUOFF.has(m.tr)?'':'checked'} style="width:22px;height:22px">`:''}<div style="flex:1"><b class="sora">${esc(m.tr)}</b> <span class="pill p-aq">${esc(LN(m.t))}</span>${m.mode==='tun'?' <span class="pill p-bl">🚇 Túnel</span>':''}<div class="msg" style="margin:4px 0 0">${fdt(m.ts)} · ${esc(m.sur||'')} · ${fmt(m.n||0)} ítems · ${fmt(m.pz||0)} pzas · ${fmt(m.bul||0)} bultos${AUTAB==='i'&&m.mode!=='tun'?` · agregada ${fdt(m.inc||m.ldt||m.ts)}`:''}${m.mode==='tun'?` · recibos ${(m.recs||[]).map(r=>'#'+r).join(', ')||'—'}`:''}</div></div></div><div style="text-align:right;margin-top:6px"><button class="btn sm" data-adel="${esc(m.tr)}">🗑 Quitar</button></div></div>`;
+  const card=m=>`<div class="card" style="margin:0 0 8px"><div style="display:flex;gap:10px;align-items:center">${AUTAB==='n'?`<input type="checkbox" data-asel="${esc(m.tr)}" ${AUOFF.has(m.tr)?'':'checked'} style="width:22px;height:22px">`:''}<div style="flex:1"><b class="sora">${esc(m.tr)}</b> <span class="pill p-aq">${esc(LN(m.t))}</span>${m.mode==='tun'?` <span class="pill p-bl">🚇 Túnel${m.rc?' · recibo '+esc(m.rc):''}</span>`:''}<div class="msg" style="margin:4px 0 0">${fdt(m.ts)} · ${esc(m.sur||'')} · ${fmt(m.n||0)} ítems · ${fmt(m.pz||0)} pzas · ${fmt(m.bul||0)} bultos${AUTAB==='i'&&m.mode!=='tun'?` · agregada ${fdt(m.inc||m.ldt||m.ts)}`:''}${m.mode==='tun'?` · recibos ${(m.recs||[]).map(r=>'#'+r).join(', ')||'—'}`:''}</div></div></div><div style="text-align:right;margin-top:6px"><button class="btn sm" data-adel="${esc(m.tr)}">🗑 Quitar</button></div></div>`;
   box.innerHTML=`<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><button class="btn sm ${AUTAB==='n'?'pri':''}" data-atab="n">Nuevas (${nw.length})</button><button class="btn sm ${AUTAB==='i'?'pri':''}" data-atab="i">Cargadas en el recibo (${inc.length})</button></div>`
     +(show.map(card).join('')||`<div class="msg">${AUTAB==='n'?'No hay transferencias nuevas. Sube un PDF arriba.':'Aún no hay transferencias cargadas en el recibo.'}</div>`)
     +(AUTAB==='n'&&nw.length?`<button class="btn pri" id="auDone" style="width:100%;margin-top:6px">${RECS[AUID]?'🔄 Actualizar recibo de pedidos automáticos':'✔ Completar y crear recibo de pedidos automáticos'}</button><div class="msg" style="text-align:center">Se agregan solo las marcadas. Todas vienen marcadas por defecto.</div>`:'')
@@ -1071,11 +1082,13 @@ async function auComplete(btn,nw){
     for(const m of trs){const dd=ymd(m.ts),u='gestor-'+(m.sur||'bodega'),n=m.sur||'Gestor de Bodega';
       for(const l of (m.lines||[])){let x=by[l.p];if(!x){x={n:items.length+1,ref:l.ref,p:l.p,d:l.d,pb:0,pr:l.pr,rec:0,sal:0,dt:0,upc:'',cr:0,sc:0,dep:'',div:'',lin:'',sub:'',s:{}};items.push(x);by[l.p]=x;nuevos++}
         x.s[m.t]=(x.s[m.t]||0)+l.desp;x.rec+=l.desp;x.dt+=l.desp;x.ts=now;pz+=l.desp;
-        lg[push(R(db,base+'/log')).key]={p:l.p,r:l.ref||x.ref,t:m.t,q:l.desp,tr:m.tr,u,n,ts:m.ts,d:dd,ax:1};dp[l.p]={u,n,ts:m.ts,d:dd,r:l.ref||x.ref,ax:1,b:0}}
+        lg[push(R(db,base+'/log')).key]={p:l.p,r:l.ref||x.ref,t:m.t,q:l.desp,tr:m.tr,u,n,ts:m.ts,d:dd,ax:1,...(m.mode==='tun'?{tn:1,rc:m.rc||''}:{})};dp[l.p]={u,n,ts:m.ts,d:dd,r:l.ref||x.ref,ax:1,b:0}}
       if(m.bul>=1)tb[`${m.t}_${m.tr}`]={b:m.bul,u:USER,n:NAME,ts:now,ax:1}}
     await set(R(db,'meta_v1/consultas_recs/'+AUID),{items,by:USER,ts:now,file:'Pedidos automáticos',fecha:FECHAS[AUID]||ymd(now),auto:1});RECS[AUID]={items};
     await auPut(base+'/log',lg);await auPut(base+'/desp',dp);if(Object.keys(tb).length)await auPut(base+'/trfb',tb);
-    const up={};trs.forEach(m=>{up[m.tr+'/st']='inc';up[m.tr+'/inc']=now});await update(R(db,AUB),up);
+    const up={};trs.forEach(m=>{up[m.tr+'/st']='inc';up[m.tr+'/inc']=now});
+    for(const m of trs){if(m.mode==='tun'&&m.rc&&RECS[m.rc]){try{const rl=(await get(R(db,`meta_v1/consultas/${m.rc}/log`))).val()||{},ps=new Set((m.lines||[]).map(l=>l.p)),mu={};Object.entries(rl).forEach(([k,e])=>{if(ps.has(e.p)&&e.t===m.t&&!e.mir)mu[k+'/mir']=m.tr});if(Object.keys(mu).length)await update(R(db,`meta_v1/consultas/${m.rc}/log`),mu);up[m.tr+'/mir']=Object.keys(mu).length;await remove(R(db,'meta_v1/consultas_prog/'+m.rc))}catch(e){}}}
+    await update(R(db,AUB),up);
     await set(R(db,'meta_v1/consultas_auto_hist/'+now),{ts:now,by:USER,nTr:trs.length,trs:trs.map(m=>m.tr),nuevos,pz,total:items.length});
     if(!FECHAS[AUID]){FECHAS[AUID]=ymd(now);await set(R(db,'meta_v1/consultas_fechas/'+AUID),FECHAS[AUID])}
     PROV[AUID]='PEDIDOS AUTOMÁTICOS';try{await remove(R(db,'meta_v1/consultas_prog/'+AUID));await remove(R(db,'meta_v1/consultas_comp/'+AUID));delete COMP[AUID]}catch(e){}
@@ -1398,11 +1411,12 @@ async function embMail(id){
       await update(R(db,PB),{[`emb/${id}/st`]:'enviado',[`emb/${id}/mail`]:{to,cc,ts:Date.now(),u:NAME},cfg:{to,cc}});toast('✅ Correo enviado')
     }catch(err){toast('No se pudo enviar: '+(err.text||err.code||err.message));return false}})
 }
-function addCam(eid){ask('Camión · '+(EMB[eid]||{}).num,[{k:'ch',label:'Nombre del chofer',type:'text',ph:'Nombre y apellido'},{k:'pl',label:'Placa',type:'text',ph:'Ej. AB1234'}],'Agregar',async v=>{
+async function addCam(eid){try{await set(R(db,`${PB}/emb/${eid}/cam/c${Date.now()}`),{chofer:'',placa:'',ts:Date.now()})}catch(err){toast('Error: '+(err.code||err.message))}}
+function setCam(eid,cid){const x=((EMB[eid]||{}).cam||{})[cid]||{};ask('Chofer y placa · '+(EMB[eid]||{}).num,[{k:'ch',label:'Nombre del chofer',type:'text',ph:'Nombre y apellido',value:x.chofer||''},{k:'pl',label:'Placa',type:'text',ph:'Ej. AB1234',value:x.placa||''}],'Guardar',async v=>{
   const ch=(v.ch||'').trim(),pl=(v.pl||'').trim().toUpperCase();if(!ch||!pl){toast('Chofer y placa son obligatorios');return false}
-  try{await set(R(db,`${PB}/emb/${eid}/cam/c${Date.now()}`),{chofer:ch,placa:pl,ts:Date.now()})}catch(err){toast('Error: '+(err.code||err.message));return false}})}
+  try{await update(R(db,`${PB}/emb/${eid}/cam/${cid}`),{chofer:ch,placa:pl})}catch(err){toast('Error: '+(err.code||err.message));return false}})}
 async function newEmb(){try{const r=await runTransaction(R(db,PB+'/eseq'),c=>(c||0)+1);const seq=r.snapshot.val(),id='e'+Date.now();
-  await set(R(db,`${PB}/emb/${id}`),{num:'EMB-'+String(seq).padStart(4,'0'),seq,ts:Date.now(),u:USER,n:NAME,st:'abierto'});startPal();embOpenSet.add(id);setTimeout(()=>addCam(id),400)}catch(err){toast('Error: '+(err.code||err.message))}}
+  await set(R(db,`${PB}/emb/${id}`),{num:'EMB-'+String(seq).padStart(4,'0'),seq,ts:Date.now(),u:USER,n:NAME,st:'abierto'});startPal();embOpenSet.add(id);await addCam(id)}catch(err){toast('Error: '+(err.code||err.message))}}
 async function embScan(eid,cid,raw){
   const e=EMB[eid];if(!e||e.st==='enviado'){toast('El embarque ya fue enviado');return}
   const code=String(raw).trim().toUpperCase();let pid=null,pl=null;
@@ -1424,8 +1438,8 @@ function renderPal(){
   $('embList').innerHTML=Object.entries(EMB).sort((a,b)=>(b[1].seq||0)-(a[1].seq||0)).map(([id,e])=>{const c=embCalc(e),env=e.st==='enviado';
     return `<details class="card" data-ek="${id}" ${embOpenSet.has(id)?'open':''}><summary>🚛 ${esc(e.num)} <span class="pill p-aq" style="margin-left:6px">${c.cams.length} camión(es) · ${c.np} palets · ${c.tb} bultos</span> ${env?'<span class="pill p-ok">Enviado</span>':''}</summary>
     <div class="msg">${esc(e.n||e.u||'')} · ${fdt(e.ts)}</div>
-    ${c.cams.map((x,i)=>`<div class="crow"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>Camión ${i+1} · ${esc(x.chofer||'—')} · ${esc(x.placa||'—')}</b><span class="msg" style="margin:0">${x.pals.length} palets · ${fmt(x.b)} bultos · ${fmt(x.pz)} pzas</span></div>
-      ${env?'':`<input class="f" data-escan="${id}|${x.cid}" placeholder="Escanear palet (PAL-0001)" autocomplete="off" autocapitalize="characters" spellcheck="false" style="margin-top:8px">`}
+    ${c.cams.map((x,i)=>`<div class="crow"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>Camión ${i+1} · ${esc(x.chofer||'chofer pendiente')} · ${esc(x.placa||'—')}</b><span class="msg" style="margin:0">${x.pals.length} palets · ${fmt(x.b)} bultos · ${fmt(x.pz)} pzas</span></div>
+      ${env?'':`<button class="btn sm" data-ech="${id}|${x.cid}" style="margin-top:8px">${x.chofer&&x.placa?'✎ Cambiar chofer y placa':'👤 Asignar chofer y placa (al final)'}</button>`}${env?'':`<input class="f" data-escan="${id}|${x.cid}" placeholder="Escanear palet (PAL-0001)" autocomplete="off" autocapitalize="characters" spellcheck="false" style="margin-top:8px">`}
       ${x.pals.map(pl=>`<div class="prow" style="justify-content:space-between"><span class="tv">${esc(pl.num)}</span><span class="msg" style="margin:0">${pStores(pl).map(s=>esc(L(s.t))+' '+s.b).join(' · ')}</span>${env?'':`<button class="btn sm" data-erm="${id}|${x.cid}|${pl.id}">✕</button>`}</div>`).join('')}</div>`).join('')}
     ${c.st.length?`<div class="scroll"><table><tr><th>Tienda</th><th class="n">Transf.</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${c.st.map(s=>`<tr><td>${esc(LN(s.t))}</td><td class="n">${s.tf}</td><td class="n">${fmt(s.b)}</td><td class="n">${fmt(s.pz)}</td></tr>`).join('')}<tr><td><b>TOTAL</b></td><td class="n"><b>${c.tf.length}</b></td><td class="n"><b>${fmt(c.tb)}</b></td><td class="n"><b>${fmt(c.tp)}</b></td></tr></table></div>`:''}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${env?'':`<button class="btn sm" data-eadd="${id}">＋ Camión</button>`}<button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button><button class="btn pri sm" data-email="${id}">✉ ${env?'Reenviar':'Enviar'} correo</button>${ISADM&&!env?`<button class="btn sm" data-edel="${id}">🗑 Eliminar</button>`:''}</div></details>`}).join('')||'<div class="msg">Aún no hay embarques.</div>';
@@ -1436,6 +1450,7 @@ $('v-pal').addEventListener('toggle',e=>{const k=e.target.dataset&&e.target.data
 $('v-pal').addEventListener('keydown',e=>{if(e.key!=='Enter'||!e.target.dataset.escan)return;e.preventDefault();const [eid,cid]=e.target.dataset.escan.split('|'),v=e.target.value;e.target.value='';if(v.trim()){keepScan=eid+'|'+cid;scanQ=scanQ.then(()=>embScan(eid,cid,v)).then(()=>renderPal())}});
 $('v-pal').addEventListener('click',async e=>{
   const po=e.target.closest('[data-po]');if(po){openPal(po.dataset.po);return}
+  const ech=e.target.closest('[data-ech]');if(ech){const [ea,eb]=ech.dataset.ech.split('|');setCam(ea,eb);return}
   const a=e.target.closest('[data-eadd]');if(a){addCam(a.dataset.eadd);return}
   const pr=e.target.closest('[data-eprint]');if(pr){embPrint(pr.dataset.eprint);return}
   const m=e.target.closest('[data-email]');if(m){embMail(m.dataset.email);return}
