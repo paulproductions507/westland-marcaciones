@@ -166,7 +166,7 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
   <div class="wrap">
     <div id="v-rec">
       <div class="card"><h2 style="font-size:20px">Elige el recibo</h2><div class="msg" style="margin-top:4px">Selecciona el recibo que vas a trabajar.</div></div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn sm" id="recStat">📊 Estadística</button><div id="recAdm" class="hide" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="recAuto">⚡ Pedidos automáticos</button><button class="btn sm" id="recTun">🚇 Túnel</button><button class="btn sm" id="recTunM">✍️ Túnel manual</button><button class="btn sm" id="recPro">📈 Productividad</button><button class="btn sm" id="recPal">🧱 Palets</button><button class="btn sm" id="recPkl">📋 Packing list</button><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn sm" id="recStat">📊 Estadística</button><div id="recAdm" class="hide" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="recAuto">⚡ Pedidos automáticos</button><button class="btn sm" id="recTun">🚇 Túnel</button><button class="btn sm" id="recTunM">✍️ Túnel manual</button><button class="btn sm" id="recPro">📈 Productividad</button><button class="btn sm" id="recPal">🧱 Palets</button><button class="btn sm" id="recPrf">🧾 Proformas manuales</button><button class="btn sm" id="recPkl">📋 Packing list</button><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div></div>
       <div id="recTabs" style="display:flex;gap:8px;margin-bottom:12px"></div>
       <div id="recList"></div>
     </div>
@@ -174,7 +174,8 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
       <div class="msg">Sube el PDF (o una captura PNG/JPG) de la pantalla de Chequeo. La app lee la transferencia, la tienda y los productos; tú revisas y guardas.</div>
       <div class="lbl" style="margin-top:10px">Tipo (si el PDF es del sistema, se detecta solo)</div><select class="f" id="auSrc"><option value="auto">⚡ Automático (pedido automático)</option><option value="tun">🚇 Túnel (transferencia de un recibo)</option></select>
       <div class="lbl" style="margin-top:10px">PDF o captura</div><input class="f" type="file" id="auFile" accept=".pdf,image/*"><div class="msg" id="auMsg"></div></div>
-    <div id="auReview"></div><div class="card"><div class="slbl">Transferencias cargadas</div><div id="auList"></div></div></div>
+    <div id="pfCard" class="card hide"><h3 style="font-size:16px">Proformas manuales (clientes)</h3><div class="msg" style="margin-bottom:8px">1) Descarga la plantilla y escribe en una columna el producto y en la otra su cantidad. 2) Súbela y completa el número de proforma, el cliente y el surtidor. 3) Las piezas descuentan del saldo de Bodega del recibo donde está el producto y suman a la producción del surtidor. Si un código se excede, pasa a Diferencias para auditoría. Los productos sin recibo van al recibo PROFORMAS: solo suman a producción (sin comparar con Bodega) hasta que subas su recibo y los trasladen.</div><button class="btn sm" id="pfTpl" style="width:100%">⬇ Descargar plantilla (Excel)</button><div class="lbl" style="margin-top:10px">Plantilla con productos y cantidades</div><input class="f" type="file" id="pfFile" accept=".xlsx,.xls,.csv"><div class="msg" id="pfMsg"></div></div>
+    <div id="auReview"></div><div class="card"><div class="slbl" id="auListT">Transferencias cargadas</div><div id="auList"></div></div></div>
     <div id="v-pro" class="hide"><div id="prFil"></div><div id="prBody"></div></div>
     <!-- PALETS Y EMBARQUES -->
     <div id="palwrap">
@@ -188,8 +189,9 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
       <div id="histList"></div>
     </div>
     <div id="v-pkl" class="hide">
-      <div class="card"><h3 style="font-size:16px">Packing list</h3><div class="msg" style="margin-bottom:8px">1) Indica cuántos camiones son y carga los palets listos escaneando su etiqueta (si llega otro camión, cambia la cantidad). 2) Completa el packing list. 3) Recién ahí se asigna el chofer y la placa, y se envía por correo.</div><button class="btn pri" id="embNew" style="width:100%">＋ Nuevo packing list</button></div>
+      <div class="card"><h3 style="font-size:16px">Packing list</h3><div class="msg" style="margin-bottom:8px">1) Indica cuántos camiones son y carga los palets listos escaneando su etiqueta (si llega otro camión, cambia la cantidad). 2) Completa el packing list. 3) Recién ahí se asigna el chofer y la placa. 4) Pulsa “Despachar” (se puede enviar el correo antes o después): queda guardado en el historial de despachados.</div><button class="btn pri" id="embNew" style="width:100%">＋ Nuevo packing list</button></div>
       <div id="embList"></div>
+      <div id="embDone"></div>
     </div>
     </div>
 
@@ -263,7 +265,7 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
     <!-- DIFERENCIAS -->
     <div id="v-dif" class="hide">
       <div class="card hero"><div><div class="lbl">Referencias con diferencia</div><div class="big" id="dfRef">0</div></div><div><div class="lbl">Neto piezas</div><div class="sora" style="font-size:20px" id="dfNet">0</div></div><button class="btn sm" id="dfXls" style="margin-left:auto">📥 Excel</button></div>
-      <div class="msg" style="margin:0 2px 10px">Informativo: Bodega no se modifica. Valida contra el físico y solicita el ajuste.</div>
+      <div class="msg" style="margin:0 2px 10px">Las proformas manuales descuentan del saldo de Bodega; si un código se excede, la diferencia queda aquí para ajustar. Valida contra el físico y solicita el ajuste.</div>
       <div id="dfList"></div>
     </div>
 
@@ -317,6 +319,7 @@ const storesFor=items=>BASE_ST.filter(t=>t!=="ECOM"||items.some(x=>(x.s.ECOM||0)
 const TILES=()=>[...STORES,"BODEGA"];
 const L=t=>({ECOM:"E-commerce",CRISTAL:"Cristal",BODEGA:"Bodega"}[t]||t);
 const NAMES={S4:"Los Pueblos",S5:"San Miguelito",S6:"Los Andes",S7:"Albrook Mall",S8:"El Dorado",S9:"Westland",S11:"Santiago",S12:"Vía España",S13:"Soho Mall",S14:"Santa María"};
+const PSEUDO={AUTO:'PEDIDOS AUTOMÁTICOS',TUNEL:'TÚNEL',PROFORMAS:'PROFORMAS'},TUID='TUNEL',PFID='PROFORMAS',isPs=id=>!!PSEUDO[id];
 const LN=t=>NAMES[t]?`${L(t)} · ${NAMES[t]}`:L(t);
 const ckey=c=>(String(c.c||'')+'~'+String(c.pos||'')).toLowerCase().replace(/[^a-z0-9~]+/g,'_');
 const hasCli=p=>Object.values(CLI).some(c=>c.p===p);
@@ -347,7 +350,7 @@ async function showRecList(){
   $('v-stat').classList.add('hide');$('v-auto').classList.add('hide');$('v-pro').classList.add('hide');$('v-pal').classList.add('hide');$('v-pkl').classList.add('hide');$('mst').classList.add('hide');
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();offLog=offCli=offDsp=offTrf=offTb=offDs=offBg=null;cur=null;RECIBO=null;$('recAdm').classList.toggle('hide',!ISADM);
   $('v-recibo').classList.add('hide');$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Consultas';
-  await loadUploaded();if(RECS.AUTO)PROV.AUTO='PEDIDOS AUTOMÁTICOS';await migrateAuto(Object.keys(RECS));autoProv().then(ch=>{if(ch&&!$('v-rec').classList.contains('hide'))showRecList()});const allIds=Object.keys(RECS);const nC=allIds.filter(id=>COMP[id]).length;
+  await loadUploaded();for(const k in PSEUDO)if(RECS[k])PROV[k]=PSEUDO[k];await migrateAuto(Object.keys(RECS));autoProv().then(ch=>{if(ch&&!$('v-rec').classList.contains('hide'))showRecList()});const allIds=Object.keys(RECS);const nC=allIds.filter(id=>COMP[id]).length;
   $('recTabs').innerHTML=`<button class="btn sm ${recTab==='a'?'pri':''}" data-rtab="a">En proceso (${allIds.length-nC})</button><button class="btn sm ${recTab==='c'?'pri':''}" data-rtab="c">✔ Completados (${nC})</button>`;
   const ids=allIds.filter(id=>!!COMP[id]===(recTab==='c'));
   if(!ids.length){$('recList').innerHTML=`<div class="msg">${recTab==='c'?'Aún no hay recibos completados.':'No hay recibos en proceso.'}</div>`;return}
@@ -391,8 +394,9 @@ onAuthStateChanged(auth,async u=>{
 });
 
 // ---------- cálculos ----------
-let _eL=null,_eA=[],_eX={};
-function entries(){if(_eL!==LOG){_eL=LOG;_eA=Object.entries(LOG).map(([k,v])=>({k,...v}));_eX={};for(const e of _eA){const z=e.p+'|'+e.t;_eX[z]=(_eX[z]||0)+(e.q||0)}}return _eA}
+let _eL=null,_eA=[],_eX={},_eB={};
+function entries(){if(_eL!==LOG){_eL=LOG;_eA=Object.entries(LOG).map(([k,v])=>({k,...v}));_eX={};_eB={};for(const e of _eA){if(e.bd||e.nb){if(e.bd)_eB[e.p]=(_eB[e.p]||0)+(e.q||0);continue}const z=e.p+'|'+e.t;_eX[z]=(_eX[z]||0)+(e.q||0)}}return _eA}
+function bodUsed(p){entries();return _eB[p]||0}
 function sur(p,t){entries();return _eX[p+'|'+t]||0}
 function totalsOf(x){let a=0,s=0;for(const t of STORES){a+=x.s[t]||0;s+=Math.min(sur(x.p,t),x.s[t]||0)}return{a,s}}
 function stateOf(x){const{a,s}=totalsOf(x);return a===0?'none':s>=a?'ok':s>0?'wn':'no'}
@@ -471,7 +475,7 @@ function renderProd(){
    <div class="kv"><div><span class="lbl">Código barras</span><b style="font-family:'DM Mono'">${x.upc}</b></div><div><span class="lbl">Recibido</span><b>${fmt(x.rec)}</b></div><div><span class="lbl">Pza x bulto</span><b>${fmt(x.pb)}</b></div><div><span class="lbl">Total bultos</span><b style="color:var(--ac)">${fmtB(bul(x))}</b></div><div><span class="lbl">Precio</span><b>$${Number(x.pr||0).toFixed(2)}</b></div><div><span class="lbl">Dist. tiendas</span><b>${fmt(x.dt)}</b></div></div>
    <div class="msg" style="margin-top:8px">${esc([x.dep,x.div,x.lin,x.sub].filter(Boolean).join(' › '))}</div>`;
   $('tiles').innerHTML=TILES().filter(t=>t==='BODEGA'||t==='CRISTAL'||(x.s[t]||0)>0||sur(x.p,t)>0).map(t=>{
-    if(t==='BODEGA'){return `<div class="tile bod"><div class="hd"><b>Bodega</b><small>${x.p}</small></div><div class="bd">Saldo<br><b style="font-size:22px;color:var(--ac)">${fmt(x.s.BODEGA||0)}</b><div class="tr" style="color:var(--mt)">Para almacenar</div>${(()=>{const df=diffNet(x);return df?`<div style="margin-top:6px;font-weight:800" class="${df<0?'neg':'pos'}">Diferencia: ${sg(df)} pzas</div><div class="tr" style="color:var(--mt)">Validar físico y solicitar ajuste</div>`:''})()}</div></div>`}
+    if(t==='BODEGA'){return `<div class="tile bod"><div class="hd"><b>Bodega</b><small>${x.p}</small></div><div class="bd">Saldo<br><b style="font-size:22px;color:var(--ac)">${fmt(Math.max(0,(x.s.BODEGA||0)-bodUsed(x.p)))}</b><div class="tr" style="color:var(--mt)">${bodUsed(x.p)?`Saldo ${fmt(x.s.BODEGA||0)} − proformas ${fmt(bodUsed(x.p))}`:'Para almacenar'}</div>${(()=>{const df=diffNet(x);return df?`<div style="margin-top:6px;font-weight:800" class="${df<0?'neg':'pos'}">Diferencia: ${sg(df)} pzas</div><div class="tr" style="color:var(--mt)">Validar físico y solicitar ajuste</div>`:''})()}</div></div>`}
     const a=x.s[t]||0,s=sur(x.p,t),pend=Math.max(0,a-s),S=sel[t];
     const isD=!!DSP[x.p];const cls=isD?'dsp':(a>0&&s>=a?'full':s>0?'part':'');
     const trs=[...new Set(entries().filter(e=>e.p===x.p&&e.t===t&&e.tr).map(e=>e.tr))];
@@ -882,7 +886,9 @@ function dspMail(id){const d=DS[id],{it,tb,tp}=dspTotals(d);
   location.href='mailto:?subject='+encodeURIComponent(`Lista de empaque ${d.num} · Recibo ${RECIBO}`)+'&body='+encodeURIComponent(lines.join('\n'))}
 
 // ---------- Diferencias (informativo) ----------
-function diffsOf(x){const r=[];for(const t of STORES){const a=x.s[t]||0,s=sur(x.p,t);if((s>0||DSP[x.p])&&s!==a)r.push({t,a,s,d:s-a})}return r}
+function diffsOf(x){const r=[];for(const t of STORES){const a=x.s[t]||0,s=sur(x.p,t);if((s>0||DSP[x.p])&&s!==a)r.push({t,a,s,d:s-a})}
+  {const bs=x.s.BODEGA||0,bu=bodUsed(x.p);if(bu>bs)r.push({t:'BODEGA',a:bs,s:bu,d:bu-bs})} // proformas que exceden el saldo de Bodega
+  return r}
 function diffNet(x){return diffsOf(x).reduce((a,r)=>a+r.d,0)}
 function difRows(){return DATA.map(x=>({x,df:diffsOf(x)})).filter(o=>o.df.length).map(o=>({...o,net:o.df.reduce((a,r)=>a+r.d,0)})).sort((a,b)=>Math.abs(b.net)-Math.abs(a.net))}
 function renderDif(){
@@ -911,7 +917,7 @@ function resub(){
 async function softRefresh(){
   const b=$('btnRef');if(b.classList.contains('spin'))return;b.classList.add('spin');
   try{
-    await loadUploaded();if(RECS.AUTO)PROV.AUTO='PEDIDOS AUTOMÁTICOS';
+    await loadUploaded();for(const k in PSEUDO)if(RECS[k])PROV[k]=PSEUDO[k];
     if(RECIBO){
       if(RECS[RECIBO]){DATA=dataOf(RECIBO);STORES=storesFor(DATA);byProd=Object.fromEntries(DATA.map(x=>[x.p,x]));if(cur&&byProd[cur.p])cur=byProd[cur.p]}
       resub()
@@ -937,8 +943,8 @@ async function statLoad(force){
 }
 async function statReload(force){try{await statLoad(force);buildFilters();renderStat()}catch(e){$('stBody').innerHTML='<div class="msg">No se pudo cargar: '+esc(e.code||e.message)+'</div>'}}
 function buildEv(){
-  const sv=[],dv=[],DM={};for(const id of Object.keys(RECS)){if(id!==AUID)for(const x of RECS[id].items){const d0=RECDEP[id]||x.dep;if(d0&&!DM[x.p])DM[x.p]=d0}}
-  for(const x of (RECS[AUID]?RECS[AUID].items:[]))if(x.dep&&!DM[x.p])DM[x.p]=x.dep;
+  const sv=[],dv=[],DM={};for(const id of Object.keys(RECS)){if(!isPs(id))for(const x of RECS[id].items){const d0=RECDEP[id]||x.dep;if(d0&&!DM[x.p])DM[x.p]=d0}}
+  for(const k in PSEUDO)for(const x of (RECS[k]?RECS[k].items:[]))if(x.dep&&!DM[x.p])DM[x.p]=x.dep;
   for(const id of Object.keys(RECS)){const c=STC[id];if(!c)continue;const it=RECS[id].items,by=Object.fromEntries(it.map(x=>[x.p,x])),st=storesFor(it),prov=PROV[id]||'',sp={};
     const mp=new Set();
     for(const e of Object.values(c.log||{})){if(e.mir){mp.add(e.p);continue}const q=e.q||0;sp[e.p+'|'+e.t]=(sp[e.p+'|'+e.t]||0)+q;const x=by[e.p];sv.push({id,prov,p:e.p,r:e.r||(x&&x.ref)||'',ds:(x&&x.d)||'',dep:RECDEP[id]||(x&&x.dep)||DM[e.p]||'Sin departamento',h:e.au?1:0,t:e.t,q,b:0,u:e.n||e.u||'—',uu:e.u||'',d:e.d||'',ts:e.ts||0})}
@@ -1062,8 +1068,8 @@ function svgBars(rows,lbl){ // barras dobles: surtido (verde) y despacho (ámbar
   return `<div class="scroll"><svg viewBox="0 0 ${W} ${H+34}" style="width:${W}px;max-width:none;height:auto">${rows.map((r,i)=>{const x=i*64+8,hs=Math.round(r.s/mx*H),hd=Math.round(r.d/mx*H);
     return `<rect x="${x}" y="${H-hs}" width="${bw}" height="${hs}" rx="4" fill="#2de2c9"/><rect x="${x+bw+3}" y="${H-hd}" width="${bw}" height="${hd}" rx="4" fill="#f5a623"/><text x="${x+bw}" y="${H-Math.max(hs,hd)-4}" font-size="10" text-anchor="middle" fill="currentColor">${fmt(Math.max(r.s,r.d))}</text><text x="${x+bw}" y="${H+14}" font-size="10" text-anchor="middle" fill="currentColor">${esc(lbl(r.k)[0])}</text><text x="${x+bw}" y="${H+27}" font-size="9" text-anchor="middle" fill="currentColor" opacity=".7">${esc(lbl(r.k)[1]||'')}</text>`}).join('')}</svg></div><div class="msg"><span style="color:#2de2c9">■</span> Surtido &nbsp; <span style="color:#f5a623">■</span> Despacho</div>`}
 function renderPro(){
-  const [a,b]=prRange(),f=PRF,ok=e=>e.d>=a&&e.d<=b&&(!f.dep||e.dep===f.dep)&&(!f.t||e.t===f.t)&&(!f.tipo||(f.tipo==='auto')===(e.id==='AUTO'));
-  const sv=STEV.sv.filter(ok),dv=STEV.dv.filter(ok),err=STERR.filter(e=>{const d=ymd(e.ts);return d>=a&&d<=b&&(!f.tipo||(f.tipo==='auto')===(e.id==='AUTO'))});
+  const [a,b]=prRange(),f=PRF,ok=e=>e.d>=a&&e.d<=b&&(!f.dep||e.dep===f.dep)&&(!f.t||e.t===f.t)&&(!f.tipo||(f.tipo==='auto')===isPs(e.id));
+  const sv=STEV.sv.filter(ok),dv=STEV.dv.filter(ok),err=STERR.filter(e=>{const d=ymd(e.ts);return d>=a&&d<=b&&(!f.tipo||(f.tipo==='auto')===isPs(e.id))});
   const S=sumF(sv,e=>e.q),D=sumF(dv,e=>e.q),Bu=sumF(dv,e=>e.b),svP=sv.filter(e=>!e.h),Sp=sumF(svP,e=>e.q),Sh=S-Sp,men=svP.length,pp={};
   svP.forEach(e=>{const o=(pp[e.u]=pp[e.u]||{s:0,n:0,days:new Set(),err:0,ts:[]});o.s+=e.q;o.n++;o.days.add(e.d)});
   err.forEach(e=>{const k=e.wn||e.who;if(pp[k])pp[k].err++;else pp[k]={s:0,n:0,days:new Set(),err:1}});
@@ -1140,9 +1146,9 @@ function parseTransfer(t){
   const re=/(?:([A-Z0-9][A-Z0-9\-\/\.]{3,})\s+)?(?<!\d)(\d{7})(?!\d)\s+(-?\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+(?:\.\d+)?)/g,ms=[...b.matchAll(re)];
   const lines=ms.map((m,i)=>({ref:m[1]||'',p:m[2],inv:+m[3],sol:+m[4],res:+m[5],desp:+m[6],bul:+m[7],pr:+m[8],d:b.slice(m.index+m[0].length,ms[i+1]?ms[i+1].index:b.length).replace(/[▼▲\s]+$/,'').trim()}));
   return{tr,ts:parseTs(fs),sur,org,des,nota,t:guessStore(des),lines,tot}}
-function openAu(mode){$('v-rec').classList.add('hide');$('v-auto').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent=mode==='auto'?'Pedidos automáticos':mode==='tun'?'Túnel':'Túnel manual';window.scrollTo(0,0);AU=null;$('auReview').innerHTML='';$('auMsg').textContent='';
-  $('auUpCard').classList.toggle('hide',mode==='tunm');$('auSrc').value=mode==='auto'?'auto':'tun';auList();if(mode==='tunm')auManualStart()}
-$('recAuto').onclick=()=>openAu('auto');$('recTun').onclick=()=>openAu('tun');$('recTunM').onclick=()=>openAu('tunm');
+function openAu(mode){$('v-rec').classList.add('hide');$('v-auto').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent=mode==='auto'?'Pedidos automáticos':mode==='tun'?'Túnel':mode==='prf'?'Proformas manuales':'Túnel manual';window.scrollTo(0,0);AU=null;$('auReview').innerHTML='';$('auMsg').textContent='';
+  $('auUpCard').classList.toggle('hide',mode==='tunm'||mode==='prf');$('pfCard').classList.toggle('hide',mode!=='prf');$('pfMsg').textContent='';$('auListT').textContent=mode==='prf'?'Proformas manuales cargadas':'Transferencias cargadas';$('auSrc').value=mode==='auto'?'auto':'tun';if(mode==='prf')pfList();else auList();if(mode==='tunm')auManualStart()}
+$('recPrf').onclick=()=>openAu('prf');$('recAuto').onclick=()=>openAu('auto');$('recTun').onclick=()=>openAu('tun');$('recTunM').onclick=()=>openAu('tunm');
 // Túnel manual: se arma la transferencia a mano (sin PDF) y usa el mismo guardado del túnel
 async function auManualStart(){AU={tr:'',ts:Date.now(),sur:'',surRaw:'',suru:'',org:'BODEGA FRANGIPANI',des:'',nota:'TÚNEL MANUAL',t:'',lines:[],tot:0,src:'tun',det:1,rc:'',bul:0,manual:1,file:'manual'};
   await auLoadDir();const me=UDIR.find(x=>x.u===USER);if(me){AU.suru=me.u;AU.sur=me.n}await auLoadLogs();auRender()}
@@ -1160,12 +1166,13 @@ $('auFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f
     if(!AU.tr||!AU.lines.length){$('auMsg').textContent=`No pude leer ${!AU.tr?'el número de transferencia':'las líneas'}. ${/pdf/i.test(f.type)?'Usa el PDF generado desde el navegador (Imprimir → Guardar como PDF).':'Prueba con una captura más grande y nítida, o con el PDF.'}`;if(!AU.lines.length)return}
     else $('auMsg').textContent='';
     AUL={};if(AU.src==='tun')await auLoadLogs();auRender()}catch(err){$('auMsg').textContent='Error: '+(err.message||err)}};
-async function auLoadLogs(){AUL={};await Promise.all(Object.keys(RECS).filter(id=>id!==AUID&&(!AU||!AU.rc||id===AU.rc)).map(async id=>{try{AUL[id]=(await get(R(db,`meta_v1/consultas/${id}/log`))).val()||{}}catch(e){AUL[id]={}}}))}
+async function auLoadLogs(){AUL={};await Promise.all(Object.keys(RECS).filter(id=>!isPs(id)&&(!AU||!AU.rc||id===AU.rc)).map(async id=>{try{AUL[id]=(await get(R(db,`meta_v1/consultas/${id}/log`))).val()||{}}catch(e){AUL[id]={}}}))}
 function auMatch(l){ // túnel: entradas de surtido de ese producto y tienda en los recibos
   const r=[];for(const [id,lg] of Object.entries(AUL)){if(AU.rc&&id!==AU.rc)continue;const hit=Object.entries(lg).filter(([,e])=>e.p===l.p&&e.t===AU.t);if(hit.length)r.push({id,hit,q:hit.reduce((a,[,e])=>a+(e.q||0),0),has:hit.some(([,e])=>e.tr&&e.tr!==AU.tr)})}return r}
 function auRender(){
+  if(AU&&AU.prf){pfRender();return}
   const a=AU,tun=a.src==='tun',sum=a.lines.reduce((x,l)=>x+(l.desp||0),0),bu=a.lines.reduce((x,l)=>x+(l.bul||0),0);
-  const rows=a.lines.map((l,i)=>{let st='';if(tun){const m=l.desp>0&&a.t?auMatch(l):[];st=!a.t?'—':!l.desp?'Sin despacho':!m.length?(AU.rc&&RECS[AU.rc]&&RECS[AU.rc].items.some(x=>x.p===l.p)?'<span class="pill p-aq">Se registra en el recibo</span>':'<span class="pill p-wn">→ Túnel automático</span>'):m.map(x=>`<span class="pill ${x.has?'p-wn':x.q===l.desp?'p-ok':'p-wn'}">#${x.id} · surtido ${x.q}${x.has?' · ya tiene otra transf.':x.q!==l.desp?' ≠ '+l.desp:''}</span>`).join(' ')}
+  const rows=a.lines.map((l,i)=>{let st='';if(tun){const m=l.desp>0&&a.t?auMatch(l):[];st=!a.t?'—':!l.desp?'Sin despacho':!m.length?(AU.rc&&RECS[AU.rc]&&RECS[AU.rc].items.some(x=>x.p===l.p)?'<span class="pill p-aq">Se registra en el recibo</span>':'<span class="pill p-wn">→ Recibo TÚNEL</span>'):m.map(x=>`<span class="pill ${x.has?'p-wn':x.q===l.desp?'p-ok':'p-wn'}">#${x.id} · surtido ${x.q}${x.has?' · ya tiene otra transf.':x.q!==l.desp?' ≠ '+l.desp:''}</span>`).join(' ')}
     return `<tr><td>${esc(l.ref)}</td><td>${esc(l.p)}</td><td>${esc(l.d)}</td><td class="n"><input class="f" type="number" min="0" data-ad="${i}" value="${l.desp}" style="width:70px;padding:6px"></td><td class="n">${l.bul}</td>${tun?`<td>${st}</td>`:''}<td><button class="btn sm" data-arm="${i}">✖</button></td></tr>`}).join('');
   $('auReview').innerHTML=`<div class="card"><div class="slbl">${tun?'🚇 Túnel':'⚡ Automático'} · revisa antes de guardar</div>
    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
@@ -1178,16 +1185,17 @@ function auRender(){
     <div><div class="lbl">${a.manual?'Bultos':'Bultos (del PDF)'}</div><input class="f" type="number" min="0" data-af="bul" value="${a.bul||0}"></div></div>
    ${(UDIR.length&&!a.suru)?`<div class="msg" style="color:var(--wn)">⚠ ${a.surRaw?`El PDF dice “${esc(a.surRaw)}”, que no coincide con ningún usuario de la app. Elige quién es; se recordará para la próxima.`:'No se detectó el surtidor en el PDF. Elígelo antes de guardar.'}</div>`:''}
    ${a.est&&!/despach/i.test(a.est)?`<div class="msg" style="color:var(--wn)">⚠ El estatus en el PDF es “${esc(a.est)}”, no Despachada.</div>`:''}
-   ${tun?`<div class="msg">${a.rc&&RECS[a.rc]?`El recibo #${esc(a.rc)} está en la app: la transferencia se asigna a ese recibo y sus productos reciben el número de transferencia. Los productos que no estén en ese recibo pasan a Pedidos automáticos (túnel automático).`:a.rc?`El recibo #${esc(a.rc)} no está en la app: la transferencia se agrega al recibo de Túnel automático (Pedidos automáticos), sin duplicar nada.`:'Escribe el número de recibo para mapearlo.'}</div>`:''}
+   ${tun?`<div class="msg">${a.rc&&RECS[a.rc]?`El recibo #${esc(a.rc)} está en la app: la transferencia se asigna a ese recibo y sus productos reciben el número de transferencia. Los productos que no estén en ese recibo pasan al recibo TÚNEL.`:a.rc?`El recibo #${esc(a.rc)} no está en la app: la transferencia se agrega al recibo TÚNEL; cuando subas ese recibo, usa “Trasladar productos…” para moverla a su origen con su número de transferencia.`:'Escribe el número de recibo para mapearlo.'}</div>`:''}
    <div class="msg">Destino: ${esc(a.des||'—')} · Origen: ${esc(a.org||'—')}${a.nota?' · Nota: '+esc(a.nota):''}</div>
    ${a.manual?`<div class="card" style="margin:10px 0;padding:10px"><div class="lbl">Agregar producto</div><div style="display:flex;gap:8px;margin-top:6px"><input class="f" id="auMCode" placeholder="Producto, estilo o código de barras" autocomplete="off" style="flex:1"><input class="f" id="auMQty" type="number" min="1" placeholder="Cant." style="width:80px"><button class="btn pri sm" id="auMAdd">＋</button></div></div>`:''}
    <div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th>Descripción</th><th class="n">Desp.</th><th class="n">Bultos</th>${tun?'<th>Relación con recibos</th>':''}<th></th></tr>${rows}</table></div>
    <div class="msg">${fmt(a.lines.length)} líneas · <b>${fmt(sum)}</b> piezas despachadas · ${fmt(bu)} bultos en el Gestor${a.tot&&a.tot!==sum?` · <span style="color:var(--wn)">⚠ el Gestor indica ${fmt(a.tot)} unidades surtidas</span>`:''}</div>
    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" id="auSave" style="flex:1">${tun?'Relacionar con los recibos':'Guardar pedido automático'}</button><button class="btn" id="auCancel">Cancelar</button></div></div>`}
-$('auReview').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.target.id==='auMCode'||e.target.id==='auMQty')){e.preventDefault();auManualAdd()}});
-$('auReview').addEventListener('input',e=>{const d=e.target.dataset;if(!AU)return;if(d.ad!==undefined){AU.lines[+d.ad].desp=Math.max(0,parseInt(e.target.value)||0)}else if(d.af==='ts'){AU.ts=new Date(e.target.value).getTime()||AU.ts}else if(d.af==='tr'||d.af==='sur'||d.af==='rc'){AU[d.af]=e.target.value.trim()}else if(d.af==='bul'){AU.bul=Math.max(0,parseInt(e.target.value)||0)}});
-$('auReview').addEventListener('change',async e=>{const d=e.target.dataset;if(!AU)return;if(d.af==='t'||d.af==='src'){AU[d.af]=e.target.value;if(AU.src==='tun')await auLoadLogs();auRender()}else if(d.af==='rc'){AU.rc=e.target.value.trim();await auLoadLogs();auRender()}else if(d.af==='suru'){AU.suru=e.target.value;const h=UDIR.find(x=>x.u===AU.suru);AU.sur=h?h.n:'';auRender()}else if(d.ad!==undefined)auRender()});
+$('auReview').addEventListener('keydown',e=>{if(AU&&AU.prf)return;if(e.key==='Enter'&&(e.target.id==='auMCode'||e.target.id==='auMQty')){e.preventDefault();auManualAdd()}});
+$('auReview').addEventListener('input',e=>{const d=e.target.dataset;if(!AU||AU.prf)return;if(d.ad!==undefined){AU.lines[+d.ad].desp=Math.max(0,parseInt(e.target.value)||0)}else if(d.af==='ts'){AU.ts=new Date(e.target.value).getTime()||AU.ts}else if(d.af==='tr'||d.af==='sur'||d.af==='rc'){AU[d.af]=e.target.value.trim()}else if(d.af==='bul'){AU.bul=Math.max(0,parseInt(e.target.value)||0)}});
+$('auReview').addEventListener('change',async e=>{const d=e.target.dataset;if(!AU||AU.prf)return;if(d.af==='t'||d.af==='src'){AU[d.af]=e.target.value;if(AU.src==='tun')await auLoadLogs();auRender()}else if(d.af==='rc'){AU.rc=e.target.value.trim();await auLoadLogs();auRender()}else if(d.af==='suru'){AU.suru=e.target.value;const h=UDIR.find(x=>x.u===AU.suru);AU.sur=h?h.n:'';auRender()}else if(d.ad!==undefined)auRender()});
 $('auReview').addEventListener('click',async e=>{
+  if(AU&&AU.prf)return;
   if(e.target.closest('#auMAdd')){auManualAdd();return}
   if(e.target.closest('#auCancel')){const m=AU&&AU.manual;AU=null;$('auReview').innerHTML='';if(m)auManualStart();return}
   const rm=e.target.closest('[data-arm]');if(rm){AU.lines.splice(+rm.dataset.arm,1);auRender();return}
@@ -1214,15 +1222,15 @@ async function auSave(btn){
 async function auUndo(tr,m){ // deshace una carga anterior de esa transferencia
   if(m.mode==='tun'&&m.recs){for(const id of (m.recs||[])){const lg=(await get(R(db,`meta_v1/consultas/${id}/log`))).val()||{},up={};Object.entries(lg).forEach(([k,e])=>{if(e.tr===tr)up[k+'/tr']=null});if(Object.keys(up).length)await update(R(db,`meta_v1/consultas/${id}/log`),up);
     const dp=(await get(R(db,`meta_v1/consultas/${id}/desp`))).val()||{},ud={};Object.entries(dp).forEach(([p,d])=>Object.entries(d.trs||{}).forEach(([t,v])=>{if(v===tr)ud[`${p}/trs/${t}`]=null}));if(Object.keys(ud).length)await update(R(db,`meta_v1/consultas/${id}/desp`),ud)}}
-  else{const lg=(await get(R(db,`meta_v1/consultas/${AUID}/log`))).val()||{},up={},items=RECS[AUID]?RECS[AUID].items:[];
+  else{const PU=m.pr||AUID;const lg=(await get(R(db,`meta_v1/consultas/${PU}/log`))).val()||{},up={},items=RECS[PU]?RECS[PU].items:[];
     Object.entries(lg).forEach(([k,e])=>{if(e.tr===tr){up[k]=null;const x=items.find(i=>i.p===e.p);if(x){x.s[e.t]=Math.max(0,(x.s[e.t]||0)-e.q);x.rec=Math.max(0,x.rec-e.q);x.dt=Math.max(0,x.dt-e.q)}}});
-    if(Object.keys(up).length){await update(R(db,`meta_v1/consultas/${AUID}/log`),up);await set(R(db,`meta_v1/consultas_recs/${AUID}/items`),items)}}
+    if(Object.keys(up).length){await update(R(db,`meta_v1/consultas/${PU}/log`),up);await set(R(db,`meta_v1/consultas_recs/${PU}/items`),items)}}
   if(m.route==='rc'&&m.rc&&RECS[m.rc]){try{const rb=`meta_v1/consultas/${m.rc}`,rl=(await get(R(db,rb+'/log'))).val()||{},u1={},rd=(await get(R(db,rb+'/desp'))).val()||{},u2={};
     Object.entries(rl).forEach(([k,e])=>{if(e.tr===tr){if(e.tn)u1[k]=null;else{u1[k+'/tr']=null;if(e.hu){u1[k+'/u']=e.hu;u1[k+'/n']='Consultas ERP';u1[k+'/au']=1;u1[k+'/hu']=null}}}});Object.entries(rd).forEach(([p,d])=>Object.entries(d.trs||{}).forEach(([t,v])=>{if(v===tr)u2[`${p}/trs/${t}`]=null}));
     if(Object.keys(u1).length)await update(R(db,rb+'/log'),u1);if(Object.keys(u2).length)await update(R(db,rb+'/desp'),u2);await remove(R(db,`${rb}/trfb/${m.t}_${tr}`));await remove(R(db,'meta_v1/consultas_prog/'+m.rc))}catch(e){}}
   if(m.rc&&RECS[m.rc]){try{const rl=(await get(R(db,`meta_v1/consultas/${m.rc}/log`))).val()||{},mu={};Object.entries(rl).forEach(([k,e])=>{if(e.mir===tr)mu[k+'/mir']=null});if(Object.keys(mu).length)await update(R(db,`meta_v1/consultas/${m.rc}/log`),mu);await remove(R(db,'meta_v1/consultas_prog/'+m.rc))}catch(e){}}
   await remove(R(db,`${AUB}/${tr}`))}
-const dataOf=id=>id==='AUTO'?[...RECS[id].items].sort((a,b)=>(b.ts||0)-(a.ts||0)):RECS[id].items;
+const dataOf=id=>isPs(id)?[...RECS[id].items].sort((a,b)=>(b.ts||0)-(a.ts||0)):RECS[id].items;
 const AUOFF=new Set();let AUTAB='n';
 const ymd=ts=>{const d=new Date(ts);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 async function auList(){
@@ -1230,41 +1238,42 @@ async function auList(){
   try{all=(await get(R(db,AUB))).val()||{};hist=(await get(R(db,'meta_v1/consultas_auto_hist'))).val()||{}}catch(e){}
   const rows=Object.values(all).sort((a,b)=>(b.ts||0)-(a.ts||0)),nw=rows.filter(m=>m.st==='new'),inc=rows.filter(m=>m.st!=='new'),show=AUTAB==='n'?nw:inc,hs=Object.values(hist).sort((a,b)=>b.ts-a.ts);
   const card=m=>`<div class="card" style="margin:0 0 8px"><div style="display:flex;gap:10px;align-items:center">${AUTAB==='n'?`<input type="checkbox" data-asel="${esc(m.tr)}" ${AUOFF.has(m.tr)?'':'checked'} style="width:22px;height:22px">`:''}<div style="flex:1"><b class="sora">${esc(m.tr)}</b> <span class="pill p-aq">${esc(LN(m.t))}</span>${m.mode==='tun'?` <span class="pill p-bl">🚇 Túnel${m.rc?' · recibo '+esc(m.rc):''}</span>`:''}<div class="msg" style="margin:4px 0 0">${fdt(m.ts)} · ${esc(m.sur||'')} · ${fmt(m.n||0)} ítems · ${fmt(m.pz||0)} pzas · ${fmt(m.bul||0)} bultos${AUTAB==='i'&&m.mode!=='tun'?` · agregada ${fdt(m.inc||m.ldt||m.ts)}`:''}${m.mode==='tun'?` · recibos ${(m.recs||[]).map(r=>'#'+r).join(', ')||'—'}`:''}</div></div></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap"><button class="btn sm pri" data-agoto="${esc(m.tr)}">🏷 Etiquetas de bultos</button><button class="btn sm" data-adel="${esc(m.tr)}">🗑 Quitar</button></div></div>`;
-  box.innerHTML=`<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><button class="btn sm ${AUTAB==='n'?'pri':''}" data-atab="n">Nuevas (${nw.length})</button><button class="btn sm ${AUTAB==='i'?'pri':''}" data-atab="i">Cargadas en el recibo (${inc.length})</button></div>`
+  box.innerHTML=`<button class="btn sm" id="auMig" style="width:100%;margin-bottom:10px">🔄 Trasladar productos de Túnel / Proformas a su recibo de origen</button><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><button class="btn sm ${AUTAB==='n'?'pri':''}" data-atab="n">Nuevas (${nw.length})</button><button class="btn sm ${AUTAB==='i'?'pri':''}" data-atab="i">Cargadas en el recibo (${inc.length})</button></div>`
     +(show.map(card).join('')||`<div class="msg">${AUTAB==='n'?'No hay transferencias nuevas. Sube un PDF arriba.':'Aún no hay transferencias cargadas en el recibo.'}</div>`)
     +(AUTAB==='n'&&nw.length?`<button class="btn pri" id="auDone" style="width:100%;margin-top:6px">${RECS[AUID]?'🔄 Actualizar recibo de pedidos automáticos':'✔ Completar y crear recibo de pedidos automáticos'}</button><div class="msg" style="text-align:center">Se agregan solo las marcadas. Todas vienen marcadas por defecto.</div>`:'')
     +(AUTAB==='i'&&hs.length?`<div class="slbl" style="margin-top:12px">Historial de actualizaciones</div>`+hs.map(h=>`<div class="msg" style="margin:3px 0">${fdt(h.ts)} · ${esc(h.by||'')} · ${h.nTr} transf. · <b>${fmt(h.nuevos)}</b> ítems nuevos · ${fmt(h.pz)} pzas · ${fmt(h.total)} ítems en el recibo</div>`).join(''):'');
   box.onchange=e=>{const c=e.target.dataset.asel;if(c){e.target.checked?AUOFF.delete(c):AUOFF.add(c)}};
   box.onclick=async e=>{
+    if(e.target.closest('#auMig')){await pseudoMigrate();auList();return}
     const tb=e.target.closest('[data-atab]');if(tb){AUTAB=tb.dataset.atab;auList();return}
     if(e.target.closest('#auDone')){auComplete(e.target.closest('#auDone'),nw);return}
     const gt=e.target.closest('[data-agoto]');
     if(gt){const g=all[gt.dataset.agoto];if(!g)return;const dest=auDest(g);
-      if(g.st==='new'){if(!confirm(`Esta transferencia está nueva. Se agregará a ${dest===AUID?'PEDIDOS AUTOMÁTICOS':'su recibo de origen #'+dest} y te llevo a Transferencias para generar las etiquetas de bultos. ¿Continuar?`))return;
+      if(g.st==='new'){if(!confirm(`Esta transferencia está nueva. Se agregará a ${isPs(dest)?'el recibo '+PSEUDO[dest]:'su recibo de origen #'+dest} y te llevo a Transferencias para generar las etiquetas de bultos. ¿Continuar?`))return;
         try{await auRun([g])}catch(err){toast('Error: '+(err.code||err.message));return}}
       auGoto(dest,g.tr);return}
     const d=e.target.closest('[data-adel]');if(!d)return;const tr=d.dataset.adel,m=all[tr];
     if(!confirm(`¿Quitar la transferencia ${tr}? ${m&&m.mode==='tun'?'Los recibos quedan como estaban (sin esa transferencia).':m&&m.st==='new'?'Todavía no está en el recibo.':'Se borra su surtido del recibo de pedidos automáticos.'}`))return;
     try{await auUndo(tr,m);toast('Transferencia quitada');auList()}catch(err){toast('Error: '+(err.code||err.message))}}
 }
-const auDest=m=>((m.st==='new'?m.mode==='tun':m.route==='rc')&&m.rc&&RECS[m.rc])?m.rc:AUID;
+const auDest=m=>((m.st==='new'?m.mode==='tun':m.route==='rc')&&m.rc&&RECS[m.rc])?m.rc:(m.st==='new'?(m.mode==='tun'?TUID:AUID):(m.pr||AUID));
 async function auComplete(btn,nw){
   const trs=nw.filter(m=>!AUOFF.has(m.tr));if(!trs.length){toast('Marca al menos una transferencia');return}
-  if(!confirm(`Se agregarán ${trs.length} transferencia(s) (${fmt(trs.reduce((a,m)=>a+(m.pz||0),0))} pzas). Las de túnel van a su recibo de origen si está en la app; las demás, al recibo PEDIDOS AUTOMÁTICOS. ¿Continuar?`))return;
-  btn.disabled=true;try{await auRun(trs);AUOFF.clear();auList()}catch(err){toast('Error: '+(err.code||err.message));btn.disabled=false}
+  if(!confirm(`Se agregarán ${trs.length} transferencia(s) (${fmt(trs.reduce((a,m)=>a+(m.pz||0),0))} pzas). Las de túnel van a su recibo de origen si está en la app, o al recibo TÚNEL si aún no está; las demás, al recibo PEDIDOS AUTOMÁTICOS. Los productos que ya tengan su recibo se trasladan a él. ¿Continuar?`))return;
+  btn.disabled=true;try{await auRun(trs);await pseudoMigrate(true);AUOFF.clear();auList()}catch(err){toast('Error: '+(err.code||err.message));btn.disabled=false}
 }
 async function auRun(trs){
-  const now=Date.now(),ab=`meta_v1/consultas/${AUID}`,items=RECS[AUID]?RECS[AUID].items.map(x=>({...x,s:{...x.s}})):[],by={};items.forEach(x=>by[x.p]=x);
-  const lg={},dp={},tb={},up={};let nuevos=0,pz=0,usedAuto=false,toRc=0;
-  const DEPX={};for(const rid of Object.keys(RECS)){if(rid!==AUID)for(const y of RECS[rid].items)if(!DEPX[y.p])DEPX[y.p]=y}
-  const toAuto=(m,lines,withBul)=>{const dd=ymd(m.ts),u=m.suru||('gestor-'+(m.sur||'bodega')),n=m.sur||'Gestor de Bodega';
+  const now=Date.now(),up={},TG={};let nuevos=0,pz=0,toRc=0;
+  const tgt=id=>{if(!TG[id]){const items=RECS[id]?RECS[id].items.map(x=>({...x,s:{...x.s}})):[],by={};items.forEach(x=>by[x.p]=x);TG[id]={ab:`meta_v1/consultas/${id}`,items,by,lg:{},dp:{},tb:{}}}return TG[id]};
+  const DEPX={};for(const rid of Object.keys(RECS)){if(!isPs(rid))for(const y of RECS[rid].items)if(!DEPX[y.p])DEPX[y.p]=y}
+  const toAuto=(m,lines,withBul)=>{const T=tgt(m.mode==='tun'?TUID:AUID),items=T.items,by=T.by,lg=T.lg,dp=T.dp,tb=T.tb,ab=T.ab,dd=ymd(m.ts),u=m.suru||('gestor-'+(m.sur||'bodega')),n=m.sur||'Gestor de Bodega';
     for(const l of lines){let x=by[l.p];if(!x){x={n:items.length+1,ref:l.ref,p:l.p,d:l.d,pb:0,pr:l.pr,rec:0,sal:0,dt:0,upc:(DEPX[l.p]&&DEPX[l.p].upc)||'',cr:0,sc:0,dep:(DEPX[l.p]&&DEPX[l.p].dep)||'',div:(DEPX[l.p]&&DEPX[l.p].div)||'',lin:(DEPX[l.p]&&DEPX[l.p].lin)||'',sub:(DEPX[l.p]&&DEPX[l.p].sub)||'',s:{}};items.push(x);by[l.p]=x;nuevos++}
       x.s[m.t]=(x.s[m.t]||0)+l.desp;x.rec+=l.desp;x.dt+=l.desp;x.ts=now;pz+=l.desp;
       lg[push(R(db,ab+'/log')).key]={p:l.p,r:l.ref||x.ref,t:m.t,q:l.desp,tr:m.tr,u,n,ts:m.ts,d:dd,ax:1,...(m.mode==='tun'?{tn:1,rc:m.rc||''}:{})};dp[l.p]={u,n,ts:m.ts,d:dd,r:l.ref||x.ref,ax:1,b:0}}
-    if(withBul&&m.bul>=1)tb[`${m.t}_${m.tr}`]={b:m.bul,u:USER,n:NAME,ts:now,ax:1};usedAuto=true};
+    if(withBul&&m.bul>=1)tb[`${m.t}_${m.tr}`]={b:m.bul,u:USER,n:NAME,ts:now,ax:1}};
   for(const m of trs){
     const lines=m.lines||[];up[m.tr+'/st']='inc';up[m.tr+'/inc']=now;
-    if(!(m.mode==='tun'&&m.rc&&RECS[m.rc])){toAuto(m,lines,true);up[m.tr+'/route']='auto';continue}
+    if(!(m.mode==='tun'&&m.rc&&RECS[m.rc])){toAuto(m,lines,true);up[m.tr+'/route']='auto';up[m.tr+'/pr']=m.mode==='tun'?TUID:AUID;continue}
     const id=m.rc,rb=`meta_v1/consultas/${id}`,rl=(await get(R(db,rb+'/log'))).val()||{},rd=(await get(R(db,rb+'/desp'))).val()||{},by2=Object.fromEntries(RECS[id].items.map(x=>[x.p,x])),dd=ymd(m.ts),u=m.suru||('gestor-'+(m.sur||'sistema')),n=m.sur||'Sistema',lgu={},dpu={},extra=[];
     for(const l of lines){
       const hit=Object.entries(rl).filter(([,e])=>e.p===l.p&&e.t===m.t);
@@ -1274,20 +1283,166 @@ async function auRun(trs){
     if(Object.keys(lgu).length)await auPut(rb+'/log',lgu);if(Object.keys(dpu).length)await auPut(rb+'/desp',dpu);
     if(m.bul>=1&&extra.length<lines.length)await update(R(db,rb+'/trfb'),{[`${m.t}_${m.tr}`]:{b:m.bul,u:USER,n:NAME,ts:now,ax:1}});
     try{await remove(R(db,'meta_v1/consultas_prog/'+id))}catch(e){}
-    up[m.tr+'/route']='rc';up[m.tr+'/xtra']=extra.length;toRc++;
+    up[m.tr+'/route']='rc';up[m.tr+'/xtra']=extra.length;if(extra.length)up[m.tr+'/pr']=TUID;toRc++;
     if(extra.length)toAuto(m,extra,false)}
-  if(usedAuto){
-    await set(R(db,'meta_v1/consultas_recs/'+AUID),{items,by:USER,ts:now,file:'Pedidos automáticos',fecha:FECHAS[AUID]||ymd(now),auto:1});RECS[AUID]={items};
-    await auPut(ab+'/log',lg);await auPut(ab+'/desp',dp);if(Object.keys(tb).length)await auPut(ab+'/trfb',tb);
-    if(!FECHAS[AUID]){FECHAS[AUID]=ymd(now);await set(R(db,'meta_v1/consultas_fechas/'+AUID),FECHAS[AUID])}
-    PROV[AUID]='PEDIDOS AUTOMÁTICOS';try{await remove(R(db,'meta_v1/consultas_prog/'+AUID));await remove(R(db,'meta_v1/consultas_comp/'+AUID));delete COMP[AUID]}catch(e){}}
+  for(const [id,T] of Object.entries(TG))await psSave(id,T,now);
   await update(R(db,AUB),up);
   await set(R(db,'meta_v1/consultas_auto_hist/'+now),{ts:now,by:USER,nTr:trs.length,trs:trs.map(m=>m.tr),nuevos,pz,total:items.length});
-  toast(`✅ ${trs.length} transferencia(s) agregadas${toRc?` (${toRc} a su recibo de origen)`:''}${usedAuto?` · ${nuevos} ítems nuevos en Pedidos automáticos`:''}`)
+  toast(`✅ ${trs.length} transferencia(s) agregadas${toRc?` (${toRc} a su recibo de origen)`:''}${Object.keys(TG).length?` · ${nuevos} ítems nuevos en recibos propios (Túnel / Pedidos automáticos)`:''}`)
 }
 function auGoto(id,tr){
   $('v-auto').classList.add('hide');$('v-rec').classList.add('hide');selectRecibo(id);let n=0;
   const iv=setInterval(()=>{n++;if((LD.log&&LD.dsp)||n>40){clearInterval(iv);const tb=document.querySelector('.tab[data-t="trf"]');if(tb)tb.click();const q=$('tq');q.value=tr;q.dispatchEvent(new Event('input',{bubbles:true}));window.scrollTo(0,0)}},150)}
+
+
+// ---------- Proformas manuales (clientes de Cristal) ----------
+// Plantilla Excel (Producto + Cantidad). Las piezas DESCUENTAN del saldo de Bodega del recibo donde está el producto;
+// si se exceden, la diferencia aparece en Diferencias (auditoría). Sin recibo → recibo propio PROFORMAS.
+const PFB='meta_v1/consultas_proformas';
+async function psSave(id,T,now){
+  await set(R(db,'meta_v1/consultas_recs/'+id),{items:T.items,by:USER,ts:now,file:PSEUDO[id],fecha:FECHAS[id]||ymd(now),auto:1});RECS[id]={items:T.items};
+  await auPut(T.ab+'/log',T.lg);if(Object.keys(T.dp).length)await auPut(T.ab+'/desp',T.dp);if(Object.keys(T.tb).length)await auPut(T.ab+'/trfb',T.tb);
+  if(!FECHAS[id]){FECHAS[id]=ymd(now);await set(R(db,'meta_v1/consultas_fechas/'+id),FECHAS[id])}
+  PROV[id]=PSEUDO[id];try{await remove(R(db,'meta_v1/consultas_prog/'+id));await remove(R(db,'meta_v1/consultas_comp/'+id));delete COMP[id]}catch(e){}}
+function pfTpl(){const ej=Object.keys(RECS).filter(id=>!isPs(id)).flatMap(id=>RECS[id].items||[]).filter(x=>x.p).slice(0,3);
+  const aoa=[['Producto','Cantidad'],...(ej.length?ej.map(x=>[Number(x.p),1]):[[1637118,1]])];
+  const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:18},{wch:12}];XLSX.utils.book_append_sheet(wb,ws,'Proforma');XLSX.writeFile(wb,'plantilla_proforma_manual.xlsx')}
+function pfCands(p){return Object.keys(RECS).filter(id=>!isPs(id)&&(RECS[id].items||[]).some(x=>String(x.p)===String(p)))}
+function pfItem(id,p){return id&&RECS[id]?(RECS[id].items||[]).find(x=>String(x.p)===String(p)):null}
+function pfUsed(id,p){return Object.values(AUL[id]||{}).filter(e=>e.p===p&&e.bd).reduce((a,e)=>a+(e.q||0),0)}
+function pfAvail(id,p){const x=pfItem(id,p);return x?Math.max(0,(x.s.BODEGA||0)-pfUsed(id,p)):0}
+function pfPick(p){const c=pfCands(p);return c.length?c.map(id=>({id,a:pfAvail(id,p)})).sort((a,b)=>b.a-a.a)[0].id:''}
+function pfRelink(){AU.lines.forEach(l=>{l.cands=pfCands(l.p);if(!l.rc||!l.cands.includes(l.rc))l.rc=pfPick(l.p)})}
+async function pfStart(rows,fname){
+  AU={prf:1,rc:'',lines:[]};await auLoadDir();await auLoadLogs();
+  const me=UDIR.find(x=>x.u===USER),map={},bad=[];
+  for(const r of rows){const code=String(r.c??'').trim().replace(/\.0+$/,''),q=Math.round(Number(String(r.q).replace(',','.')))||0;if(!code||!q)continue;
+    const x=auFindProd(code);const p=x?String(x.p):(/^\d{7}$/.test(code)?code:'');if(!p){bad.push(code);continue}
+    if(map[p])map[p].desp+=q;else map[p]={p,ref:x?x.ref:'',d:x?x.d:'',desp:q,pr:x?(x.pr||0):0,upc:x?(x.upc||''):''}}
+  AU={prf:1,manual:1,tr:'',cli:'',ts:Date.now(),suru:me?me.u:'',sur:me?me.n:'',t:'CRISTAL',lines:Object.values(map),bad,file:fname,src:'tun',det:1,rc:'',bul:0};
+  pfRelink();pfRender()}
+function pfExc(l){return l.rc?Math.max(0,l.desp-pfAvail(l.rc,l.p)):0} // sin recibo: no se compara con Bodega
+function pfRender(){
+  const a=AU,sum=a.lines.reduce((x,l)=>x+(l.desp||0),0),exc=a.lines.reduce((x,l)=>x+pfExc(l),0);
+  const rows=a.lines.map((l,i)=>{const it=pfItem(l.rc,l.p),bod=it?(it.s.BODEGA||0):0,av=l.rc?pfAvail(l.rc,l.p):0,ex=pfExc(l);
+    const rc=!l.cands.length?'<span class="pill p-wn">Sin recibo → PROFORMAS</span>':l.cands.length>1?`<select class="f" data-pr="${i}" style="padding:5px">${l.cands.map(id=>`<option value="${esc(id)}" ${l.rc===id?'selected':''}>#${esc(id)}</option>`).join('')}</select>`:`<span class="pill p-aq">#${esc(l.rc)}</span>`;
+    const st=!l.rc?'<span class="pill p-aq">Solo suma a producción (sin comparar)</span>':ex?`<span class="pill p-wn">Excede Bodega por ${fmt(ex)} → Diferencia ${fmt(ex)}</span>`:'<span class="pill p-ok">Cuadra con Bodega</span>';
+    return `<tr><td>${esc(l.ref)}</td><td>${esc(l.p)}</td><td>${esc(l.d)}</td><td class="n"><input class="f" type="number" min="0" data-pq="${i}" value="${l.desp}" style="width:70px;padding:6px"></td><td>${rc}</td><td class="n">${l.rc?fmt(bod):'—'}</td><td class="n">${l.rc?fmt(av):'—'}</td><td>${st}</td><td><button class="btn sm" data-prm="${i}">✖</button></td></tr>`}).join('');
+  $('auReview').innerHTML=`<div class="card"><div class="slbl">🧾 Proforma manual · Cristal · revisa antes de guardar</div>
+   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+    <div><div class="lbl">Número de proforma *</div><input class="f" data-pf="tr" maxlength="20" value="${esc(a.tr)}" placeholder="Ej. 1234"></div>
+    <div><div class="lbl">Cliente (Cristal) *</div><input class="f" data-pf="cli" maxlength="60" value="${esc(a.cli)}" placeholder="Nombre del cliente"></div>
+    <div><div class="lbl">Surtidor *</div>${UDIR.length?`<select class="f" data-pf="suru"><option value="">Elegir…</option>${UDIR.map(x=>`<option value="${esc(x.u)}" ${a.suru===x.u?'selected':''}>${esc(x.n)} (${esc(x.u)})</option>`).join('')}</select>`:`<input class="f" data-pf="sur" value="${esc(a.sur)}">`}</div>
+    <div><div class="lbl">Fecha y hora</div><input class="f" type="datetime-local" data-pf="ts" value="${toLocalIn(a.ts)}"></div></div>
+   ${(UDIR.length&&!a.suru)?'<div class="msg" style="color:var(--wn)">⚠ Elige el surtidor: es quien recibe el crédito en producción.</div>':''}
+   ${a.bad.length?`<div class="msg" style="color:var(--wn)">⚠ No encontré estos productos y se omitieron: ${a.bad.slice(0,12).map(esc).join(', ')}${a.bad.length>12?' (+'+(a.bad.length-12)+' más)':''}</div>`:''}
+   <div class="msg">Las piezas se <b>descuentan del saldo de Bodega</b> del recibo indicado; lo que exceda queda como <b>Diferencia</b> (auditoría). Los productos <b>sin recibo</b> van al recibo PROFORMAS: no se comparan con Bodega (no hay inventario), solo suman a la producción. Al subir su recibo y trasladarlos, ahí sí se comparan.</div>
+   <div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th>Descripción</th><th class="n">Cant.</th><th>Recibo</th><th class="n">Saldo bodega</th><th class="n">Disponible</th><th>Estado</th><th></th></tr>${rows}</table></div>
+   <div class="msg">${fmt(a.lines.length)} líneas · <b>${fmt(sum)}</b> piezas${exc?` · <span style="color:var(--wn)"><b>${fmt(exc)}</b> pasan a Diferencia</span>`:' · todo cuadra con Bodega'}</div>
+   <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" id="pfSave" style="flex:1">Guardar proforma</button><button class="btn" id="pfCancel">Cancelar</button></div></div>`}
+async function pfSave(btn){
+  const a=AU,pf=(a.tr||'').trim(),cn=(a.cli||'').trim();
+  if(!/^[\w-]{1,20}$/.test(pf)){toast('Escribe el número de proforma (letras, números o guiones)');return}
+  if(!cn){toast('Escribe el cliente de Cristal');return}
+  if(UDIR.length&&!a.suru){toast('Elige el surtidor');return}if(!a.sur&&!a.suru){toast('Escribe el surtidor');return}
+  const lines=a.lines.filter(l=>l.desp>0);if(!lines.length){toast('No hay piezas para guardar');return}
+  btn.disabled=true;
+  try{const old=(await get(R(db,`${PFB}/${pf}`))).val();
+    if(old){if(!confirm(`La proforma ${pf} ya está cargada. ¿Reemplazarla? Se deshace la anterior y se registra esta.`)){btn.disabled=false;return}await pfUndo(pf,old);await auLoadLogs();pfRelink()}
+    const now=Date.now(),t='CRISTAL',dd=ymd(a.ts),u=a.suru||('gestor-'+a.sur),n=a.sur||'Surtidor',refs=[],auto=[],exc=lines.reduce((x,l)=>x+pfExc(l),0);
+    const byR={};lines.forEach(l=>{(byR[l.rc||'']=byR[l.rc||'']||[]).push(l)});
+    for(const [rid,ls] of Object.entries(byR)){if(!rid)continue;
+      const rb=`meta_v1/consultas/${rid}`,lgu={};
+      for(const l of ls){const k=push(R(db,rb+'/log')).key;lgu[k]={p:l.p,r:l.ref||(pfItem(rid,l.p)||{}).ref||'',t,q:l.desp,tr:pf,u,n,ts:a.ts,d:dd,pf:1,bd:1,cn};refs.push({rid,k,p:l.p,q:l.desp})}
+      await auPut(rb+'/log',lgu);try{await remove(R(db,'meta_v1/consultas_prog/'+rid))}catch(e){}}
+    if(byR['']){const items=RECS[PFID]?RECS[PFID].items.map(x=>({...x,s:{...x.s}})):[],by={},T={ab:`meta_v1/consultas/${PFID}`,items,lg:{},dp:{},tb:{}};items.forEach(x=>by[x.p]=x);
+      for(const l of byR['']){if(!by[l.p]){const x={n:items.length+1,ref:l.ref,p:l.p,d:l.d,pb:0,pr:l.pr||0,rec:0,sal:0,dt:0,upc:l.upc||'',cr:0,sc:0,dep:'',div:'',lin:'',sub:'',s:{BODEGA:0}};items.push(x);by[l.p]=x}
+        const k=push(R(db,T.ab+'/log')).key;T.lg[k]={p:l.p,r:l.ref||by[l.p].ref,t,q:l.desp,tr:pf,u,n,ts:a.ts,d:dd,ax:1,pf:1,nb:1,cn};auto.push({k,p:l.p,q:l.desp})}
+      await psSave(PFID,T,now)}
+    await set(R(db,`${PFB}/${pf}`),{pf,t,cli:cn,ts:a.ts,ldt:now,suru:a.suru||'',sur:n,by:USER,file:a.file||'',pz:lines.reduce((x,l)=>x+l.desp,0),n:lines.length,exc,
+      lines:lines.map(l=>({p:l.p,ref:l.ref,d:l.d,q:l.desp,rc:l.rc||''})),refs,auto});
+    toast(`✅ Proforma ${pf} guardada (${fmt(lines.reduce((x,l)=>x+l.desp,0))} pzas) · suma a la producción de ${n}${exc?` · ${fmt(exc)} pzas pasan a Diferencias`:''}`);
+    AU=null;$('auReview').innerHTML='';pfList()}
+  catch(err){toast('Error: '+(err.code||err.message));btn.disabled=false}}
+async function pfUndo(pf,m){
+  for(const [rid,rs] of Object.entries((m.refs||[]).reduce((o,r)=>((o[r.rid]=o[r.rid]||[]).push(r),o),{}))){const rb=`meta_v1/consultas/${rid}`,up={};rs.forEach(r=>up[r.k]=null);await update(R(db,rb+'/log'),up);
+    try{await remove(R(db,'meta_v1/consultas_prog/'+rid))}catch(e){}}
+  if((m.auto||[]).length){const ab=`meta_v1/consultas/${PFID}`,up={};m.auto.forEach(r=>up[r.k]=null);await update(R(db,ab+'/log'),up);
+    const lg=(await get(R(db,ab+'/log'))).val()||{},have=new Set(Object.values(lg).map(e=>e.p)),items=(RECS[PFID]?RECS[PFID].items:[]).filter(x=>have.has(x.p)||x.rec>0);
+    await set(R(db,'meta_v1/consultas_recs/'+PFID+'/items'),items);RECS[PFID]={items}}
+  await remove(R(db,`${PFB}/${pf}`))}
+// Traslada lo que quedó en los recibos propios (TÚNEL / PROFORMAS) al recibo de origen cuando ese recibo ya está cargado
+async function pseudoMigrate(silent){
+  let moved=0;const sv=AU;
+  try{AU=null;await auLoadLogs();AU=sv;
+    const real=id=>!isPs(id)&&RECS[id],aub=(await get(R(db,AUB))).val()||{},aubUp={};
+    if(RECS[TUID]){
+      const tb=`meta_v1/consultas/${TUID}`,lg=(await get(R(db,tb+'/log'))).val()||{},bg=(await get(R(db,tb+'/bgen'))).val()||{},tfb=(await get(R(db,tb+'/trfb'))).val()||{};
+      const items=RECS[TUID].items.map(x=>({...x,s:{...x.s}})),by={};items.forEach(x=>by[x.p]=x);const mv={},gone=new Set();
+      for(const [k,e] of Object.entries(lg)){if(!e.tn||!e.rc||!real(e.rc)||bg[`${e.t}_${e.tr}`])continue;if(!(RECS[e.rc].items||[]).some(x=>String(x.p)===String(e.p)))continue;(mv[e.rc]=mv[e.rc]||{})[k]=e;gone.add(k)}
+      if(gone.size){
+        for(const [rid,es] of Object.entries(mv)){const rb=`meta_v1/consultas/${rid}`,rd=(await get(R(db,rb+'/desp'))).val()||{},add={},del={},dpu={};
+          for(const [k,e] of Object.entries(es)){const ne={...e};delete ne.ax;ne.mv=1;add[push(R(db,rb+'/log')).key]=ne;del[k]=null;
+            const x=by[e.p];if(x){x.s[e.t]=Math.max(0,(x.s[e.t]||0)-e.q);x.rec=Math.max(0,x.rec-e.q);x.dt=Math.max(0,x.dt-e.q)}
+            if(rd[e.p])dpu[`${e.p}/trs/${e.t}`]=e.tr;moved++}
+          await auPut(rb+'/log',add);if(Object.keys(dpu).length)await auPut(rb+'/desp',dpu);await auPut(tb+'/log',del);
+          try{await remove(R(db,'meta_v1/consultas_prog/'+rid))}catch(e){}}
+        const rem=Object.entries(lg).filter(([k])=>!gone.has(k)).map(([,e])=>e),remKey=new Set(rem.map(e=>`${e.t}_${e.tr}`)),remP=new Set(rem.map(e=>e.p));
+        for(const k of gone){const e=lg[k],key=`${e.t}_${e.tr}`;
+          if(tfb[key]){await update(R(db,`meta_v1/consultas/${e.rc}/trfb`),{[key]:tfb[key]});if(!remKey.has(key))await remove(R(db,`${tb}/trfb/${key}`))}
+          if(!remP.has(e.p))await remove(R(db,`${tb}/desp/${e.p}`));
+          if(aub[e.tr]){aubUp[e.tr+'/route']='rc';aubUp[e.tr+'/rc']=e.rc;aubUp[e.tr+'/xtra']=rem.filter(z=>z.tr===e.tr).length;if(!rem.some(z=>z.tr===e.tr))aubUp[e.tr+'/pr']=null}}
+        const keep=items.filter(x=>remP.has(x.p)||x.rec>0);await set(R(db,'meta_v1/consultas_recs/'+TUID+'/items'),keep);RECS[TUID]={items:keep};
+        try{await remove(R(db,'meta_v1/consultas_prog/'+TUID))}catch(e){}}}
+    if(RECS[PFID]){
+      const pb=`meta_v1/consultas/${PFID}`,lg=(await get(R(db,pb+'/log'))).val()||{},pfs=(await get(R(db,PFB))).val()||{},usedL={},mvk={},byR={};
+      const best=p=>{const c=pfCands(p);return c.length?c.map(id=>({id,a:Math.max(0,((pfItem(id,p).s.BODEGA)||0)-pfUsed(id,p)-(usedL[id+'|'+p]||0))})).sort((x,y)=>y.a-x.a)[0].id:''};
+      for(const [k,e] of Object.entries(lg)){if(!e.pf)continue;const rid=best(e.p);if(!rid)continue;usedL[rid+'|'+e.p]=(usedL[rid+'|'+e.p]||0)+e.q;
+        const ne={...e};delete ne.ax;delete ne.nb;ne.bd=1;ne.mv=1;const nk=push(R(db,`meta_v1/consultas/${rid}/log`)).key;(byR[rid]=byR[rid]||{})[nk]=ne;mvk[k]={rid,nk};moved++}
+      if(Object.keys(mvk).length){
+        for(const [rid,add] of Object.entries(byR)){await auPut(`meta_v1/consultas/${rid}/log`,add);try{await remove(R(db,'meta_v1/consultas_prog/'+rid))}catch(e){}}
+        const del={};Object.keys(mvk).forEach(k=>del[k]=null);await auPut(pb+'/log',del);
+        for(const [pf,m] of Object.entries(pfs)){let ch=false;const auto=[],refs=[...(m.refs||[])],lines=(m.lines||[]).map(l=>({...l}));
+          for(const a of (m.auto||[])){const mv=mvk[a.k];if(mv){refs.push({rid:mv.rid,k:mv.nk,p:a.p,q:a.q});const ln=lines.find(l=>l.p===a.p);if(ln)ln.rc=mv.rid;ch=true}else auto.push(a)}
+          if(ch)await update(R(db,`${PFB}/${pf}`),{refs,auto,lines})}
+        const remP=new Set(Object.entries(lg).filter(([k])=>!mvk[k]).map(([,e])=>e.p)),items=RECS[PFID].items.filter(x=>remP.has(x.p)||x.rec>0);
+        await set(R(db,'meta_v1/consultas_recs/'+PFID+'/items'),items);RECS[PFID]={items};try{await remove(R(db,'meta_v1/consultas_prog/'+PFID))}catch(e){}}}
+    if(Object.keys(aubUp).length)await update(R(db,AUB),aubUp);
+    if(moved)toast(`🔄 ${moved} línea(s) trasladadas a su recibo de origen, con su número de transferencia/proforma`);else if(!silent)toast('No hay productos por trasladar: ningún recibo de origen nuevo');
+  }catch(err){AU=sv;toast('Error al trasladar: '+(err.code||err.message))}
+  return moved}
+async function pfList(){
+  const box=$('auList');box.innerHTML='<div class="msg">Cargando…</div>';let all={};
+  try{all=(await get(R(db,PFB))).val()||{}}catch(e){}
+  const rows=Object.values(all).sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,60);
+  box.innerHTML=`<button class="btn sm" id="auMig" style="width:100%;margin-bottom:10px">🔄 Trasladar productos de Túnel / Proformas a su recibo de origen</button>`+(rows.map(m=>`<div class="card" style="margin:0 0 8px"><div style="display:flex;gap:10px;align-items:center"><div style="flex:1"><b class="sora">${esc(m.pf)}</b> <span class="pill p-aq">Cristal</span>${m.cli?` <span class="pill p-bl">${esc(m.cli)}</span>`:''}${m.exc?` <span class="pill p-wn">Diferencia ${fmt(m.exc)}</span>`:''}<div class="msg" style="margin:4px 0 0">${fdt(m.ts)} · Surtidor <b>${esc(m.sur||'')}</b> · ${fmt(m.n||0)} líneas · ${fmt(m.pz||0)} pzas · ${[...new Set((m.lines||[]).map(l=>l.rc?'recibo #'+l.rc:'recibo PROFORMAS'))].join(', ')}</div></div><button class="btn sm" data-pfdel="${esc(m.pf)}">🗑 Quitar</button></div></div>`).join('')||'<div class="msg">Aún no hay proformas manuales. Sube una plantilla arriba.</div>');
+  box.onclick=async e=>{if(e.target.closest('#auMig')){await pseudoMigrate();pfList();return}
+    const d=e.target.closest('[data-pfdel]');if(!d)return;const pf=d.dataset.pfdel,m=all[pf];if(!m)return;
+    if(!confirm(`¿Quitar la proforma ${pf}? Se borra su surtido de los recibos, vuelve el saldo de Bodega y deja de sumar a la producción.`))return;
+    try{await pfUndo(pf,m);toast('Proforma quitada');pfList()}catch(err){toast('Error: '+(err.code||err.message))}}}
+$('pfTpl').onclick=pfTpl;
+$('pfFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;$('pfMsg').textContent='Leyendo '+f.name+'…';
+  try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'}),aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''});
+    let hi=-1,cp=-1,cq=-1;
+    for(let i=0;i<Math.min(aoa.length,10)&&hi<0;i++){const hs=aoa[i].map(normH);const a=hs.findIndex(h=>['producto','product','sku','item','codigo','codproducto','codigoproducto','estilo','upc','codigobarras'].includes(h)),b=hs.findIndex(h=>['cantidad','cant','qty','unidades','piezas','pzas','despacho','desp'].includes(h));if(a>=0&&b>=0){hi=i;cp=a;cq=b}}
+    if(hi<0){$('pfMsg').textContent='No encontré las columnas “Producto” y “Cantidad”. Usa la plantilla.';return}
+    const rows=aoa.slice(hi+1).map(r=>({c:r[cp],q:r[cq]})).filter(r=>String(r.c).trim()!=='');
+    if(!rows.length){$('pfMsg').textContent='La plantilla no tiene filas con producto.';return}
+    $('pfMsg').textContent='';await pfStart(rows,f.name);if(!AU.lines.length)$('pfMsg').textContent='Ningún producto de la plantilla se pudo identificar.'}
+  catch(err){$('pfMsg').textContent='Error: '+(err.message||err)}};
+$('auReview').addEventListener('input',e=>{if(!AU||!AU.prf)return;const d=e.target.dataset;
+  if(d.pq!==undefined)AU.lines[+d.pq].desp=Math.max(0,parseInt(e.target.value)||0);
+  else if(d.pf==='ts')AU.ts=new Date(e.target.value).getTime()||AU.ts;
+  else if(d.pf==='tr')AU.tr=e.target.value.replace(/[^\w-]/g,'');
+  else if(d.pf==='cli'||d.pf==='sur')AU[d.pf]=e.target.value});
+$('auReview').addEventListener('change',e=>{if(!AU||!AU.prf)return;const d=e.target.dataset;
+  if(d.pf==='suru'){AU.suru=e.target.value;const h=UDIR.find(x=>x.u===AU.suru);AU.sur=h?h.n:'';pfRender()}
+  else if(d.pr!==undefined){AU.lines[+d.pr].rc=e.target.value;pfRender()}
+  else if(d.pq!==undefined)pfRender()});
+$('auReview').addEventListener('click',e=>{if(!AU||!AU.prf)return;
+  if(e.target.closest('#pfCancel')){AU=null;$('auReview').innerHTML='';return}
+  const rm=e.target.closest('[data-prm]');if(rm){AU.lines.splice(+rm.dataset.prm,1);pfRender();return}
+  const sv=e.target.closest('#pfSave');if(sv)pfSave(sv)});
 
 // ---------- Mover productos entre transferencias de la misma tienda ----------
 const trStatus=g=>{const a=[];if(g.tr&&TRF[g.t]&&TRF[g.t].tr===g.tr)a.push('Activa');const d=dspOfKey(g.key);if(d)a.push('Despachada ('+d.num+')');if(BG[g.key]||(TRB[g.key]&&TRB[g.key].b))a.push('Surtida, con bultos generados');return a};
@@ -1323,7 +1478,7 @@ const PER=12;
 let srchTok=0,RNG=null,RNGAt=0;
 const rangeIdx=(f,t)=>{const a=[];for(let n=f;n<=t;n++)a.push(n);return a};
 function zplSheet(t,tr,name,N,first,idxs){
-  tr=(RECIBO===AUID?'AUT ':'')+tr;
+  tr=({AUTO:'AUT ',TUNEL:'TUN ',PROFORMAS:'PRF '}[RECIBO]||'')+tr;
   const out=['^XA^CI28^PW812^LL609^LH0,0','^FO276,0^GB1,609,1^FS','^FO532,0^GB1,609,1^FS'];
   for(let r=1;r<4;r++)out.push(`^FO0,${14+r*146-8}^GB812,1,1^FS`);
   const tw=Math.max(12,Math.min(22,Math.floor(136/Math.max(1,String(tr).length))));
@@ -1336,7 +1491,7 @@ function zplSheet(t,tr,name,N,first,idxs){
   out.push('^PQ1^XZ');return out.join('\n')
 }
 function sheetHTML(t,tr,name,N,first,idxs){
-  tr=(RECIBO===AUID?'AUT ':'')+tr;
+  tr=({AUTO:'AUT ',TUNEL:'TUN ',PROFORMAS:'PRF '}[RECIBO]||'')+tr;
   const tw=Math.max(12,Math.min(22,Math.floor(136/Math.max(1,String(tr).length))));
   let h='<div class="lbw"><div class="lbp">';
   [276,532].forEach(x=>h+=`<div style="position:absolute;left:${x}px;top:0;width:1px;height:609px;background:#bbb"></div>`);
@@ -1472,6 +1627,7 @@ $('btnPrTest').onclick=async()=>{
 const PB='meta_v1/consultas_palets',BULK='meta_v1/consultas_bultos';
 let PM={},EMB={},palOn=false,palOpen=null,PBO={},palOff=null,PMISS={},keepScan=null,scanQ=Promise.resolve();
 const DSC={},embOpenSet=new Set();
+const embLocked=e=>!!e&&(e.st==='enviado'||!!e.desp);
 let palDelMode=false,palDelChk=false,palFresh=new Set(),palBumpT=0,palFbT=null,_ac=null;
 // Ventana de trabajo: semana actual + semana anterior (lunes 00:00 a hoy). Lo anterior es historial informativo, no se escucha.
 function weekCut(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7)-7);return d.getTime()}
@@ -1481,7 +1637,7 @@ function startPal(){if(palOn)return;palOn=true;const w=weekCut();
 async function loadHist(){const w=weekCut(),box=$('histList');box.innerHTML='<div class="msg">Cargando…</div>';
   try{const [a,b]=await Promise.all([get(query(R(db,PB+'/pm'),orderByKey(),endAt('p'+(w-1)),limitToLast(40))),get(query(R(db,PB+'/emb'),orderByKey(),endAt('e'+(w-1)),limitToLast(20)))]);
     const pm=Object.values(a.val()||{}).sort((x,y)=>(y.seq||0)-(x.seq||0)),em=Object.values(b.val()||{}).sort((x,y)=>(y.seq||0)-(x.seq||0));
-    box.innerHTML=(em.length?'<div class="lbl" style="margin-top:8px">Embarques</div>'+em.map(e=>{const c=embCalc(e);return `<div class="card"><b class="sora">${esc(e.num)}</b> <span class="msg" style="margin:0">· ${fdt(e.ts)} · ${c.cams.length} camión(es) · ${c.np} palets · ${c.tb} bultos · ${c.tp} pzas${e.st==='enviado'?' · enviado':''}</span></div>`}).join(''):'')
+    box.innerHTML=(em.length?'<div class="lbl" style="margin-top:8px">Embarques</div>'+em.map(e=>{const c=embCalc(e);return `<div class="card"><b class="sora">${esc(e.num)}</b> <span class="msg" style="margin:0">· ${fdt(e.ts)} · ${c.cams.length} camión(es) · ${c.np} palets · ${c.tb} bultos · ${c.tp} pzas${e.desp?' · despachado '+fdt(e.desp.ts):e.st==='enviado'?' · enviado':''}</span></div>`}).join(''):'')
       +(pm.length?'<div class="lbl" style="margin-top:8px">Palets</div>'+pm.map(q=>`<div class="card"><b class="sora">${esc(q.num)}</b> <span class="msg" style="margin:0">· ${fdt(q.ts)} · ${pBul(q)} bultos · ${pStores(q).map(x=>esc(L(x.t))+' '+x.b).join(' · ')||'vacío'}</span></div>`).join(''):'')
       ||'<div class="msg">No hay registros anteriores.</div>'}catch(err){box.innerHTML='<div class="msg">No se pudo cargar: '+esc(err.code||err.message)+'</div>'}}
 const pBul=p=>p.nb||0;
@@ -1603,7 +1759,7 @@ function embHTML(e){
   <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Camiones</div>
   <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Camión</th><th ${th}>Chofer</th><th ${th}>Placa</th><th ${th}>Palets</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.cams.map((x,i)=>`<tr><td ${td}>${i+1}</td><td ${td}>${esc(x.chofer||'')}</td><td ${td}>${esc(x.placa||'')}</td><td ${td}>${x.pals.map(pl=>`Palet ${pl.pos} (${esc(pl.num)})`).join('<br>')}</td><td ${tdn}>${fmt(x.b)}</td><td ${tdn}>${fmt(x.pz)}</td></tr>`).join('')}</table>
   ${c.cams.map((x,i)=>`<div style="font-size:15px;font-weight:700;margin:20px 0 6px">Desglose · Camión ${i+1}</div>
-  <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Palet (etiqueta)</th><th ${th}>Tienda</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${x.pals.map(pl=>`<tr><td ${td}><b>Palet ${pl.pos}</b> (${esc(pl.num)})</td><td ${td}>${esc(pStores(pl).map(s=>L(s.t)+' '+s.b).join(' · ')||'—')}</td><td ${tdn}>${fmt(pl.nb)}</td><td ${tdn}>${fmt(pl.pz)}</td></tr>`).join('')}</table>`).join('')}
+  <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Palet (etiqueta)</th><th ${th}>Tienda</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${x.pals.map(pl=>`<tr><td ${td}><b>Palet ${pl.pos}</b> (${esc(pl.num)})</td><td ${td}>${esc(pStores(pl).map(s=>L(s.t)).join(' · ')||'—')}</td><td ${tdn}>${fmt(pl.nb)}</td><td ${tdn}>${fmt(pl.pz)}</td></tr>`).join('')}</table>`).join('')}
   <div style="font-size:12px;color:#5a6b7a;margin-top:16px">El número de palet indica el orden en que se cargó en el camión; entre paréntesis va el número de la etiqueta impresa en el palet. La recepción se realiza por palet completo.</div></div>`
 }
 async function embReady(e){const c=embCalc(e);
@@ -1645,7 +1801,7 @@ function embCount(eid){const x=EMB[eid];if(!x)return;const c=embCalc(x);
     try{if(n>cur)await addCams(eid,n-cur);else{const rm=c.cams.slice(n);if(rm.some(k=>k.pals.length)){toast('Quita primero los palets de los camiones que sobran');return false}const up={};rm.forEach(k=>up[k.cid]=null);await update(R(db,`${PB}/emb/${eid}/cam`),up)}}
     catch(err){toast('Error: '+(err.code||err.message));return false}})}
 async function embScan(eid,cid,raw){
-  const e=EMB[eid];if(!e||e.st==='enviado'){toast('El embarque ya fue enviado');return}
+  const e=EMB[eid];if(!e||embLocked(e)){toast('El packing list ya fue enviado o despachado');return}
   const code=String(raw).trim().toUpperCase();let pid=null,pl=null;
   const f=Object.entries(PM).find(([id,x])=>x.num===code);
   if(f){[pid,pl]=f}else{try{const ix=(await get(R(db,`${PB}/pn/${code}`))).val();if(ix){const v=(await get(R(db,`${PB}/pm/${ix}`))).val();if(v){pid=ix;pl=v}}}catch(err){}}
@@ -1666,14 +1822,22 @@ function renderPal(){
     T.forEach(p=>pStores(p).forEach(x=>sto[x.t]=(sto[x.t]||0)+x.b));
     const big=(n,l)=>`<div><b class="sora" style="font-size:26px">${n}</b><div class="msg" style="margin:0">${l}</div></div>`;
     $('palTotal').innerHTML=T.length?`<div class="card" style="border-color:var(--ac)"><div class="slbl">Total acumulado · semana actual y anterior</div><div style="display:flex;gap:22px;flex-wrap:wrap">${big(tb,'bultos en palets')}${big(T.length,'palets')}${big(cam,'bultos en camión')}${big(tb-cam,'por despachar')}</div><div class="msg" style="margin:10px 0 0">${Object.entries(sto).map(([t,b])=>esc(L(t))+' <b>'+b+'</b>').join(' · ')}</div></div>`:''}
-  $('embList').innerHTML=Object.entries(EMB).sort((a,b)=>(b[1].seq||0)-(a[1].seq||0)).map(([id,e])=>{const c=embCalc(e),env=e.st==='enviado';
+  const embSorted=Object.entries(EMB).sort((a,b)=>(b[1].seq||0)-(a[1].seq||0));
+  $('embDone').innerHTML=(()=>{const D=embSorted.filter(([id,e])=>e.desp);if(!D.length)return'';
+    return `<div class="slbl" style="margin-top:14px">Despachados · historial (${D.length})</div>`+D.map(([id,e])=>{const c=embCalc(e);
+      return `<details class="card" data-ek="${id}" ${embOpenSet.has(id)?'open':''}><summary>✅ ${esc(e.num)} <span class="pill p-ok" style="margin-left:6px">Despachado</span> <span class="msg" style="margin:0">· ${fdt(e.desp.ts)}</span></summary>
+      <div class="msg">Preparó ${esc(e.n||e.u||'')} · Despachó <b>${esc(e.desp.n||e.desp.u||'')}</b> · ${fdt(e.desp.ts)}${e.mail?' · correo enviado a '+esc(e.mail.to||''):''}</div>
+      ${c.cams.map((x,i)=>`<div class="crow"><b>Camión ${i+1} · ${esc(x.chofer||'—')} · ${esc(x.placa||'—')}</b> <span class="msg" style="margin:0">${x.pals.length} palets · ${fmt(x.b)} bultos · ${fmt(x.pz)} pzas</span><div class="msg" style="margin:4px 0 0">${x.pals.map(pl=>esc(pl.num)).join(' · ')}</div></div>`).join('')}
+      ${c.st.length?`<div class="scroll"><table><tr><th>Tienda</th><th class="n">Transf.</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${c.st.map(s=>`<tr><td>${esc(LN(s.t))}</td><td class="n">${s.tf}</td><td class="n">${fmt(s.b)}</td><td class="n">${fmt(s.pz)}</td></tr>`).join('')}<tr><td><b>TOTAL</b></td><td class="n"><b>${c.tf.length}</b></td><td class="n"><b>${fmt(c.tb)}</b></td><td class="n"><b>${fmt(c.tp)}</b></td></tr></table></div>`:''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button><button class="btn sm" data-email="${id}">✉ Reenviar correo</button>${ISADM?`<button class="btn sm" data-eundesp="${id}">↩ Revertir despacho</button>`:''}</div></details>`}).join('')})();
+  $('embList').innerHTML=embSorted.filter(([id,e])=>!e.desp).map(([id,e])=>{const c=embCalc(e),env=e.st==='enviado';
     return `<details class="card" data-ek="${id}" ${embOpenSet.has(id)?'open':''}><summary>🚛 ${esc(e.num)} <span class="pill p-aq" style="margin-left:6px">${c.cams.length} camión(es) · ${c.np} palets · ${c.tb} bultos</span> ${env?'<span class="pill p-ok">Enviado</span>':e.comp?'<span class="pill p-bl">Completado</span>':'<span class="pill p-wn">En armado</span>'}</summary>
     <div class="msg">${esc(e.n||e.u||'')} · ${fdt(e.ts)}</div>
     ${c.cams.map((x,i)=>`<div class="crow"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>Camión ${i+1}${e.comp?` · ${esc(x.chofer||'chofer pendiente')} · ${esc(x.placa||'—')}`:''}</b><span class="msg" style="margin:0">${x.pals.length} palets · ${fmt(x.b)} bultos · ${fmt(x.pz)} pzas</span></div>
       ${(env||!e.comp)?'':`<button class="btn sm" data-ech="${id}|${x.cid}" style="margin-top:8px">${x.chofer&&x.placa?'✎ Cambiar chofer y placa':'👤 Asignar chofer y placa'}</button>`}${(env||e.comp)?'':`<input class="f" data-escan="${id}|${x.cid}" placeholder="Escanear palet (PAL-0001)" autocomplete="off" autocapitalize="characters" spellcheck="false" style="margin-top:8px">`}
       ${x.pals.map(pl=>`<div class="prow" style="justify-content:space-between"><span class="tv">Palet ${pl.pos} (${esc(pl.num)})</span><span class="msg" style="margin:0">${pStores(pl).map(s=>esc(L(s.t))+' '+s.b).join(' · ')}</span>${(env||e.comp)?'':`<button class="btn sm" data-erm="${id}|${x.cid}|${pl.id}">✕</button>`}</div>`).join('')}</div>`).join('')}
     ${c.st.length?`<div class="scroll"><table><tr><th>Tienda</th><th class="n">Transf.</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${c.st.map(s=>`<tr><td>${esc(LN(s.t))}</td><td class="n">${s.tf}</td><td class="n">${fmt(s.b)}</td><td class="n">${fmt(s.pz)}</td></tr>`).join('')}<tr><td><b>TOTAL</b></td><td class="n"><b>${c.tf.length}</b></td><td class="n"><b>${fmt(c.tb)}</b></td><td class="n"><b>${fmt(c.tp)}</b></td></tr></table></div>`:''}
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${(env||e.comp)?'':`<button class="btn sm" data-ecn="${id}">🚛 Camiones: ${c.cams.length}</button><button class="btn pri sm" data-ecomp="${id}">✔ Completar packing list</button>`}${(e.comp&&!env)?`<button class="btn sm" data-eopen="${id}">↩ Reabrir packing list</button>`:''}<button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button>${(e.comp||env)?`<button class="btn pri sm" data-email="${id}">✉ ${env?'Reenviar':'Enviar'} correo</button>`:''}${ISADM&&!env?`<button class="btn sm" data-edel="${id}">🗑 Eliminar</button>`:''}</div></details>`}).join('')||'<div class="msg">Aún no hay embarques.</div>';
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${(env||e.comp)?'':`<button class="btn sm" data-ecn="${id}">🚛 Camiones: ${c.cams.length}</button><button class="btn pri sm" data-ecomp="${id}">✔ Completar packing list</button>`}${(e.comp&&!env)?`<button class="btn sm" data-eopen="${id}">↩ Reabrir packing list</button>`:''}${e.comp?`<button class="btn pri sm" data-edesp="${id}">🚚 Despachar</button>`:''}<button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button>${(e.comp||env)?`<button class="btn pri sm" data-email="${id}">✉ ${env?'Reenviar':'Enviar'} correo</button>`:''}${ISADM&&!env&&!e.desp?`<button class="btn sm" data-edel="${id}">🗑 Eliminar</button>`:''}</div></details>`}).join('')||`<div class="msg">${embSorted.length?'No hay packing list en curso.':'Aún no hay embarques.'}</div>`;
   if(keepScan){const i=document.querySelector(`[data-escan="${keepScan}"]`);if(i)i.focus();keepScan=null}
 }
 function openPalView(w){$('v-rec').classList.add('hide');$('v-pal').classList.toggle('hide',w!=='pal');$('v-pkl').classList.toggle('hide',w!=='pkl');$('btnHome').classList.remove('hide');$('ttl').textContent=w==='pal'?'Palets':'Packing list';window.scrollTo(0,0);startPal();renderPal()}
@@ -1699,13 +1863,21 @@ $('palwrap').addEventListener('click',async e=>{
   if(ec){const id=ec.dataset.ecomp,x=EMB[id];if(!x)return;const c=embCalc(x);if(!c.np){toast('Carga al menos un palet antes de completar');return}if(c.cams.some(k=>!k.pals.length)&&!confirm('Hay camiones sin palets. ¿Completar de todos modos?'))return;
     if(!confirm(`¿Completar el packing list ${x.num}? (${c.np} palets · ${c.tb} bultos). Después asignas el chofer y la placa.`))return;
     try{await set(R(db,`${PB}/emb/${id}/comp`),Date.now());embOpenSet.add(id);toast('✅ Packing list completado. Ahora asigna el chofer y la placa.')}catch(err){toast('Error: '+(err.code||err.message))}return}
+  const ed=e.target.closest('[data-edesp]');
+  if(ed){const id=ed.dataset.edesp,x=EMB[id];if(!x||x.desp)return;let bad;try{bad=await embReady(x)}catch(err){toast('Error: '+(err.code||err.message));return}
+    if(bad){alert('No se puede despachar todavía:\n\n'+bad);return}
+    const c=embCalc(x);if(!confirm(`¿Despachar ${x.num}?\n\n${c.cams.length} camión(es) · ${c.np} palets · ${c.tb} bultos · ${c.tp} piezas\n\nQuedará bloqueado y guardado en el historial de despachados.${x.st==='enviado'?'':'\n(Aún no se ha enviado el correo; podrás enviarlo desde el historial.)'}`))return;
+    try{await update(R(db,`${PB}/emb/${id}`),{desp:{ts:Date.now(),u:USER,n:NAME}});embOpenSet.add(id);toast(`✅ ${x.num} despachado y guardado en el historial`)}catch(err){toast('Error: '+(err.code||err.message))}return}
+  const eu=e.target.closest('[data-eundesp]');
+  if(eu){const id=eu.dataset.eundesp,x=EMB[id];if(!x||!x.desp||!ISADM)return;if(!confirm(`¿Revertir el despacho de ${x.num}? Vuelve a la lista de packing list en curso.`))return;
+    try{await remove(R(db,`${PB}/emb/${id}/desp`));toast('Despacho revertido')}catch(err){toast('Error: '+(err.code||err.message))}return}
   const eo=e.target.closest('[data-eopen]');
   if(eo){const id=eo.dataset.eopen;if(!confirm('¿Reabrir el packing list para cargar o quitar palets?'))return;try{await remove(R(db,`${PB}/emb/${id}/comp`))}catch(err){toast('Error: '+(err.code||err.message))}return}
   const ech=e.target.closest('[data-ech]');if(ech){const [ea,eb]=ech.dataset.ech.split('|');setCam(ea,eb);return}
   const a=e.target.closest('[data-eadd]');if(a){addCam(a.dataset.eadd);return}
   const pr=e.target.closest('[data-eprint]');if(pr){embPrint(pr.dataset.eprint);return}
   const m=e.target.closest('[data-email]');if(m){embMail(m.dataset.email);return}
-  const rm=e.target.closest('[data-erm]');if(rm){const [eid,cid,pid]=rm.dataset.erm.split('|');if(EMB[eid]&&EMB[eid].st==='enviado')return;try{await update(R(db,PB),{[`pm/${pid}/emb`]:null,[`emb/${eid}/cam/${cid}/pal/${pid}`]:null});toast('Palet descargado del camión')}catch(err){toast('Error: '+(err.code||err.message))}return}
+  const rm=e.target.closest('[data-erm]');if(rm){const [eid,cid,pid]=rm.dataset.erm.split('|');if(embLocked(EMB[eid]))return;try{await update(R(db,PB),{[`pm/${pid}/emb`]:null,[`emb/${eid}/cam/${cid}/pal/${pid}`]:null});toast('Palet descargado del camión')}catch(err){toast('Error: '+(err.code||err.message))}return}
   const d=e.target.closest('[data-edel]');if(d){const id=d.dataset.edel;if(!confirm('¿Eliminar este embarque? Sus palets quedan libres.'))return;const up={[`emb/${id}`]:null};Object.entries(PM).forEach(([pid,p])=>{if(p.emb&&p.emb.e===id)up[`pm/${pid}/emb`]=null});try{await update(R(db,PB),up);toast('Embarque eliminado')}catch(err){toast('Error: '+(err.code||err.message))}}
 });
 $('mpalBody').addEventListener('keydown',e=>{if(e.key!=='Enter'||e.target.id!=='palScan')return;e.preventDefault();const v=e.target.value;e.target.value='';const id=palOpen;
