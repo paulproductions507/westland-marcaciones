@@ -139,10 +139,11 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
 
 <div id="app" class="hide">
   <div class="top">
-    <a class="btn sm" id="toMarc" href="index.html" style="text-decoration:none" title="Volver a Marcaciones">←</a>
-    <div class="ttl"><h1 id="ttl">Consultas</h1><small id="who">—</small></div>
+    <button class="btn sm" id="btnBack" title="Atrás" aria-label="Atrás">←</button>
+    <div class="ttl"><h1 id="ttl">Consultas</h1><small id="who">—</small></div><span style="font-size:10px;opacity:.7;margin-right:6px" id="verTag">v22oct-B</span>
     <button class="btn sm" id="btnRef" title="Actualizar" aria-label="Actualizar">⟳</button>
     <button class="btn sm hide" id="btnHome">Recibos</button>
+    <a class="btn sm" id="toMarc" href="index.html" style="text-decoration:none;background:#ff3b30;color:#fff" title="Salir a Marcaciones">⎋ Salir</a>
   </div>
   <div class="wrap">
     <div id="v-rec">
@@ -1724,7 +1725,12 @@ window.addEventListener('popstate',()=>{
   if(!$('v-cons').classList.contains('hide')){ if($('q').value){$('q').value='';renderList()} window.scrollTo(0,0);guard();return}
   document.querySelector('[data-t=cons]').click();guard()
 });
-$('toMarc').addEventListener('click',e=>{if(!confirm('¿Volver a Marcaciones? Allí tendrás que iniciar sesión de nuevo.'))e.preventDefault()});
+$('toMarc').addEventListener('click',e=>{if(!confirm('¿Salir a Marcaciones? Allí tendrás que iniciar sesión de nuevo.'))e.preventDefault()});
+// ← = atrás dentro de la app (nunca sale); para salir está el botón "Salir"
+$('btnBack').addEventListener('click',()=>{
+  if(!$('mpal').classList.contains('hide')){history.back();return}
+  if(!$('btnHome').classList.contains('hide')){$('btnHome').click();return}
+  history.back()});
 // ---------- navegación ----------
 // Rol surtidor: solo Consulta (surtido) y Transferencias (números de transferencia). El resto es solo de administradores.
 const TABS_ADM=['dsp','dif','est'];
