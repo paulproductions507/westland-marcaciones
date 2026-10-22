@@ -123,6 +123,24 @@ h1,h2,h3,.sora,.hero .big,.tile .hd b,.row .st,.kpi b{letter-spacing:-.012em}
 .pill{letter-spacing:.02em}
 .modal>div{border-radius:18px 18px 0 0;box-shadow:0 -10px 40px #00000066}
 .toast{border-radius:10px;box-shadow:var(--sh2)}
+.toast{z-index:120}
+#mpal{align-items:center;padding:16px}
+#mpal>div{border-radius:20px;max-height:86vh;max-height:86dvh;box-shadow:0 20px 60px #000000aa;animation:palIn .18s ease-out}
+@keyframes palIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes palRowIn{0%{opacity:0;transform:translateX(-26px);background:#2de2c966}100%{opacity:1;transform:none;background:transparent}}
+@keyframes palRowOut{0%{opacity:1;background:#ff3b3044}100%{opacity:0;transform:translateX(60px)}}
+@keyframes palBump{0%{transform:scale(1)}40%{transform:scale(1.5);color:#2de2c9}100%{transform:scale(1)}}
+@keyframes palOk{0%{box-shadow:0 0 0 0 #2de2c9aa}100%{box-shadow:0 0 0 14px #2de2c900}}
+@keyframes palErr{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.palrow-in{animation:palRowIn .5s ease-out}
+.palrow-out{animation:palRowOut .22s ease-in forwards;pointer-events:none}
+.palcnt b.bump{display:inline-block;animation:palBump .45s ease-out}
+#palScanBox.flashok input{animation:palOk .6s ease-out}
+#palScanBox.flasherr{animation:palErr .35s}
+.palfb{margin-top:8px;padding:9px 12px;border-radius:10px;font-weight:800;font-size:14px;min-height:20px;opacity:0;transform:translateY(-4px);transition:opacity .2s,transform .2s}
+.palfb.show{opacity:1;transform:none}
+.palfb.ok{background:#2de2c933;color:#7dffe9;border:1px solid #2de2c9}
+.palfb.err{background:#ff3b3022;color:#ff8a80;border:1px solid #ff3b30}
 .bottom{backdrop-filter:blur(10px)}
 th,.lbl,.slbl{letter-spacing:.07em;font-weight:600}
 td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,.pos{font-variant-numeric:tabular-nums}
@@ -161,8 +179,9 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
     <!-- PALETS Y EMBARQUES -->
     <div id="palwrap">
     <div id="v-pal" class="hide">
-      <div class="card"><h3 style="font-size:16px">Palets</h3><div class="msg" style="margin-bottom:8px">Escanea los bultos (GB…) de transferencias ya despachadas. Un palet = una tienda, salvo que actives “División”.</div><button class="btn pri" id="palNew" style="width:100%">＋ Nuevo palet</button><button class="btn sm" id="palGap" style="width:100%;margin-top:8px">🔢 Habilitar números faltantes de la secuencia</button><button class="btn sm" id="palFix" style="width:100%;margin-top:8px">🛠 Liberar bultos huérfanos</button></div>
+      <div class="card"><h3 style="font-size:16px">Palets</h3><div class="msg" style="margin-bottom:8px">Escanea los bultos (GB…) de transferencias ya despachadas. Un palet = una tienda, salvo que actives “División”.</div><button class="btn pri" id="palNew" style="width:100%">＋ Nuevo palet</button><button class="btn sm" id="palGap" style="width:100%;margin-top:8px">🔢 Habilitar números faltantes de la secuencia</button><button class="btn sm" id="palFix" style="width:100%;margin-top:8px">🛠 Reparar y liberar bultos huérfanos</button></div>
       <div id="palList"></div>
+      <div id="palTotal"></div>
 
       <div class="slbl" style="margin-top:14px">Historial</div>
       <div class="card"><div class="msg" style="margin-bottom:8px">Aquí solo se cargan la semana actual y la anterior. Lo anterior queda como registro informativo y solo se consulta si lo pides.</div><button class="btn sm" id="histBtn" style="width:100%">📚 Ver historial anterior</button></div>
@@ -778,20 +797,26 @@ $('trfList').addEventListener('toggle',e=>{const k=e.target.dataset&&e.target.da
 async function saveBultos(key){
   const i=document.querySelector(`[data-bk="${key}"]`);const v=(i.value||'').trim();
   try{
-    if(v===''){if(BG[key]&&!confirm('Esta transferencia ya tiene bultos generados. ¿Quitarlos?'))return;await remove(R(db,`${TRBB}/${key}`));await remove(R(db,`${BGB}/${key}`));await remove(R(db,`meta_v1/consultas_bultos/ranges/${RECIBO}__${key}`));RNG=null;toast('Bultos quitados');i.blur();renderTrf();return}
+    if(v===''){const old=BG[key],rk=RECIBO+'__'+key;
+      if(old){const pv=await retirePreview(rk);if(pv.block){alert(pv.block);return}
+        if(!confirm('Esta transferencia ya tiene bultos generados. ¿Quitarlos?'+pv.msg+`\n\nLos números ${gbCode(old.first)} a ${gbCode(old.first+old.n-1)} quedan libres para usarse en otra transferencia.`))return}
+      await remove(R(db,`${TRBB}/${key}`));await remove(R(db,`${BGB}/${key}`));await remove(R(db,`meta_v1/consultas_bultos/ranges/${RECIBO}__${key}`));RNG=null;
+      if(old)await retireRange(rk,old.first,old.n);
+      toast('Bultos quitados');i.blur();renderTrf();return}
     const n=parseInt(v,10);
     if(!(n>=1&&n<=200)){toast('Escribe un total de bultos entre 1 y 200');return}
     if(key.startsWith('CRISTAL_')){await set(R(db,`${TRBB}/${key}`),{b:n,u:USER,n:NAME,ts:Date.now()});toast(`✅ ${n} bulto(s) guardados`);i.blur();renderTrf();return}
     const cur=BG[key];
     if(cur&&cur.n===n){toast('Ya están generados '+n+' bultos');return}
-    if(cur&&!confirm(`Ya se generaron ${cur.n} bultos con sus números. Si cambias a ${n} se crean números nuevos y las etiquetas anteriores dejan de servir. ¿Continuar?`))return;
-    const r=await runTransaction(R(db,'meta_v1/consultas_bultos/seq'),c=>(c||0)+n);
-    if(!r.committed){toast('No se pudo reservar la numeración');return}
-    const first=r.snapshot.val()-n+1;
+    if(cur){const pv=await retirePreview(RECIBO+'__'+key);if(pv.block){alert(pv.block);return}
+      if(!confirm(`Ya se generaron ${cur.n} bultos (${gbCode(cur.first)} a ${gbCode(cur.first+cur.n-1)}). Si cambias a ${n} se crean números nuevos; los anteriores quedan liberados para otra transferencia y sus etiquetas dejan de servir.${pv.msg}\n\n¿Continuar?`))return}
+    const first=await allocBultos(n);
+    if(first===null){toast('No se pudo reservar la numeración');return}
     const tsg=Date.now(),st0=key.split('_')[0],tr0=key.slice(st0.length+1);
     await set(R(db,`${BGB}/${key}`),{n,first,u:USER,nm:NAME,ts:tsg});
     await set(R(db,`meta_v1/consultas_bultos/ranges/${RECIBO}__${key}`),{rec:RECIBO,key,t:st0,tr:tr0==='sin'?'':tr0,first,n,ts:tsg});RNG=null;
     await set(R(db,`${TRBB}/${key}`),{b:n,u:USER,n:NAME,ts:Date.now()});
+    if(cur)await retireRange(RECIBO+'__'+key,cur.first,cur.n);
     toast(`✅ ${n} bultos generados`);i.blur();renderTrf()
   }catch(err){toast('Error: '+(err.code||err.message))}
 }
@@ -1444,10 +1469,10 @@ $('btnPrTest').onclick=async()=>{
 // Diseño: la lista solo escucha resúmenes pequeños (pm / emb, limitados a los más recientes).
 // El detalle de bultos (pb) solo se escucha del palet que está abierto, y se suelta al cerrarlo.
 // El control "faltan bultos" usa contadores diminutos (tfc) leídos una sola vez cuando hace falta.
-const PB='meta_v1/consultas_palets';
+const PB='meta_v1/consultas_palets',BULK='meta_v1/consultas_bultos';
 let PM={},EMB={},palOn=false,palOpen=null,PBO={},palOff=null,PMISS={},keepScan=null,scanQ=Promise.resolve();
 const DSC={},embOpenSet=new Set();
-let palDelMode=false,palDelChk=false;
+let palDelMode=false,palDelChk=false,palFresh=new Set(),palBumpT=0,palFbT=null,_ac=null;
 // Ventana de trabajo: semana actual + semana anterior (lunes 00:00 a hoy). Lo anterior es historial informativo, no se escucha.
 function weekCut(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7)-7);return d.getTime()}
 function startPal(){if(palOn)return;palOn=true;const w=weekCut();
@@ -1464,7 +1489,10 @@ function pStores(p){const o={};Object.values(p.tfs||{}).forEach(v=>{const a=o[v.
 const palsSorted=()=>Object.entries(PM).sort((a,b)=>(b[1].seq||0)-(a[1].seq||0));
 // ranges: cache en memoria; solo se vuelve a leer si el bulto no aparece
 async function findRange(num){const f=()=>Object.values(rangesAll()).find(v=>num>=v.first&&num<v.first+v.n);
-  const h=RNG?f():null;if(h)return h;RNGAt=0;await loadRanges();return f()}
+  // el rango se verifica siempre contra la base: una caché vieja ya no deja pasar bultos de una generación anterior
+  const ok=async h=>{try{const c=(await get(R(db,`${BULK}/ranges/${h.rec}__${h.key}`))).val();return !!c&&num>=c.first&&num<c.first+c.n}catch(e){return true}};
+  let h=RNG?f():null;if(h&&await ok(h))return h;
+  RNG=null;RNGAt=0;await loadRanges();h=f();return h&&await ok(h)?h:null}
 async function dspItem(rec,key){let ds;if(rec===RECIBO)ds=DS;else{if(!DSC[rec]){try{DSC[rec]=(await get(R(db,`meta_v1/consultas/${rec}/dsps`))).val()||{}}catch(e){return null}}ds=DSC[rec]}
   for(const d of Object.values(ds)){const i=Object.values(d.items||{}).find(i=>i.key===key);if(i)return i}
   if(rec!==RECIBO)delete DSC[rec];return null}
@@ -1475,7 +1503,7 @@ async function missLines(keys){const out=[];for(const k of keys){try{const v=(aw
   for(let n=v.first;n<v.first+v.N;n++)if(!got[n])m.push(n);
   if(m.length)out.push(`• Falta ${m.slice(0,6).map(gbCode).join(', ')}${m.length>6?` (+${m.length-6} más)`:''} de la transferencia ${v.tr||'—'} (${L(v.t)})`)}catch(e){}}return out.join('\n')}
 async function claim(k,info,num,palId){let by=null;
-  const r=await runTransaction(R(db,`${PB}/tfx/${k}`),c=>{const v=c||{...info};v.got=v.got||{};if(v.got[num]){by=v.got[num];return}v.got[num]=palId;return v});
+  const r=await runTransaction(R(db,`${PB}/tfx/${k}`),c=>{let v=c||{...info};if(c&&(c.first!==info.first||c.N!==info.N))v={...info};/* generación vieja: se descarta */v.got=v.got||{};if(v.got[num]){by=v.got[num];return}v.got[num]=palId;return v});
   return r.committed?{ok:true,g:Object.keys(r.snapshot.val().got).length}:{ok:false,by}}
 async function release(k,num,pid){
   try{await get(R(db,`${PB}/tfx/${k}`))}catch(e){}
@@ -1485,10 +1513,10 @@ async function newPal(){try{const r=await runTransaction(R(db,PB+'/seq'),c=>(c||
   await update(R(db,PB),{[`pm/${id}`]:{num,seq,ts:Date.now(),u:USER,n:NAME,st:'abierto',div:false,nb:0},[`pn/${num}`]:id});
   startPal();PM[id]={num,seq,ts:Date.now(),st:'abierto',div:false,nb:0};openPal(id)}catch(err){toast('Error: '+(err.code||err.message))}}
 async function palScan(id,raw){
-  const p=PM[id];if(!p||p.st!=='abierto'){toast('El palet está cerrado');return}
-  const m=String(raw).trim().toUpperCase().match(/^GB0*(\d+)$/);if(!m){toast('Código inválido: '+raw);return}
+  const p=PM[id];if(!p||p.st!=='abierto'){ptoast('El palet está cerrado');return}
+  const m=String(raw).trim().toUpperCase().match(/^GB0*(\d+)$/);if(!m){ptoast('Código inválido: '+raw);return}
   const num=parseInt(m[1],10);
-  if(PBO[num]){toast('Ese bulto ya está en este palet');return}
+  if(PBO[num]){ptoast('Ese bulto ya está en este palet');return}
   const hit=await findRange(num);
   if(!hit){alert(`No encontré el bulto ${gbCode(num)} en ningún recibo.`);return}
   const it=await dspItem(hit.rec,hit.key);
@@ -1498,18 +1526,20 @@ async function palScan(id,raw){
     if(!p.div){alert(`Este bulto es de ${LN(hit.t)} y el palet es de ${stores.map(L).join(', ')}.\n\nSi el palet lleva una división, activa el check “División” antes de agregarlo.`);return}
     if(!confirm(`Se está cargando otra tienda (${LN(hit.t)}) en este palet.\n¿Proceder con la división?`))return}
   const k=hit.rec+'__'+hit.key,info={t:hit.t,tr:hit.tr||'',rec:hit.rec,first:hit.first,N:hit.n,pz:it.pz||0};
-  let cl;try{cl=await claim(k,info,num,id)}catch(err){toast('Error: '+(err.code||err.message));return}
+  const own0=(p.tfs||{})[k];if(own0&&own0.N!==hit.n){alert(`Este palet tiene bultos de una versión anterior de la transferencia ${hit.tr||''} (eran ${own0.N}, ahora son ${hit.n}).\n\nUsa “🛠 Reparar y liberar bultos huérfanos” en la pantalla de Palets y vuelve a escanear.`);palBeep(false);return}
+  let cl;try{cl=await claim(k,info,num,id)}catch(err){ptoast('Error: '+(err.code||err.message));return}
   if(!cl.ok){let own=null,opm=PM[cl.by]||null;
-    try{if(cl.by){const [a,b]=await Promise.all([get(R(db,`${PB}/pb/${cl.by}/${num}`)),opm?Promise.resolve(null):get(R(db,`${PB}/pm/${cl.by}`))]);own=a.val();if(b)opm=b.val()}}catch(err){toast('Error: '+(err.code||err.message));return}
+    try{if(cl.by){const [a,b]=await Promise.all([get(R(db,`${PB}/pb/${cl.by}/${num}`)),opm?Promise.resolve(null):get(R(db,`${PB}/pm/${cl.by}`))]);own=a.val();if(b)opm=b.val()}}catch(err){ptoast('Error: '+(err.code||err.message));return}
     if(own===k&&opm){alert(`El bulto ${gbCode(num)} ya está en el palet ${opm.num}.`);return}
-    try{await release(k,num,cl.by);cl=await claim(k,info,num,id)}catch(err){toast('Error: '+(err.code||err.message));return}
+    try{await release(k,num,cl.by);cl=await claim(k,info,num,id)}catch(err){ptoast('Error: '+(err.code||err.message));return}
     if(!cl.ok){alert(`El bulto ${gbCode(num)} ya está en otro palet.`);return}
-    toast('♻ Se liberó una reserva huérfana de '+gbCode(num))}
+    ptoast('♻ Se liberó una reserva huérfana de '+gbCode(num))}
   const cnt=Object.values(PBO).filter(x=>x===k).length+1,nb=Object.keys(PBO).length+1;
+  palFresh.add(num);setTimeout(()=>palFresh.delete(num),900);palBumpT=Date.now()+900;
   try{await update(R(db,PB),{[`tfc/${k}`]:{N:hit.n,g:cl.g},[`pb/${id}/${num}`]:k,[`pm/${id}/nb`]:nb,[`pm/${id}/tfs/${k}`]:{t:hit.t,tr:info.tr,N:hit.n,pz:info.pz,c:cnt}});
     PBO[num]=k;p.nb=nb;p.tfs=p.tfs||{};p.tfs[k]={t:hit.t,tr:info.tr,N:hit.n,pz:info.pz,c:cnt};
-    toast(`✅ ${gbCode(num)} · ${L(hit.t)} ${hit.tr||''} (${num-hit.first+1}/${hit.n})`);palMissRefresh()}
-  catch(err){release(k,num,id).catch(()=>{});toast('Error: '+(err.code||err.message))}
+    ptoast(`✅ ${gbCode(num)} · ${L(hit.t)} ${hit.tr||''} (${num-hit.first+1}/${hit.n})`);palMissRefresh()}
+  catch(err){palFresh.delete(num);release(k,num,id).catch(()=>{});ptoast('Error: '+(err.code||err.message))}
 }
 function zplPalet(p){
   const st=pStores(p),tot=pBul(p),out=['^XA^CI28^PW812^LL609^LH0,0',`^FO40,18^A0N,84,66^FD${zs(p.num)}^FS`,`^FO40,110^BY3^BCN,84,N,N,N,A^FD${zs(p.num)}^FS`];
@@ -1519,13 +1549,18 @@ function zplPalet(p){
   if(st.length>6)out.push(`^FO40,516^A0N,30,24^FD+${st.length-6} tiendas mas^FS`);
   out.push('^FO40,552^GB732,2,2^FS',`^FO40,560^A0N,44,34^FDTOTAL: ${tot} BULTOS^FS`,'^PQ1^XZ');return out.join('\n')
 }
+function palBeep(ok){try{if(navigator.vibrate)navigator.vibrate(ok?35:[60,40,60]);_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();const o=_ac.createOscillator(),g=_ac.createGain();o.connect(g);g.connect(_ac.destination);o.frequency.value=ok?880:220;g.gain.value=.07;o.start();o.stop(_ac.currentTime+(ok?.09:.25))}catch(e){}}
+function palFlash(msg,kind){const f=$('palFb');if(!f){toast(msg);return}
+  f.className='palfb '+kind;f.textContent=msg;void f.offsetWidth;f.classList.add('show');clearTimeout(palFbT);palFbT=setTimeout(()=>f.classList.remove('show'),3500);
+  const b=$('palScanBox');if(b){b.classList.remove('flashok','flasherr');void b.offsetWidth;b.classList.add(kind==='ok'?'flashok':'flasherr')}palBeep(kind==='ok')}
+function ptoast(m){if($('mpal').classList.contains('hide')){toast(m);return}palFlash(m,/^[✅↩♻]/u.test(m)?'ok':'err')}
 function palDetach(){if(palOff){palOff();palOff=null}PBO={};PMISS={};palOpen=null;palDelMode=false;palDelChk=false}
 function palMissRefresh(){const p=PM[palOpen];if(!p)return;const id=palOpen;tfcGet(Object.keys(p.tfs||{})).then(c=>{if(palOpen!==id)return;PMISS=c;renderPalModal()})}
 function openPal(id){palDetach();palOpen=id;history.pushState({c:5},'');$('mpal').classList.remove('hide');
   palOff=onValue(R(db,`${PB}/pb/${id}`),s=>{PBO=s.val()||{};renderPalModal()},()=>{});
   $('mpalBody').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2 class="sora" id="palT" style="font-size:20px"></h2><button class="btn sm" id="palX">Cerrar</button></div>
   <label style="display:flex;gap:10px;align-items:center;font-weight:700;margin:10px 0"><input type="checkbox" id="palDiv" style="width:22px;height:22px;accent-color:#2de2c9"> División (permite varias tiendas)</label>
-  <div id="palScanBox"><div class="lbl">Escanear bulto</div><input class="f" id="palScan" placeholder="GB000123" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+  <div id="palScanBox"><div class="lbl">Escanear bulto</div><input class="f" id="palScan" placeholder="GB000123" autocomplete="off" autocapitalize="characters" spellcheck="false"></div><div id="palFb" class="palfb"></div>
   <div id="palDyn" style="margin-top:12px"></div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" id="palCl"></button><button class="btn sm" id="palPr">🖨 Etiqueta</button><button class="btn sm" id="palRm">↩ Quitar bulto</button><button class="btn sm" id="palMs">🔎 Ver faltantes</button>${ISADM?'<button class="btn sm" id="palDel">🗑 Eliminar</button>':''}</div>`;
   renderPalModal();palMissRefresh();setTimeout(()=>{const i=$('palScan');if(i&&!i.disabled)i.focus()},150)}
@@ -1538,10 +1573,12 @@ function renderPalModal(){
   const rows=Object.entries(p.tfs||{}).map(([k,v])=>{const c=PMISS[k],f=c?(c.N||0)-(c.g||0):0;
     return `<tr><td>${esc(L(v.t))}</td><td>${esc(v.tr||'—')}</td><td class="n">${v.c}/${v.N}</td><td>${!c?'':f>0?`<span class="pill p-wn">Faltan ${f}</span>`:'<span class="pill p-ok">Completa</span>'}</td></tr>`}).join('');
   const nums=Object.keys(PBO).map(Number).sort((a,b)=>a-b);
-  const lst=nums.length?`<div class="lbl" style="margin-top:12px">Bultos del palet (${nums.length})</div><div style="max-height:280px;overflow:auto;border-top:1px solid rgba(255,255,255,.12)">${nums.map(n=>{const tf=(p.tfs||{})[PBO[n]]||{};return `<div style="display:flex;align-items:center;gap:10px;padding:6px 2px;border-bottom:1px solid rgba(255,255,255,.1)"><b class="sora" style="font-size:15px">${gbCode(n)}</b><span class="msg" style="margin:0;flex:1">${esc(tf.t?L(tf.t):'')} ${esc(tf.tr||'')}</span>${ab?`<button data-rmb="${n}" title="Quitar bulto" aria-label="Quitar ${gbCode(n)}" style="background:none;border:0;color:#ff3b30;font-size:26px;font-weight:900;line-height:1;padding:2px 12px;cursor:pointer">✕</button>`:''}</div>`}).join('')}</div>${ab?'':'<div class="msg">Reabre el palet para poder quitar bultos.</div>'}`:'';
+  const lst=nums.length?`<div class="lbl" style="margin-top:12px">Bultos del palet (${nums.length})</div><div style="max-height:280px;overflow:auto;border-top:1px solid rgba(255,255,255,.12)">${nums.map(n=>{const tf=(p.tfs||{})[PBO[n]]||{};return `<div class="${palFresh.has(n)?'palrow-in':''}" style="display:flex;align-items:center;gap:10px;padding:6px 2px;border-bottom:1px solid rgba(255,255,255,.1)"><b class="sora" style="font-size:15px">${gbCode(n)}</b><span class="msg" style="margin:0;flex:1">${esc(tf.t?L(tf.t):'')} ${esc(tf.tr||'')}</span>${ab?`<button data-rmb="${n}" title="Quitar bulto" aria-label="Quitar ${gbCode(n)}" style="background:none;border:0;color:#ff3b30;font-size:26px;font-weight:900;line-height:1;padding:2px 12px;cursor:pointer">✕</button>`:''}</div>`}).join('')}</div>${ab?'':'<div class="msg">Reabre el palet para poder quitar bultos.</div>'}`:'';
   const dpanel=palDelMode?`<div style="border:2px solid #ff3b30;border-radius:12px;padding:12px;margin-top:12px"><b style="color:#ff6b61">⚠ ${esc(p.num)} tiene ${nums.length||pBul(p)} bulto(s)</b><div class="msg" style="margin:6px 0">Para eliminar el palet hay que liberar primero todos sus bultos. Quedarán libres para escanearlos en otro palet.</div><label style="display:flex;gap:10px;align-items:center;font-weight:700;margin:8px 0"><input type="checkbox" id="palDelAll" ${palDelChk?'checked':''} style="width:22px;height:22px;accent-color:#ff3b30"> Seleccionar todos y liberarlos</label><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="palDelGo" ${palDelChk?'':'disabled'} style="${palDelChk?'background:#ff3b30;color:#fff':''}">🗑 Liberar bultos y eliminar palet</button><button class="btn sm" id="palDelNo">Cancelar</button></div></div>`:'';
-  $('palDyn').innerHTML=`<div class="msg"><b>${pBul(p)}</b> bulto(s) · ${pStores(p).map(x=>esc(L(x.t))+' '+x.b).join(' · ')||'sin bultos'}</div>
-  ${rows?`<div class="scroll"><table><tr><th>Tienda</th><th>Transf.</th><th class="n">En palet</th><th></th></tr>${rows}</table></div>`:''}${lst}${dpanel}`
+  const bump=Date.now()<palBumpT;
+  $('palDyn').innerHTML=`<div class="msg palcnt"><b class="${bump?'bump':''}" style="font-size:22px">${pBul(p)}</b> bulto(s) en este palet · ${pStores(p).map(x=>esc(L(x.t))+' '+x.b).join(' · ')||'sin bultos'}</div>
+  ${rows?`<div class="scroll"><table><tr><th>Tienda</th><th>Transf.</th><th class="n">En palet</th><th></th></tr>${rows}</table></div>`:''}${lst}${dpanel}`;
+  const fr=$('palDyn').querySelector('.palrow-in');if(fr)fr.scrollIntoView({block:'nearest',behavior:'smooth'})
 }
 function embCalc(e){
   const cams=Object.entries(e.cam||{}).map(([cid,c])=>({cid,chofer:c.chofer,placa:c.placa,pals:Object.entries(c.pal||{}).map(([id,v])=>({id,num:v.n,nb:v.b||0,tfs:v.tfs||{},o:v.o||0})).sort((a,b)=>(a.o-b.o)||(parseInt(String(a.num).replace(/\D/g,''),10)-parseInt(String(b.num).replace(/\D/g,''),10))).map((pl,i)=>({...pl,pos:i+1}))}));
@@ -1625,6 +1662,10 @@ function renderPal(){
   const ae=document.activeElement;if(ae&&ae.dataset&&ae.dataset.escan&&!keepScan)return;
   $('palList').innerHTML=palsSorted().map(([id,p])=>{const stt=p.emb?'<span class="pill p-ok">En camión</span>':p.st==='cerrado'?'<span class="pill p-bl">Cerrado</span>':'<span class="pill p-aq">Abierto</span>';
     return `<div class="card" data-po="${id}" style="cursor:pointer"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b class="sora">${esc(p.num)}</b><span>${stt}</span></div><div class="msg" style="margin:4px 0 0"><b>${pBul(p)}</b> bultos · ${pStores(p).map(x=>esc(L(x.t))+' '+x.b).join(' · ')||'vacío'}${pStores(p).length>1?' · <b>división</b>':''}</div></div>`}).join('')||'<div class="msg">Aún no hay palets.</div>';
+  {const T=Object.values(PM),tb=T.reduce((t,p)=>t+pBul(p),0),cam=T.filter(p=>p.emb).reduce((t,p)=>t+pBul(p),0),sto={};
+    T.forEach(p=>pStores(p).forEach(x=>sto[x.t]=(sto[x.t]||0)+x.b));
+    const big=(n,l)=>`<div><b class="sora" style="font-size:26px">${n}</b><div class="msg" style="margin:0">${l}</div></div>`;
+    $('palTotal').innerHTML=T.length?`<div class="card" style="border-color:var(--ac)"><div class="slbl">Total acumulado · semana actual y anterior</div><div style="display:flex;gap:22px;flex-wrap:wrap">${big(tb,'bultos en palets')}${big(T.length,'palets')}${big(cam,'bultos en camión')}${big(tb-cam,'por despachar')}</div><div class="msg" style="margin:10px 0 0">${Object.entries(sto).map(([t,b])=>esc(L(t))+' <b>'+b+'</b>').join(' · ')}</div></div>`:''}
   $('embList').innerHTML=Object.entries(EMB).sort((a,b)=>(b[1].seq||0)-(a[1].seq||0)).map(([id,e])=>{const c=embCalc(e),env=e.st==='enviado';
     return `<details class="card" data-ek="${id}" ${embOpenSet.has(id)?'open':''}><summary>🚛 ${esc(e.num)} <span class="pill p-aq" style="margin-left:6px">${c.cams.length} camión(es) · ${c.np} palets · ${c.tb} bultos</span> ${env?'<span class="pill p-ok">Enviado</span>':e.comp?'<span class="pill p-bl">Completado</span>':'<span class="pill p-wn">En armado</span>'}</summary>
     <div class="msg">${esc(e.n||e.u||'')} · ${fdt(e.ts)}</div>
@@ -1673,41 +1714,99 @@ $('mpalBody').addEventListener('change',async e=>{if(e.target.id==='palDelAll'){
 $('mpalBody').addEventListener('click',async e=>{const id=e.target.id,p=PM[palOpen];if(!p&&id!=='palX')return;
   if(id==='palX'){history.back();return}
   const rb=e.target.closest('[data-rmb]');if(rb){await palRemove(palOpen,+rb.dataset.rmb);return}
-  if(id==='palCl'){if(p.st==='abierto'){if(!pBul(p)){toast('El palet no tiene bultos');return}await set(R(db,`${PB}/pm/${palOpen}/st`),'cerrado')}else{if(p.emb)return;await set(R(db,`${PB}/pm/${palOpen}/st`),'abierto')}return}
-  if(id==='palPr'){if(!pBul(p)){toast('El palet no tiene bultos');return}e.target.disabled=true;try{await enqueuePrint(zplPalet(p),{tr:'PALET '+p.num,t:'PAL',n:1})}catch(err){toast('Error: '+(err.code||err.message))}e.target.disabled=false;return}
+  if(id==='palCl'){if(p.st==='abierto'){if(!pBul(p)){ptoast('El palet no tiene bultos');return}await set(R(db,`${PB}/pm/${palOpen}/st`),'cerrado')}else{if(p.emb)return;await set(R(db,`${PB}/pm/${palOpen}/st`),'abierto')}return}
+  if(id==='palPr'){if(!pBul(p)){ptoast('El palet no tiene bultos');return}e.target.disabled=true;try{await enqueuePrint(zplPalet(p),{tr:'PALET '+p.num,t:'PAL',n:1})}catch(err){ptoast('Error: '+(err.code||err.message))}e.target.disabled=false;return}
   if(id==='palMs'){const d=await palDeficit(p.tfs);alert(d.length?await missLines(d.map(x=>x.k)):'Todas las transferencias de este palet tienen sus bultos completos en palets.');return}
-  if(id==='palRm'){if(p.st!=='abierto'){toast('Reabre el palet para quitar bultos');return}
+  if(id==='palRm'){if(p.st!=='abierto'){ptoast('Reabre el palet para quitar bultos');return}
     ask('Quitar bulto · '+p.num,[{k:'c',label:'Código del bulto',type:'text',ph:'GB000123'}],'Quitar',async v=>{const m=String(v.c).trim().toUpperCase().match(/^GB0*(\d+)$/);const n=m&&parseInt(m[1],10);
-      if(!n||!PBO[n]){toast('Ese bulto no está en este palet');return false}
+      if(!n||!PBO[n]){ptoast('Ese bulto no está en este palet');return false}
       const ok=await palRemove(palOpen,n);if(!ok)return false});return}
-  if(id==='palDel'){if(p.emb){toast('El palet está en un camión');return}
+  if(id==='palDel'){if(p.emb){ptoast('El palet está en un camión');return}
     if(pBul(p)>0||Object.keys(PBO).length>0){palDelMode=true;palDelChk=false;renderPalModal();return}
     if(!confirm(`¿Eliminar ${p.num}?`))return;palDoDelete(p);return}
   if(id==='palDelNo'){palDelMode=false;palDelChk=false;renderPalModal();return}
   if(id==='palDelGo'){if(!palDelChk||p.emb)return;palDoDelete(p);return}
 });
-async function palRemove(pid,n){const p=PM[pid];if(!p||p.st!=='abierto'){toast('Reabre el palet para quitar bultos');return false}
-  if(!PBO[n]){toast('Ese bulto no está en este palet');return false}
+async function palRemove(pid,n){const p=PM[pid];if(!p||p.st!=='abierto'){ptoast('Reabre el palet para quitar bultos');return false}
+  if(!PBO[n]){ptoast('Ese bulto no está en este palet');return false}
   const k=PBO[n],tf=(p.tfs||{})[k]||{},cnt=Object.values(PBO).filter(y=>y===k).length-1,nb=Object.keys(PBO).length-1;
+  const rb=document.querySelector(`[data-rmb="${n}"]`),row=rb&&rb.parentElement;
+  if(row){row.classList.add('palrow-out');await new Promise(r=>setTimeout(r,230))}
   try{const g=await release(k,n,pid);const up={[`pb/${pid}/${n}`]:null,[`pm/${pid}/nb`]:nb,[`pm/${pid}/tfs/${k}`]:cnt>0?{...tf,c:cnt}:null};
     if(g!==null&&tf.N!==undefined)up[`tfc/${k}`]=g>0?{N:tf.N,g}:null;
-    await update(R(db,PB),up);delete PBO[n];if(PM[pid])PM[pid].nb=nb;renderPalModal();palMissRefresh();toast(`↩ ${gbCode(n)} liberado`);return true}
-  catch(err){toast('Error: '+(err.code||err.message));return false}}
+    palBumpT=Date.now()+900;
+    await update(R(db,PB),up);delete PBO[n];if(PM[pid])PM[pid].nb=nb;renderPalModal();palMissRefresh();ptoast(`↩ ${gbCode(n)} quitado del palet`);return true}
+  catch(err){renderPalModal();ptoast('Error: '+(err.code||err.message));return false}}
 async function palDoDelete(p){const pid=palOpen,num=p.num,tfs=p.tfs||{};palDelMode=false;palDelChk=false;history.back();
   try{const pb=(await get(R(db,`${PB}/pb/${pid}`))).val()||{},up={[`pm/${pid}`]:null,[`pb/${pid}`]:null,[`pn/${num}`]:null};
     for(const [n,k] of Object.entries(pb)){const g=await release(k,+n,pid);const N=(tfs[k]||{}).N;if(g!==null&&N!==undefined){up[`tfc/${k}`]=g>0?{N,g}:null;if(!g)up[`tfx/${k}`]=null}}
     await update(R(db,PB),up);toast(`🗑 ${num} eliminado · bultos liberados`)}catch(err){toast('Error: '+(err.code||err.message))}}
-// Repara reservas huérfanas: bultos marcados como "en un palet" cuyo palet ya no los tiene
-async function palRepair(btn){if(!confirm('Se revisarán todas las reservas de bultos y se liberarán las que ya no pertenecen a ningún palet (huérfanas). Los bultos que sí están en un palet no se tocan. ¿Continuar?'))return;
+// ---- Bultos: generaciones viejas, pool de números liberados y reparación ----
+// Antes de cambiar/quitar los bultos de una transferencia: ¿hay bultos suyos en palets?
+async function retirePreview(k){
+  let tx=null;try{tx=(await get(R(db,`${PB}/tfx/${k}`))).val()}catch(e){}
+  const by={};Object.values((tx&&tx.got)||{}).forEach(pid=>by[pid]=(by[pid]||0)+1);
+  const pals=[];
+  for(const [pid,c] of Object.entries(by)){let p=PM[pid];if(!p){try{p=(await get(R(db,`${PB}/pm/${pid}`))).val()}catch(e){}}if(p)pals.push({num:p.num,emb:!!p.emb,c})}
+  const enc=pals.filter(x=>x.emb);
+  if(enc.length)return{block:`No se puede cambiar: ${enc.map(x=>x.num).join(', ')} ya está cargado en un camión con bultos de esta transferencia. Descarga el palet del camión primero.`,msg:''};
+  return{block:'',msg:pals.length?`\n\n⚠ Estos bultos ya están en palets: ${pals.map(x=>`${x.num} (${x.c})`).join(', ')}. Se quitarán de ellos.`:''}}
+// Retira la generación anterior: saca sus bultos de los palets, borra su control y devuelve los números al pool
+async function retireRange(k,first,n){
+  try{const tx=(await get(R(db,`${PB}/tfx/${k}`))).val(),up={},by={};
+    Object.entries((tx&&tx.got)||{}).forEach(([num,pid])=>{(by[pid]=by[pid]||[]).push(num);up[`pb/${pid}/${num}`]=null});
+    for(const [pid,nums] of Object.entries(by)){const pm=(await get(R(db,`${PB}/pm/${pid}`))).val();if(!pm)continue;
+      const pb=(await get(R(db,`${PB}/pb/${pid}`))).val()||{};let nb=0,c=0;
+      for(const [num,kk] of Object.entries(pb)){if(nums.includes(num))continue;nb++;if(kk===k)c++}
+      up[`pm/${pid}/nb`]=nb;up[`pm/${pid}/tfs/${k}`]=c>0?{...((pm.tfs||{})[k]||{}),c}:null}
+    up[`tfx/${k}`]=null;up[`tfc/${k}`]=null;
+    await update(R(db,PB),up);await addFree(first,n)}
+  catch(err){toast('No se pudieron liberar los bultos anteriores: '+(err.code||err.message))}}
+async function addFree(first,n){if(!(n>0))return;try{await get(R(db,BULK+'/free'))}catch(e){}
+  await runTransaction(R(db,BULK+'/free'),c=>{const a=Object.values(c||{}).filter(Boolean).map(x=>({first:x.first,n:x.n}));a.push({first,n});a.sort((x,y)=>x.first-y.first);
+    const m=[];for(const x of a){const l=m[m.length-1];if(l&&l.first+l.n>=x.first)l.n=Math.max(l.n,x.first+x.n-l.first);else m.push({...x})}
+    const o={};m.forEach(x=>o['f'+x.first]=x);return o})}
+// Reserva n números consecutivos: primero del pool de liberados, si no, de la secuencia
+async function allocBultos(n){let first=null;
+  try{await get(R(db,BULK+'/free'))}catch(e){}
+  try{const r=await runTransaction(R(db,BULK+'/free'),c=>{first=null;if(c===null)return c;
+      const f=Object.values(c).filter(x=>x&&x.n>=n).sort((x,y)=>x.n-y.n||x.first-y.first)[0];if(!f)return;
+      first=f.first;const o={...c};delete o['f'+f.first];if(f.n>n)o['f'+(f.first+n)]={first:f.first+n,n:f.n-n};return Object.keys(o).length?o:null});
+    if(!r.committed)first=null}catch(e){first=null}
+  if(first!==null)return first;
+  const r=await runTransaction(R(db,BULK+'/seq'),c=>(c||0)+n);
+  return r.committed?r.snapshot.val()-n+1:null}
+// Reparación total: lo que realmente está en los palets (pb) es la verdad; todo lo demás se reconstruye
+async function palRepair(btn){if(!confirm('Se revisará todo el control de bultos:\n\n• Bultos de versiones anteriores de una transferencia (números viejos) se quitan de los palets y se liberan.\n• Reservas que ya no pertenecen a ningún palet se liberan.\n• Un mismo bulto en dos palets queda solo en el más antiguo.\n• Los contadores se recalculan.\n\nLos bultos válidos que están en un palet no se tocan. ¿Continuar?'))return;
   btn.disabled=true;toast('Revisando…');
-  try{const [tx,pm]=await Promise.all([get(R(db,PB+'/tfx')),get(R(db,PB+'/pm'))]);const TX=tx.val()||{},PMA=pm.val()||{},pbc={},up={};let freed=0;
-    for(const [k,v] of Object.entries(TX)){let g=Object.keys(v.got||{}).length,ch=false;
-      for(const [n,pid] of Object.entries(v.got||{})){let ok=false;
-        if(PMA[pid]){if(!(pid in pbc))pbc[pid]=(await get(R(db,`${PB}/pb/${pid}`))).val()||{};ok=pbc[pid][n]===k}
-        if(!ok){up[`tfx/${k}/got/${n}`]=null;g--;freed++;ch=true}}
-      if(ch&&v.N!==undefined)up[`tfc/${k}`]=g>0?{N:v.N,g}:null}
-    if(!freed){toast('No hay bultos huérfanos. Todo está en orden');return}
-    await update(R(db,PB),up);toast(`✅ ${freed} bulto(s) liberado(s). Ya se pueden escanear de nuevo`)}
+  try{const [tx,tc,pm,pb,rg]=await Promise.all([get(R(db,PB+'/tfx')),get(R(db,PB+'/tfc')),get(R(db,PB+'/pm')),get(R(db,PB+'/pb')),get(R(db,BULK+'/ranges'))]);
+    const TX=tx.val()||{},TC=tc.val()||{},PMA=pm.val()||{},PBA=pb.val()||{},RG=rg.val()||{};
+    const up={},claims={},keep={},pzOf={},stale=[];let quit=0,libres=0;
+    Object.values(PMA).forEach(p=>Object.entries(p.tfs||{}).forEach(([k,v])=>{if(v&&v.pz)pzOf[k]=v.pz}));
+    const pids=Object.keys(PBA).sort((a,b)=>((PMA[a]||{}).seq||0)-((PMA[b]||{}).seq||0));
+    for(const pid of pids){keep[pid]={};
+      for(const [n,k] of Object.entries(PBA[pid]||{})){const num=+n,r=RG[k];
+        const good=PMA[pid]&&r&&num>=r.first&&num<r.first+r.n&&!(claims[k]&&claims[k][num]);
+        if(good){(claims[k]=claims[k]||{})[num]=pid;keep[pid][num]=k}else{up[`pb/${pid}/${num}`]=null;quit++}}}
+    for(const [pid,p] of Object.entries(PMA)){const now=keep[pid]||{},cnt={};Object.values(now).forEach(k=>cnt[k]=(cnt[k]||0)+1);
+      const nb=Object.keys(now).length,tfs={};let ch=(p.nb||0)!==nb;
+      for(const [k,c] of Object.entries(cnt)){const old=(p.tfs||{})[k],r=RG[k];tfs[k]={t:r.t,tr:r.tr||'',N:r.n,pz:(old&&old.pz)||pzOf[k]||0,c};if(!old||old.c!==c||old.N!==r.n)ch=true}
+      if(Object.keys(p.tfs||{}).some(k=>!cnt[k]))ch=true;
+      if(ch){up[`pm/${pid}/nb`]=nb;up[`pm/${pid}/tfs`]=nb?tfs:null}}
+    for(const k of new Set([...Object.keys(TX),...Object.keys(TC),...Object.keys(claims)])){
+      const old=TX[k],r=RG[k],cl=claims[k]||{},ng=Object.keys(cl).length,og=(old&&old.got)||{};
+      if(old&&old.first!==undefined&&(!r||r.first!==old.first||r.n!==old.N))stale.push({first:old.first,n:old.N});
+      libres+=Object.keys(og).filter(n=>cl[n]!==og[n]).length;
+      if(ng&&r){const want={t:r.t,tr:r.tr||'',rec:r.rec,first:r.first,N:r.n,pz:(old&&old.pz)||pzOf[k]||0,got:cl};
+        const same=old&&old.first===want.first&&old.N===want.N&&Object.keys(og).length===ng&&Object.keys(cl).every(n=>og[n]===cl[n]);
+        if(!same)up[`tfx/${k}`]=want;
+        const tcv=TC[k];if(!tcv||tcv.N!==r.n||tcv.g!==ng)up[`tfc/${k}`]={N:r.n,g:ng}}
+      else{if(old)up[`tfx/${k}`]=null;if(TC[k])up[`tfc/${k}`]=null}}
+    const freeNums=stale.filter(x=>x.n>0&&!Object.values(RG).some(r=>r.first<x.first+x.n&&x.first<r.first+r.n));
+    if(!Object.keys(up).length&&!freeNums.length){toast('No hay nada que reparar. Todo está en orden');return}
+    if(Object.keys(up).length)await update(R(db,PB),up);
+    for(const x of freeNums)await addFree(x.first,x.n);
+    alert(`✅ Reparación terminada\n\n• Reservas liberadas: ${libres}\n• Bultos quitados de palets (números viejos o duplicados): ${quit}\n• Números devueltos al pool para otras transferencias: ${freeNums.reduce((t,x)=>t+x.n,0)}`)}
   catch(err){toast('Error: '+(err.code||err.message))}finally{btn.disabled=false}}
 
 // ---------- botón Atrás: no sacar de la app, volver al listado ----------
