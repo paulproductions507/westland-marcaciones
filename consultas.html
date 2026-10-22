@@ -147,24 +147,38 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
   <div class="wrap">
     <div id="v-rec">
       <div class="card"><h2 style="font-size:20px">Elige el recibo</h2><div class="msg" style="margin-top:4px">Selecciona el recibo que vas a trabajar.</div></div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn sm" id="recStat">📊 Estadística</button><div id="recAdm" class="hide" style="display:flex;gap:8px"><button class="btn sm" id="recAuto">⚡ Pedidos automáticos</button><button class="btn sm" id="recPro">📈 Productividad</button><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn sm" id="recStat">📊 Estadística</button><div id="recAdm" class="hide" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="recAuto">⚡ Pedidos automáticos</button><button class="btn sm" id="recTun">🚇 Túnel</button><button class="btn sm" id="recTunM">✍️ Túnel manual</button><button class="btn sm" id="recPro">📈 Productividad</button><button class="btn sm" id="recPal">🧱 Palets</button><button class="btn sm" id="recPkl">📋 Packing list</button><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div></div>
       <div id="recTabs" style="display:flex;gap:8px;margin-bottom:12px"></div>
       <div id="recList"></div>
     </div>
-    <div id="v-auto" class="hide"><div class="card"><h3 style="font-size:16px">Cargar transferencia del Gestor de Bodega</h3>
+    <div id="v-auto" class="hide"><div class="card" id="auUpCard"><h3 style="font-size:16px">Cargar transferencia del Gestor de Bodega</h3>
       <div class="msg">Sube el PDF (o una captura PNG/JPG) de la pantalla de Chequeo. La app lee la transferencia, la tienda y los productos; tú revisas y guardas.</div>
       <div class="lbl" style="margin-top:10px">Tipo (si el PDF es del sistema, se detecta solo)</div><select class="f" id="auSrc"><option value="auto">⚡ Automático (pedido automático)</option><option value="tun">🚇 Túnel (transferencia de un recibo)</option></select>
       <div class="lbl" style="margin-top:10px">PDF o captura</div><input class="f" type="file" id="auFile" accept=".pdf,image/*"><div class="msg" id="auMsg"></div></div>
     <div id="auReview"></div><div class="card"><div class="slbl">Transferencias cargadas</div><div id="auList"></div></div></div>
     <div id="v-pro" class="hide"><div id="prFil"></div><div id="prBody"></div></div>
+    <!-- PALETS Y EMBARQUES -->
+    <div id="palwrap">
+    <div id="v-pal" class="hide">
+      <div class="card"><h3 style="font-size:16px">Palets</h3><div class="msg" style="margin-bottom:8px">Escanea los bultos (GB…) de transferencias ya despachadas. Un palet = una tienda, salvo que actives “División”.</div><button class="btn pri" id="palNew" style="width:100%">＋ Nuevo palet</button><button class="btn sm" id="palGap" style="width:100%;margin-top:8px">🔢 Habilitar números faltantes de la secuencia</button></div>
+      <div id="palList"></div>
+
+      <div class="slbl" style="margin-top:14px">Historial</div>
+      <div class="card"><div class="msg" style="margin-bottom:8px">Aquí solo se cargan la semana actual y la anterior. Lo anterior queda como registro informativo y solo se consulta si lo pides.</div><button class="btn sm" id="histBtn" style="width:100%">📚 Ver historial anterior</button></div>
+      <div id="histList"></div>
+    </div>
+    <div id="v-pkl" class="hide">
+      <div class="card"><h3 style="font-size:16px">Packing list</h3><div class="msg" style="margin-bottom:8px">1) Indica cuántos camiones son y carga los palets listos escaneando su etiqueta (si llega otro camión, cambia la cantidad). 2) Completa el packing list. 3) Recién ahí se asigna el chofer y la placa, y se envía por correo.</div><button class="btn pri" id="embNew" style="width:100%">＋ Nuevo packing list</button></div>
+      <div id="embList"></div>
+    </div>
+    </div>
+
     <div id="v-stat" class="hide"><div id="stFil"></div><div id="stBody"></div></div>
     <div id="v-recibo" class="hide">
     <div class="tabs">
       <button class="tab on" data-t="cons">🔎 Consulta</button>
       <button class="tab" data-t="trf">🚚 Transferencias</button>
       <button class="tab" data-t="dsp">📦 Despacho</button>
-      <button class="tab" data-t="pal">🧱 Palets</button>
-      <button class="tab" data-t="pkl">📋 Packing list</button>
       <button class="tab" data-t="dif">⚠️ Diferencias</button>
       <button class="tab" data-t="est">📊 Estadísticas</button>
     </div>
@@ -224,22 +238,6 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
       <div class="card"><h3 style="font-size:16px">Nuevo despacho</h3><div class="msg" style="margin-bottom:6px">Marca las transferencias que van al centro de distribución.</div><div id="dspPick"></div></div>
       <div class="slbl" style="margin-top:14px">Despachos creados</div>
       <div id="dspList"></div>
-    </div>
-
-    <!-- PALETS Y EMBARQUES -->
-    <div id="palwrap">
-    <div id="v-pal" class="hide">
-      <div class="card"><h3 style="font-size:16px">Palets</h3><div class="msg" style="margin-bottom:8px">Escanea los bultos (GB…) de transferencias ya despachadas. Un palet = una tienda, salvo que actives “División”.</div><button class="btn pri" id="palNew" style="width:100%">＋ Nuevo palet</button></div>
-      <div id="palList"></div>
-
-      <div class="slbl" style="margin-top:14px">Historial</div>
-      <div class="card"><div class="msg" style="margin-bottom:8px">Aquí solo se cargan la semana actual y la anterior. Lo anterior queda como registro informativo y solo se consulta si lo pides.</div><button class="btn sm" id="histBtn" style="width:100%">📚 Ver historial anterior</button></div>
-      <div id="histList"></div>
-    </div>
-    <div id="v-pkl" class="hide">
-      <div class="card"><h3 style="font-size:16px">Packing list</h3><div class="msg" style="margin-bottom:8px">1) Indica cuántos camiones son y carga los palets listos escaneando su etiqueta (si llega otro camión, cambia la cantidad). 2) Completa el packing list. 3) Recién ahí se asigna el chofer y la placa, y se envía por correo.</div><button class="btn pri" id="embNew" style="width:100%">＋ Nuevo packing list</button></div>
-      <div id="embList"></div>
-    </div>
     </div>
 
     <!-- DIFERENCIAS -->
@@ -326,14 +324,14 @@ async function migrateAuto(ids){
       if(v.length&&v.every(x=>x.au)){const o={u:AUTO_U,n:AUTO_N,ts:v[0].ts||Date.now(),au:1};await set(R(db,'meta_v1/consultas_comp/'+id),o);COMP[id]=o}}catch(e){}}
 }
 async function showRecList(){
-  $('v-stat').classList.add('hide');$('v-auto').classList.add('hide');$('v-pro').classList.add('hide');$('mst').classList.add('hide');
+  $('v-stat').classList.add('hide');$('v-auto').classList.add('hide');$('v-pro').classList.add('hide');$('v-pal').classList.add('hide');$('v-pkl').classList.add('hide');$('mst').classList.add('hide');
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();offLog=offCli=offDsp=offTrf=offTb=offDs=offBg=null;cur=null;RECIBO=null;$('recAdm').classList.toggle('hide',!ISADM);
   $('v-recibo').classList.add('hide');$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Consultas';
   await loadUploaded();if(RECS.AUTO)PROV.AUTO='PEDIDOS AUTOMÁTICOS';await migrateAuto(Object.keys(RECS));autoProv().then(ch=>{if(ch&&!$('v-rec').classList.contains('hide'))showRecList()});const allIds=Object.keys(RECS);const nC=allIds.filter(id=>COMP[id]).length;
   $('recTabs').innerHTML=`<button class="btn sm ${recTab==='a'?'pri':''}" data-rtab="a">En proceso (${allIds.length-nC})</button><button class="btn sm ${recTab==='c'?'pri':''}" data-rtab="c">✔ Completados (${nC})</button>`;
   const ids=allIds.filter(id=>!!COMP[id]===(recTab==='c'));
   if(!ids.length){$('recList').innerHTML=`<div class="msg">${recTab==='c'?'Aún no hay recibos completados.':'No hay recibos en proceso.'}</div>`;return}
-  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1">${PROV[id]?`<div class="sora" style="font-size:24px;color:#fff;line-height:1.15;margin-bottom:4px">${esc(PROV[id])}</div>`:'<div class="msg" style="margin:0 0 4px;color:var(--wn)">Sin proveedor</div>'}<div class="lbl">Recibo</div><div class="sora" style="font-size:24px;color:var(--ac)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos · ${fmt(it.reduce((a,x)=>a+(x.rec||0),0))} piezas</div>${COMP[id]?`<div class="msg" style="margin:2px 0 0">✔ Completado · ${fdt(COMP[id].ts)} · ${esc(COMP[id].n||'')}</div>`:''}<div class="msg" id="ri-${id}" style="margin:2px 0 0;color:var(--tx)">Ítems …</div>${RECDEP[id]?`<div class="msg" style="margin:2px 0 0">🏷 Departamento: <b>${esc(RECDEP[id])}</b></div>`:''}<div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}</div></div><div style="text-align:right;display:flex;gap:14px"><div><div class="big" id="ra-${id}" style="font:800 22px '72','72full','Inter',system-ui,sans-serif;color:var(--ac)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px '72','72full','Inter',system-ui,sans-serif;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar"><i id="rb-${id}" style="width:0"></i></div><div class="bar" style="margin-top:4px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">${COMP[id]?`<button class="btn sm" data-reopenrec="${id}">↩ Reabrir</button>`:''}<button class="btn sm" data-fecharec="${id}">📅 Fecha y departamento</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
+  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1">${PROV[id]?`<div class="sora" style="font-family:'Inter',system-ui,sans-serif;font-size:27px;font-weight:800;color:#fff;line-height:1.15;margin-bottom:4px;letter-spacing:-.01em">${esc(PROV[id])}</div>`:'<div class="msg" style="margin:0 0 4px;color:var(--wn)">Sin proveedor</div>'}<div class="lbl">Recibo</div><div class="sora" style="font-size:24px;color:var(--ac)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos · ${fmt(it.reduce((a,x)=>a+(x.rec||0),0))} piezas</div>${COMP[id]?`<div class="msg" style="margin:2px 0 0">✔ Completado · ${fdt(COMP[id].ts)} · ${esc(COMP[id].n||'')}</div>`:''}<div class="msg" id="ri-${id}" style="margin:2px 0 0;color:var(--tx)">Ítems …</div>${RECDEP[id]?`<div class="msg" style="margin:2px 0 0">🏷 Departamento: <b>${esc(RECDEP[id])}</b></div>`:''}<div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}</div></div><div style="text-align:right;display:flex;gap:14px"><div><div class="big" id="ra-${id}" style="font:800 22px '72','72full','Inter',system-ui,sans-serif;color:var(--ac)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px '72','72full','Inter',system-ui,sans-serif;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar" style="height:16px;margin-top:10px"><i id="rb-${id}" style="width:0"></i></div><div class="bar" style="height:16px;margin-top:6px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">${COMP[id]?`<button class="btn sm" data-reopenrec="${id}">↩ Reabrir</button>`:''}<button class="btn sm" data-fecharec="${id}">📅 Fecha y departamento</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
   let PROG={};try{PROG=(await get(R(db,'meta_v1/consultas_prog'))).val()||{}}catch(e){}
   for(const id of ids){try{let g=PROG[id];
     if(!g||g.si===undefined){ // primera vez para este recibo: se calcula una sola vez y se guarda el resumen
@@ -1116,7 +1114,20 @@ function parseTransfer(t){
   const re=/(?:([A-Z0-9][A-Z0-9\-\/\.]{3,})\s+)?(?<!\d)(\d{7})(?!\d)\s+(-?\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+(?:\.\d+)?)/g,ms=[...b.matchAll(re)];
   const lines=ms.map((m,i)=>({ref:m[1]||'',p:m[2],inv:+m[3],sol:+m[4],res:+m[5],desp:+m[6],bul:+m[7],pr:+m[8],d:b.slice(m.index+m[0].length,ms[i+1]?ms[i+1].index:b.length).replace(/[▼▲\s]+$/,'').trim()}));
   return{tr,ts:parseTs(fs),sur,org,des,nota,t:guessStore(des),lines,tot}}
-$('recAuto').onclick=async()=>{$('v-rec').classList.add('hide');$('v-auto').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent='Pedidos automáticos';window.scrollTo(0,0);AU=null;$('auReview').innerHTML='';$('auMsg').textContent='';auList()};
+function openAu(mode){$('v-rec').classList.add('hide');$('v-auto').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent=mode==='auto'?'Pedidos automáticos':mode==='tun'?'Túnel':'Túnel manual';window.scrollTo(0,0);AU=null;$('auReview').innerHTML='';$('auMsg').textContent='';
+  $('auUpCard').classList.toggle('hide',mode==='tunm');$('auSrc').value=mode==='auto'?'auto':'tun';auList();if(mode==='tunm')auManualStart()}
+$('recAuto').onclick=()=>openAu('auto');$('recTun').onclick=()=>openAu('tun');$('recTunM').onclick=()=>openAu('tunm');
+// Túnel manual: se arma la transferencia a mano (sin PDF) y usa el mismo guardado del túnel
+async function auManualStart(){AU={tr:'',ts:Date.now(),sur:'',surRaw:'',suru:'',org:'BODEGA FRANGIPANI',des:'',nota:'TÚNEL MANUAL',t:'',lines:[],tot:0,src:'tun',det:1,rc:'',bul:0,manual:1,file:'manual'};
+  await auLoadDir();const me=UDIR.find(x=>x.u===USER);if(me){AU.suru=me.u;AU.sur=me.n}await auLoadLogs();auRender()}
+function auFindProd(code){const c=String(code||'').trim();if(!c)return null;const lc=c.toLowerCase(),ids=[...(AU.rc&&RECS[AU.rc]?[AU.rc]:[]),...Object.keys(RECS)];
+  for(const id of ids){const x=(RECS[id].items||[]).find(i=>String(i.p)===c||String(i.upc||'')===c||String(i.ref||'').toLowerCase()===lc);if(x)return x}return null}
+function auManualAdd(){const c=($('auMCode')||{}).value||'',q=Math.max(0,parseInt(($('auMQty')||{}).value)||0);
+  if(!c.trim()){toast('Escribe o escanea el producto');return}if(!q){toast('Escribe la cantidad');return}
+  const x=auFindProd(c);if(!x&&!/^\d{7}$/.test(c.trim())){toast('Producto no encontrado: '+c);return}
+  const p=x?String(x.p):c.trim(),ex=AU.lines.find(l=>l.p===p);
+  if(ex)ex.desp+=q;else AU.lines.push({ref:x?x.ref:'',p,d:x?x.d:'',desp:q,sol:q,inv:0,res:0,bul:0,pr:x?(x.pr||0):0});
+  AU.lines.forEach(l=>l.sol=l.desp);auRender();setTimeout(()=>{const i=$('auMCode');if(i)i.focus()},50)}
 $('auFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
   $('auMsg').textContent='Leyendo '+f.name+'…';$('auReview').innerHTML='';
   try{const txt=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)?await pdfText(f):await imgText(f);AU=parseTransfer(txt);await auLoadDir();auMapSur(AU);if(!AU.det){AU.src=$('auSrc').value;AU.rc='';AU.bul=AU.lines.reduce((x,l)=>x+(l.bul||0),0)}else $('auSrc').value=AU.src;AU.file=f.name;
@@ -1138,18 +1149,21 @@ function auRender(){
     <div><div class="lbl">Surtidor</div>${UDIR.length?`<select class="f" data-af="suru"><option value="">Elegir…</option>${UDIR.map(x=>`<option value="${esc(x.u)}" ${a.suru===x.u?'selected':''}>${esc(x.n)} (${esc(x.u)})</option>`).join('')}</select>`:`<input class="f" data-af="sur" value="${esc(a.sur)}">`}</div>
     <div><div class="lbl">Tipo</div><select class="f" data-af="src"><option value="auto" ${a.src==='auto'?'selected':''}>⚡ Automático</option><option value="tun" ${a.src==='tun'?'selected':''}>🚇 Túnel</option></select></div>
     ${tun?`<div><div class="lbl">Recibo del túnel</div><input class="f" data-af="rc" value="${esc(a.rc||'')}" placeholder="Ej. 408114"></div>`:''}
-    <div><div class="lbl">Bultos (del PDF)</div><input class="f" type="number" min="0" data-af="bul" value="${a.bul||0}"></div></div>
+    <div><div class="lbl">${a.manual?'Bultos':'Bultos (del PDF)'}</div><input class="f" type="number" min="0" data-af="bul" value="${a.bul||0}"></div></div>
    ${(UDIR.length&&!a.suru)?`<div class="msg" style="color:var(--wn)">⚠ ${a.surRaw?`El PDF dice “${esc(a.surRaw)}”, que no coincide con ningún usuario de la app. Elige quién es; se recordará para la próxima.`:'No se detectó el surtidor en el PDF. Elígelo antes de guardar.'}</div>`:''}
    ${a.est&&!/despach/i.test(a.est)?`<div class="msg" style="color:var(--wn)">⚠ El estatus en el PDF es “${esc(a.est)}”, no Despachada.</div>`:''}
    ${tun?`<div class="msg">${a.rc&&RECS[a.rc]?`El recibo #${esc(a.rc)} está en la app: la transferencia se asigna a ese recibo y sus productos reciben el número de transferencia. Los productos que no estén en ese recibo pasan a Pedidos automáticos (túnel automático).`:a.rc?`El recibo #${esc(a.rc)} no está en la app: la transferencia se agrega al recibo de Túnel automático (Pedidos automáticos), sin duplicar nada.`:'Escribe el número de recibo para mapearlo.'}</div>`:''}
    <div class="msg">Destino: ${esc(a.des||'—')} · Origen: ${esc(a.org||'—')}${a.nota?' · Nota: '+esc(a.nota):''}</div>
+   ${a.manual?`<div class="card" style="margin:10px 0;padding:10px"><div class="lbl">Agregar producto</div><div style="display:flex;gap:8px;margin-top:6px"><input class="f" id="auMCode" placeholder="Producto, estilo o código de barras" autocomplete="off" style="flex:1"><input class="f" id="auMQty" type="number" min="1" placeholder="Cant." style="width:80px"><button class="btn pri sm" id="auMAdd">＋</button></div></div>`:''}
    <div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th>Descripción</th><th class="n">Desp.</th><th class="n">Bultos</th>${tun?'<th>Relación con recibos</th>':''}<th></th></tr>${rows}</table></div>
    <div class="msg">${fmt(a.lines.length)} líneas · <b>${fmt(sum)}</b> piezas despachadas · ${fmt(bu)} bultos en el Gestor${a.tot&&a.tot!==sum?` · <span style="color:var(--wn)">⚠ el Gestor indica ${fmt(a.tot)} unidades surtidas</span>`:''}</div>
    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" id="auSave" style="flex:1">${tun?'Relacionar con los recibos':'Guardar pedido automático'}</button><button class="btn" id="auCancel">Cancelar</button></div></div>`}
+$('auReview').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.target.id==='auMCode'||e.target.id==='auMQty')){e.preventDefault();auManualAdd()}});
 $('auReview').addEventListener('input',e=>{const d=e.target.dataset;if(!AU)return;if(d.ad!==undefined){AU.lines[+d.ad].desp=Math.max(0,parseInt(e.target.value)||0)}else if(d.af==='ts'){AU.ts=new Date(e.target.value).getTime()||AU.ts}else if(d.af==='tr'||d.af==='sur'||d.af==='rc'){AU[d.af]=e.target.value.trim()}else if(d.af==='bul'){AU.bul=Math.max(0,parseInt(e.target.value)||0)}});
 $('auReview').addEventListener('change',async e=>{const d=e.target.dataset;if(!AU)return;if(d.af==='t'||d.af==='src'){AU[d.af]=e.target.value;if(AU.src==='tun')await auLoadLogs();auRender()}else if(d.af==='rc'){AU.rc=e.target.value.trim();await auLoadLogs();auRender()}else if(d.af==='suru'){AU.suru=e.target.value;const h=UDIR.find(x=>x.u===AU.suru);AU.sur=h?h.n:'';auRender()}else if(d.ad!==undefined)auRender()});
 $('auReview').addEventListener('click',async e=>{
-  if(e.target.closest('#auCancel')){AU=null;$('auReview').innerHTML='';return}
+  if(e.target.closest('#auMAdd')){auManualAdd();return}
+  if(e.target.closest('#auCancel')){const m=AU&&AU.manual;AU=null;$('auReview').innerHTML='';if(m)auManualStart();return}
   const rm=e.target.closest('[data-arm]');if(rm){AU.lines.splice(+rm.dataset.arm,1);auRender();return}
   if(e.target.closest('#auSave'))auSave(e.target.closest('#auSave'))});
 async function auPut(path,o){const k=Object.keys(o);for(let i=0;i<k.length;i+=400){const p={};k.slice(i,i+400).forEach(z=>p[z]=o[z]);await update(R(db,path),p)}}
@@ -1329,7 +1343,7 @@ async function loadRanges(){
 }
 function rangesAll(){
   const o={...(RNG||{})};
-  for(const [k,v] of Object.entries(BG)){const st=k.split('_')[0],tr0=k.slice(st.length+1);o[RECIBO+'__'+k]={rec:RECIBO,key:k,t:st,tr:tr0==='sin'?'':tr0,first:v.first,n:v.n,ts:v.ts}}
+  if(RECIBO)for(const [k,v] of Object.entries(BG)){const st=k.split('_')[0],tr0=k.slice(st.length+1);o[RECIBO+'__'+k]={rec:RECIBO,key:k,t:st,tr:tr0==='sin'?'':tr0,first:v.first,n:v.n,ts:v.ts}}
   return o
 }
 let lblSt=null;
@@ -1519,9 +1533,9 @@ function renderPalModal(){
   ${rows?`<div class="scroll"><table><tr><th>Tienda</th><th>Transf.</th><th class="n">En palet</th><th></th></tr>${rows}</table></div>`:''}`
 }
 function embCalc(e){
-  const cams=Object.entries(e.cam||{}).map(([cid,c])=>({cid,chofer:c.chofer,placa:c.placa,pals:Object.entries(c.pal||{}).map(([id,v])=>({id,num:v.n,nb:v.b||0,tfs:v.tfs||{}}))}));
+  const cams=Object.entries(e.cam||{}).map(([cid,c])=>({cid,chofer:c.chofer,placa:c.placa,pals:Object.entries(c.pal||{}).map(([id,v])=>({id,num:v.n,nb:v.b||0,tfs:v.tfs||{},o:v.o||0})).sort((a,b)=>(a.o-b.o)||(parseInt(String(a.num).replace(/\D/g,''),10)-parseInt(String(b.num).replace(/\D/g,''),10))).map((pl,i)=>({...pl,pos:i+1}))}));
   const tf={},st={};let tb=0,tp=0;
-  cams.forEach(c=>{c.b=0;c.pz=0;c.pals.forEach(pl=>Object.entries(pl.tfs).forEach(([k,v])=>{const n=v.c||0,sh=(v.pz||0)/(v.N||1)*n;
+  cams.forEach(c=>{c.b=0;c.pz=0;c.pals.forEach(pl=>{pl.pz=0;Object.entries(pl.tfs).forEach(([k,v])=>{pl.pz+=(v.pz||0)/(v.N||1)*(v.c||0)});pl.pz=Math.round(pl.pz)});c.pals.forEach(pl=>Object.entries(pl.tfs).forEach(([k,v])=>{const n=v.c||0,sh=(v.pz||0)/(v.N||1)*n;
     const a=tf[k]=tf[k]||{t:v.t,tr:v.tr,N:v.N,b:0,sh:0};a.b+=n;a.sh+=sh;c.b+=n;c.pz+=sh}));c.pz=Math.round(c.pz)});
   Object.values(tf).forEach(a=>{a.pz=Math.round(a.sh);const s=st[a.t]=st[a.t]||{t:a.t,tf:0,b:0,pz:0};s.tf++;s.b+=a.b;s.pz+=a.pz;tb+=a.b;tp+=a.pz});
   return{cams,tf:Object.values(tf).sort((a,b)=>a.t.localeCompare(b.t)),st:Object.values(st).sort((a,b)=>a.t.localeCompare(b.t)),tb,tp,np:cams.reduce((a,c)=>a+c.pals.length,0)}
@@ -1539,8 +1553,10 @@ function embHTML(e){
   <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Detalle por transferencia</div>
   <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Tienda</th><th ${th}>Transferencia</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.tf.map(a=>`<tr><td ${td}>${esc(L(a.t))}</td><td ${td}>${esc(a.tr||'—')}</td><td ${tdn}>${a.b}${a.b<a.N?' de '+a.N:''}</td><td ${tdn}>${fmt(a.pz)}</td></tr>`).join('')}</table>
   <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Camiones</div>
-  <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Camión</th><th ${th}>Chofer</th><th ${th}>Placa</th><th ${th}>Palets</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.cams.map((x,i)=>`<tr><td ${td}>${i+1}</td><td ${td}>${esc(x.chofer||'')}</td><td ${td}>${esc(x.placa||'')}</td><td ${td}>${x.pals.map(pl=>esc(pl.num)).join(', ')}</td><td ${tdn}>${fmt(x.b)}</td><td ${tdn}>${fmt(x.pz)}</td></tr>`).join('')}</table>
-  <div style="font-size:12px;color:#5a6b7a;margin-top:16px">La mercancía viaja en palets identificados con su etiqueta; la recepción se realiza por palet completo.</div></div>`
+  <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Camión</th><th ${th}>Chofer</th><th ${th}>Placa</th><th ${th}>Palets</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.cams.map((x,i)=>`<tr><td ${td}>${i+1}</td><td ${td}>${esc(x.chofer||'')}</td><td ${td}>${esc(x.placa||'')}</td><td ${td}>${x.pals.map(pl=>`Palet ${pl.pos} (${esc(pl.num)})`).join('<br>')}</td><td ${tdn}>${fmt(x.b)}</td><td ${tdn}>${fmt(x.pz)}</td></tr>`).join('')}</table>
+  ${c.cams.map((x,i)=>`<div style="font-size:15px;font-weight:700;margin:20px 0 6px">Desglose · Camión ${i+1}</div>
+  <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Palet (etiqueta)</th><th ${th}>Tienda</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${x.pals.map(pl=>`<tr><td ${td}><b>Palet ${pl.pos}</b> (${esc(pl.num)})</td><td ${td}>${esc(pStores(pl).map(s=>L(s.t)+' '+s.b).join(' · ')||'—')}</td><td ${tdn}>${fmt(pl.nb)}</td><td ${tdn}>${fmt(pl.pz)}</td></tr>`).join('')}</table>`).join('')}
+  <div style="font-size:12px;color:#5a6b7a;margin-top:16px">El número de palet indica el orden en que se cargó en el camión; entre paréntesis va el número de la etiqueta impresa en el palet. La recepción se realiza por palet completo.</div></div>`
 }
 async function embReady(e){const c=embCalc(e);
   if(!e.comp)return'Primero completa el packing list.';
@@ -1591,7 +1607,7 @@ async function embScan(eid,cid,raw){
   let d;try{d=await palDeficit(pl.tfs)}catch(err){toast('Error: '+(err.code||err.message));return}
   if(d.length){alert(`No se puede despachar ${pl.num}:\n\n${await missLines(d.map(x=>x.k))}\n\nBusca el bulto, o escanéalo de nuevo en su palet para asegurarlo.`);return}
   keepScan=eid+'|'+cid;
-  try{await update(R(db,PB),{[`pm/${pid}/emb`]:{e:eid,c:cid},[`emb/${eid}/cam/${cid}/pal/${pid}`]:{n:pl.num,b:pl.nb||0,tfs:pl.tfs||{}}});toast(`✅ ${pl.num} cargado (${pBul(pl)} bultos)`)}catch(err){toast('Error: '+(err.code||err.message))}
+  try{await update(R(db,PB),{[`pm/${pid}/emb`]:{e:eid,c:cid},[`emb/${eid}/cam/${cid}/pal/${pid}`]:{n:pl.num,b:pl.nb||0,tfs:pl.tfs||{},o:Date.now()}});const pos=Object.keys((((EMB[eid]||{}).cam||{})[cid]||{}).pal||{}).length+1;toast(`✅ Palet ${pos} (${pl.num}) cargado · ${pBul(pl)} bultos`)}catch(err){toast('Error: '+(err.code||err.message))}
 }
 function renderPal(){
   if($('v-pal').classList.contains('hide')&&$('v-pkl').classList.contains('hide'))return;
@@ -1603,11 +1619,23 @@ function renderPal(){
     <div class="msg">${esc(e.n||e.u||'')} · ${fdt(e.ts)}</div>
     ${c.cams.map((x,i)=>`<div class="crow"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>Camión ${i+1}${e.comp?` · ${esc(x.chofer||'chofer pendiente')} · ${esc(x.placa||'—')}`:''}</b><span class="msg" style="margin:0">${x.pals.length} palets · ${fmt(x.b)} bultos · ${fmt(x.pz)} pzas</span></div>
       ${(env||!e.comp)?'':`<button class="btn sm" data-ech="${id}|${x.cid}" style="margin-top:8px">${x.chofer&&x.placa?'✎ Cambiar chofer y placa':'👤 Asignar chofer y placa'}</button>`}${(env||e.comp)?'':`<input class="f" data-escan="${id}|${x.cid}" placeholder="Escanear palet (PAL-0001)" autocomplete="off" autocapitalize="characters" spellcheck="false" style="margin-top:8px">`}
-      ${x.pals.map(pl=>`<div class="prow" style="justify-content:space-between"><span class="tv">${esc(pl.num)}</span><span class="msg" style="margin:0">${pStores(pl).map(s=>esc(L(s.t))+' '+s.b).join(' · ')}</span>${(env||e.comp)?'':`<button class="btn sm" data-erm="${id}|${x.cid}|${pl.id}">✕</button>`}</div>`).join('')}</div>`).join('')}
+      ${x.pals.map(pl=>`<div class="prow" style="justify-content:space-between"><span class="tv">Palet ${pl.pos} (${esc(pl.num)})</span><span class="msg" style="margin:0">${pStores(pl).map(s=>esc(L(s.t))+' '+s.b).join(' · ')}</span>${(env||e.comp)?'':`<button class="btn sm" data-erm="${id}|${x.cid}|${pl.id}">✕</button>`}</div>`).join('')}</div>`).join('')}
     ${c.st.length?`<div class="scroll"><table><tr><th>Tienda</th><th class="n">Transf.</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${c.st.map(s=>`<tr><td>${esc(LN(s.t))}</td><td class="n">${s.tf}</td><td class="n">${fmt(s.b)}</td><td class="n">${fmt(s.pz)}</td></tr>`).join('')}<tr><td><b>TOTAL</b></td><td class="n"><b>${c.tf.length}</b></td><td class="n"><b>${fmt(c.tb)}</b></td><td class="n"><b>${fmt(c.tp)}</b></td></tr></table></div>`:''}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${(env||e.comp)?'':`<button class="btn sm" data-ecn="${id}">🚛 Camiones: ${c.cams.length}</button><button class="btn pri sm" data-ecomp="${id}">✔ Completar packing list</button>`}${(e.comp&&!env)?`<button class="btn sm" data-eopen="${id}">↩ Reabrir packing list</button>`:''}<button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button>${(e.comp||env)?`<button class="btn pri sm" data-email="${id}">✉ ${env?'Reenviar':'Enviar'} correo</button>`:''}${ISADM&&!env?`<button class="btn sm" data-edel="${id}">🗑 Eliminar</button>`:''}</div></details>`}).join('')||'<div class="msg">Aún no hay embarques.</div>';
   if(keepScan){const i=document.querySelector(`[data-escan="${keepScan}"]`);if(i)i.focus();keepScan=null}
 }
+function openPalView(w){$('v-rec').classList.add('hide');$('v-pal').classList.toggle('hide',w!=='pal');$('v-pkl').classList.toggle('hide',w!=='pkl');$('btnHome').classList.remove('hide');$('ttl').textContent=w==='pal'?'Palets':'Packing list';window.scrollTo(0,0);startPal();renderPal()}
+$('recPal').onclick=()=>openPalView('pal');$('recPkl').onclick=()=>openPalView('pkl');
+// Habilita (como palets vacíos y abiertos) los números de la secuencia que alguien eliminó
+async function palGaps(btn){btn.disabled=true;
+  try{const [sq,pn]=await Promise.all([get(R(db,PB+'/seq')),get(R(db,PB+'/pn'))]);const seq=sq.val()||0,have=new Set(Object.keys(pn.val()||{}));Object.values(PM).forEach(p=>have.add(p.num));
+    const miss=[];for(let n=1;n<=seq;n++){const num='PAL-'+String(n).padStart(4,'0');if(!have.has(num))miss.push(n)}
+    if(!miss.length){toast('La secuencia está completa, no falta ningún número');return}
+    if(!confirm(`Faltan en la secuencia: ${miss.map(n=>'PAL-'+String(n).padStart(4,'0')).join(', ')}.\n\nSe habilitan como palets vacíos y abiertos para volver a llenarlos. ¿Continuar?`))return;
+    const up={},now=Date.now();miss.forEach((n,i)=>{const num='PAL-'+String(n).padStart(4,'0'),id='p'+(now+i);up[`pm/${id}`]={num,seq:n,ts:now+i,u:USER,n:NAME,st:'abierto',div:false,nb:0,rest:1};up[`pn/${num}`]=id});
+    await update(R(db,PB),up);toast(`✅ Habilitados: ${miss.length} palet(s)`)}
+  catch(err){toast('Error: '+(err.code||err.message))}finally{btn.disabled=false}}
+$('palGap').onclick=e=>palGaps(e.currentTarget);
 $('palNew').onclick=newPal;$('embNew').onclick=newEmb;$('histBtn').onclick=loadHist;
 $('palwrap').addEventListener('toggle',e=>{const k=e.target.dataset&&e.target.dataset.ek;if(!k)return;e.target.open?embOpenSet.add(k):embOpenSet.delete(k)},true);
 $('palwrap').addEventListener('keydown',e=>{if(e.key!=='Enter'||!e.target.dataset.escan)return;e.preventDefault();const [eid,cid]=e.target.dataset.escan.split('|'),v=e.target.value;e.target.value='';if(v.trim()){keepScan=eid+'|'+cid;scanQ=scanQ.then(()=>embScan(eid,cid,v)).then(()=>renderPal())}});
@@ -1665,16 +1693,15 @@ window.addEventListener('popstate',()=>{
 $('toMarc').addEventListener('click',e=>{if(!confirm('¿Volver a Marcaciones? Allí tendrás que iniciar sesión de nuevo.'))e.preventDefault()});
 // ---------- navegación ----------
 // Rol surtidor: solo Consulta (surtido) y Transferencias (números de transferencia). El resto es solo de administradores.
-const TABS_ADM=['dsp','pal','pkl','dif','est'];
+const TABS_ADM=['dsp','dif','est'];
 function applyRole(){document.querySelectorAll('.tab').forEach(b=>{if(TABS_ADM.includes(b.dataset.t))b.classList.toggle('hide',!ISADM)})}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
   if(!ISADM&&TABS_ADM.includes(b.dataset.t))return;
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
-  for(const v of['cons','trf','dsp','pal','pkl','dif','est'])$('v-'+v).classList.toggle('hide',v!==b.dataset.t);
-  if(b.dataset.t==='pal'||b.dataset.t==='pkl')startPal();
+  for(const v of['cons','trf','dsp','dif','est'])$('v-'+v).classList.toggle('hide',v!==b.dataset.t);
   if(b.dataset.t!=='cons')$('bar').classList.add('hide');else updateBar();renderAll()
 });
 $('btnHome').onclick=()=>{closeCli();showRecList();window.scrollTo(0,0)};
-function renderAll(){if(!RECIBO)return;renderGlobal();renderCli();if(!$('v-list').classList.contains('hide')){renderList()}if(cur){const ae=document.activeElement;if(!(ae&&ae.tagName==='INPUT'&&ae.closest('#tiles')))renderProd()}if(!$('v-trf').classList.contains('hide')){renderTrfPanel();renderTrf()}if(!$('v-dsp').classList.contains('hide'))renderDespacho();if(!$('v-pal').classList.contains('hide')||!$('v-pkl').classList.contains('hide'))renderPal();if(!$('v-dif').classList.contains('hide'))renderDif();if(!$('v-est').classList.contains('hide'))renderEst()}
+function renderAll(){if(!RECIBO)return;renderGlobal();renderCli();if(!$('v-list').classList.contains('hide')){renderList()}if(cur){const ae=document.activeElement;if(!(ae&&ae.tagName==='INPUT'&&ae.closest('#tiles')))renderProd()}if(!$('v-trf').classList.contains('hide')){renderTrfPanel();renderTrf()}if(!$('v-dsp').classList.contains('hide'))renderDespacho();if(!$('v-dif').classList.contains('hide'))renderDif();if(!$('v-est').classList.contains('hide'))renderEst()}
 </script>
 </body></html>
