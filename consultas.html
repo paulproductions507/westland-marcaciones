@@ -118,7 +118,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
   <div class="wrap">
     <div id="v-rec">
       <div class="card"><h2 style="font-size:20px">Elige el recibo</h2><div class="msg" style="margin-top:4px">Selecciona el recibo que vas a trabajar.</div></div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn sm" id="recStat">📊 Estadística</button><div id="recAdm" class="hide" style="display:flex;gap:8px"><button class="btn sm" id="recAuto">⚡ Pedidos automáticos</button><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn sm" id="recStat">📊 Estadística</button><div id="recAdm" class="hide" style="display:flex;gap:8px"><button class="btn sm" id="recAuto">⚡ Pedidos automáticos</button><button class="btn sm" id="recPro">📈 Productividad</button><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div></div>
       <div id="recTabs" style="display:flex;gap:8px;margin-bottom:12px"></div>
       <div id="recList"></div>
     </div>
@@ -127,6 +127,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
       <div class="lbl" style="margin-top:10px">Tipo (si el PDF es del sistema, se detecta solo)</div><select class="f" id="auSrc"><option value="auto">⚡ Automático (pedido automático)</option><option value="tun">🚇 Túnel (transferencia de un recibo)</option></select>
       <div class="lbl" style="margin-top:10px">PDF o captura</div><input class="f" type="file" id="auFile" accept=".pdf,image/*"><div class="msg" id="auMsg"></div></div>
     <div id="auReview"></div><div class="card"><div class="slbl">Transferencias cargadas</div><div id="auList"></div></div></div>
+    <div id="v-pro" class="hide"><div id="prFil"></div><div id="prBody"></div></div>
     <div id="v-stat" class="hide"><div id="stFil"></div><div id="stBody"></div></div>
     <div id="v-recibo" class="hide">
     <div class="tabs">
@@ -291,7 +292,7 @@ async function migrateAuto(ids){
       if(v.length&&v.every(x=>x.au)){const o={u:AUTO_U,n:AUTO_N,ts:v[0].ts||Date.now(),au:1};await set(R(db,'meta_v1/consultas_comp/'+id),o);COMP[id]=o}}catch(e){}}
 }
 async function showRecList(){
-  $('v-stat').classList.add('hide');$('v-auto').classList.add('hide');$('mst').classList.add('hide');
+  $('v-stat').classList.add('hide');$('v-auto').classList.add('hide');$('v-pro').classList.add('hide');$('mst').classList.add('hide');
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();offLog=offCli=offDsp=offTrf=offTb=offDs=offBg=null;cur=null;RECIBO=null;$('recAdm').classList.toggle('hide',!ISADM);
   $('v-recibo').classList.add('hide');$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Consultas';
   await loadUploaded();if(RECS.AUTO)PROV.AUTO='PEDIDOS AUTOMÁTICOS';await migrateAuto(Object.keys(RECS));autoProv().then(ch=>{if(ch&&!$('v-rec').classList.contains('hide'))showRecList()});const allIds=Object.keys(RECS);const nC=allIds.filter(id=>COMP[id]).length;
@@ -334,8 +335,9 @@ onAuthStateChanged(auth,async u=>{
 });
 
 // ---------- cálculos ----------
-function entries(){return Object.entries(LOG).map(([k,v])=>({k,...v}))}
-function sur(p,t){let q=0;for(const e of entries())if(e.p===p&&e.t===t)q+=e.q||0;return q}
+let _eL=null,_eA=[],_eX={};
+function entries(){if(_eL!==LOG){_eL=LOG;_eA=Object.entries(LOG).map(([k,v])=>({k,...v}));_eX={};for(const e of _eA){const z=e.p+'|'+e.t;_eX[z]=(_eX[z]||0)+(e.q||0)}}return _eA}
+function sur(p,t){entries();return _eX[p+'|'+t]||0}
 function totalsOf(x){let a=0,s=0;for(const t of STORES){a+=x.s[t]||0;s+=Math.min(sur(x.p,t),x.s[t]||0)}return{a,s}}
 function stateOf(x){const{a,s}=totalsOf(x);return a===0?'none':s>=a?'ok':s>0?'wn':'no'}
 
@@ -432,7 +434,7 @@ function trBlock(t,S){if(t==='CRISTAL')return `<input type="text" maxlength="20"
 function histTable(list,del){
   if(!list.length)return '<div class="msg">Aún sin movimientos.</div>';
   return `<div class="scroll"><table><tr><th>Fecha</th><th>Tienda</th><th class="n">Cant.</th><th>Transf.</th><th>Surtidor</th>${del?'<th></th>':''}</tr>${list.map(e=>`<tr><td>${new Date(e.ts).toLocaleString('es',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td><td>${L(e.t)}${e.cn?`<br><small style="color:var(--mt)">${esc(e.cn)}</small>`:''}</td><td class="n">${fmt(e.q)}</td><td>${esc(e.tr||"—")}</td><td>${esc(e.n||e.u)}</td>${del?`<td>${(ISADM||e.u===USER)?`<button class="btn sm" data-del="${e.k}">✕</button>`:''}</td>`:''}</tr>`).join('')}</table></div>`}
-$('phist').addEventListener('click',async e=>{const k=e.target.dataset.del;if(!k)return;if(!confirm('¿Eliminar este movimiento de surtido?'))return;await remove(R(db,`${BASE}/${k}`));toast('Movimiento eliminado')});
+$('phist').addEventListener('click',async e=>{const k=e.target.dataset.del;if(!k)return;if(!confirm('¿Eliminar este movimiento de surtido?'))return;const en=LOG[k];if(en&&en.u&&en.u!==USER&&!en.au&&!en.ax)await set(push(R(db,'meta_v1/consultas_err')),{id:RECIBO,p:en.p,r:en.r||'',k:'eliminar',q:en.q||0,who:en.u,wn:en.n||en.u,by:USER,bn:NAME,ts:Date.now()});await remove(R(db,`${BASE}/${k}`));toast('Movimiento eliminado')});
 $('tiles').addEventListener('click',e=>{const pz=e.target.closest('[data-pz]');if(pz){openPz(pz.dataset.pz);return}const b=e.target.closest('[data-cli]');if(b)openCli(b.dataset.cli);const n=e.target.closest('[data-trnew]');if(n){const t=n.dataset.trnew;sel[t].nw=true;sel[t].tr='';renderProd();const i=document.querySelector(`[data-tr="${t}"]`);if(i)i.focus()}});
 $('tiles').addEventListener('change',e=>{
   const t=e.target.dataset.ck;if(t){sel[t].on=e.target.checked;renderProd();return}
@@ -601,7 +603,7 @@ $('compBox').addEventListener('click',async e=>{
 });
 $('dspBox').addEventListener('click',async e=>{
   if(e.target.closest('#dspBtn')){openDsp();return}
-  if(e.target.closest('#dspUndo')){if(!cur||!confirm('¿Reabrir esta referencia?'))return;try{await remove(R(db,`${DSPB}/${cur.p}`));toast('Referencia reabierta')}catch(err){toast('Error: '+(err.code||err.message))}}
+  if(e.target.closest('#dspUndo')){if(!cur||!confirm('¿Reabrir esta referencia?'))return;try{const dd0=DSP[cur.p]||{};if(dd0.u&&dd0.u!==USER&&!dd0.au&&!dd0.ax)await set(push(R(db,'meta_v1/consultas_err')),{id:RECIBO,p:cur.p,r:cur.ref,k:'reabrir',who:dd0.u,wn:dd0.n||dd0.u,by:USER,bn:NAME,ts:Date.now()});await remove(R(db,`${DSPB}/${cur.p}`));toast('Referencia reabierta')}catch(err){toast('Error: '+(err.code||err.message))}}
 });
 $('mdspBody').addEventListener('click',e=>{if(e.target.id==='dspNo')$('mdsp').classList.add('hide');if(e.target.id==='dspYes'){$('mdsp').classList.add('hide');runDsp()}});
 
@@ -862,19 +864,23 @@ const mlabel=m=>{const [y,mo]=m.split('-');const t=new Date(+y,+mo-1,1).toLocale
 async function openStat(){
   $('v-rec').classList.add('hide');$('v-stat').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent='Estadística';
   $('stFil').innerHTML='';$('stBody').innerHTML='<div class="msg">Cargando datos de todos los recibos…</div>';window.scrollTo(0,0);
-  await statReload()
+  await statReload(false)
 }
-async function statReload(){
-  try{await loadUploaded();if(RECS.AUTO)PROV.AUTO='PEDIDOS AUTOMÁTICOS';await autoProv();await Promise.all(Object.keys(RECS).map(async id=>{try{const [a,b]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);STC[id]={log:a.val()||{},desp:b.val()||{}}}catch(e){STC[id]={log:{},desp:{}}}}));
-    buildEv();buildFilters();renderStat()}catch(e){$('stBody').innerHTML='<div class="msg">No se pudo cargar: '+esc(e.code||e.message)+'</div>'}
+async function statLoad(force){
+  await loadUploaded();await autoProv();const now=Date.now();
+  await Promise.all(Object.keys(RECS).map(async id=>{if(!force&&STC[id]&&now-STC[id].t<300000)return;try{const [a,b]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);STC[id]={log:a.val()||{},desp:b.val()||{},t:now}}catch(e){STC[id]={log:{},desp:{},t:now}}}));
+  if(force||!STERRT||now-STERRT>300000){try{STERR=Object.values((await get(R(db,'meta_v1/consultas_err'))).val()||{})}catch(e){STERR=[]}STERRT=now}
+  buildEv()
 }
+async function statReload(force){try{await statLoad(force);buildFilters();renderStat()}catch(e){$('stBody').innerHTML='<div class="msg">No se pudo cargar: '+esc(e.code||e.message)+'</div>'}}
 function buildEv(){
-  const sv=[],dv=[];
+  const sv=[],dv=[],DM={};for(const id of Object.keys(RECS)){if(id!==AUID)for(const x of RECS[id].items)if(x.dep&&!DM[x.p])DM[x.p]=x.dep}
+  for(const x of (RECS[AUID]?RECS[AUID].items:[]))if(x.dep&&!DM[x.p])DM[x.p]=x.dep;
   for(const id of Object.keys(RECS)){const c=STC[id];if(!c)continue;const it=RECS[id].items,by=Object.fromEntries(it.map(x=>[x.p,x])),st=storesFor(it),prov=PROV[id]||'',sp={};
     const mp=new Set();
-    for(const e of Object.values(c.log||{})){if(e.mir){mp.add(e.p);continue}const q=e.q||0;sp[e.p+'|'+e.t]=(sp[e.p+'|'+e.t]||0)+q;const x=by[e.p];sv.push({id,prov,p:e.p,r:e.r||(x&&x.ref)||'',ds:(x&&x.d)||'',t:e.t,q,b:0,u:e.n||e.u||'—',uu:e.u||'',d:e.d||'',ts:e.ts||0})}
+    for(const e of Object.values(c.log||{})){if(e.mir){mp.add(e.p);continue}const q=e.q||0;sp[e.p+'|'+e.t]=(sp[e.p+'|'+e.t]||0)+q;const x=by[e.p];sv.push({id,prov,p:e.p,r:e.r||(x&&x.ref)||'',ds:(x&&x.d)||'',dep:(x&&x.dep)||DM[e.p]||'Sin departamento',h:e.au?1:0,t:e.t,q,b:0,u:e.n||e.u||'—',uu:e.u||'',d:e.d||'',ts:e.ts||0})}
     for(const [p,dd] of Object.entries(c.desp||{})){const x=by[p];if(!x)continue;const bu=dd.b!=null?dd.b:bul(x);let tot=0;st.forEach(t=>tot+=sp[p+'|'+t]||0);
-      const base={id,prov,p,r:dd.r||x.ref,ds:x.d||'',u:dd.n||dd.u||'—',uu:dd.u||'',d:dd.d||'',ts:dd.ts||0};
+      const base={id,prov,p,r:dd.r||x.ref,ds:x.d||'',dep:x.dep||DM[p]||'Sin departamento',h:dd.au?1:0,u:dd.n||dd.u||'—',uu:dd.u||'',d:dd.d||'',ts:dd.ts||0};
       if(!tot){if(!mp.has(p))dv.push({...base,t:'—',q:0,b:bu});continue}
       st.forEach(t=>{const q=sp[p+'|'+t]||0;if(q>0)dv.push({...base,t,q,b:bu*q/tot})})}}
   STEV={sv,dv}
@@ -904,7 +910,7 @@ $('stFil').addEventListener('change',e=>{const k=e.target.dataset.sf;if(!k)retur
 $('stFil').addEventListener('input',e=>{if(e.target.id==='stQ'){STF.q=e.target.value.trim();renderStat()}});
 $('stFil').addEventListener('click',e=>{
   if(e.target.id==='stClr'){STF={m:'',d1:'',d2:'',u:'',t:'',v:'',r:'',q:''};buildFilters();renderStat()}
-  if(e.target.id==='stRef'){$('stBody').innerHTML='<div class="msg">Actualizando…</div>';statReload()}
+  if(e.target.id==='stRef'){$('stBody').innerHTML='<div class="msg">Actualizando…</div>';statReload(true)}
   if(e.target.id==='stXls')statExcel()});
 function statExcel(){
   const rows=[...STEV.sv.filter(e=>okEv(e)).map(e=>['Surtido',...xr(e)]),...STEV.dv.filter(e=>okEv(e)).map(e=>['Despacho',...xr(e)])].sort((a,b)=>String(a[1]).localeCompare(String(b[1])));
@@ -959,10 +965,71 @@ function openStoreModal(t){
 }
 $('mst').addEventListener('click',e=>{if(e.target.id==='mst'||e.target.id==='mstX')$('mst').classList.add('hide')});
 $('recStat').onclick=openStat;
+// ---------- Productividad (monitor de KPIs, solo administradores) ----------
+let PRF={per:'mes',d1:'',d2:'',dep:'',t:'',tipo:'',hist:false},STERR=[],STERRT=0;
+const wkStart=d=>{const x=new Date(d+'T00:00:00');x.setDate(x.getDate()-((x.getDay()+6)%7));return ymd(x.getTime())};
+const wkLbl=k=>{const a=new Date(k+'T00:00:00'),b=new Date(a);b.setDate(b.getDate()+6);const f=d=>d.toLocaleDateString('es',{day:'numeric',month:'short'});return f(a)+' – '+f(b)};
+function prRange(){const f=PRF,td=ymd(Date.now()),t=new Date();let a='',b='';
+  if(f.d1||f.d2)return[f.d1||'0000',f.d2||'9999'];
+  if(f.per==='sem'){a=wkStart(td);b=td}else if(f.per==='sem1'){const w=new Date(wkStart(td)+'T00:00:00');w.setDate(w.getDate()-7);a=ymd(w.getTime());w.setDate(w.getDate()+6);b=ymd(w.getTime())}
+  else if(f.per==='mes'){a=ymd(new Date(t.getFullYear(),t.getMonth(),1).getTime());b=td}else if(f.per==='mes1'){a=ymd(new Date(t.getFullYear(),t.getMonth()-1,1).getTime());b=ymd(new Date(t.getFullYear(),t.getMonth(),0).getTime())}
+  else if(f.per==='3m'){a=ymd(new Date(t.getFullYear(),t.getMonth()-2,1).getTime());b=td}else{a='0000';b='9999'}
+  return[a,b]}
+async function openPro(){
+  $('v-rec').classList.add('hide');$('v-pro').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent='Productividad';window.scrollTo(0,0);
+  $('prBody').innerHTML='<div class="msg">Cargando datos…</div>';
+  try{await statLoad(false);prFilters();renderPro()}catch(e){$('prBody').innerHTML='<div class="msg">No se pudo cargar: '+esc(e.code||e.message)+'</div>'}
+}
+function prFilters(){
+  const ev=[...STEV.sv,...STEV.dv],uq=f=>[...new Set(ev.map(f).filter(Boolean))].sort(),o=(a,s,fn)=>a.map(v=>`<option value="${esc(v)}" ${v===s?'selected':''}>${esc(fn?fn(v):v)}</option>`).join('');
+  const per=[['sem','Esta semana'],['sem1','Semana pasada'],['mes','Este mes'],['mes1','Mes pasado'],['3m','Últimos 3 meses'],['todo','Todo']];
+  $('prFil').innerHTML=`<div class="card"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+   <div><div class="lbl">Periodo</div><select class="f" data-pf="per">${per.map(([v,l])=>`<option value="${v}" ${PRF.per===v&&!PRF.d1&&!PRF.d2?'selected':''}>${l}</option>`).join('')}</select></div>
+   <div><div class="lbl">Desde</div><input class="f" type="date" data-pf="d1" value="${PRF.d1}"></div><div><div class="lbl">Hasta</div><input class="f" type="date" data-pf="d2" value="${PRF.d2}"></div>
+   <div><div class="lbl">Departamento</div><select class="f" data-pf="dep"><option value="">Todos</option>${o(uq(e=>e.dep),PRF.dep)}</select></div>
+   <div><div class="lbl">Tienda</div><select class="f" data-pf="t"><option value="">Todas</option>${o(BASE_ST.filter(t=>ev.some(e=>e.t===t)),PRF.t,LN)}</select></div>
+   <div><div class="lbl">Origen</div><select class="f" data-pf="tipo"><option value="">Todos</option><option value="rec" ${PRF.tipo==='rec'?'selected':''}>Recibos</option><option value="auto" ${PRF.tipo==='auto'?'selected':''}>Automático / túnel</option></select></div></div>
+   <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px"><input type="checkbox" data-pf="hist" ${PRF.hist?'checked':''} style="width:20px;height:20px"> Incluir recibos cargados como ya trabajados (Consultas ERP)</label>
+   <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm" id="prRef">⟳ Actualizar datos</button></div></div>`}
+$('prFil').addEventListener('change',e=>{const k=e.target.dataset.pf;if(!k)return;if(k==='hist')PRF.hist=e.target.checked;else{PRF[k]=e.target.value;if(k==='per'){PRF.d1=PRF.d2='';prFilters()}}renderPro()});
+$('prFil').addEventListener('click',async e=>{if(e.target.id==='prRef'){$('prBody').innerHTML='<div class="msg">Actualizando…</div>';try{await statLoad(true);prFilters();renderPro()}catch(err){toast('Error: '+(err.code||err.message))}}});
+function svgBars(rows,lbl){ // barras dobles: surtido (verde) y despacho (ámbar)
+  if(!rows.length)return '<div class="msg">Sin datos en este periodo.</div>';
+  const mx=Math.max(1,...rows.map(r=>Math.max(r.s,r.d))),W=Math.max(320,rows.length*64),H=170,bw=22;
+  return `<div class="scroll"><svg viewBox="0 0 ${W} ${H+34}" style="width:${W}px;max-width:none;height:auto">${rows.map((r,i)=>{const x=i*64+8,hs=Math.round(r.s/mx*H),hd=Math.round(r.d/mx*H);
+    return `<rect x="${x}" y="${H-hs}" width="${bw}" height="${hs}" rx="4" fill="#2de2c9"/><rect x="${x+bw+3}" y="${H-hd}" width="${bw}" height="${hd}" rx="4" fill="#f5a623"/><text x="${x+bw}" y="${H-Math.max(hs,hd)-4}" font-size="10" text-anchor="middle" fill="currentColor">${fmt(Math.max(r.s,r.d))}</text><text x="${x+bw}" y="${H+14}" font-size="10" text-anchor="middle" fill="currentColor">${esc(lbl(r.k)[0])}</text><text x="${x+bw}" y="${H+27}" font-size="9" text-anchor="middle" fill="currentColor" opacity=".7">${esc(lbl(r.k)[1]||'')}</text>`}).join('')}</svg></div><div class="msg"><span style="color:#2de2c9">■</span> Surtido &nbsp; <span style="color:#f5a623">■</span> Despacho</div>`}
+function renderPro(){
+  const [a,b]=prRange(),f=PRF,ok=e=>e.d>=a&&e.d<=b&&(!f.dep||e.dep===f.dep)&&(!f.t||e.t===f.t)&&(f.hist||!e.h)&&(!f.tipo||(f.tipo==='auto')===(e.id==='AUTO'));
+  const sv=STEV.sv.filter(ok),dv=STEV.dv.filter(ok),err=STERR.filter(e=>{const d=ymd(e.ts);return d>=a&&d<=b&&(!f.tipo||(f.tipo==='auto')===(e.id==='AUTO'))});
+  const S=sumF(sv,e=>e.q),D=sumF(dv,e=>e.q),Bu=sumF(dv,e=>e.b),men=sv.length,pp={};
+  sv.forEach(e=>{const o=(pp[e.u]=pp[e.u]||{s:0,n:0,days:new Set(),err:0,ts:[]});o.s+=e.q;o.n++;o.days.add(e.d)});
+  err.forEach(e=>{const k=e.wn||e.who;if(pp[k])pp[k].err++;else pp[k]={s:0,n:0,days:new Set(),err:1}});
+  const rank=Object.entries(pp).sort((x,y)=>y[1].s-x[1].s),pers=rank.filter(([,o])=>o.s>0).length,nErr=err.length;
+  const wk=Object.entries(grpBy(sv,dv,e=>e.d?wkStart(e.d):'')).sort((x,y)=>x[0].localeCompare(y[0])).slice(-12).map(([k,o])=>({k,...o}));
+  const mo=Object.entries(grpBy(sv,dv,e=>(e.d||'').slice(0,7))).sort((x,y)=>x[0].localeCompare(y[0])).slice(-12).map(([k,o])=>({k,...o}));
+  const dp=Object.entries(grpBy(sv,dv,e=>e.dep)).sort((x,y)=>(y[1].s+y[1].d)-(x[1].s+x[1].d)),st=BASE_ST.map(t=>[t,grpBy(sv.filter(e=>e.t===t),dv.filter(e=>e.t===t),()=>1)[1]]).filter(([,o])=>o);
+  const days=new Set(sv.map(e=>e.d)).size;
+  $('prBody').innerHTML=`<div class="kpis">${kpi('Piezas surtidas',fmt(S))}${kpi('Piezas despachadas',fmt(D),'am')}${kpi('Bultos despachados',fmt(Math.round(Bu)),'am')}${kpi('Colaboradores activos',fmt(pers))}
+    ${kpi('Promedio por colaborador',fmt(pers?Math.round(S/pers):0))}${kpi('Promedio por día',fmt(days?Math.round(S/days):0))}${kpi('Correcciones (errores)',fmt(nErr),nErr?'am':'')}${kpi('Tasa de error',men?(nErr/men*100).toFixed(1)+'%':'—',nErr?'am':'')}</div>
+   <div class="card"><div class="slbl">Surtido por semana</div>${svgBars(wk,k=>[wkLbl(k).split(' – ')[0],'sem'])}</div>
+   <div class="card"><div class="slbl">Surtido por mes</div>${svgBars(mo,k=>[mlabel(k).split(' ')[0].slice(0,3),k.slice(0,4)])}</div>
+   <div class="card"><div class="slbl">Ranking de colaboradores · eficiencia = % de las piezas surtidas del total</div><div class="scroll"><table><tr><th>#</th><th>Colaborador</th><th class="n">Piezas</th><th class="n">% total</th><th class="n">Mov.</th><th class="n">Días</th><th class="n">Errores</th><th class="n">% error</th><th style="width:18%"></th></tr>
+    ${rank.map(([n,o],i)=>`<tr><td>${i+1}</td><td>${esc(n)}</td><td class="n">${fmt(o.s)}</td><td class="n"><b>${S?(o.s/S*100).toFixed(1):0}%</b></td><td class="n">${fmt(o.n)}</td><td class="n">${o.days.size}</td><td class="n" style="${o.err?'color:#f5a623;font-weight:800':''}">${o.err}</td><td class="n">${o.n?(o.err/o.n*100).toFixed(1):0}%</td><td><div class="bar" style="margin:0"><i style="width:${S?Math.max(2,Math.round(o.s/S*100)):0}%"></i></div></td></tr>`).join('')||'<tr><td colspan="9" class="msg">Sin datos con este filtro.</td></tr>'}</table></div>
+    <div class="msg">Errores: cada vez que un administrador reabre una referencia despachada o elimina un movimiento de surtido, se le cuenta al colaborador que lo hizo.</div></div>
+   <div class="card"><div class="slbl">Por departamento</div>${dualTbl('Departamento',dp,mxOf(dp))}</div>
+   <div class="slbl">Por tienda</div><div class="grid" style="margin-bottom:14px">${st.map(([t,o])=>`<div class="tile"><div class="hd"><b>${L(t)}</b>${NAMES[t]?`<small>${NAMES[t]}</small>`:''}</div><div class="bd">Surtido: <b>${fmt(o.s)}</b><br>Despacho: <b style="color:#f5a623">${fmt(o.d)}</b></div></div>`).join('')||'<div class="msg">Sin movimientos.</div>'}</div>
+   <div class="card"><div class="slbl">Últimas correcciones</div>${err.sort((x,y)=>y.ts-x.ts).slice(0,15).map(e=>`<div class="msg" style="margin:3px 0">${fdt(e.ts)} · <b>${esc(e.wn||e.who)}</b> · ${e.k==='reabrir'?'referencia reabierta':'movimiento eliminado'} · #${esc(e.id)} · ${esc(e.r||e.p)} · por ${esc(e.bn||e.by)}</div>`).join('')||'<div class="msg">Sin correcciones en este periodo.</div>'}</div>`
+}
+$('recPro').onclick=openPro;
+
 
 // ---------- Pedidos automáticos / Túnel: carga de transferencias del Gestor de Bodega (PDF o captura) ----------
 const AUID='AUTO',AUB='meta_v1/consultas_auto';let AU=null,AUL={};
-const guessStore=d=>{const m=(d||'').match(/SAKS\s*#?\s*(\d+)/i);if(m&&BASE_ST.includes('S'+m[1]))return 'S'+m[1];if(/online|e-?com|virtual/i.test(d||''))return 'ECOM';return ''};
+const nrm=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const guessStore=d=>{d=d||'';const m=d.match(/SAKS\s*#?\s*(\d+)/i);if(m&&BASE_ST.includes('S'+m[1]))return 'S'+m[1];
+  const m2=d.match(/(?:^|[^A-Za-z0-9])S\s?-?(\d{1,2})(?![0-9])/);if(m2&&BASE_ST.includes('S'+m2[1]))return 'S'+m2[1];
+  const nd=nrm(d);for(const [t,n] of Object.entries(NAMES))if(nd.includes(nrm(n)))return t;
+  if(/online|e-?com|virtual/i.test(d))return 'ECOM';if(/cristal/i.test(d))return 'CRISTAL';return ''};
 function parseTs(s){const m=(s||'').match(/(\d+)\/(\d+)\/(\d{4})\s+(\d+):(\d+)(?::\d+)?\s*([AP]M)?/i);if(!m)return Date.now();let h=+m[4];if(/pm/i.test(m[6]||'')&&h<12)h+=12;if(/am/i.test(m[6]||'')&&h===12)h=0;return new Date(+m[3],+m[1]-1,+m[2],h,+m[5]).getTime()}
 async function loadLib(src,ok){if(ok())return;await new Promise((r,j)=>{const s=document.createElement('script');s.src=src;s.onload=r;s.onerror=()=>j(new Error('No se pudo cargar la librería de lectura (revisa internet)'));document.head.appendChild(s)})}
 async function pdfText(f){const V='3.11.174',B=`https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${V}/`;await loadLib(B+'pdf.min.js',()=>window.pdfjsLib);
@@ -973,7 +1040,7 @@ async function imgText(f){await loadLib('https://cdn.jsdelivr.net/npm/tesseract.
 function parseErp(t){
   if(!/Distribuci[oó]n de Mercanc|Transferencia de Mercanc/i.test(t))return null;
   const num=(t.match(/\*D(\d{5,})\*/)||t.match(/N[úu]mero:?\s*(\d{5,})/i)||t.match(/(\d{5,})\s+N[úu]mero/i)||[])[1];if(!num)return null;
-  const rc=(t.match(/DISTRIBUCION RECIBO\s*(\d{5,})/i)||t.match(/Recibo\s*N[º°o]\.?:?\s*(\d{5,})/i)||t.match(/(\d{5,})\s+Recibo\s*N[º°o]/i)||[])[1]||'',tun=/TUNNEL|T[ÚU]NEL/i.test(t)||!!rc;
+  const rc=(t.match(/DISTRIBUCION RECIBO\s*(\d{5,})/i)||t.match(/Recibo\s*N[º°o]\.?:?\s*(\d{5,})/i)||t.match(/(\d{5,})\s+Recibo\s*N[º°o]/i)||[])[1]||'',tun=/TUNNEL|T[ÚU]NEL|DISTRIBUCION RECIBO/i.test(t);
   const dst=(t.match(/SAKS\s*#?\s*\d+/i)||[''])[0];let ts=0;
   for(const m of t.matchAll(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*([ap])\.?\s*m\.?/gi)){let h=+m[4];if(/p/i.test(m[6])&&h<12)h+=12;if(/a/i.test(m[6])&&h===12)h=0;const v=new Date(+m[3],+m[2]-1,+m[1],h,+m[5]).getTime();if(v>ts)ts=v}
   let sur='',bulF=0;
@@ -989,7 +1056,7 @@ function parseErp(t){
   let lines=[];for(const [r,f] of re){lines=[...t.matchAll(r)].map(m=>({inv:0,sol:0,res:0,...f(m),d:f(m).d.trim()}));if(lines.length)break}
   lines.forEach(l=>{l.sol=l.desp});
   const bul=bulF||lines.reduce((a,l)=>a+l.bul,0);
-  return{tr:num,ts:ts||Date.now(),sur,org:'BODEGA FRANGIPANI',des:dst,nota:tun?('TÚNEL'+(rc?' · Recibo '+rc:'')):'',t:guessStore(dst),lines,tot,src:tun?'tun':'auto',det:1,rc,bul,est}
+  return{tr:num,ts:ts||Date.now(),sur,org:'BODEGA FRANGIPANI',des:dst,nota:tun?('TÚNEL'+(rc?' · Recibo '+rc:'')):((t.match(/PEDIDOS?\s+AUTOM[ÁA]TICOS?[^]{0,50}/i)||['Pedido automático'])[0].trim()),t:guessStore(dst)||guessStore(t.slice(0,1800)),lines,tot,src:tun?'tun':'auto',det:1,rc,bul,est}
 }
 function parseTransfer(t){
   t=t.replace(/\s+/g,' ');{const er=parseErp(t);if(er&&er.lines.length)return er}const g=re=>{const m=t.match(re);return m?m[1].trim():''};
@@ -1011,7 +1078,7 @@ function auMatch(l){ // túnel: entradas de surtido de ese producto y tienda en 
 function auRender(){
   const a=AU,tun=a.src==='tun',sum=a.lines.reduce((x,l)=>x+(l.desp||0),0),bu=a.lines.reduce((x,l)=>x+(l.bul||0),0);
   const rows=a.lines.map((l,i)=>{let st='';if(tun){const m=l.desp>0&&a.t?auMatch(l):[];st=!a.t?'—':!l.desp?'Sin despacho':!m.length?(AU.rc&&RECS[AU.rc]&&RECS[AU.rc].items.some(x=>x.p===l.p)?'<span class="pill p-aq">Se registra en el recibo</span>':'<span class="pill p-wn">→ Túnel automático</span>'):m.map(x=>`<span class="pill ${x.has?'p-wn':x.q===l.desp?'p-ok':'p-wn'}">#${x.id} · surtido ${x.q}${x.has?' · ya tiene otra transf.':x.q!==l.desp?' ≠ '+l.desp:''}</span>`).join(' ')}
-    return `<tr><td>${esc(l.ref)}<div class="msg" style="margin:0">${esc(l.p)}</div></td><td>${esc(l.d)}</td><td class="n"><input class="f" type="number" min="0" data-ad="${i}" value="${l.desp}" style="width:70px;padding:6px"></td><td class="n">${l.bul}</td>${tun?`<td>${st}</td>`:''}<td><button class="btn sm" data-arm="${i}">✖</button></td></tr>`}).join('');
+    return `<tr><td>${esc(l.ref)}</td><td>${esc(l.p)}</td><td>${esc(l.d)}</td><td class="n"><input class="f" type="number" min="0" data-ad="${i}" value="${l.desp}" style="width:70px;padding:6px"></td><td class="n">${l.bul}</td>${tun?`<td>${st}</td>`:''}<td><button class="btn sm" data-arm="${i}">✖</button></td></tr>`}).join('');
   $('auReview').innerHTML=`<div class="card"><div class="slbl">${tun?'🚇 Túnel':'⚡ Automático'} · revisa antes de guardar</div>
    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
     <div><div class="lbl">Transferencia #</div><input class="f" data-af="tr" value="${esc(a.tr)}"></div>
@@ -1024,7 +1091,7 @@ function auRender(){
    ${a.est&&!/despach/i.test(a.est)?`<div class="msg" style="color:var(--wn)">⚠ El estatus en el PDF es “${esc(a.est)}”, no Despachada.</div>`:''}
    ${tun?`<div class="msg">${a.rc&&RECS[a.rc]?`El recibo #${esc(a.rc)} está en la app: la transferencia se asigna a ese recibo y sus productos reciben el número de transferencia. Los productos que no estén en ese recibo pasan a Pedidos automáticos (túnel automático).`:a.rc?`El recibo #${esc(a.rc)} no está en la app: la transferencia se agrega al recibo de Túnel automático (Pedidos automáticos), sin duplicar nada.`:'Escribe el número de recibo para mapearlo.'}</div>`:''}
    <div class="msg">Destino: ${esc(a.des||'—')} · Origen: ${esc(a.org||'—')}${a.nota?' · Nota: '+esc(a.nota):''}</div>
-   <div class="scroll"><table><tr><th>Estilo / Producto</th><th>Descripción</th><th class="n">Desp.</th><th class="n">Bultos</th>${tun?'<th>Relación con recibos</th>':''}<th></th></tr>${rows}</table></div>
+   <div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th>Descripción</th><th class="n">Desp.</th><th class="n">Bultos</th>${tun?'<th>Relación con recibos</th>':''}<th></th></tr>${rows}</table></div>
    <div class="msg">${fmt(a.lines.length)} líneas · <b>${fmt(sum)}</b> piezas despachadas · ${fmt(bu)} bultos en el Gestor${a.tot&&a.tot!==sum?` · <span style="color:var(--wn)">⚠ el Gestor indica ${fmt(a.tot)} unidades surtidas</span>`:''}</div>
    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" id="auSave" style="flex:1">${tun?'Relacionar con los recibos':'Guardar pedido automático'}</button><button class="btn" id="auCancel">Cancelar</button></div></div>`}
 $('auReview').addEventListener('input',e=>{const d=e.target.dataset;if(!AU)return;if(d.ad!==undefined){AU.lines[+d.ad].desp=Math.max(0,parseInt(e.target.value)||0)}else if(d.af==='ts'){AU.ts=new Date(e.target.value).getTime()||AU.ts}else if(d.af==='tr'||d.af==='sur'||d.af==='rc'){AU[d.af]=e.target.value.trim()}else if(d.af==='bul'){AU.bul=Math.max(0,parseInt(e.target.value)||0)}});
@@ -1096,8 +1163,9 @@ async function auComplete(btn,nw){
 async function auRun(trs){
   const now=Date.now(),ab=`meta_v1/consultas/${AUID}`,items=RECS[AUID]?RECS[AUID].items.map(x=>({...x,s:{...x.s}})):[],by={};items.forEach(x=>by[x.p]=x);
   const lg={},dp={},tb={},up={};let nuevos=0,pz=0,usedAuto=false,toRc=0;
+  const DEPX={};for(const rid of Object.keys(RECS)){if(rid!==AUID)for(const y of RECS[rid].items)if(!DEPX[y.p])DEPX[y.p]=y}
   const toAuto=(m,lines,withBul)=>{const dd=ymd(m.ts),u='gestor-'+(m.sur||'bodega'),n=m.sur||'Gestor de Bodega';
-    for(const l of lines){let x=by[l.p];if(!x){x={n:items.length+1,ref:l.ref,p:l.p,d:l.d,pb:0,pr:l.pr,rec:0,sal:0,dt:0,upc:'',cr:0,sc:0,dep:'',div:'',lin:'',sub:'',s:{}};items.push(x);by[l.p]=x;nuevos++}
+    for(const l of lines){let x=by[l.p];if(!x){x={n:items.length+1,ref:l.ref,p:l.p,d:l.d,pb:0,pr:l.pr,rec:0,sal:0,dt:0,upc:(DEPX[l.p]&&DEPX[l.p].upc)||'',cr:0,sc:0,dep:(DEPX[l.p]&&DEPX[l.p].dep)||'',div:(DEPX[l.p]&&DEPX[l.p].div)||'',lin:(DEPX[l.p]&&DEPX[l.p].lin)||'',sub:(DEPX[l.p]&&DEPX[l.p].sub)||'',s:{}};items.push(x);by[l.p]=x;nuevos++}
       x.s[m.t]=(x.s[m.t]||0)+l.desp;x.rec+=l.desp;x.dt+=l.desp;x.ts=now;pz+=l.desp;
       lg[push(R(db,ab+'/log')).key]={p:l.p,r:l.ref||x.ref,t:m.t,q:l.desp,tr:m.tr,u,n,ts:m.ts,d:dd,ax:1,...(m.mode==='tun'?{tn:1,rc:m.rc||''}:{})};dp[l.p]={u,n,ts:m.ts,d:dd,r:l.ref||x.ref,ax:1,b:0}}
     if(withBul&&m.bul>=1)tb[`${m.t}_${m.tr}`]={b:m.bul,u:USER,n:NAME,ts:now,ax:1};usedAuto=true};
