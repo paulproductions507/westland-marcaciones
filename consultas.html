@@ -135,6 +135,7 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
       <button class="tab" data-t="trf">🚚 Transferencias</button>
       <button class="tab" data-t="dsp">📦 Despacho</button>
       <button class="tab" data-t="pal">🧱 Palets</button>
+      <button class="tab" data-t="pkl">📋 Packing list</button>
       <button class="tab" data-t="dif">⚠️ Diferencias</button>
       <button class="tab" data-t="est">📊 Estadísticas</button>
     </div>
@@ -197,15 +198,19 @@ details summary{cursor:pointer;font-weight:700;color:var(--ac);padding:6px 0}
     </div>
 
     <!-- PALETS Y EMBARQUES -->
+    <div id="palwrap">
     <div id="v-pal" class="hide">
       <div class="card"><h3 style="font-size:16px">Palets</h3><div class="msg" style="margin-bottom:8px">Escanea los bultos (GB…) de transferencias ya despachadas. Un palet = una tienda, salvo que actives “División”.</div><button class="btn pri" id="palNew" style="width:100%">＋ Nuevo palet</button></div>
       <div id="palList"></div>
-      <div class="slbl" style="margin-top:14px">Embarques · camiones</div>
-      <div class="card"><div class="msg" style="margin-bottom:8px">Carga los palets en cada camión escaneando su etiqueta. Al final se envía la lista de empaque por correo.</div><button class="btn pri" id="embNew" style="width:100%">＋ Nuevo embarque</button></div>
-      <div id="embList"></div>
+
       <div class="slbl" style="margin-top:14px">Historial</div>
       <div class="card"><div class="msg" style="margin-bottom:8px">Aquí solo se cargan la semana actual y la anterior. Lo anterior queda como registro informativo y solo se consulta si lo pides.</div><button class="btn sm" id="histBtn" style="width:100%">📚 Ver historial anterior</button></div>
       <div id="histList"></div>
+    </div>
+    <div id="v-pkl" class="hide">
+      <div class="card"><h3 style="font-size:16px">Packing list</h3><div class="msg" style="margin-bottom:8px">1) Indica cuántos camiones son y carga los palets listos escaneando su etiqueta (si llega otro camión, cambia la cantidad). 2) Completa el packing list. 3) Recién ahí se asigna el chofer y la placa, y se envía por correo.</div><button class="btn pri" id="embNew" style="width:100%">＋ Nuevo packing list</button></div>
+      <div id="embList"></div>
+    </div>
     </div>
 
     <!-- DIFERENCIAS -->
@@ -299,7 +304,7 @@ async function showRecList(){
   $('recTabs').innerHTML=`<button class="btn sm ${recTab==='a'?'pri':''}" data-rtab="a">En proceso (${allIds.length-nC})</button><button class="btn sm ${recTab==='c'?'pri':''}" data-rtab="c">✔ Completados (${nC})</button>`;
   const ids=allIds.filter(id=>!!COMP[id]===(recTab==='c'));
   if(!ids.length){$('recList').innerHTML=`<div class="msg">${recTab==='c'?'Aún no hay recibos completados.':'No hay recibos en proceso.'}</div>`;return}
-  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1">${PROV[id]?`<div class="sora" style="font-size:24px;color:#fff;line-height:1.15;margin-bottom:4px">${esc(PROV[id])}</div>`:'<div class="msg" style="margin:0 0 4px;color:var(--wn)">Sin proveedor</div>'}<div class="lbl">Recibo</div><div class="sora" style="font-size:24px;color:var(--ac)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos · ${fmt(it.reduce((a,x)=>a+(x.rec||0),0))} piezas</div>${COMP[id]?`<div class="msg" style="margin:2px 0 0">✔ Completado · ${fdt(COMP[id].ts)} · ${esc(COMP[id].n||'')}</div>`:''}<div class="msg" id="ri-${id}" style="margin:2px 0 0;color:var(--tx)">Ítems …</div><div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}</div></div><div style="text-align:right;display:flex;gap:14px"><div><div class="big" id="ra-${id}" style="font:800 22px Sora;color:var(--ac)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px Sora;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar"><i id="rb-${id}" style="width:0"></i></div><div class="bar" style="margin-top:4px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">${COMP[id]?`<button class="btn sm" data-reopenrec="${id}">↩ Reabrir</button>`:''}<button class="btn sm" data-fecharec="${id}">📅 Fecha</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
+  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1">${PROV[id]?`<div class="sora" style="font-size:24px;color:#fff;line-height:1.15;margin-bottom:4px">${esc(PROV[id])}</div>`:'<div class="msg" style="margin:0 0 4px;color:var(--wn)">Sin proveedor</div>'}<div class="lbl">Recibo</div><div class="sora" style="font-size:24px;color:var(--ac)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos · ${fmt(it.reduce((a,x)=>a+(x.rec||0),0))} piezas</div>${COMP[id]?`<div class="msg" style="margin:2px 0 0">✔ Completado · ${fdt(COMP[id].ts)} · ${esc(COMP[id].n||'')}</div>`:''}<div class="msg" id="ri-${id}" style="margin:2px 0 0;color:var(--tx)">Ítems …</div>${RECDEP[id]?`<div class="msg" style="margin:2px 0 0">🏷 Departamento: <b>${esc(RECDEP[id])}</b></div>`:''}<div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}</div></div><div style="text-align:right;display:flex;gap:14px"><div><div class="big" id="ra-${id}" style="font:800 22px Sora;color:var(--ac)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px Sora;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar"><i id="rb-${id}" style="width:0"></i></div><div class="bar" style="margin-top:4px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">${COMP[id]?`<button class="btn sm" data-reopenrec="${id}">↩ Reabrir</button>`:''}<button class="btn sm" data-fecharec="${id}">📅 Fecha y departamento</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
   let PROG={};try{PROG=(await get(R(db,'meta_v1/consultas_prog'))).val()||{}}catch(e){}
   for(const id of ids){try{let g=PROG[id];
     if(!g||g.si===undefined){ // primera vez para este recibo: se calcula una sola vez y se guarda el resumen
@@ -317,7 +322,11 @@ $('recList').addEventListener('click',async e=>{
   const ro=e.target.closest('[data-reopenrec]');
   if(ro){e.stopPropagation();const id=ro.dataset.reopenrec;if(!confirm(`¿Reabrir el recibo ${id}? Vuelve a la lista En proceso.`))return;try{await remove(R(db,'meta_v1/consultas_comp/'+id));delete COMP[id];recTab='a';toast('Recibo reabierto');showRecList()}catch(err){toast('Error: '+(err.code||err.message))}return}
   const fe=e.target.closest('[data-fecharec]');
-  if(fe){e.stopPropagation();const id=fe.dataset.fecharec;ask('Fecha de ingreso · recibo '+id,[{k:'f',label:'Fecha de ingreso',type:'date',value:FECHAS[id]||today()}],'Aplicar',async v=>{if(!v.f){toast('Elige una fecha');return false}try{await set(R(db,'meta_v1/consultas_fechas/'+id),v.f);FECHAS[id]=v.f;showRecList()}catch(err){toast('Error: '+(err.code||err.message));return false}});return}
+  if(fe){e.stopPropagation();const id=fe.dataset.fecharec;const dl=[...new Set([...Object.values(RECDEP),'JUGUETERIA','CALZADO','CABALLERO','DAMAS','NIÑOS'])];
+    ask('Fecha y departamento · recibo '+id,[{k:'f',label:'Fecha de ingreso',type:'date',value:FECHAS[id]||''},{k:'dp',label:'Departamento',type:'text',value:RECDEP[id]||'',ph:'Ej. JUGUETERIA',list:dl}],'Guardar',async v=>{
+      try{if(v.f){await set(R(db,'meta_v1/consultas_fechas/'+id),v.f);FECHAS[id]=v.f}
+        const d=(v.dp||'').trim().toUpperCase();if(d){await set(R(db,'meta_v1/consultas_dep/'+id),d);RECDEP[id]=d}else if(RECDEP[id]){await remove(R(db,'meta_v1/consultas_dep/'+id));delete RECDEP[id]}
+        STC={};showRecList()}catch(err){toast('Error: '+(err.code||err.message));return false}});return}
   const d=e.target.closest('[data-delrec]');
   if(d){e.stopPropagation();const id=d.dataset.delrec;if(!confirm(`¿Quitar el recibo ${id} de la lista?\nLo ya surtido y despachado queda registrado, pero el recibo no se podrá abrir hasta subirlo de nuevo.`))return;
     try{await remove(R(db,'meta_v1/consultas_recs/'+id));try{await remove(R(db,'meta_v1/consultas_fechas/'+id))}catch(e2){}delete FECHAS[id];toast('Recibo quitado');showRecList()}catch(err){toast('Error: '+(err.code||err.message))}return}
@@ -633,6 +642,7 @@ $('trfPanelBody').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.da
 async function loadUploaded(){
   try{const f=await get(R(db,'meta_v1/consultas_fechas'));FECHAS=f.val()||{}}catch(e){}
   try{const c=await get(R(db,'meta_v1/consultas_comp'));COMP=c.val()||{}}catch(e){}
+  try{const c=await get(R(db,'meta_v1/consultas_dep'));RECDEP=c.val()||{}}catch(e){}
   try{const s=await get(R(db,'meta_v1/consultas_recs'));const v=s.val()||{};
     for(const id of Object.keys(v)){if(BUILTIN.has(id))continue;const it=Object.values(v[id].items||{}).sort((a,b)=>(a.n||0)-(b.n||0));RECS[id]={items:it.map(x=>({...x,s:x.s||{}})),up:true}}
     for(const id of Object.keys(RECS)){if(!BUILTIN.has(id)&&!(id in v))delete RECS[id]}
@@ -760,7 +770,7 @@ async function saveBultos(key){
 
 
 // ---------- Fechas y ventana de captura ----------
-let FECHAS={},askCb=null,dspWhen=null,COMP={},recTab='a',PROV={};
+let FECHAS={},askCb=null,dspWhen=null,COMP={},recTab='a',PROV={},RECDEP={};
 const nowLocal=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
 const toLocalIn=ts=>{const d=new Date(ts);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
 const fdate=f=>{const d=new Date(f+'T00:00:00');return isNaN(d)?f:d.toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'})};
@@ -874,13 +884,13 @@ async function statLoad(force){
 }
 async function statReload(force){try{await statLoad(force);buildFilters();renderStat()}catch(e){$('stBody').innerHTML='<div class="msg">No se pudo cargar: '+esc(e.code||e.message)+'</div>'}}
 function buildEv(){
-  const sv=[],dv=[],DM={};for(const id of Object.keys(RECS)){if(id!==AUID)for(const x of RECS[id].items)if(x.dep&&!DM[x.p])DM[x.p]=x.dep}
+  const sv=[],dv=[],DM={};for(const id of Object.keys(RECS)){if(id!==AUID)for(const x of RECS[id].items){const d0=RECDEP[id]||x.dep;if(d0&&!DM[x.p])DM[x.p]=d0}}
   for(const x of (RECS[AUID]?RECS[AUID].items:[]))if(x.dep&&!DM[x.p])DM[x.p]=x.dep;
   for(const id of Object.keys(RECS)){const c=STC[id];if(!c)continue;const it=RECS[id].items,by=Object.fromEntries(it.map(x=>[x.p,x])),st=storesFor(it),prov=PROV[id]||'',sp={};
     const mp=new Set();
-    for(const e of Object.values(c.log||{})){if(e.mir){mp.add(e.p);continue}const q=e.q||0;sp[e.p+'|'+e.t]=(sp[e.p+'|'+e.t]||0)+q;const x=by[e.p];sv.push({id,prov,p:e.p,r:e.r||(x&&x.ref)||'',ds:(x&&x.d)||'',dep:(x&&x.dep)||DM[e.p]||'Sin departamento',h:e.au?1:0,t:e.t,q,b:0,u:e.n||e.u||'—',uu:e.u||'',d:e.d||'',ts:e.ts||0})}
+    for(const e of Object.values(c.log||{})){if(e.mir){mp.add(e.p);continue}const q=e.q||0;sp[e.p+'|'+e.t]=(sp[e.p+'|'+e.t]||0)+q;const x=by[e.p];sv.push({id,prov,p:e.p,r:e.r||(x&&x.ref)||'',ds:(x&&x.d)||'',dep:RECDEP[id]||(x&&x.dep)||DM[e.p]||'Sin departamento',h:e.au?1:0,t:e.t,q,b:0,u:e.n||e.u||'—',uu:e.u||'',d:e.d||'',ts:e.ts||0})}
     for(const [p,dd] of Object.entries(c.desp||{})){const x=by[p];if(!x)continue;const bu=dd.b!=null?dd.b:bul(x);let tot=0;st.forEach(t=>tot+=sp[p+'|'+t]||0);
-      const base={id,prov,p,r:dd.r||x.ref,ds:x.d||'',dep:x.dep||DM[p]||'Sin departamento',h:dd.au?1:0,u:dd.n||dd.u||'—',uu:dd.u||'',d:dd.d||'',ts:dd.ts||0};
+      const base={id,prov,p,r:dd.r||x.ref,ds:x.d||'',dep:RECDEP[id]||x.dep||DM[p]||'Sin departamento',h:dd.au?1:0,u:dd.n||dd.u||'—',uu:dd.u||'',d:dd.d||'',ts:dd.ts||0};
       if(!tot){if(!mp.has(p))dv.push({...base,t:'—',q:0,b:bu});continue}
       st.forEach(t=>{const q=sp[p+'|'+t]||0;if(q>0)dv.push({...base,t,q,b:bu*q/tot})})}}
   STEV={sv,dv}
@@ -989,7 +999,7 @@ function prFilters(){
    <div><div class="lbl">Departamento</div><select class="f" data-pf="dep"><option value="">Todos</option>${o(uq(e=>e.dep),PRF.dep)}</select></div>
    <div><div class="lbl">Tienda</div><select class="f" data-pf="t"><option value="">Todas</option>${o(BASE_ST.filter(t=>ev.some(e=>e.t===t)),PRF.t,LN)}</select></div>
    <div><div class="lbl">Origen</div><select class="f" data-pf="tipo"><option value="">Todos</option><option value="rec" ${PRF.tipo==='rec'?'selected':''}>Recibos</option><option value="auto" ${PRF.tipo==='auto'?'selected':''}>Automático / túnel</option></select></div></div>
-   <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px"><input type="checkbox" data-pf="hist" ${PRF.hist?'checked':''} style="width:20px;height:20px"> Incluir recibos cargados como ya trabajados (Consultas ERP)</label>
+   <div class="msg">Los recibos ya trabajados (Consultas ERP) cuentan en la producción total, pero no en el ranking, porque no se sabe quién los surtió. Se van acreditando a su surtidor a medida que cargas sus transferencias de túnel.</div>
    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm" id="prRef">⟳ Actualizar datos</button></div></div>`}
 $('prFil').addEventListener('change',e=>{const k=e.target.dataset.pf;if(!k)return;if(k==='hist')PRF.hist=e.target.checked;else{PRF[k]=e.target.value;if(k==='per'){PRF.d1=PRF.d2='';prFilters()}}renderPro()});
 $('prFil').addEventListener('click',async e=>{if(e.target.id==='prRef'){$('prBody').innerHTML='<div class="msg">Actualizando…</div>';try{await statLoad(true);prFilters();renderPro()}catch(err){toast('Error: '+(err.code||err.message))}}});
@@ -999,10 +1009,10 @@ function svgBars(rows,lbl){ // barras dobles: surtido (verde) y despacho (ámbar
   return `<div class="scroll"><svg viewBox="0 0 ${W} ${H+34}" style="width:${W}px;max-width:none;height:auto">${rows.map((r,i)=>{const x=i*64+8,hs=Math.round(r.s/mx*H),hd=Math.round(r.d/mx*H);
     return `<rect x="${x}" y="${H-hs}" width="${bw}" height="${hs}" rx="4" fill="#2de2c9"/><rect x="${x+bw+3}" y="${H-hd}" width="${bw}" height="${hd}" rx="4" fill="#f5a623"/><text x="${x+bw}" y="${H-Math.max(hs,hd)-4}" font-size="10" text-anchor="middle" fill="currentColor">${fmt(Math.max(r.s,r.d))}</text><text x="${x+bw}" y="${H+14}" font-size="10" text-anchor="middle" fill="currentColor">${esc(lbl(r.k)[0])}</text><text x="${x+bw}" y="${H+27}" font-size="9" text-anchor="middle" fill="currentColor" opacity=".7">${esc(lbl(r.k)[1]||'')}</text>`}).join('')}</svg></div><div class="msg"><span style="color:#2de2c9">■</span> Surtido &nbsp; <span style="color:#f5a623">■</span> Despacho</div>`}
 function renderPro(){
-  const [a,b]=prRange(),f=PRF,ok=e=>e.d>=a&&e.d<=b&&(!f.dep||e.dep===f.dep)&&(!f.t||e.t===f.t)&&(f.hist||!e.h)&&(!f.tipo||(f.tipo==='auto')===(e.id==='AUTO'));
+  const [a,b]=prRange(),f=PRF,ok=e=>e.d>=a&&e.d<=b&&(!f.dep||e.dep===f.dep)&&(!f.t||e.t===f.t)&&(!f.tipo||(f.tipo==='auto')===(e.id==='AUTO'));
   const sv=STEV.sv.filter(ok),dv=STEV.dv.filter(ok),err=STERR.filter(e=>{const d=ymd(e.ts);return d>=a&&d<=b&&(!f.tipo||(f.tipo==='auto')===(e.id==='AUTO'))});
-  const S=sumF(sv,e=>e.q),D=sumF(dv,e=>e.q),Bu=sumF(dv,e=>e.b),men=sv.length,pp={};
-  sv.forEach(e=>{const o=(pp[e.u]=pp[e.u]||{s:0,n:0,days:new Set(),err:0,ts:[]});o.s+=e.q;o.n++;o.days.add(e.d)});
+  const S=sumF(sv,e=>e.q),D=sumF(dv,e=>e.q),Bu=sumF(dv,e=>e.b),svP=sv.filter(e=>!e.h),Sp=sumF(svP,e=>e.q),Sh=S-Sp,men=svP.length,pp={};
+  svP.forEach(e=>{const o=(pp[e.u]=pp[e.u]||{s:0,n:0,days:new Set(),err:0,ts:[]});o.s+=e.q;o.n++;o.days.add(e.d)});
   err.forEach(e=>{const k=e.wn||e.who;if(pp[k])pp[k].err++;else pp[k]={s:0,n:0,days:new Set(),err:1}});
   const rank=Object.entries(pp).sort((x,y)=>y[1].s-x[1].s),pers=rank.filter(([,o])=>o.s>0).length,nErr=err.length;
   const wk=Object.entries(grpBy(sv,dv,e=>e.d?wkStart(e.d):'')).sort((x,y)=>x[0].localeCompare(y[0])).slice(-12).map(([k,o])=>({k,...o}));
@@ -1010,11 +1020,11 @@ function renderPro(){
   const dp=Object.entries(grpBy(sv,dv,e=>e.dep)).sort((x,y)=>(y[1].s+y[1].d)-(x[1].s+x[1].d)),st=BASE_ST.map(t=>[t,grpBy(sv.filter(e=>e.t===t),dv.filter(e=>e.t===t),()=>1)[1]]).filter(([,o])=>o);
   const days=new Set(sv.map(e=>e.d)).size;
   $('prBody').innerHTML=`<div class="kpis">${kpi('Piezas surtidas',fmt(S))}${kpi('Piezas despachadas',fmt(D),'am')}${kpi('Bultos despachados',fmt(Math.round(Bu)),'am')}${kpi('Colaboradores activos',fmt(pers))}
-    ${kpi('Promedio por colaborador',fmt(pers?Math.round(S/pers):0))}${kpi('Promedio por día',fmt(days?Math.round(S/days):0))}${kpi('Correcciones (errores)',fmt(nErr),nErr?'am':'')}${kpi('Tasa de error',men?(nErr/men*100).toFixed(1)+'%':'—',nErr?'am':'')}</div>
+    ${kpi('Promedio por colaborador',fmt(pers?Math.round(Sp/pers):0))}${kpi('Promedio por día',fmt(days?Math.round(S/days):0))}${kpi('Correcciones (errores)',fmt(nErr),nErr?'am':'')}${kpi('Tasa de error',men?(nErr/men*100).toFixed(1)+'%':'—',nErr?'am':'')}${kpi('Sin colaborador (Consultas ERP)',fmt(Sh))}</div>
    <div class="card"><div class="slbl">Surtido por semana</div>${svgBars(wk,k=>[wkLbl(k).split(' – ')[0],'sem'])}</div>
    <div class="card"><div class="slbl">Surtido por mes</div>${svgBars(mo,k=>[mlabel(k).split(' ')[0].slice(0,3),k.slice(0,4)])}</div>
-   <div class="card"><div class="slbl">Ranking de colaboradores · eficiencia = % de las piezas surtidas del total</div><div class="scroll"><table><tr><th>#</th><th>Colaborador</th><th class="n">Piezas</th><th class="n">% total</th><th class="n">Mov.</th><th class="n">Días</th><th class="n">Errores</th><th class="n">% error</th><th style="width:18%"></th></tr>
-    ${rank.map(([n,o],i)=>`<tr><td>${i+1}</td><td>${esc(n)}</td><td class="n">${fmt(o.s)}</td><td class="n"><b>${S?(o.s/S*100).toFixed(1):0}%</b></td><td class="n">${fmt(o.n)}</td><td class="n">${o.days.size}</td><td class="n" style="${o.err?'color:#f5a623;font-weight:800':''}">${o.err}</td><td class="n">${o.n?(o.err/o.n*100).toFixed(1):0}%</td><td><div class="bar" style="margin:0"><i style="width:${S?Math.max(2,Math.round(o.s/S*100)):0}%"></i></div></td></tr>`).join('')||'<tr><td colspan="9" class="msg">Sin datos con este filtro.</td></tr>'}</table></div>
+   <div class="card"><div class="slbl">Ranking de colaboradores · eficiencia = % de las piezas con colaborador identificado</div><div class="scroll"><table><tr><th>#</th><th>Colaborador</th><th class="n">Piezas</th><th class="n">% total</th><th class="n">Mov.</th><th class="n">Días</th><th class="n">Errores</th><th class="n">% error</th><th style="width:18%"></th></tr>
+    ${rank.map(([n,o],i)=>`<tr><td>${i+1}</td><td>${esc(n)}</td><td class="n">${fmt(o.s)}</td><td class="n"><b>${Sp?(o.s/Sp*100).toFixed(1):0}%</b></td><td class="n">${fmt(o.n)}</td><td class="n">${o.days.size}</td><td class="n" style="${o.err?'color:#f5a623;font-weight:800':''}">${o.err}</td><td class="n">${o.n?(o.err/o.n*100).toFixed(1):0}%</td><td><div class="bar" style="margin:0"><i style="width:${Sp?Math.max(2,Math.round(o.s/Sp*100)):0}%"></i></div></td></tr>`).join('')||'<tr><td colspan="9" class="msg">Sin datos con este filtro.</td></tr>'}</table></div>
     <div class="msg">Errores: cada vez que un administrador reabre una referencia despachada o elimina un movimiento de surtido, se le cuenta al colaborador que lo hizo.</div></div>
    <div class="card"><div class="slbl">Por departamento</div>${dualTbl('Departamento',dp,mxOf(dp))}</div>
    <div class="slbl">Por tienda</div><div class="grid" style="margin-bottom:14px">${st.map(([t,o])=>`<div class="tile"><div class="hd"><b>${L(t)}</b>${NAMES[t]?`<small>${NAMES[t]}</small>`:''}</div><div class="bd">Surtido: <b>${fmt(o.s)}</b><br>Despacho: <b style="color:#f5a623">${fmt(o.d)}</b></div></div>`).join('')||'<div class="msg">Sin movimientos.</div>'}</div>
@@ -1046,6 +1056,7 @@ function parseErp(t){
   let sur='',bulF=0;
   const fb=t.match(/BULTOS CHEQUEADO DESPACHADO AUTORIZADO\s+(\S+)\s+(\d+)/i);
   if(fb){sur=fb[1];bulF=+fb[2]}else{const fa=t.match(/AUTORIZADO DESPACHADO CHEQUEADO BULTOS\s+(?:\d{2}\/\w{3}\/\d{4}\s+[\d:]+\s*[ap]\.?m\.?\s+)?(\S+)\s+(\S+)/i);if(fa){const [a,b]=[fa[1],fa[2]];if(/^\d+$/.test(a)&&!/^\d+$/.test(b)){bulF=+a;sur=b}else{sur=a;bulF=+b}}}
+  {const jh=(t.match(/Fecha Despacho:?\s+([a-z][a-z0-9._]{3,19})(?=\s)/)||[])[1];sur=jh||''}
   const tm=t.match(/Total:\s*((?:\d+\s*){1,3})/),tot=tm?Math.max(...tm[1].trim().split(/\s+/).map(Number)):0,est=(t.match(/Estatus:\s*\(\w\)\s*(\w+)/i)||[])[1]||'';
   const REF='[A-Z]{1,3}\\d{4,}[A-Z0-9\\-]*',N='(\\d+(?:\\.\\d+)?)';
   const re=[
@@ -1058,6 +1069,17 @@ function parseErp(t){
   const bul=bulF||lines.reduce((a,l)=>a+l.bul,0);
   return{tr:num,ts:ts||Date.now(),sur,org:'BODEGA FRANGIPANI',des:dst,nota:tun?('TÚNEL'+(rc?' · Recibo '+rc:'')):((t.match(/PEDIDOS?\s+AUTOM[ÁA]TICOS?[^]{0,50}/i)||['Pedido automático'])[0].trim()),t:guessStore(dst)||guessStore(t.slice(0,1800)),lines,tot,src:tun?'tun':'auto',det:1,rc,bul,est}
 }
+let UDIR=[],ALIAS={};
+async function auLoadDir(){
+  if(!UDIR.length){try{const sn=await get(R(db,'users_v1'));if(sn.exists())UDIR=Object.values(sn.val()).filter(x=>x&&x.user).map(x=>({u:x.user,n:x.nombre||x.user})).sort((a,b)=>a.n.localeCompare(b.n))}catch(e){}}
+  try{ALIAS=(await get(R(db,'meta_v1/consultas_alias'))).val()||{}}catch(e){}}
+const aliasKey=x=>nrm(x).replace(/[^a-z0-9]/g,'');
+function auMapSur(a){
+  a.surRaw=a.sur||'';a.suru='';const raw=aliasKey(a.surRaw);if(!raw){a.sur='';return}
+  let h=ALIAS[raw]&&UDIR.find(x=>x.u===ALIAS[raw].u);
+  if(!h)h=UDIR.find(x=>aliasKey(x.u)===raw);
+  if(!h){const c=UDIR.filter(x=>{const f=aliasKey(x.n.split(/\s+/)[0]);return f.length>=3&&raw.startsWith(f)});if(c.length===1)h=c[0]}
+  if(h){a.suru=h.u;a.sur=h.n}else a.sur=''}
 function parseTransfer(t){
   t=t.replace(/\s+/g,' ');{const er=parseErp(t);if(er&&er.lines.length)return er}const g=re=>{const m=t.match(re);return m?m[1].trim():''};
   const tr=g(/Transferencia\s*#?\s*(\d{5,})/i),fs=g(/Fecha solicitad[oa]:?\s*([\d\/]+\s+[\d:]+\s*[AP]?M?)/i),sur=g(/Surtidor:?\s*([^\s]+)/i),org=g(/Origen\s*(\[.*?\].*?)\s+Destino/i),des=g(/Destino\s*(\[.*?\].*?)\s+Nota/i),nota=g(/Nota:?\s*(.*?)\s*(?:C[óo]d\.?\s*BARRA|$)/i),tot=+g(/Total unidades surtidas\s*(\d+)/i)||0;
@@ -1068,7 +1090,7 @@ function parseTransfer(t){
 $('recAuto').onclick=async()=>{$('v-rec').classList.add('hide');$('v-auto').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent='Pedidos automáticos';window.scrollTo(0,0);AU=null;$('auReview').innerHTML='';$('auMsg').textContent='';auList()};
 $('auFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
   $('auMsg').textContent='Leyendo '+f.name+'…';$('auReview').innerHTML='';
-  try{const txt=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)?await pdfText(f):await imgText(f);AU=parseTransfer(txt);if(!AU.det){AU.src=$('auSrc').value;AU.rc='';AU.bul=AU.lines.reduce((x,l)=>x+(l.bul||0),0)}else $('auSrc').value=AU.src;AU.file=f.name;
+  try{const txt=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)?await pdfText(f):await imgText(f);AU=parseTransfer(txt);await auLoadDir();auMapSur(AU);if(!AU.det){AU.src=$('auSrc').value;AU.rc='';AU.bul=AU.lines.reduce((x,l)=>x+(l.bul||0),0)}else $('auSrc').value=AU.src;AU.file=f.name;
     if(!AU.tr||!AU.lines.length){$('auMsg').textContent=`No pude leer ${!AU.tr?'el número de transferencia':'las líneas'}. ${/pdf/i.test(f.type)?'Usa el PDF generado desde el navegador (Imprimir → Guardar como PDF).':'Prueba con una captura más grande y nítida, o con el PDF.'}`;if(!AU.lines.length)return}
     else $('auMsg').textContent='';
     AUL={};if(AU.src==='tun')await auLoadLogs();auRender()}catch(err){$('auMsg').textContent='Error: '+(err.message||err)}};
@@ -1084,10 +1106,11 @@ function auRender(){
     <div><div class="lbl">Transferencia #</div><input class="f" data-af="tr" value="${esc(a.tr)}"></div>
     <div><div class="lbl">Tienda destino</div><select class="f" data-af="t"><option value="">Elige…</option>${BASE_ST.map(t=>`<option value="${t}" ${a.t===t?'selected':''}>${esc(LN(t))}</option>`).join('')}</select></div>
     <div><div class="lbl">Fecha y hora</div><input class="f" type="datetime-local" data-af="ts" value="${toLocalIn(a.ts)}"></div>
-    <div><div class="lbl">Surtidor / despachó</div><input class="f" data-af="sur" value="${esc(a.sur)}"></div>
+    <div><div class="lbl">Surtidor</div>${UDIR.length?`<select class="f" data-af="suru"><option value="">Elegir…</option>${UDIR.map(x=>`<option value="${esc(x.u)}" ${a.suru===x.u?'selected':''}>${esc(x.n)} (${esc(x.u)})</option>`).join('')}</select>`:`<input class="f" data-af="sur" value="${esc(a.sur)}">`}</div>
     <div><div class="lbl">Tipo</div><select class="f" data-af="src"><option value="auto" ${a.src==='auto'?'selected':''}>⚡ Automático</option><option value="tun" ${a.src==='tun'?'selected':''}>🚇 Túnel</option></select></div>
     ${tun?`<div><div class="lbl">Recibo del túnel</div><input class="f" data-af="rc" value="${esc(a.rc||'')}" placeholder="Ej. 408114"></div>`:''}
     <div><div class="lbl">Bultos (del PDF)</div><input class="f" type="number" min="0" data-af="bul" value="${a.bul||0}"></div></div>
+   ${(UDIR.length&&!a.suru)?`<div class="msg" style="color:var(--wn)">⚠ ${a.surRaw?`El PDF dice “${esc(a.surRaw)}”, que no coincide con ningún usuario de la app. Elige quién es; se recordará para la próxima.`:'No se detectó el surtidor en el PDF. Elígelo antes de guardar.'}</div>`:''}
    ${a.est&&!/despach/i.test(a.est)?`<div class="msg" style="color:var(--wn)">⚠ El estatus en el PDF es “${esc(a.est)}”, no Despachada.</div>`:''}
    ${tun?`<div class="msg">${a.rc&&RECS[a.rc]?`El recibo #${esc(a.rc)} está en la app: la transferencia se asigna a ese recibo y sus productos reciben el número de transferencia. Los productos que no estén en ese recibo pasan a Pedidos automáticos (túnel automático).`:a.rc?`El recibo #${esc(a.rc)} no está en la app: la transferencia se agrega al recibo de Túnel automático (Pedidos automáticos), sin duplicar nada.`:'Escribe el número de recibo para mapearlo.'}</div>`:''}
    <div class="msg">Destino: ${esc(a.des||'—')} · Origen: ${esc(a.org||'—')}${a.nota?' · Nota: '+esc(a.nota):''}</div>
@@ -1095,14 +1118,14 @@ function auRender(){
    <div class="msg">${fmt(a.lines.length)} líneas · <b>${fmt(sum)}</b> piezas despachadas · ${fmt(bu)} bultos en el Gestor${a.tot&&a.tot!==sum?` · <span style="color:var(--wn)">⚠ el Gestor indica ${fmt(a.tot)} unidades surtidas</span>`:''}</div>
    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" id="auSave" style="flex:1">${tun?'Relacionar con los recibos':'Guardar pedido automático'}</button><button class="btn" id="auCancel">Cancelar</button></div></div>`}
 $('auReview').addEventListener('input',e=>{const d=e.target.dataset;if(!AU)return;if(d.ad!==undefined){AU.lines[+d.ad].desp=Math.max(0,parseInt(e.target.value)||0)}else if(d.af==='ts'){AU.ts=new Date(e.target.value).getTime()||AU.ts}else if(d.af==='tr'||d.af==='sur'||d.af==='rc'){AU[d.af]=e.target.value.trim()}else if(d.af==='bul'){AU.bul=Math.max(0,parseInt(e.target.value)||0)}});
-$('auReview').addEventListener('change',async e=>{const d=e.target.dataset;if(!AU)return;if(d.af==='t'||d.af==='src'){AU[d.af]=e.target.value;if(AU.src==='tun')await auLoadLogs();auRender()}else if(d.af==='rc'){AU.rc=e.target.value.trim();await auLoadLogs();auRender()}else if(d.ad!==undefined)auRender()});
+$('auReview').addEventListener('change',async e=>{const d=e.target.dataset;if(!AU)return;if(d.af==='t'||d.af==='src'){AU[d.af]=e.target.value;if(AU.src==='tun')await auLoadLogs();auRender()}else if(d.af==='rc'){AU.rc=e.target.value.trim();await auLoadLogs();auRender()}else if(d.af==='suru'){AU.suru=e.target.value;const h=UDIR.find(x=>x.u===AU.suru);AU.sur=h?h.n:'';auRender()}else if(d.ad!==undefined)auRender()});
 $('auReview').addEventListener('click',async e=>{
   if(e.target.closest('#auCancel')){AU=null;$('auReview').innerHTML='';return}
   const rm=e.target.closest('[data-arm]');if(rm){AU.lines.splice(+rm.dataset.arm,1);auRender();return}
   if(e.target.closest('#auSave'))auSave(e.target.closest('#auSave'))});
 async function auPut(path,o){const k=Object.keys(o);for(let i=0;i<k.length;i+=400){const p={};k.slice(i,i+400).forEach(z=>p[z]=o[z]);await update(R(db,path),p)}}
 async function auSave(btn){
-  const a=AU;if(!a.tr){toast('Falta el número de transferencia');return}if(!a.t){toast('Elige la tienda destino');return}
+  const a=AU;if(!a.tr){toast('Falta el número de transferencia');return}if(UDIR.length&&!a.suru){toast('Elige el surtidor');return}if(!a.t){toast('Elige la tienda destino');return}
   const lines=a.lines.filter(l=>l.desp>0);if(!lines.length){toast('No hay piezas despachadas');return}
   const dd=(()=>{const d=new Date(a.ts);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`})();
   btn.disabled=true;
@@ -1111,9 +1134,10 @@ async function auSave(btn){
     if(old&&old.mode!=='tun'&&old.st!=='new'){alert(`La transferencia ${a.tr} ya fue incluida en el recibo de pedidos automáticos. No se puede cargar de nuevo. Si necesitas rehacerla, quítala primero en la pestaña "Cargadas en el recibo".`);btn.disabled=false;return}
     if(old&&!confirm(`La transferencia ${a.tr} ya estaba cargada como nueva. ¿Reemplazarla?`)){btn.disabled=false;return}
     if(old&&old.st!=='new')await auUndo(a.tr,old);
-    const meta={tr:a.tr,t:a.t,ts:a.ts,sur:a.sur,org:a.org,des:a.des,nota:a.nota,mode:a.src,pz:lines.reduce((x,l)=>x+l.desp,0),bul:a.bul||0,rc:a.src==='tun'?(a.rc||''):'',n:lines.length,by:USER,ldt:Date.now(),file:a.file};
+    const meta={tr:a.tr,t:a.t,ts:a.ts,sur:a.sur,suru:a.suru||'',sr:a.surRaw||'',org:a.org,des:a.des,nota:a.nota,mode:a.src,pz:lines.reduce((x,l)=>x+l.desp,0),bul:a.bul||0,rc:a.src==='tun'?(a.rc||''):'',n:lines.length,by:USER,ldt:Date.now(),file:a.file};
     {
       await set(R(db,`${AUB}/${a.tr}`),{...meta,st:'new',lines:lines.map(l=>({p:l.p,ref:l.ref,d:l.d,desp:l.desp,bul:l.bul,pr:l.pr}))});
+      if(a.surRaw&&a.suru){try{await set(R(db,'meta_v1/consultas_alias/'+aliasKey(a.surRaw)),{u:a.suru,n:a.sur});ALIAS[aliasKey(a.surRaw)]={u:a.suru,n:a.sur}}catch(e){}}
       toast(`✅ Transferencia ${a.tr} guardada como nueva (${fmt(meta.pz)} pzas). Falta completar para agregarla al recibo.`)}
     AU=null;$('auReview').innerHTML='';auList()
   }catch(err){toast('Error: '+(err.code||err.message));btn.disabled=false}
@@ -1125,7 +1149,7 @@ async function auUndo(tr,m){ // deshace una carga anterior de esa transferencia
     Object.entries(lg).forEach(([k,e])=>{if(e.tr===tr){up[k]=null;const x=items.find(i=>i.p===e.p);if(x){x.s[e.t]=Math.max(0,(x.s[e.t]||0)-e.q);x.rec=Math.max(0,x.rec-e.q);x.dt=Math.max(0,x.dt-e.q)}}});
     if(Object.keys(up).length){await update(R(db,`meta_v1/consultas/${AUID}/log`),up);await set(R(db,`meta_v1/consultas_recs/${AUID}/items`),items)}}
   if(m.route==='rc'&&m.rc&&RECS[m.rc]){try{const rb=`meta_v1/consultas/${m.rc}`,rl=(await get(R(db,rb+'/log'))).val()||{},u1={},rd=(await get(R(db,rb+'/desp'))).val()||{},u2={};
-    Object.entries(rl).forEach(([k,e])=>{if(e.tr===tr){if(e.tn)u1[k]=null;else u1[k+'/tr']=null}});Object.entries(rd).forEach(([p,d])=>Object.entries(d.trs||{}).forEach(([t,v])=>{if(v===tr)u2[`${p}/trs/${t}`]=null}));
+    Object.entries(rl).forEach(([k,e])=>{if(e.tr===tr){if(e.tn)u1[k]=null;else{u1[k+'/tr']=null;if(e.hu){u1[k+'/u']=e.hu;u1[k+'/n']='Consultas ERP';u1[k+'/au']=1;u1[k+'/hu']=null}}}});Object.entries(rd).forEach(([p,d])=>Object.entries(d.trs||{}).forEach(([t,v])=>{if(v===tr)u2[`${p}/trs/${t}`]=null}));
     if(Object.keys(u1).length)await update(R(db,rb+'/log'),u1);if(Object.keys(u2).length)await update(R(db,rb+'/desp'),u2);await remove(R(db,`${rb}/trfb/${m.t}_${tr}`));await remove(R(db,'meta_v1/consultas_prog/'+m.rc))}catch(e){}}
   if(m.rc&&RECS[m.rc]){try{const rl=(await get(R(db,`meta_v1/consultas/${m.rc}/log`))).val()||{},mu={};Object.entries(rl).forEach(([k,e])=>{if(e.mir===tr)mu[k+'/mir']=null});if(Object.keys(mu).length)await update(R(db,`meta_v1/consultas/${m.rc}/log`),mu);await remove(R(db,'meta_v1/consultas_prog/'+m.rc))}catch(e){}}
   await remove(R(db,`${AUB}/${tr}`))}
@@ -1164,7 +1188,7 @@ async function auRun(trs){
   const now=Date.now(),ab=`meta_v1/consultas/${AUID}`,items=RECS[AUID]?RECS[AUID].items.map(x=>({...x,s:{...x.s}})):[],by={};items.forEach(x=>by[x.p]=x);
   const lg={},dp={},tb={},up={};let nuevos=0,pz=0,usedAuto=false,toRc=0;
   const DEPX={};for(const rid of Object.keys(RECS)){if(rid!==AUID)for(const y of RECS[rid].items)if(!DEPX[y.p])DEPX[y.p]=y}
-  const toAuto=(m,lines,withBul)=>{const dd=ymd(m.ts),u='gestor-'+(m.sur||'bodega'),n=m.sur||'Gestor de Bodega';
+  const toAuto=(m,lines,withBul)=>{const dd=ymd(m.ts),u=m.suru||('gestor-'+(m.sur||'bodega')),n=m.sur||'Gestor de Bodega';
     for(const l of lines){let x=by[l.p];if(!x){x={n:items.length+1,ref:l.ref,p:l.p,d:l.d,pb:0,pr:l.pr,rec:0,sal:0,dt:0,upc:(DEPX[l.p]&&DEPX[l.p].upc)||'',cr:0,sc:0,dep:(DEPX[l.p]&&DEPX[l.p].dep)||'',div:(DEPX[l.p]&&DEPX[l.p].div)||'',lin:(DEPX[l.p]&&DEPX[l.p].lin)||'',sub:(DEPX[l.p]&&DEPX[l.p].sub)||'',s:{}};items.push(x);by[l.p]=x;nuevos++}
       x.s[m.t]=(x.s[m.t]||0)+l.desp;x.rec+=l.desp;x.dt+=l.desp;x.ts=now;pz+=l.desp;
       lg[push(R(db,ab+'/log')).key]={p:l.p,r:l.ref||x.ref,t:m.t,q:l.desp,tr:m.tr,u,n,ts:m.ts,d:dd,ax:1,...(m.mode==='tun'?{tn:1,rc:m.rc||''}:{})};dp[l.p]={u,n,ts:m.ts,d:dd,r:l.ref||x.ref,ax:1,b:0}}
@@ -1172,10 +1196,10 @@ async function auRun(trs){
   for(const m of trs){
     const lines=m.lines||[];up[m.tr+'/st']='inc';up[m.tr+'/inc']=now;
     if(!(m.mode==='tun'&&m.rc&&RECS[m.rc])){toAuto(m,lines,true);up[m.tr+'/route']='auto';continue}
-    const id=m.rc,rb=`meta_v1/consultas/${id}`,rl=(await get(R(db,rb+'/log'))).val()||{},rd=(await get(R(db,rb+'/desp'))).val()||{},by2=Object.fromEntries(RECS[id].items.map(x=>[x.p,x])),dd=ymd(m.ts),u='gestor-'+(m.sur||'sistema'),n=m.sur||'Sistema',lgu={},dpu={},extra=[];
+    const id=m.rc,rb=`meta_v1/consultas/${id}`,rl=(await get(R(db,rb+'/log'))).val()||{},rd=(await get(R(db,rb+'/desp'))).val()||{},by2=Object.fromEntries(RECS[id].items.map(x=>[x.p,x])),dd=ymd(m.ts),u=m.suru||('gestor-'+(m.sur||'sistema')),n=m.sur||'Sistema',lgu={},dpu={},extra=[];
     for(const l of lines){
       const hit=Object.entries(rl).filter(([,e])=>e.p===l.p&&e.t===m.t);
-      if(hit.length){hit.forEach(([k,e])=>{if(!e.tr||e.tr===m.tr)lgu[k+'/tr']=m.tr});if(rd[l.p])dpu[`${l.p}/trs/${m.t}`]=m.tr}
+      if(hit.length){hit.forEach(([k,e])=>{if(!e.tr||e.tr===m.tr){lgu[k+'/tr']=m.tr;if(e.au){lgu[k+'/u']=u;lgu[k+'/n']=n;lgu[k+'/au']=null;lgu[k+'/ts']=m.ts;lgu[k+'/d']=dd;lgu[k+'/hu']='consultas-erp'}}});if(rd[l.p]){dpu[`${l.p}/trs/${m.t}`]=m.tr;if(rd[l.p].au){dpu[`${l.p}/u`]=u;dpu[`${l.p}/n`]=n;dpu[`${l.p}/au`]=null}}}
       else if(by2[l.p]){lgu[push(R(db,rb+'/log')).key]={p:l.p,r:l.ref||by2[l.p].ref,t:m.t,q:l.desp,tr:m.tr,u,n,ts:m.ts,d:dd,tn:1};if(rd[l.p])dpu[`${l.p}/trs/${m.t}`]=m.tr}
       else extra.push(l)}
     if(Object.keys(lgu).length)await auPut(rb+'/log',lgu);if(Object.keys(dpu).length)await auPut(rb+'/desp',dpu);
@@ -1490,6 +1514,7 @@ function embHTML(e){
   <div style="font-size:12px;color:#5a6b7a;margin-top:16px">La mercancía viaja en palets identificados con su etiqueta; la recepción se realiza por palet completo.</div></div>`
 }
 async function embReady(e){const c=embCalc(e);
+  if(!e.comp)return'Primero completa el packing list.';
   if(!c.cams.length)return'El embarque no tiene camiones.';
   const all={};
   for(const [i,x] of c.cams.entries()){if(!x.chofer||!x.placa)return`El camión ${i+1} necesita chofer y placa.`;if(!x.pals.length)return`El camión ${i+1} no tiene palets cargados.`;x.pals.forEach(pl=>Object.assign(all,pl.tfs))}
@@ -1515,8 +1540,17 @@ async function addCam(eid){try{await set(R(db,`${PB}/emb/${eid}/cam/c${Date.now(
 function setCam(eid,cid){const x=((EMB[eid]||{}).cam||{})[cid]||{};ask('Chofer y placa · '+(EMB[eid]||{}).num,[{k:'ch',label:'Nombre del chofer',type:'text',ph:'Nombre y apellido',value:x.chofer||''},{k:'pl',label:'Placa',type:'text',ph:'Ej. AB1234',value:x.placa||''}],'Guardar',async v=>{
   const ch=(v.ch||'').trim(),pl=(v.pl||'').trim().toUpperCase();if(!ch||!pl){toast('Chofer y placa son obligatorios');return false}
   try{await update(R(db,`${PB}/emb/${eid}/cam/${cid}`),{chofer:ch,placa:pl})}catch(err){toast('Error: '+(err.code||err.message));return false}})}
-async function newEmb(){try{const r=await runTransaction(R(db,PB+'/eseq'),c=>(c||0)+1);const seq=r.snapshot.val(),id='e'+Date.now();
-  await set(R(db,`${PB}/emb/${id}`),{num:'EMB-'+String(seq).padStart(4,'0'),seq,ts:Date.now(),u:USER,n:NAME,st:'abierto'});startPal();embOpenSet.add(id);await addCam(id)}catch(err){toast('Error: '+(err.code||err.message))}}
+async function addCams(eid,n,from){const o={},now=Date.now();for(let i=0;i<n;i++)o['c'+(now+i)]={chofer:'',placa:'',ts:now+i};await update(R(db,`${PB}/emb/${eid}/cam`),o)}
+function newEmb(){ask('Nuevo packing list',[{k:'n',label:'¿Cuántos camiones son?',type:'number',value:'1'}],'Crear',async v=>{
+  const n=Math.max(1,Math.min(10,parseInt(v.n,10)||1));
+  try{const r=await runTransaction(R(db,PB+'/eseq'),c=>(c||0)+1);const seq=r.snapshot.val(),id='e'+Date.now();
+    await set(R(db,`${PB}/emb/${id}`),{num:'EMB-'+String(seq).padStart(4,'0'),seq,ts:Date.now(),u:USER,n:NAME,st:'abierto'});startPal();embOpenSet.add(id);await addCams(id,n)}
+  catch(err){toast('Error: '+(err.code||err.message));return false}})}
+function embCount(eid){const x=EMB[eid];if(!x)return;const c=embCalc(x);
+  ask('Camiones · '+x.num,[{k:'n',label:'¿Cuántos camiones son?',type:'number',value:String(c.cams.length)}],'Aplicar',async v=>{
+    const n=Math.max(1,Math.min(10,parseInt(v.n,10)||1)),cur=c.cams.length;if(n===cur)return;
+    try{if(n>cur)await addCams(eid,n-cur);else{const rm=c.cams.slice(n);if(rm.some(k=>k.pals.length)){toast('Quita primero los palets de los camiones que sobran');return false}const up={};rm.forEach(k=>up[k.cid]=null);await update(R(db,`${PB}/emb/${eid}/cam`),up)}}
+    catch(err){toast('Error: '+(err.code||err.message));return false}})}
 async function embScan(eid,cid,raw){
   const e=EMB[eid];if(!e||e.st==='enviado'){toast('El embarque ya fue enviado');return}
   const code=String(raw).trim().toUpperCase();let pid=null,pl=null;
@@ -1531,25 +1565,32 @@ async function embScan(eid,cid,raw){
   try{await update(R(db,PB),{[`pm/${pid}/emb`]:{e:eid,c:cid},[`emb/${eid}/cam/${cid}/pal/${pid}`]:{n:pl.num,b:pl.nb||0,tfs:pl.tfs||{}}});toast(`✅ ${pl.num} cargado (${pBul(pl)} bultos)`)}catch(err){toast('Error: '+(err.code||err.message))}
 }
 function renderPal(){
-  if($('v-pal').classList.contains('hide'))return;
+  if($('v-pal').classList.contains('hide')&&$('v-pkl').classList.contains('hide'))return;
   const ae=document.activeElement;if(ae&&ae.dataset&&ae.dataset.escan&&!keepScan)return;
   $('palList').innerHTML=palsSorted().map(([id,p])=>{const stt=p.emb?'<span class="pill p-ok">En camión</span>':p.st==='cerrado'?'<span class="pill p-bl">Cerrado</span>':'<span class="pill p-aq">Abierto</span>';
     return `<div class="card" data-po="${id}" style="cursor:pointer"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b class="sora">${esc(p.num)}</b><span>${stt}</span></div><div class="msg" style="margin:4px 0 0"><b>${pBul(p)}</b> bultos · ${pStores(p).map(x=>esc(L(x.t))+' '+x.b).join(' · ')||'vacío'}${pStores(p).length>1?' · <b>división</b>':''}</div></div>`}).join('')||'<div class="msg">Aún no hay palets.</div>';
   $('embList').innerHTML=Object.entries(EMB).sort((a,b)=>(b[1].seq||0)-(a[1].seq||0)).map(([id,e])=>{const c=embCalc(e),env=e.st==='enviado';
-    return `<details class="card" data-ek="${id}" ${embOpenSet.has(id)?'open':''}><summary>🚛 ${esc(e.num)} <span class="pill p-aq" style="margin-left:6px">${c.cams.length} camión(es) · ${c.np} palets · ${c.tb} bultos</span> ${env?'<span class="pill p-ok">Enviado</span>':''}</summary>
+    return `<details class="card" data-ek="${id}" ${embOpenSet.has(id)?'open':''}><summary>🚛 ${esc(e.num)} <span class="pill p-aq" style="margin-left:6px">${c.cams.length} camión(es) · ${c.np} palets · ${c.tb} bultos</span> ${env?'<span class="pill p-ok">Enviado</span>':e.comp?'<span class="pill p-bl">Completado</span>':'<span class="pill p-wn">En armado</span>'}</summary>
     <div class="msg">${esc(e.n||e.u||'')} · ${fdt(e.ts)}</div>
-    ${c.cams.map((x,i)=>`<div class="crow"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>Camión ${i+1} · ${esc(x.chofer||'chofer pendiente')} · ${esc(x.placa||'—')}</b><span class="msg" style="margin:0">${x.pals.length} palets · ${fmt(x.b)} bultos · ${fmt(x.pz)} pzas</span></div>
-      ${env?'':`<button class="btn sm" data-ech="${id}|${x.cid}" style="margin-top:8px">${x.chofer&&x.placa?'✎ Cambiar chofer y placa':'👤 Asignar chofer y placa (al final)'}</button>`}${env?'':`<input class="f" data-escan="${id}|${x.cid}" placeholder="Escanear palet (PAL-0001)" autocomplete="off" autocapitalize="characters" spellcheck="false" style="margin-top:8px">`}
-      ${x.pals.map(pl=>`<div class="prow" style="justify-content:space-between"><span class="tv">${esc(pl.num)}</span><span class="msg" style="margin:0">${pStores(pl).map(s=>esc(L(s.t))+' '+s.b).join(' · ')}</span>${env?'':`<button class="btn sm" data-erm="${id}|${x.cid}|${pl.id}">✕</button>`}</div>`).join('')}</div>`).join('')}
+    ${c.cams.map((x,i)=>`<div class="crow"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>Camión ${i+1}${e.comp?` · ${esc(x.chofer||'chofer pendiente')} · ${esc(x.placa||'—')}`:''}</b><span class="msg" style="margin:0">${x.pals.length} palets · ${fmt(x.b)} bultos · ${fmt(x.pz)} pzas</span></div>
+      ${(env||!e.comp)?'':`<button class="btn sm" data-ech="${id}|${x.cid}" style="margin-top:8px">${x.chofer&&x.placa?'✎ Cambiar chofer y placa':'👤 Asignar chofer y placa'}</button>`}${(env||e.comp)?'':`<input class="f" data-escan="${id}|${x.cid}" placeholder="Escanear palet (PAL-0001)" autocomplete="off" autocapitalize="characters" spellcheck="false" style="margin-top:8px">`}
+      ${x.pals.map(pl=>`<div class="prow" style="justify-content:space-between"><span class="tv">${esc(pl.num)}</span><span class="msg" style="margin:0">${pStores(pl).map(s=>esc(L(s.t))+' '+s.b).join(' · ')}</span>${(env||e.comp)?'':`<button class="btn sm" data-erm="${id}|${x.cid}|${pl.id}">✕</button>`}</div>`).join('')}</div>`).join('')}
     ${c.st.length?`<div class="scroll"><table><tr><th>Tienda</th><th class="n">Transf.</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${c.st.map(s=>`<tr><td>${esc(LN(s.t))}</td><td class="n">${s.tf}</td><td class="n">${fmt(s.b)}</td><td class="n">${fmt(s.pz)}</td></tr>`).join('')}<tr><td><b>TOTAL</b></td><td class="n"><b>${c.tf.length}</b></td><td class="n"><b>${fmt(c.tb)}</b></td><td class="n"><b>${fmt(c.tp)}</b></td></tr></table></div>`:''}
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${env?'':`<button class="btn sm" data-eadd="${id}">＋ Camión</button>`}<button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button><button class="btn pri sm" data-email="${id}">✉ ${env?'Reenviar':'Enviar'} correo</button>${ISADM&&!env?`<button class="btn sm" data-edel="${id}">🗑 Eliminar</button>`:''}</div></details>`}).join('')||'<div class="msg">Aún no hay embarques.</div>';
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${(env||e.comp)?'':`<button class="btn sm" data-ecn="${id}">🚛 Camiones: ${c.cams.length}</button><button class="btn pri sm" data-ecomp="${id}">✔ Completar packing list</button>`}${(e.comp&&!env)?`<button class="btn sm" data-eopen="${id}">↩ Reabrir packing list</button>`:''}<button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button>${(e.comp||env)?`<button class="btn pri sm" data-email="${id}">✉ ${env?'Reenviar':'Enviar'} correo</button>`:''}${ISADM&&!env?`<button class="btn sm" data-edel="${id}">🗑 Eliminar</button>`:''}</div></details>`}).join('')||'<div class="msg">Aún no hay embarques.</div>';
   if(keepScan){const i=document.querySelector(`[data-escan="${keepScan}"]`);if(i)i.focus();keepScan=null}
 }
 $('palNew').onclick=newPal;$('embNew').onclick=newEmb;$('histBtn').onclick=loadHist;
-$('v-pal').addEventListener('toggle',e=>{const k=e.target.dataset&&e.target.dataset.ek;if(!k)return;e.target.open?embOpenSet.add(k):embOpenSet.delete(k)},true);
-$('v-pal').addEventListener('keydown',e=>{if(e.key!=='Enter'||!e.target.dataset.escan)return;e.preventDefault();const [eid,cid]=e.target.dataset.escan.split('|'),v=e.target.value;e.target.value='';if(v.trim()){keepScan=eid+'|'+cid;scanQ=scanQ.then(()=>embScan(eid,cid,v)).then(()=>renderPal())}});
-$('v-pal').addEventListener('click',async e=>{
+$('palwrap').addEventListener('toggle',e=>{const k=e.target.dataset&&e.target.dataset.ek;if(!k)return;e.target.open?embOpenSet.add(k):embOpenSet.delete(k)},true);
+$('palwrap').addEventListener('keydown',e=>{if(e.key!=='Enter'||!e.target.dataset.escan)return;e.preventDefault();const [eid,cid]=e.target.dataset.escan.split('|'),v=e.target.value;e.target.value='';if(v.trim()){keepScan=eid+'|'+cid;scanQ=scanQ.then(()=>embScan(eid,cid,v)).then(()=>renderPal())}});
+$('palwrap').addEventListener('click',async e=>{
   const po=e.target.closest('[data-po]');if(po){openPal(po.dataset.po);return}
+  const en=e.target.closest('[data-ecn]');if(en){embCount(en.dataset.ecn);return}
+  const ec=e.target.closest('[data-ecomp]');
+  if(ec){const id=ec.dataset.ecomp,x=EMB[id];if(!x)return;const c=embCalc(x);if(!c.np){toast('Carga al menos un palet antes de completar');return}if(c.cams.some(k=>!k.pals.length)&&!confirm('Hay camiones sin palets. ¿Completar de todos modos?'))return;
+    if(!confirm(`¿Completar el packing list ${x.num}? (${c.np} palets · ${c.tb} bultos). Después asignas el chofer y la placa.`))return;
+    try{await set(R(db,`${PB}/emb/${id}/comp`),Date.now());embOpenSet.add(id);toast('✅ Packing list completado. Ahora asigna el chofer y la placa.')}catch(err){toast('Error: '+(err.code||err.message))}return}
+  const eo=e.target.closest('[data-eopen]');
+  if(eo){const id=eo.dataset.eopen;if(!confirm('¿Reabrir el packing list para cargar o quitar palets?'))return;try{await remove(R(db,`${PB}/emb/${id}/comp`))}catch(err){toast('Error: '+(err.code||err.message))}return}
   const ech=e.target.closest('[data-ech]');if(ech){const [ea,eb]=ech.dataset.ech.split('|');setCam(ea,eb);return}
   const a=e.target.closest('[data-eadd]');if(a){addCam(a.dataset.eadd);return}
   const pr=e.target.closest('[data-eprint]');if(pr){embPrint(pr.dataset.eprint);return}
@@ -1595,16 +1636,16 @@ window.addEventListener('popstate',()=>{
 $('toMarc').addEventListener('click',e=>{if(!confirm('¿Volver a Marcaciones? Allí tendrás que iniciar sesión de nuevo.'))e.preventDefault()});
 // ---------- navegación ----------
 // Rol surtidor: solo Consulta (surtido) y Transferencias (números de transferencia). El resto es solo de administradores.
-const TABS_ADM=['dsp','pal','dif','est'];
+const TABS_ADM=['dsp','pal','pkl','dif','est'];
 function applyRole(){document.querySelectorAll('.tab').forEach(b=>{if(TABS_ADM.includes(b.dataset.t))b.classList.toggle('hide',!ISADM)})}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
   if(!ISADM&&TABS_ADM.includes(b.dataset.t))return;
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
-  for(const v of['cons','trf','dsp','pal','dif','est'])$('v-'+v).classList.toggle('hide',v!==b.dataset.t);
-  if(b.dataset.t==='pal')startPal();
+  for(const v of['cons','trf','dsp','pal','pkl','dif','est'])$('v-'+v).classList.toggle('hide',v!==b.dataset.t);
+  if(b.dataset.t==='pal'||b.dataset.t==='pkl')startPal();
   if(b.dataset.t!=='cons')$('bar').classList.add('hide');else updateBar();renderAll()
 });
 $('btnHome').onclick=()=>{closeCli();showRecList();window.scrollTo(0,0)};
-function renderAll(){if(!RECIBO)return;renderGlobal();renderCli();if(!$('v-list').classList.contains('hide')){renderList()}if(cur){const ae=document.activeElement;if(!(ae&&ae.tagName==='INPUT'&&ae.closest('#tiles')))renderProd()}if(!$('v-trf').classList.contains('hide')){renderTrfPanel();renderTrf()}if(!$('v-dsp').classList.contains('hide'))renderDespacho();if(!$('v-pal').classList.contains('hide'))renderPal();if(!$('v-dif').classList.contains('hide'))renderDif();if(!$('v-est').classList.contains('hide'))renderEst()}
+function renderAll(){if(!RECIBO)return;renderGlobal();renderCli();if(!$('v-list').classList.contains('hide')){renderList()}if(cur){const ae=document.activeElement;if(!(ae&&ae.tagName==='INPUT'&&ae.closest('#tiles')))renderProd()}if(!$('v-trf').classList.contains('hide')){renderTrfPanel();renderTrf()}if(!$('v-dsp').classList.contains('hide'))renderDespacho();if(!$('v-pal').classList.contains('hide')||!$('v-pkl').classList.contains('hide'))renderPal();if(!$('v-dif').classList.contains('hide'))renderDif();if(!$('v-est').classList.contains('hide'))renderEst()}
 </script>
 </body></html>
