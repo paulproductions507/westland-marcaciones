@@ -1067,7 +1067,7 @@ function svgBars(rows,lbl){ // barras dobles: surtido (verde) y despacho (ámbar
   const mx=Math.max(1,...rows.map(r=>Math.max(r.s,r.d))),W=Math.max(320,rows.length*64),H=170,bw=22;
   return `<div class="scroll"><svg viewBox="0 0 ${W} ${H+34}" style="width:${W}px;max-width:none;height:auto">${rows.map((r,i)=>{const x=i*64+8,hs=Math.round(r.s/mx*H),hd=Math.round(r.d/mx*H);
     return `<rect x="${x}" y="${H-hs}" width="${bw}" height="${hs}" rx="4" fill="#2de2c9"/><rect x="${x+bw+3}" y="${H-hd}" width="${bw}" height="${hd}" rx="4" fill="#f5a623"/><text x="${x+bw}" y="${H-Math.max(hs,hd)-4}" font-size="10" text-anchor="middle" fill="currentColor">${fmt(Math.max(r.s,r.d))}</text><text x="${x+bw}" y="${H+14}" font-size="10" text-anchor="middle" fill="currentColor">${esc(lbl(r.k)[0])}</text><text x="${x+bw}" y="${H+27}" font-size="9" text-anchor="middle" fill="currentColor" opacity=".7">${esc(lbl(r.k)[1]||'')}</text>`}).join('')}</svg></div><div class="msg"><span style="color:#2de2c9">■</span> Surtido &nbsp; <span style="color:#f5a623">■</span> Despacho</div>`}
-function renderPro(){
+function renderPro0(){
   const [a,b]=prRange(),f=PRF,ok=e=>e.d>=a&&e.d<=b&&(!f.dep||e.dep===f.dep)&&(!f.t||e.t===f.t)&&(!f.tipo||(f.tipo==='auto')===isPs(e.id));
   const sv=STEV.sv.filter(ok),dv=STEV.dv.filter(ok),err=STERR.filter(e=>{const d=ymd(e.ts);return d>=a&&d<=b&&(!f.tipo||(f.tipo==='auto')===isPs(e.id))});
   const S=sumF(sv,e=>e.q),D=sumF(dv,e=>e.q),Bu=sumF(dv,e=>e.b),svP=sv.filter(e=>!e.h),Sp=sumF(svP,e=>e.q),Sh=S-Sp,men=svP.length,pp={};
@@ -1090,6 +1090,31 @@ function renderPro(){
    <div class="card"><div class="slbl">Últimas correcciones</div>${err.sort((x,y)=>y.ts-x.ts).slice(0,15).map(e=>`<div class="msg" style="margin:3px 0">${fdt(e.ts)} · <b>${esc(e.wn||e.who)}</b> · ${e.k==='reabrir'?'referencia reabierta':'movimiento eliminado'} · #${esc(e.id)} · ${esc(e.r||e.p)} · por ${esc(e.bn||e.by)}</div>`).join('')||'<div class="msg">Sin correcciones en este periodo.</div>'}</div>`
 }
 $('recPro').onclick=openPro;
+function renderPro(){renderPro0();if(!$('prChk')){const d=document.createElement('div');d.id='prChk';$('prBody').appendChild(d)}const [a,b]=prRange();chkLoad(a,b)}
+// Chequeadores: se miden por bultos escaneados a palets y por bultos despachados (palet en un packing list despachado)
+const CHK={key:'',ev:null};
+async function chkLoad(a,b){const box=$('prChk');if(!box)return;const key=a+'|'+b;
+  if(CHK.key===key&&CHK.ev){chkRender();return}
+  box.innerHTML='<div class="card"><div class="slbl">Chequeadores</div><div class="msg">Cargando…</div></div>';
+  try{const ta=a<'1'?0:new Date(a+'T00:00:00').getTime(),tb=b>'9'?Date.now()+864e5:new Date(b+'T23:59:59').getTime(),pad=30*864e5;
+    const pmS=(await get(query(R(db,PB+'/pm'),orderByKey(),startAt('p'+Math.max(0,ta-pad)),endAt('p'+tb)))).val()||{};
+    const embS=(await get(query(R(db,PB+'/emb'),orderByKey(),startAt('e'+Math.max(0,ta-pad))))).val()||{};
+    const pids=Object.keys(pmS),ev=[];
+    for(let i=0;i<pids.length;i+=10)await Promise.all(pids.slice(i,i+10).map(async pid=>{
+      const [pu,pb]=await Promise.all([get(R(db,`${PB}/pu/${pid}`)),get(R(db,`${PB}/pb/${pid}`))]),U=pu.val()||{},B=pb.val()||{},p=pmS[pid],em=p.emb?embS[p.emb.e]:null;
+      for(const [num,v] of Object.entries(U)){if(!B[num]||v.ts<ta||v.ts>tb)continue;ev.push({u:v.u,n:v.n||v.u,d:ymd(v.ts),pz:v.pz||0,desp:!!(em&&em.desp),pal:p.num})}}));
+    CHK.key=key;CHK.ev=ev}
+  catch(err){box.innerHTML='<div class="card"><div class="slbl">Chequeadores</div><div class="msg">No se pudo cargar: '+esc(err.code||err.message)+'</div></div>';return}
+  chkRender()}
+function chkRender(){const box=$('prChk');if(!box||!CHK.ev)return;const g={};
+  CHK.ev.forEach(e=>{const o=g[e.u]=g[e.u]||{n:e.n,b:0,d:0,pz:0,days:new Set(),pals:new Set()};o.b++;if(e.desp){o.d++;o.pz+=e.pz}o.days.add(e.d);o.pals.add(e.pal)});
+  const rows=Object.values(g).sort((x,y)=>y.d-x.d||y.b-x.b),tb=rows.reduce((t,o)=>t+o.b,0),td=rows.reduce((t,o)=>t+o.d,0);
+  box.innerHTML=`<div class="card"><div class="slbl">Chequeadores · bultos paletizados y despachados</div>
+   <div class="kpis">${kpi('Bultos paletizados',fmt(tb))}${kpi('Bultos despachados',fmt(td),'am')}${kpi('Chequeadores activos',fmt(rows.length))}</div>
+   <div class="scroll"><table><tr><th>#</th><th>Chequeador</th><th class="n">Paletizados</th><th class="n">Despachados</th><th class="n">% despachado</th><th class="n">Piezas desp.</th><th class="n">Palets</th><th class="n">Días</th><th class="n">Bultos/día</th></tr>
+   ${rows.map((o,i)=>`<tr><td>${i+1}</td><td>${esc(o.n)}</td><td class="n">${fmt(o.b)}</td><td class="n"><b>${fmt(o.d)}</b></td><td class="n">${td?(o.d/td*100).toFixed(1):0}%</td><td class="n">${fmt(Math.round(o.pz))}</td><td class="n">${o.pals.size}</td><td class="n">${o.days.size}</td><td class="n">${o.days.size?fmt(Math.round(o.b/o.days.size)):0}</td></tr>`).join('')||'<tr><td colspan="9">Sin datos en este periodo.</td></tr>'}</table></div>
+   <div class="msg">Cada bulto escaneado a un palet se acredita a quien lo escaneó. “Despachado” = el palet ya está en un packing list despachado. Solo cuentan los escaneos hechos desde esta versión; los anteriores no tienen responsable registrado.</div></div>`}
+
 
 
 // ---------- Pedidos automáticos / Túnel: carga de transferencias del Gestor de Bodega (PDF o captura) ----------
@@ -1692,7 +1717,7 @@ async function palScan(id,raw){
     ptoast('♻ Se liberó una reserva huérfana de '+gbCode(num))}
   const cnt=Object.values(PBO).filter(x=>x===k).length+1,nb=Object.keys(PBO).length+1;
   palFresh.add(num);setTimeout(()=>palFresh.delete(num),900);palBumpT=Date.now()+900;
-  try{await update(R(db,PB),{[`tfc/${k}`]:{N:hit.n,g:cl.g},[`pb/${id}/${num}`]:k,[`pm/${id}/nb`]:nb,[`pm/${id}/tfs/${k}`]:{t:hit.t,tr:info.tr,N:hit.n,pz:info.pz,c:cnt}});
+  try{await update(R(db,PB),{[`tfc/${k}`]:{N:hit.n,g:cl.g},[`pb/${id}/${num}`]:k,[`pu/${id}/${num}`]:{u:USER,n:NAME,ts:Date.now(),pz:+((info.pz||0)/(hit.n||1)).toFixed(2)},[`pm/${id}/nb`]:nb,[`pm/${id}/tfs/${k}`]:{t:hit.t,tr:info.tr,N:hit.n,pz:info.pz,c:cnt}});
     PBO[num]=k;p.nb=nb;p.tfs=p.tfs||{};p.tfs[k]={t:hit.t,tr:info.tr,N:hit.n,pz:info.pz,c:cnt};
     ptoast(`✅ ${gbCode(num)} · ${L(hit.t)} ${hit.tr||''} (${num-hit.first+1}/${hit.n})`);palMissRefresh()}
   catch(err){palFresh.delete(num);release(k,num,id).catch(()=>{});ptoast('Error: '+(err.code||err.message))}
@@ -1757,10 +1782,10 @@ function embHTML(e){
   <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Detalle por transferencia</div>
   <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Tienda</th><th ${th}>Transferencia</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.tf.map(a=>`<tr><td ${td}>${esc(L(a.t))}</td><td ${td}>${esc(a.tr||'—')}</td><td ${tdn}>${a.b}${a.b<a.N?' de '+a.N:''}</td><td ${tdn}>${fmt(a.pz)}</td></tr>`).join('')}</table>
   <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Camiones</div>
-  <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Camión</th><th ${th}>Chofer</th><th ${th}>Placa</th><th ${th}>Palets</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.cams.map((x,i)=>`<tr><td ${td}>${i+1}</td><td ${td}>${esc(x.chofer||'')}</td><td ${td}>${esc(x.placa||'')}</td><td ${td}>${x.pals.map(pl=>`Palet ${pl.pos} (${esc(pl.num)})`).join('<br>')}</td><td ${tdn}>${fmt(x.b)}</td><td ${tdn}>${fmt(x.pz)}</td></tr>`).join('')}</table>
+  <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Camión</th><th ${th}>Chofer</th><th ${th}>Placa</th><th ${th}>Palets</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.cams.map((x,i)=>`<tr><td ${td}>${i+1}</td><td ${td}>${esc(x.chofer||'')}</td><td ${td}>${esc(x.placa||'')}</td><td ${td}>${x.pals.length>1?`Desde: Palet #${x.pals[0].pos}<br>Hasta: Palet #${x.pals[x.pals.length-1].pos}`:x.pals.length?`Palet #${x.pals[0].pos}`:'—'}</td><td ${tdn}>${fmt(x.b)}</td><td ${tdn}>${fmt(x.pz)}</td></tr><tr><td colspan="6" ${td}><b>Notas · referencias de palets (etiqueta):</b> ${x.pals.map(pl=>`Palet #${pl.pos} = ${esc(pl.num)}`).join(' · ')||'—'}</td></tr>`).join('')}</table>
   ${c.cams.map((x,i)=>`<div style="font-size:15px;font-weight:700;margin:20px 0 6px">Desglose · Camión ${i+1}</div>
   <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Palet (etiqueta)</th><th ${th}>Tienda</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${x.pals.map(pl=>`<tr><td ${td}><b>Palet ${pl.pos}</b> (${esc(pl.num)})</td><td ${td}>${esc(pStores(pl).map(s=>L(s.t)).join(' · ')||'—')}</td><td ${tdn}>${fmt(pl.nb)}</td><td ${tdn}>${fmt(pl.pz)}</td></tr>`).join('')}</table>`).join('')}
-  <div style="font-size:12px;color:#5a6b7a;margin-top:16px">El número de palet indica el orden en que se cargó en el camión; entre paréntesis va el número de la etiqueta impresa en el palet. La recepción se realiza por palet completo.</div></div>`
+  <div style="font-size:12px;color:#5a6b7a;margin-top:16px">El número de palet indica el orden en que se cargó en el camión; la fila de notas de cada camión trae la referencia real (etiqueta impresa) de cada palet. La recepción se realiza por palet completo.</div></div>`
 }
 async function embReady(e){const c=embCalc(e);
   if(!e.comp)return'Primero completa el packing list.';
@@ -1904,13 +1929,13 @@ async function palRemove(pid,n){const p=PM[pid];if(!p||p.st!=='abierto'){ptoast(
   const k=PBO[n],tf=(p.tfs||{})[k]||{},cnt=Object.values(PBO).filter(y=>y===k).length-1,nb=Object.keys(PBO).length-1;
   const rb=document.querySelector(`[data-rmb="${n}"]`),row=rb&&rb.parentElement;
   if(row){row.classList.add('palrow-out');await new Promise(r=>setTimeout(r,230))}
-  try{const g=await release(k,n,pid);const up={[`pb/${pid}/${n}`]:null,[`pm/${pid}/nb`]:nb,[`pm/${pid}/tfs/${k}`]:cnt>0?{...tf,c:cnt}:null};
+  try{const g=await release(k,n,pid);const up={[`pb/${pid}/${n}`]:null,[`pu/${pid}/${n}`]:null,[`pm/${pid}/nb`]:nb,[`pm/${pid}/tfs/${k}`]:cnt>0?{...tf,c:cnt}:null};
     if(g!==null&&tf.N!==undefined)up[`tfc/${k}`]=g>0?{N:tf.N,g}:null;
     palBumpT=Date.now()+900;
     await update(R(db,PB),up);delete PBO[n];if(PM[pid])PM[pid].nb=nb;renderPalModal();palMissRefresh();ptoast(`↩ ${gbCode(n)} quitado del palet`);return true}
   catch(err){renderPalModal();ptoast('Error: '+(err.code||err.message));return false}}
 async function palDoDelete(p){const pid=palOpen,num=p.num,tfs=p.tfs||{};palDelMode=false;palDelChk=false;history.back();
-  try{const pb=(await get(R(db,`${PB}/pb/${pid}`))).val()||{},up={[`pm/${pid}`]:null,[`pb/${pid}`]:null,[`pn/${num}`]:null};
+  try{const pb=(await get(R(db,`${PB}/pb/${pid}`))).val()||{},up={[`pm/${pid}`]:null,[`pb/${pid}`]:null,[`pu/${pid}`]:null,[`pn/${num}`]:null};
     for(const [n,k] of Object.entries(pb)){const g=await release(k,+n,pid);const N=(tfs[k]||{}).N;if(g!==null&&N!==undefined){up[`tfc/${k}`]=g>0?{N,g}:null;if(!g)up[`tfx/${k}`]=null}}
     await update(R(db,PB),up);toast(`🗑 ${num} eliminado · bultos liberados`)}catch(err){toast('Error: '+(err.code||err.message))}}
 // ---- Bultos: generaciones viejas, pool de números liberados y reparación ----
@@ -1926,7 +1951,7 @@ async function retirePreview(k){
 // Retira la generación anterior: saca sus bultos de los palets, borra su control y devuelve los números al pool
 async function retireRange(k,first,n){
   try{const tx=(await get(R(db,`${PB}/tfx/${k}`))).val(),up={},by={};
-    Object.entries((tx&&tx.got)||{}).forEach(([num,pid])=>{(by[pid]=by[pid]||[]).push(num);up[`pb/${pid}/${num}`]=null});
+    Object.entries((tx&&tx.got)||{}).forEach(([num,pid])=>{(by[pid]=by[pid]||[]).push(num);up[`pb/${pid}/${num}`]=null;up[`pu/${pid}/${num}`]=null});
     for(const [pid,nums] of Object.entries(by)){const pm=(await get(R(db,`${PB}/pm/${pid}`))).val();if(!pm)continue;
       const pb=(await get(R(db,`${PB}/pb/${pid}`))).val()||{};let nb=0,c=0;
       for(const [num,kk] of Object.entries(pb)){if(nums.includes(num))continue;nb++;if(kk===k)c++}
@@ -1959,7 +1984,7 @@ async function palRepair(btn){if(!confirm('Se revisará todo el control de bulto
     for(const pid of pids){keep[pid]={};
       for(const [n,k] of Object.entries(PBA[pid]||{})){const num=+n,r=RG[k];
         const good=PMA[pid]&&r&&num>=r.first&&num<r.first+r.n&&!(claims[k]&&claims[k][num]);
-        if(good){(claims[k]=claims[k]||{})[num]=pid;keep[pid][num]=k}else{up[`pb/${pid}/${num}`]=null;quit++}}}
+        if(good){(claims[k]=claims[k]||{})[num]=pid;keep[pid][num]=k}else{up[`pb/${pid}/${num}`]=null;up[`pu/${pid}/${num}`]=null;quit++}}}
     for(const [pid,p] of Object.entries(PMA)){const now=keep[pid]||{},cnt={};Object.values(now).forEach(k=>cnt[k]=(cnt[k]||0)+1);
       const nb=Object.keys(now).length,tfs={};let ch=(p.nb||0)!==nb;
       for(const [k,c] of Object.entries(cnt)){const old=(p.tfs||{})[k],r=RG[k];tfs[k]={t:r.t,tr:r.tr||'',N:r.n,pz:(old&&old.pz)||pzOf[k]||0,c};if(!old||old.c!==c||old.N!==r.n)ch=true}
