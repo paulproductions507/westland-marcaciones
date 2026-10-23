@@ -174,7 +174,7 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
       <div class="msg">Sube el PDF (o una captura PNG/JPG) de la pantalla de Chequeo. La app lee la transferencia, la tienda y los productos; tú revisas y guardas.</div>
       <div class="lbl" style="margin-top:10px">Tipo (si el PDF es del sistema, se detecta solo)</div><select class="f" id="auSrc"><option value="auto">⚡ Automático (pedido automático)</option><option value="tun">🚇 Túnel (transferencia de un recibo)</option></select>
       <div class="lbl" style="margin-top:10px">PDF o captura</div><input class="f" type="file" id="auFile" accept=".pdf,image/*"><div class="msg" id="auMsg"></div></div>
-    <div id="pfCard" class="card hide"><h3 style="font-size:16px">Proformas manuales (clientes)</h3><div class="msg" style="margin-bottom:8px">1) Descarga la plantilla y escribe en una columna el producto y en la otra su cantidad. 2) Súbela y completa el número de proforma, el cliente y el surtidor. 3) Las piezas descuentan del saldo de Bodega del recibo donde está el producto y suman a la producción del surtidor. Si un código se excede, pasa a Diferencias para auditoría. Los productos sin recibo van al recibo PROFORMAS: solo suman a producción (sin comparar con Bodega) hasta que subas su recibo y los trasladen.</div><button class="btn sm" id="pfTpl" style="width:100%">⬇ Descargar plantilla (Excel)</button><div class="lbl" style="margin-top:10px">Plantilla con productos y cantidades</div><input class="f" type="file" id="pfFile" accept=".xlsx,.xls,.csv"><div class="msg" id="pfMsg"></div></div>
+    <div id="pfCard" class="card hide"><h3 style="font-size:16px">Proformas manuales (clientes)</h3><div class="msg" style="margin-bottom:8px">1) Sube el PDF de la proforma (Productos de Proforma #…): se leen el número, los productos, lo solicitado y lo despachado. También puedes usar la plantilla Excel (producto y cantidad). 2) Completa el número de proforma, el cliente y el surtidor. 3) Las piezas descuentan del saldo de Bodega del recibo donde está el producto y suman a la producción del surtidor. Si un código se excede, pasa a Diferencias para auditoría. Los productos sin recibo van al recibo PROFORMAS: solo suman a producción (sin comparar con Bodega) hasta que subas su recibo y los trasladen.</div><button class="btn sm" id="pfTpl" style="width:100%">⬇ Descargar plantilla (Excel)</button><div class="lbl" style="margin-top:10px">PDF de la proforma (o plantilla Excel)</div><input class="f" type="file" id="pfFile" accept=".pdf,.xlsx,.xls,.csv"><div class="msg" id="pfMsg"></div></div>
     <div id="auReview"></div><div class="card"><div class="slbl" id="auListT">Transferencias cargadas</div><div id="auList"></div></div></div>
     <div id="v-pro" class="hide"><div id="prFil"></div><div id="prBody"></div></div>
     <!-- PALETS Y EMBARQUES -->
@@ -1338,13 +1338,23 @@ function pfUsed(id,p){return Object.values(AUL[id]||{}).filter(e=>e.p===p&&e.bd)
 function pfAvail(id,p){const x=pfItem(id,p);return x?Math.max(0,(x.s.BODEGA||0)-pfUsed(id,p)):0}
 function pfPick(p){const c=pfCands(p);return c.length?c.map(id=>({id,a:pfAvail(id,p)})).sort((a,b)=>b.a-a.a)[0].id:''}
 function pfRelink(){AU.lines.forEach(l=>{l.cands=pfCands(l.p);if(!l.rc||!l.cands.includes(l.rc))l.rc=pfPick(l.p)})}
-async function pfStart(rows,fname){
+// Lee el PDF "Productos de Proforma #N" del sistema GP (columnas: producto, descripción, referencia, inv cdf, progreso, solicitado, surtido, despachado, pendiente)
+function parseProformaPdf(t,fname){
+  t=String(t||'').replace(/\s+/g,' ');
+  if(!/Productos de Proforma/i.test(t))return null;
+  const num=s=>parseInt(String(s).replace(/,/g,''))||0;
+  let m=t.match(/Proforma\s*#\s*(\d+)/i)||String(fname||'').match(/GP[_\s-]+(\d{4,})/i);
+  const tr=m?m[1]:'',rows=[];
+  const re=/(\d{7})\s+(.+?)\s+(\S+)\s+(\d[\d,]*)\s+(\d{1,3}(?:\.\d+)?)\s*%\s+(\d[\d,]*)\s+(\d[\d,]*)\s+(\d[\d,]*)\s+(\d[\d,]*)/g;
+  while((m=re.exec(t))){rows.push({c:m[1],d:m[2].trim(),ref:m[3],sol:num(m[6]),sur:num(m[7]),q:num(m[8]),pen:num(m[9])})}
+  return{tr,rows}}
+async function pfStart(rows,fname,tr){
   AU={prf:1,rc:'',lines:[]};await auLoadDir();await auLoadLogs();
   const me=UDIR.find(x=>x.u===USER),map={},bad=[];
   for(const r of rows){const code=String(r.c??'').trim().replace(/\.0+$/,''),q=Math.round(Number(String(r.q).replace(',','.')))||0;if(!code||!q)continue;
     const x=auFindProd(code);const p=x?String(x.p):(/^\d{7}$/.test(code)?code:'');if(!p){bad.push(code);continue}
-    if(map[p])map[p].desp+=q;else map[p]={p,ref:x?x.ref:'',d:x?x.d:'',desp:q,pr:x?(x.pr||0):0,upc:x?(x.upc||''):''}}
-  AU={prf:1,manual:1,tr:'',cli:'',ts:Date.now(),suru:me?me.u:'',sur:me?me.n:'',t:'CRISTAL',lines:Object.values(map),bad,file:fname,src:'tun',det:1,rc:'',bul:0};
+    if(map[p]){map[p].desp+=q;map[p].sol+=(r.sol||0)}else map[p]={p,ref:x?x.ref:(r.ref||''),d:x?x.d:(r.d||''),desp:q,sol:r.sol||0,pr:x?(x.pr||0):0,upc:x?(x.upc||''):''}}
+  AU={prf:1,manual:1,tr:tr||'',cli:'',ts:Date.now(),suru:me?me.u:'',sur:me?me.n:'',t:'CRISTAL',lines:Object.values(map),bad,file:fname,src:'tun',det:1,rc:'',bul:0};
   pfRelink();pfRender()}
 function pfExc(l){return l.rc?Math.max(0,l.desp-pfAvail(l.rc,l.p)):0} // sin recibo: no se compara con Bodega
 function pfRender(){
@@ -1352,7 +1362,7 @@ function pfRender(){
   const rows=a.lines.map((l,i)=>{const it=pfItem(l.rc,l.p),bod=it?(it.s.BODEGA||0):0,av=l.rc?pfAvail(l.rc,l.p):0,ex=pfExc(l);
     const rc=!l.cands.length?'<span class="pill p-wn">Sin recibo → PROFORMAS</span>':l.cands.length>1?`<select class="f" data-pr="${i}" style="padding:5px">${l.cands.map(id=>`<option value="${esc(id)}" ${l.rc===id?'selected':''}>#${esc(id)}</option>`).join('')}</select>`:`<span class="pill p-aq">#${esc(l.rc)}</span>`;
     const st=!l.rc?'<span class="pill p-aq">Solo suma a producción (sin comparar)</span>':ex?`<span class="pill p-wn">Excede Bodega por ${fmt(ex)} → Diferencia ${fmt(ex)}</span>`:'<span class="pill p-ok">Cuadra con Bodega</span>';
-    return `<tr><td>${esc(l.ref)}</td><td>${esc(l.p)}</td><td>${esc(l.d)}</td><td class="n"><input class="f" type="number" min="0" data-pq="${i}" value="${l.desp}" style="width:70px;padding:6px"></td><td>${rc}</td><td class="n">${l.rc?fmt(bod):'—'}</td><td class="n">${l.rc?fmt(av):'—'}</td><td>${st}</td><td><button class="btn sm" data-prm="${i}">✖</button></td></tr>`}).join('');
+    return `<tr><td>${esc(l.ref)}</td><td>${esc(l.p)}</td><td>${esc(l.d)}</td><td class="n">${l.sol?fmt(l.sol):'—'}</td><td class="n"><input class="f" type="number" min="0" data-pq="${i}" value="${l.desp}" style="width:70px;padding:6px"></td><td>${rc}</td><td class="n">${l.rc?fmt(bod):'—'}</td><td class="n">${l.rc?fmt(av):'—'}</td><td>${st}</td><td><button class="btn sm" data-prm="${i}">✖</button></td></tr>`}).join('');
   $('auReview').innerHTML=`<div class="card"><div class="slbl">🧾 Proforma manual · Cristal · revisa antes de guardar</div>
    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
     <div><div class="lbl">Número de proforma *</div><input class="f" data-pf="tr" maxlength="20" value="${esc(a.tr)}" placeholder="Ej. 1234"></div>
@@ -1362,7 +1372,7 @@ function pfRender(){
    ${(UDIR.length&&!a.suru)?'<div class="msg" style="color:var(--wn)">⚠ Elige el surtidor: es quien recibe el crédito en producción.</div>':''}
    ${a.bad.length?`<div class="msg" style="color:var(--wn)">⚠ No encontré estos productos y se omitieron: ${a.bad.slice(0,12).map(esc).join(', ')}${a.bad.length>12?' (+'+(a.bad.length-12)+' más)':''}</div>`:''}
    <div class="msg">Las piezas se <b>descuentan del saldo de Bodega</b> del recibo indicado; lo que exceda queda como <b>Diferencia</b> (auditoría). Los productos <b>sin recibo</b> van al recibo PROFORMAS: no se comparan con Bodega (no hay inventario), solo suman a la producción. Al subir su recibo y trasladarlos, ahí sí se comparan.</div>
-   <div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th>Descripción</th><th class="n">Cant.</th><th>Recibo</th><th class="n">Saldo bodega</th><th class="n">Disponible</th><th>Estado</th><th></th></tr>${rows}</table></div>
+   <div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th>Descripción</th><th class="n">Solicitado</th><th class="n">Cant.</th><th>Recibo</th><th class="n">Saldo bodega</th><th class="n">Disponible</th><th>Estado</th><th></th></tr>${rows}</table></div>
    <div class="msg">${fmt(a.lines.length)} líneas · <b>${fmt(sum)}</b> piezas${exc?` · <span style="color:var(--wn)"><b>${fmt(exc)}</b> pasan a Diferencia</span>`:' · todo cuadra con Bodega'}</div>
    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" id="pfSave" style="flex:1">Guardar proforma</button><button class="btn" id="pfCancel">Cancelar</button></div></div>`}
 async function pfSave(btn){
@@ -1447,7 +1457,14 @@ async function pfList(){
     try{await pfUndo(pf,m);toast('Proforma quitada');pfList()}catch(err){toast('Error: '+(err.code||err.message))}}}
 $('pfTpl').onclick=pfTpl;
 $('pfFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;$('pfMsg').textContent='Leyendo '+f.name+'…';
-  try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'}),aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''});
+  try{if(/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)){
+      const P=parseProformaPdf(await pdfText(f),f.name);
+      if(!P||!P.rows.length){$('pfMsg').textContent='No pude leer la proforma. Usa el PDF de “Productos de Proforma” generado desde el sistema (Imprimir → Guardar como PDF).';return}
+      $('pfMsg').textContent='';await pfStart(P.rows,f.name,P.tr);
+      if(!AU.lines.length)$('pfMsg').textContent='Ningún producto del PDF se pudo identificar.';
+      else toast(`📄 Proforma ${P.tr||'?'} leída: ${AU.lines.length} línea(s). Completa cliente y surtidor.`);
+      return}
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'}),aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''});
     let hi=-1,cp=-1,cq=-1;
     for(let i=0;i<Math.min(aoa.length,10)&&hi<0;i++){const hs=aoa[i].map(normH);const a=hs.findIndex(h=>['producto','product','sku','item','codigo','codproducto','codigoproducto','estilo','upc','codigobarras'].includes(h)),b=hs.findIndex(h=>['cantidad','cant','qty','unidades','piezas','pzas','despacho','desp'].includes(h));if(a>=0&&b>=0){hi=i;cp=a;cq=b}}
     if(hi<0){$('pfMsg').textContent='No encontré las columnas “Producto” y “Cantidad”. Usa la plantilla.';return}
