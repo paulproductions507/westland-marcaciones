@@ -153,7 +153,7 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation-duration:.01ms!important}}
 </style></head>
 <body>
-<div id="gate" class="gate"><h2>🔎 Consultas</h2><p id="gmsg" style="color:var(--mt)">Verificando sesión…</p><a class="btn pri" id="glink" href="index.html" style="text-decoration:none;display:none">Ir a Marcaciones</a></div>
+<div id="gate" class="gate"><h2>🔎 Consultas</h2><p id="gmsg" style="color:var(--mt)">Verificando sesión…</p><a class="btn pri" id="glink" href="index.html" style="text-decoration:none;display:none">Ir a Marcaciones</a><div id="gpick" style="margin-top:18px"></div><a id="gtemp" href="#" style="display:none;margin-top:46px;font-size:11px;color:var(--mt);opacity:.55;text-decoration:none">Temporal</a></div>
 
 <div id="app" class="hide">
   <div class="top">
@@ -297,7 +297,7 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js"></script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import{getAuth,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+import{getAuth,onAuthStateChanged,signInAnonymously,signOut}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import{getDatabase,ref as R,push,get,onValue,remove,set,runTransaction,update,query,orderByKey,startAt,endAt,limitToLast}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 const FB={apiKey:"AIzaSyCn7bUx8PdK-1TCmOnffWJYLouC5vdGMIE",authDomain:"westland-marcaciones.firebaseapp.com",projectId:"westland-marcaciones",storageBucket:"westland-marcaciones.appspot.com",messagingSenderId:"477907187320",appId:"1:477907187320:web:c04ef5b3b8ff5773b99f8d",databaseURL:"https://westland-marcaciones-default-rtdb.firebaseio.com"};
 const app=initializeApp(FB),auth=getAuth(app),db=getDatabase(app);
@@ -384,8 +384,36 @@ $('recList').addEventListener('click',async e=>{
 
 // ---------- sesión compartida con la app de marcaciones ----------
 function emailToUser(e){e=(e||'').toLowerCase();let m=e.match(/\+([^@]+)@gmail\.com$/);if(m)return m[1];if(e.endsWith('@saks.com.pa'))return e.split('@')[0];return e.split('@')[0]}
+// ---------- colaboradores temporales (sin cuenta: se registran en Marcaciones > Colaboradores temporales) ----------
+const TKEY='cons_temp_user';let TEMP=false,STARTED=false;
+const getTemp=()=>{try{return JSON.parse(localStorage.getItem(TKEY)||'null')}catch(e){return null}};
+function showGate(msg){$('gate').classList.remove('hide');$('app').classList.add('hide');if(msg!==undefined)$('gmsg').textContent=msg;$('gtemp').style.display='inline-block'}
+async function openTempPicker(){
+  const box=$('gpick');box.innerHTML='<div class="msg">Cargando temporales…</div>';
+  try{if(!auth.currentUser)await signInAnonymously(auth);
+    const v=(await get(R(db,'users_v1'))).val()||{},hoy=today();
+    const us=Object.values(v).filter(x=>x&&x.invitado&&x.user&&!(x.invitadoHasta&&x.invitadoHasta<hoy));
+    if(!us.length){box.innerHTML='<div class="msg">No hay colaboradores temporales activos. Pídele al administrador que los registre en Marcaciones.</div>';return}
+    box.innerHTML='<div class="msg" style="margin-bottom:8px">¿Quién eres?</div>'+us.map(x=>`<button class="btn" data-tu="${esc(x.user)}" data-tn="${esc(x.nombre||x.user)}" style="display:block;width:100%;margin-bottom:8px">${esc(x.nombre||x.user)}</button>`).join('');
+    box.onclick=e=>{const b=e.target.closest('[data-tu]');if(!b)return;try{localStorage.setItem(TKEY,JSON.stringify({user:b.dataset.tu,nombre:b.dataset.tn}))}catch(err){}box.innerHTML='';startTemp()}}
+  catch(err){box.innerHTML=`<div class="msg err">No se pudo abrir el acceso temporal (${esc(err.code||err.message||err)}). Avisa al administrador.</div>`}}
+function startTemp(){const t=getTemp();if(!t||STARTED)return;STARTED=true;TEMP=true;USER=t.user;NAME=t.nombre||t.user;ISADM=false;applyRole();
+  $('who').textContent=`${NAME} · Temporal`;
+  if(!$('tmpOut')){const a=document.createElement('a');a.id='tmpOut';a.href='#';a.textContent='salir';a.style.cssText='font-size:10px;opacity:.6;margin-right:8px;color:inherit';$('verTag').after(a);
+    a.onclick=async ev=>{ev.preventDefault();if(!confirm('¿Salir del modo temporal?'))return;try{localStorage.removeItem(TKEY)}catch(err){}try{if(auth.currentUser&&auth.currentUser.isAnonymous)await signOut(auth)}catch(err){}location.reload()}}
+  $('gate').classList.add('hide');$('app').classList.remove('hide');showRecList()}
+$('gtemp').onclick=e=>{e.preventDefault();if(!$('gpick').innerHTML)openTempPicker()};
 onAuthStateChanged(auth,async u=>{
-  if(!u){$('gmsg').textContent='Verificando sesión…';await new Promise(r=>setTimeout(r,2500));if(auth.currentUser)return;$('gmsg').textContent='Para consultar debes iniciar sesión en la app de Marcaciones y entrar desde el icono de Consultas.';$('glink').style.display='inline-block';return}
+  if(STARTED)return;
+  const tmp=getTemp();
+  if(tmp&&tmp.user){ // modo temporal elegido en este equipo: manda sobre cualquier otra sesión
+    if(!u){try{await signInAnonymously(auth)}catch(err){showGate('No se pudo abrir el acceso temporal ('+(err.code||err.message)+'). Avisa al administrador.')}return}
+    startTemp();return}
+  if(!u||u.isAnonymous){
+    if(!u){$('gmsg').textContent='Verificando sesión…';await new Promise(r=>setTimeout(r,2500));if(auth.currentUser&&!auth.currentUser.isAnonymous)return}
+    showGate('Para consultar debes iniciar sesión en la app de Marcaciones y entrar desde el icono de Consultas.');$('glink').style.display='inline-block';
+    if(u&&u.isAnonymous&&!$('gpick').innerHTML)openTempPicker();return}
+  STARTED=true;
   USER=emailToUser(u.email);NAME=USER;ISADM=ADMINS.includes(USER);applyRole();
   try{const s=await get(R(db,'users_v1'));if(s.exists()){const m=Object.values(s.val()).find(x=>x&&x.user===USER);if(m&&m.nombre)NAME=m.nombre}}catch(e){}
   $('who').textContent=`${NAME} · ${ISADM?'Administrador':'Surtidor'}`;
@@ -1843,7 +1871,9 @@ async function embMail(id){
     try{const cs=await get(R(db,'meta_v1/email_cfg'));const cfg=cs.val();if(!cfg||!cfg.serviceId||!cfg.templateId||!cfg.publicKey){toast('Falta configurar EmailJS en Marcaciones');return false}
       if(typeof emailjs==='undefined'){toast('No cargó EmailJS; revisa la conexión');return false}
       const c=embCalc(e);emailjs.init(cfg.publicKey);
-      await emailjs.send(cfg.serviceId,cfg.templateId,{to_email:to,cc_email:cc,subject:`Despacho ${e.num} · ${c.cams.length} camión(es) · ${c.tb} bultos · ${c.tp} piezas`,html_content:embHTML(e),message:`Aviso de despacho ${e.num}: ${c.tb} bultos, ${c.tp} piezas, ${c.cams.length} camión(es).`,saludo:'',periodo:e.num,timestamp:new Date().toLocaleString('es')});
+      /* Remitente automático: "Notificaciones Westland Outlook" (notificacioneswestland@outlook.com). Reemplaza al servicio viejo de provira@saks.com.pa, que quedó suspendido. */
+      const EMAIL_SERVICE_ID='service_gqk1da3';
+      await emailjs.send(EMAIL_SERVICE_ID,cfg.templateId,{to_email:to,cc_email:cc,subject:`Despacho ${e.num} · ${c.cams.length} camión(es) · ${c.tb} bultos · ${c.tp} piezas`,html_content:embHTML(e),message:`Aviso de despacho ${e.num}: ${c.tb} bultos, ${c.tp} piezas, ${c.cams.length} camión(es).`,saludo:'',periodo:e.num,timestamp:new Date().toLocaleString('es')});
       await update(R(db,PB),{[`emb/${id}/st`]:'enviado',[`emb/${id}/mail`]:{to,cc,ts:Date.now(),u:NAME},cfg:{to,cc}});toast('✅ Correo enviado')
     }catch(err){toast('No se pudo enviar: '+(err.text||err.code||err.message));return false}})
 }
