@@ -1063,7 +1063,7 @@ function openStoreModal(t){
 $('mst').addEventListener('click',e=>{if(e.target.id==='mst'||e.target.id==='mstX')$('mst').classList.add('hide')});
 $('recStat').onclick=openStat;
 // ---------- Productividad (monitor de KPIs, solo administradores) ----------
-let PRF={per:'mes',d1:'',d2:'',dep:'',t:'',tipo:'',hist:false},STERR=[],STERRT=0;
+let PRF={per:'mes',d1:'',d2:'',dep:'',t:'',tipo:'',hist:false,met:'sur'},STERR=[],STERRT=0;
 const wkStart=d=>{const x=new Date(d+'T00:00:00');x.setDate(x.getDate()-((x.getDay()+6)%7));return ymd(x.getTime())};
 const wkLbl=k=>{const a=new Date(k+'T00:00:00'),b=new Date(a);b.setDate(b.getDate()+6);const f=d=>d.toLocaleDateString('es',{day:'numeric',month:'short'});return f(a)+' – '+f(b)};
 function prRange(){const f=PRF,td=ymd(Date.now()),t=new Date();let a='',b='';
@@ -1085,11 +1085,12 @@ function prFilters(){
    <div><div class="lbl">Desde</div><input class="f" type="date" data-pf="d1" value="${PRF.d1}"></div><div><div class="lbl">Hasta</div><input class="f" type="date" data-pf="d2" value="${PRF.d2}"></div>
    <div><div class="lbl">Departamento</div><select class="f" data-pf="dep"><option value="">Todos</option>${o(uq(e=>e.dep),PRF.dep)}</select></div>
    <div><div class="lbl">Tienda</div><select class="f" data-pf="t"><option value="">Todas</option>${o(BASE_ST.filter(t=>ev.some(e=>e.t===t)),PRF.t,LN)}</select></div>
+   <div><div class="lbl">Ranking por</div><select class="f" data-pf="met"><option value="sur" ${PRF.met==='sur'?'selected':''}>Surtido</option><option value="desp" ${PRF.met==='desp'?'selected':''}>Despacho</option><option value="ambos" ${PRF.met==='ambos'?'selected':''}>Ambos</option></select></div>
    <div><div class="lbl">Origen</div><select class="f" data-pf="tipo"><option value="">Todos</option><option value="rec" ${PRF.tipo==='rec'?'selected':''}>Recibos</option><option value="auto" ${PRF.tipo==='auto'?'selected':''}>Automático / túnel</option></select></div></div>
    <div class="msg">Los recibos ya trabajados (Consultas ERP) cuentan en la producción total, pero no en el ranking, porque no se sabe quién los surtió. Se van acreditando a su surtidor a medida que cargas sus transferencias de túnel.</div>
    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm" id="prRef">⟳ Actualizar datos</button></div></div>`}
 $('prFil').addEventListener('change',e=>{const k=e.target.dataset.pf;if(!k)return;if(k==='hist')PRF.hist=e.target.checked;else{PRF[k]=e.target.value;if(k==='per'){PRF.d1=PRF.d2='';prFilters()}}renderPro()});
-$('prFil').addEventListener('click',async e=>{if(e.target.id==='prRef'){$('prBody').innerHTML='<div class="msg">Actualizando…</div>';try{await statLoad(true);prFilters();renderPro()}catch(err){toast('Error: '+(err.code||err.message))}}});
+$('prFil').addEventListener('click',async e=>{if(e.target.id==='prRef'){$('prBody').innerHTML='<div class="msg">Actualizando…</div>';try{UPC.ev=null;CHK.ev=null;await statLoad(true);prFilters();renderPro()}catch(err){toast('Error: '+(err.code||err.message))}}});
 function svgBars(rows,lbl){ // barras dobles: surtido (verde) y despacho (ámbar)
   if(!rows.length)return '<div class="msg">Sin datos en este periodo.</div>';
   const mx=Math.max(1,...rows.map(r=>Math.max(r.s,r.d))),W=Math.max(320,rows.length*64),H=170,bw=22;
@@ -1101,7 +1102,19 @@ function renderPro0(){
   const S=sumF(sv,e=>e.q),D=sumF(dv,e=>e.q),Bu=sumF(dv,e=>e.b),svP=sv.filter(e=>!e.h),Sp=sumF(svP,e=>e.q),Sh=S-Sp,men=svP.length,pp={};
   svP.forEach(e=>{const o=(pp[e.u]=pp[e.u]||{s:0,n:0,days:new Set(),err:0,ts:[]});o.s+=e.q;o.n++;o.days.add(e.d)});
   err.forEach(e=>{const k=e.wn||e.who;if(pp[k])pp[k].err++;else pp[k]={s:0,n:0,days:new Set(),err:1}});
-  const rank=Object.entries(pp).sort((x,y)=>y[1].s-x[1].s),pers=rank.filter(([,o])=>o.s>0).length,nErr=err.length;
+  /* Despacho por colaborador (quien validó/despachó la referencia): medida independiente del surtido */
+  const dvP=dv.filter(e=>!e.h&&e.q>0),Dp=sumF(dvP,e=>e.q);
+  dvP.forEach(e=>{const o=(pp[e.u]=pp[e.u]||{s:0,n:0,days:new Set(),err:0});o.d=(o.d||0)+e.q;o.nd=(o.nd||0)+1;(o.dd=o.dd||new Set()).add(e.d)});
+  const met=f.met||'sur';
+  const rS={},rD={};Object.entries(pp).sort((x,y)=>(y[1].s||0)-(x[1].s||0)).forEach(([n],i)=>rS[n]=i+1);Object.entries(pp).sort((x,y)=>(y[1].d||0)-(x[1].d||0)).forEach(([n],i)=>rD[n]=i+1);
+  const rank=Object.entries(pp).filter(([,o])=>met==='desp'?((o.d||0)>0||o.err):met==='ambos'?((o.s||0)>0||(o.d||0)>0||o.err):((o.s||0)>0||o.err)).sort((x,y)=>met==='desp'?((y[1].d||0)-(x[1].d||0)):((y[1].s||0)-(x[1].s||0))),pers=Object.values(pp).filter(o=>o.s>0).length,nErr=err.length;
+  const pcn=(v,t)=>t?(v/t*100).toFixed(1)+'%':'0%',errTd=o=>`<td class="n" style="${o.err?'color:#f5a623;font-weight:800':''}">${o.err}</td>`;
+  const rkHead=met==='ambos'?'<th>#</th><th>Colaborador</th><th class="n">Surtido pzas</th><th class="n">% surtido</th><th class="n">Despacho pzas</th><th class="n">% despacho</th><th class="n">Puesto surt. → desp.</th><th class="n">Días</th><th class="n">Errores</th>'
+    :met==='desp'?'<th>#</th><th>Colaborador</th><th class="n">Pzas despachadas</th><th class="n">% total</th><th class="n">Mov.</th><th class="n">Días</th><th class="n">Errores</th><th style="width:18%"></th>'
+    :'<th>#</th><th>Colaborador</th><th class="n">Piezas</th><th class="n">% total</th><th class="n">Mov.</th><th class="n">Días</th><th class="n">Errores</th><th class="n">% error</th><th style="width:18%"></th>';
+  const rkRow=([n,o],i)=>met==='ambos'?`<tr><td>${i+1}</td><td>${esc(n)}</td><td class="n">${fmt(o.s||0)}</td><td class="n"><b>${pcn(o.s||0,Sp)}</b></td><td class="n">${fmt(o.d||0)}</td><td class="n"><b style="color:#f5a623">${pcn(o.d||0,Dp)}</b></td><td class="n">#${rS[n]} → #${rD[n]}</td><td class="n">${new Set([...o.days,...(o.dd||[])]).size}</td>${errTd(o)}</tr>`
+    :met==='desp'?`<tr><td>${i+1}</td><td>${esc(n)}</td><td class="n">${fmt(o.d||0)}</td><td class="n"><b style="color:#f5a623">${pcn(o.d||0,Dp)}</b></td><td class="n">${fmt(o.nd||0)}</td><td class="n">${(o.dd||new Set()).size}</td>${errTd(o)}<td><div class="bar" style="margin:0"><i style="width:${Dp?Math.max(2,Math.round((o.d||0)/Dp*100)):0}%"></i></div></td></tr>`
+    :`<tr><td>${i+1}</td><td>${esc(n)}</td><td class="n">${fmt(o.s||0)}</td><td class="n"><b>${pcn(o.s||0,Sp)}</b></td><td class="n">${fmt(o.n)}</td><td class="n">${o.days.size}</td>${errTd(o)}<td class="n">${o.n?(o.err/o.n*100).toFixed(1):0}%</td><td><div class="bar" style="margin:0"><i style="width:${Sp?Math.max(2,Math.round((o.s||0)/Sp*100)):0}%"></i></div></td></tr>`;
   const wk=Object.entries(grpBy(sv,dv,e=>e.d?wkStart(e.d):'')).sort((x,y)=>x[0].localeCompare(y[0])).slice(-12).map(([k,o])=>({k,...o}));
   const mo=Object.entries(grpBy(sv,dv,e=>(e.d||'').slice(0,7))).sort((x,y)=>x[0].localeCompare(y[0])).slice(-12).map(([k,o])=>({k,...o}));
   const dp=Object.entries(grpBy(sv,dv,e=>e.dep)).sort((x,y)=>(y[1].s+y[1].d)-(x[1].s+x[1].d)),st=BASE_ST.map(t=>[t,grpBy(sv.filter(e=>e.t===t),dv.filter(e=>e.t===t),()=>1)[1]]).filter(([,o])=>o);
@@ -1110,15 +1123,41 @@ function renderPro0(){
     ${kpi('Promedio por colaborador',fmt(pers?Math.round(Sp/pers):0))}${kpi('Promedio por día',fmt(days?Math.round(S/days):0))}${kpi('Correcciones (errores)',fmt(nErr),nErr?'am':'')}${kpi('Tasa de error',men?(nErr/men*100).toFixed(1)+'%':'—',nErr?'am':'')}${kpi('Sin colaborador (Consultas ERP)',fmt(Sh))}</div>
    <div class="card"><div class="slbl">Surtido por semana</div>${svgBars(wk,k=>[wkLbl(k).split(' – ')[0],'sem'])}</div>
    <div class="card"><div class="slbl">Surtido por mes</div>${svgBars(mo,k=>[mlabel(k).split(' ')[0].slice(0,3),k.slice(0,4)])}</div>
-   <div class="card"><div class="slbl">Ranking de colaboradores · eficiencia = % de las piezas con colaborador identificado</div><div class="scroll"><table><tr><th>#</th><th>Colaborador</th><th class="n">Piezas</th><th class="n">% total</th><th class="n">Mov.</th><th class="n">Días</th><th class="n">Errores</th><th class="n">% error</th><th style="width:18%"></th></tr>
-    ${rank.map(([n,o],i)=>`<tr><td>${i+1}</td><td>${esc(n)}</td><td class="n">${fmt(o.s)}</td><td class="n"><b>${Sp?(o.s/Sp*100).toFixed(1):0}%</b></td><td class="n">${fmt(o.n)}</td><td class="n">${o.days.size}</td><td class="n" style="${o.err?'color:#f5a623;font-weight:800':''}">${o.err}</td><td class="n">${o.n?(o.err/o.n*100).toFixed(1):0}%</td><td><div class="bar" style="margin:0"><i style="width:${Sp?Math.max(2,Math.round(o.s/Sp*100)):0}%"></i></div></td></tr>`).join('')||'<tr><td colspan="9" class="msg">Sin datos con este filtro.</td></tr>'}</table></div>
+   <div class="card"><div class="slbl">Ranking de colaboradores · por ${met==='desp'?'despacho':met==='ambos'?'surtido y despacho':'surtido'} · eficiencia = % de las piezas con colaborador identificado</div><div class="scroll"><table><tr>${rkHead}</tr>
+    ${rank.map(rkRow).join('')||'<tr><td colspan="9" class="msg">Sin datos con este filtro.</td></tr>'}</table></div>
+    <div class="msg"><b>Surtido</b> = piezas que el colaborador ya está surtiendo (en tránsito). <b>Despacho</b> = lo que validó para montar al palet. Un colaborador puede surtir mucho y despachar poco, por eso el orden cambia según la medida.</div>
     <div class="msg">Errores: cada vez que un administrador reabre una referencia despachada o elimina un movimiento de surtido, se le cuenta al colaborador que lo hizo.</div></div>
    <div class="card"><div class="slbl">Por departamento</div>${dualTbl('Departamento',dp,mxOf(dp))}</div>
    <div class="slbl">Por tienda</div><div class="grid" style="margin-bottom:14px">${st.map(([t,o])=>`<div class="tile"><div class="hd"><b>${L(t)}</b>${NAMES[t]?`<small>${NAMES[t]}</small>`:''}</div><div class="bd">Surtido: <b>${fmt(o.s)}</b><br>Despacho: <b style="color:#f5a623">${fmt(o.d)}</b></div></div>`).join('')||'<div class="msg">Sin movimientos.</div>'}</div>
    <div class="card"><div class="slbl">Últimas correcciones</div>${err.sort((x,y)=>y.ts-x.ts).slice(0,15).map(e=>`<div class="msg" style="margin:3px 0">${fdt(e.ts)} · <b>${esc(e.wn||e.who)}</b> · ${e.k==='reabrir'?'referencia reabierta':'movimiento eliminado'} · #${esc(e.id)} · ${esc(e.r||e.p)} · por ${esc(e.bn||e.by)}</div>`).join('')||'<div class="msg">Sin correcciones en este periodo.</div>'}</div>`
 }
 $('recPro').onclick=openPro;
-function renderPro(){renderPro0();if(!$('prChk')){const d=document.createElement('div');d.id='prChk';$('prBody').appendChild(d)}const [a,b]=prRange();chkLoad(a,b)}
+function renderPro(){renderPro0();if(!$('prUp')){const d=document.createElement('div');d.id='prUp';$('prBody').appendChild(d)}if(!$('prChk')){const d=document.createElement('div');d.id='prChk';$('prBody').appendChild(d)}const [a,b]=prRange();upLoad(a,b);chkLoad(a,b)}
+// Cargadores: quien sube las transferencias (por inicio de sesión). Medida APARTE del surtido y del despacho:
+// páginas subidas, transferencias y, solo como referencia, el volumen de ítems (líneas) y piezas. Cuenta por el día en que se sube.
+const UPC={ev:null};
+async function upLoad(a,b){const box=$('prUp');if(!box)return;
+  if(UPC.ev){upRender(a,b);return}
+  box.innerHTML='<div class="card"><div class="slbl">Cargadores · transferencias subidas</div><div class="msg">Cargando…</div></div>';
+  try{const lg=(await get(R(db,'meta_v1/consultas_up'))).val()||{};let old={};try{old=(await get(R(db,AUB))).val()||{}}catch(e){}
+    const ev=Object.values(lg),have=new Set(ev.map(x=>String(x.tr)));
+    /* Cargas anteriores a esta versión: no tienen páginas, pero sí quién y cuándo se subieron */
+    Object.values(old).forEach(m=>{if(m&&m.tr&&m.by&&!have.has(String(m.tr))){const ts=m.ldt||m.ts||0;ev.push({u:m.by,n:m.by,ts,d:ts?ymd(ts):'',tr:m.tr,it:m.n||0,pz:m.pz||0,pg:0,old:1})}});
+    UPC.ev=ev}
+  catch(err){box.innerHTML='<div class="card"><div class="slbl">Cargadores</div><div class="msg">No se pudo cargar: '+esc(err.code||err.message)+'</div></div>';return}
+  upRender(a,b)}
+function upRender(a,b){const box=$('prUp');if(!box||!UPC.ev)return;const g={},dy={};
+  UPC.ev.filter(e=>e.d&&e.d>=a&&e.d<=b).forEach(e=>{const o=g[e.u]=g[e.u]||{n:e.n||e.u,tr:0,pg:0,it:0,pz:0,days:new Set(),sp:0};o.tr++;o.pg+=e.pg||0;o.it+=e.it||0;o.pz+=e.pz||0;o.days.add(e.d);if(e.old)o.sp++;
+    const d=dy[e.d]=dy[e.d]||{tr:0,pg:0,it:0,pz:0,us:new Set()};d.tr++;d.pg+=e.pg||0;d.it+=e.it||0;d.pz+=e.pz||0;d.us.add(e.n||e.u)});
+  const rows=Object.values(g).sort((x,y)=>y.pg-x.pg||y.tr-x.tr),T=k=>rows.reduce((t,o)=>t+o[k],0),ds=Object.entries(dy).sort((x,y)=>y[0].localeCompare(x[0])).slice(0,14),sp=T('sp');
+  box.innerHTML=`<div class="card"><div class="slbl">Cargadores · transferencias subidas (por inicio de sesión)</div>
+   <div class="kpis">${kpi('Páginas subidas',fmt(T('pg')))}${kpi('Transferencias subidas',fmt(T('tr')),'am')}${kpi('Ítems (líneas)',fmt(T('it')))}${kpi('Piezas',fmt(T('pz')))}${kpi('Cargadores',fmt(rows.length))}</div>
+   <div class="scroll"><table><tr><th>#</th><th>Cargador</th><th class="n">Páginas</th><th class="n">Transferencias</th><th class="n">Ítems</th><th class="n">Piezas</th><th class="n">Días</th><th class="n">Pág./día</th><th class="n">Transf./día</th></tr>
+   ${rows.map((o,i)=>`<tr><td>${i+1}</td><td>${esc(o.n)}</td><td class="n"><b>${fmt(o.pg)}</b></td><td class="n"><b>${fmt(o.tr)}</b></td><td class="n">${fmt(o.it)}</td><td class="n">${fmt(o.pz)}</td><td class="n">${o.days.size}</td><td class="n">${o.days.size?(o.pg/o.days.size).toFixed(1):0}</td><td class="n">${o.days.size?(o.tr/o.days.size).toFixed(1):0}</td></tr>`).join('')||'<tr><td colspan="9" class="msg">Sin cargas en este periodo.</td></tr>'}</table></div>
+   <div class="slbl" style="margin-top:12px">Por día</div>
+   <div class="scroll"><table><tr><th>Día</th><th>Quién</th><th class="n">Páginas</th><th class="n">Transf.</th><th class="n">Ítems</th><th class="n">Piezas</th></tr>
+   ${ds.map(([k,o])=>`<tr><td>${esc(fdate(k))}</td><td>${esc([...o.us].join(', '))}</td><td class="n">${fmt(o.pg)}</td><td class="n">${fmt(o.tr)}</td><td class="n">${fmt(o.it)}</td><td class="n">${fmt(o.pz)}</td></tr>`).join('')||'<tr><td colspan="6" class="msg">Sin cargas.</td></tr>'}</table></div>
+   <div class="msg">Esta medida es aparte: mide a quien sube las transferencias, el día en que las sube. Los ítems y las piezas son solo referencia del volumen y no entran en el ranking de surtido ni de despacho.${sp?` ${fmt(sp)} carga(s) anteriores a esta versión se cuentan sin páginas.`:''}</div></div>`}
 // Chequeadores: se miden por bultos escaneados a palets y por bultos despachados (palet en un packing list despachado)
 const CHK={key:'',ev:null};
 async function chkLoad(a,b){const box=$('prChk');if(!box)return;const key=a+'|'+b;
@@ -1154,10 +1193,11 @@ const guessStore=d=>{d=d||'';const m=d.match(/SAKS\s*#?\s*(\d+)/i);if(m&&BASE_ST
   if(/online|e-?com|virtual/i.test(d))return 'ECOM';if(/cristal/i.test(d))return 'CRISTAL';return ''};
 function parseTs(s){const m=(s||'').match(/(\d+)\/(\d+)\/(\d{4})\s+(\d+):(\d+)(?::\d+)?\s*([AP]M)?/i);if(!m)return Date.now();let h=+m[4];if(/pm/i.test(m[6]||'')&&h<12)h+=12;if(/am/i.test(m[6]||'')&&h===12)h=0;return new Date(+m[3],+m[1]-1,+m[2],h,+m[5]).getTime()}
 async function loadLib(src,ok){if(ok())return;await new Promise((r,j)=>{const s=document.createElement('script');s.src=src;s.onload=r;s.onerror=()=>j(new Error('No se pudo cargar la librería de lectura (revisa internet)'));document.head.appendChild(s)})}
+let LASTPG=0; // páginas del último archivo leído (para medir a quien sube transferencias)
 async function pdfText(f){const V='3.11.174',B=`https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${V}/`;await loadLib(B+'pdf.min.js',()=>window.pdfjsLib);
   const w=await (await fetch(B+'pdf.worker.min.js')).text();pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([w],{type:'text/javascript'}));
-  const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let t='';for(let i=1;i<=pdf.numPages;i++){const c=await (await pdf.getPage(i)).getTextContent();t+=c.items.map(x=>x.str).join(' ')+' '}return t}
-async function imgText(f){await loadLib('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',()=>window.Tesseract);
+  const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;LASTPG=pdf.numPages;let t='';for(let i=1;i<=pdf.numPages;i++){const c=await (await pdf.getPage(i)).getTextContent();t+=c.items.map(x=>x.str).join(' ')+' '}return t}
+async function imgText(f){LASTPG=1;await loadLib('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',()=>window.Tesseract);
   const r=await Tesseract.recognize(f,'eng',{logger:m=>{if(m.status==='recognizing text')$('auMsg').textContent='Leyendo la imagen… '+Math.round(m.progress*100)+'%'}});return r.data.text}
 function parseErp(t){
   if(!/Distribuci[oó]n de Mercanc|Transferencia de Mercanc/i.test(t))return null;
@@ -1168,7 +1208,10 @@ function parseErp(t){
   let sur='',bulF=0;
   const fb=t.match(/BULTOS CHEQUEADO DESPACHADO AUTORIZADO\s+(\S+)\s+(\d+)/i);
   if(fb){sur=fb[1];bulF=+fb[2]}else{const fa=t.match(/AUTORIZADO DESPACHADO CHEQUEADO BULTOS\s+(?:\d{2}\/\w{3}\/\d{4}\s+[\d:]+\s*[ap]\.?m\.?\s+)?(\S+)\s+(\S+)/i);if(fa){const [a,b]=[fa[1],fa[2]];if(/^\d+$/.test(a)&&!/^\d+$/.test(b)){bulF=+a;sur=b}else{sur=a;bulF=+b}}}
-  {const jh=(t.match(/Fecha Despacho:?\s+([a-z][a-z0-9._]{3,19})(?=\s)/)||[])[1];sur=jh||''}
+  /* El surtidor que cuenta es quien hizo el PRIMER despacho (aparece como usuario en "Guía de Embarque #"). "provira" es la cuenta con la que se
+     despacha después en Visión (despacho formal): no es una persona y nunca se toma como surtidor. */
+  {const g1=(t.match(/Gu[ií]a de Embarque\s*#:?\s+([a-z][a-z0-9._]{3,19})(?=\s)/)||[])[1],jh=(t.match(/Fecha Despacho:?\s+([a-z][a-z0-9._]{3,19})(?=\s)/)||[])[1];
+   sur=[g1,jh].find(x=>x&&!/^provira$/i.test(x))||''}
   const tm=t.match(/Total:\s*((?:\d+\s*){1,3})/),tot=tm?Math.max(...tm[1].trim().split(/\s+/).map(Number)):0,est=(t.match(/Estatus:\s*\(\w\)\s*(\w+)/i)||[])[1]||'';
   const REF='[A-Z]{1,3}\\d{4,}[A-Z0-9\\-]*',N='(\\d+(?:\\.\\d+)?)';
   const re=[
@@ -1179,7 +1222,9 @@ function parseErp(t){
   let lines=[];for(const [r,f] of re){lines=[...t.matchAll(r)].map(m=>({inv:0,sol:0,res:0,...f(m),d:f(m).d.trim()}));if(lines.length)break}
   lines.forEach(l=>{l.sol=l.desp});
   const bul=bulF||lines.reduce((a,l)=>a+l.bul,0);
-  return{tr:num,ts:ts||Date.now(),sur,org:'BODEGA FRANGIPANI',des:dst,nota:tun?('TÚNEL'+(rc?' · Recibo '+rc:'')):((t.match(/PEDIDOS?\s+AUTOM[ÁA]TICOS?[^]{0,50}/i)||['Pedido automático'])[0].trim()),t:guessStore(dst)||guessStore(t.slice(0,1800)),lines,tot,src:tun?'tun':'auto',det:1,rc,bul,est}
+  return{tr:num,ts:ts||Date.now(),sur,org:'BODEGA FRANGIPANI',des:dst,nota:tun?('TÚNEL'+(rc?' · Recibo '+rc:'')):((t.match(/PEDIDOS?\s+AUTOM[ÁA]TICOS?[^]{0,50}/i)||['Pedido automático'])[0].trim()),t:guessStore(dst)||guessStore(t.slice(0,1800)),lines,tot,src:tun?'tun':'auto',det:1,rc,bul,est,
+    /* La fecha es la de DESPACHO: si el documento aún no está despachado, solo trae la fecha de solicitud y no debe acreditar producción. */
+    nodesp:(est&&!/despach/i.test(est))?1:0,tsSrc:'desp'}
 }
 let UDIR=[],ALIAS={};
 async function auLoadDir(){
@@ -1198,7 +1243,12 @@ function parseTransfer(t){
   const i0=t.search(/Descripci[óo]n/i);let b=i0>=0?t.slice(i0+11):t;const e=b.search(/REBAJA|Total unidades/i);if(e>0)b=b.slice(0,e);
   const re=/(?:([A-Z0-9][A-Z0-9\-\/\.]{3,})\s+)?(?<!\d)(\d{7})(?!\d)\s+(-?\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+(?:\.\d+)?)/g,ms=[...b.matchAll(re)];
   const lines=ms.map((m,i)=>({ref:m[1]||'',p:m[2],inv:+m[3],sol:+m[4],res:+m[5],desp:+m[6],bul:+m[7],pr:+m[8],d:b.slice(m.index+m[0].length,ms[i+1]?ms[i+1].index:b.length).replace(/[▼▲\s]+$/,'').trim()}));
-  return{tr,ts:parseTs(fs),sur,org,des,nota,t:guessStore(des),lines,tot}}
+  /* El Gestor de Bodega no trae fecha de despacho (solo la de solicitud). Si el PDF trae la fecha de impresión del navegador
+     (cabecera tipo "20/10/26, 8:17"), se usa esa por ser la más cercana al trabajo real; se avisa en la revisión para confirmarla. */
+  const tsS=parseTs(fs);let ts=tsS,tsSrc='sol';
+  {const pm=t.match(/(?:^|\s)(\d{1,2})\/(\d{1,2})\/(\d{2}),?\s+(\d{1,2}):(\d{2})(?:\s|$)/);
+   if(pm&&+pm[2]>=1&&+pm[2]<=12&&+pm[1]>=1&&+pm[1]<=31){const p=new Date(2000+ +pm[3],+pm[2]-1,+pm[1],+pm[4],+pm[5]).getTime();if(isFinite(p)&&(!fs||p>=tsS)){ts=p;tsSrc='imp'}}}
+  return{tr,ts,tsSrc,tsSol:tsS,tsAuto:ts,sur,org,des,nota,t:guessStore(des),lines,tot}}
 function openAu(mode){$('v-rec').classList.add('hide');$('v-auto').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent=mode==='auto'?'Pedidos automáticos':mode==='tun'?'Túnel':mode==='prf'?'Proformas manuales':'Túnel manual';window.scrollTo(0,0);AU=null;$('auReview').innerHTML='';$('auMsg').textContent='';
   $('auUpCard').classList.toggle('hide',mode==='tunm'||mode==='prf');$('pfCard').classList.toggle('hide',mode!=='prf');$('pfMsg').textContent='';$('auListT').textContent=mode==='prf'?'Proformas manuales cargadas':'Transferencias cargadas';$('auSrc').value=mode==='auto'?'auto':'tun';if(mode==='prf')pfList();else auList();if(mode==='tunm')auManualStart()}
 $('recPrf').onclick=()=>openAu('prf');$('recAuto').onclick=()=>openAu('auto');$('recTun').onclick=()=>openAu('tun');$('recTunM').onclick=()=>openAu('tunm');
@@ -1215,7 +1265,7 @@ function auManualAdd(){const c=($('auMCode')||{}).value||'',q=Math.max(0,parseIn
   AU.lines.forEach(l=>l.sol=l.desp);auRender();setTimeout(()=>{const i=$('auMCode');if(i)i.focus()},50)}
 $('auFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
   $('auMsg').textContent='Leyendo '+f.name+'…';$('auReview').innerHTML='';
-  try{const txt=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)?await pdfText(f):await imgText(f);AU=parseTransfer(txt);await auLoadDir();auMapSur(AU);if(!AU.det){AU.src=$('auSrc').value;AU.rc='';AU.bul=AU.lines.reduce((x,l)=>x+(l.bul||0),0)}else $('auSrc').value=AU.src;AU.file=f.name;
+  try{const txt=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)?await pdfText(f):await imgText(f);AU=parseTransfer(txt);await auLoadDir();auMapSur(AU);if(!AU.det){AU.src=$('auSrc').value;AU.rc='';AU.bul=AU.lines.reduce((x,l)=>x+(l.bul||0),0)}else $('auSrc').value=AU.src;AU.file=f.name;AU.pg=LASTPG;
     if(!AU.tr||!AU.lines.length){$('auMsg').textContent=`No pude leer ${!AU.tr?'el número de transferencia':'las líneas'}. ${/pdf/i.test(f.type)?'Usa el PDF generado desde el navegador (Imprimir → Guardar como PDF).':'Prueba con una captura más grande y nítida, o con el PDF.'}`;if(!AU.lines.length)return}
     else $('auMsg').textContent='';
     AUL={};if(AU.src==='tun')await auLoadLogs();auRender()}catch(err){$('auMsg').textContent='Error: '+(err.message||err)}};
@@ -1237,7 +1287,8 @@ function auRender(){
     ${tun?`<div><div class="lbl">Recibo del túnel</div><input class="f" data-af="rc" value="${esc(a.rc||'')}" placeholder="Ej. 408114"></div>`:''}
     <div><div class="lbl">${a.manual?'Bultos':'Bultos (del PDF)'}</div><input class="f" type="number" min="0" data-af="bul" value="${a.bul||0}"></div></div>
    ${(UDIR.length&&!a.suru)?`<div class="msg" style="color:var(--wn)">⚠ ${a.surRaw?`El PDF dice “${esc(a.surRaw)}”, que no coincide con ningún usuario de la app. Elige quién es; se recordará para la próxima.`:'No se detectó el surtidor en el PDF. Elígelo antes de guardar.'}</div>`:''}
-   ${a.est&&!/despach/i.test(a.est)?`<div class="msg" style="color:var(--wn)">⚠ El estatus en el PDF es “${esc(a.est)}”, no Despachada.</div>`:''}
+   ${a.est&&!/despach/i.test(a.est)?`<div class="msg" style="color:var(--wn)">⚠ El estatus en el PDF es “${esc(a.est)}”, no Despachada. Es normal: el despacho que cuenta es el del surtidor en el Gestor, y en Visión se despacha después. La fecha que ves puede ser la de solicitud; pon en “Fecha y hora” cuándo la despachó el surtidor.</div>`:''}
+   ${a.tsSrc==='imp'?`<div class="msg" style="color:var(--wn)">⚠ El Gestor de Bodega no trae fecha de despacho. Se tomó la fecha de impresión del PDF (${fdt(a.tsAuto)}) y no la de solicitud (${fdt(a.tsSol)}). Si no corresponde, corrígela en “Fecha y hora”.</div>`:''}
    ${tun?`<div class="msg">${a.rc&&RECS[a.rc]?`El recibo #${esc(a.rc)} está en la app: la transferencia se asigna a ese recibo y sus productos reciben el número de transferencia. Los productos que no estén en ese recibo pasan al recibo TÚNEL.`:a.rc?`El recibo #${esc(a.rc)} no está en la app: la transferencia se agrega al recibo TÚNEL; cuando subas ese recibo, usa “Trasladar productos…” para moverla a su origen con su número de transferencia.`:'Escribe el número de recibo para mapearlo.'}</div>`:''}
    <div class="msg">Destino: ${esc(a.des||'—')} · Origen: ${esc(a.org||'—')}${a.nota?' · Nota: '+esc(a.nota):''}</div>
    ${a.manual?`<div class="card" style="margin:10px 0;padding:10px"><div class="lbl">Agregar producto</div><div style="display:flex;gap:8px;margin-top:6px"><input class="f" id="auMCode" placeholder="Producto, estilo o código de barras" autocomplete="off" style="flex:1"><input class="f" id="auMQty" type="number" min="1" placeholder="Cant." style="width:80px"><button class="btn pri sm" id="auMAdd">＋</button></div></div>`:''}
@@ -1262,7 +1313,8 @@ async function auActiveBlock(rc,tr){
   return ''}
 async function auPut(path,o){const k=Object.keys(o);for(let i=0;i<k.length;i+=400){const p={};k.slice(i,i+400).forEach(z=>p[z]=o[z]);await update(R(db,path),p)}}
 async function auSave(btn){
-  const a=AU;if(!a.tr){toast('Falta el número de transferencia');return}if(UDIR.length&&!a.suru){toast('Elige el surtidor');return}if(!a.t){toast('Elige la tienda destino');return}
+  const a=AU;if(a.nodesp&&!confirm(`La transferencia ${a.tr||''} sigue como “${a.est||'Solicitada'}” en Visión (el despacho formal se hace después).\n\nSe acreditará con la fecha ${fdt(a.ts)}.\n¿Es la fecha en que el surtidor la despachó en el Gestor? Si no, cancela y corrígela en “Fecha y hora”.`))return;
+  if(!a.tr){toast('Falta el número de transferencia');return}if(UDIR.length&&!a.suru){toast('Elige el surtidor');return}if(!a.t){toast('Elige la tienda destino');return}
   const lines=a.lines.filter(l=>l.desp>0);if(!lines.length){toast('No hay piezas despachadas');return}
   const dd=(()=>{const d=new Date(a.ts);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`})();
   btn.disabled=true;
@@ -1275,6 +1327,10 @@ async function auSave(btn){
     const meta={tr:a.tr,t:a.t,ts:a.ts,sur:a.sur,suru:a.suru||'',sr:a.surRaw||'',org:a.org,des:a.des,nota:a.nota,mode:a.src,pz:lines.reduce((x,l)=>x+l.desp,0),bul:a.bul||0,rc:a.src==='tun'?(a.rc||''):'',n:lines.length,by:USER,ldt:Date.now(),file:a.file};
     {
       await set(R(db,`${AUB}/${a.tr}`),{...meta,st:'new',lines:lines.map(l=>({p:l.p,ref:l.ref,d:l.d,desp:l.desp,bul:l.bul,pr:l.pr}))});
+      /* Registro permanente de quién subió (inicio de sesión), cuántas páginas, ítems y piezas. Se conserva aunque luego se quite la transferencia.
+         Si la transferencia se vuelve a cargar, se respeta quién y cuándo la subió por primera vez (no se duplica ni se roba el crédito). */
+      try{const uk='meta_v1/consultas_up/'+a.tr,ex=(await get(R(db,uk))).val(),nt=Date.now();
+        await set(R(db,uk),{u:ex?ex.u:USER,n:ex?ex.n:NAME,ts:ex?ex.ts:nt,d:ex?ex.d:ymd(nt),tr:a.tr,t:a.t,m:a.src,pg:a.pg||(ex&&ex.pg)||0,it:lines.length,pz:meta.pz,dsp:a.ts,f:a.file||''})}catch(e){console.warn('registro de carga',e)}
       if(a.surRaw&&a.suru){try{await set(R(db,'meta_v1/consultas_alias/'+aliasKey(a.surRaw)),{u:a.suru,n:a.sur});ALIAS[aliasKey(a.surRaw)]={u:a.suru,n:a.sur}}catch(e){}}
       toast(`✅ Transferencia ${a.tr} guardada como nueva (${fmt(meta.pz)} pzas). Falta completar para agregarla al recibo.`)}
     AU=null;$('auReview').innerHTML='';auList()
@@ -1875,8 +1931,17 @@ async function embMail(id){
       const EMAIL_SERVICE_ID='service_gqk1da3';
       await emailjs.send(EMAIL_SERVICE_ID,cfg.templateId,{to_email:to,cc_email:cc,subject:`Despacho ${e.num} · ${c.cams.length} camión(es) · ${c.tb} bultos · ${c.tp} piezas`,html_content:embHTML(e),message:`Aviso de despacho ${e.num}: ${c.tb} bultos, ${c.tp} piezas, ${c.cams.length} camión(es).`,saludo:'',periodo:e.num,timestamp:new Date().toLocaleString('es')});
       await update(R(db,PB),{[`emb/${id}/st`]:'enviado',[`emb/${id}/mail`]:{to,cc,ts:Date.now(),u:NAME},cfg:{to,cc}});toast('✅ Correo enviado')
-    }catch(err){toast('No se pudo enviar: '+(err.text||err.code||err.message));return false}})
+    }catch(err){toast('No se pudo enviar: '+(err.text||err.code||err.message));
+      /* Respaldo: si el servicio automático falla (p. ej. cuenta Outlook suspendida), abre tu app de correo con todo precargado. */
+      setTimeout(async()=>{if(confirm('El envío automático falló:\n'+(err.text||err.code||err.message||'')+'\n\n¿Abrir tu app de correo con el resumen y los destinatarios ya cargados para enviarlo tú mismo?')){
+        embMailManual(e,to,cc);
+        if(confirm('Cuando lo hayas enviado desde tu correo, acepta para marcar este embarque como ENVIADO.')){try{await update(R(db,PB),{[`emb/${id}/st`]:'enviado',[`emb/${id}/mail`]:{to,cc,ts:Date.now(),u:NAME,manual:true},cfg:{to,cc}});toast('✅ Marcado como enviado')}catch(e2){toast('Error: '+(e2.code||e2.message))}}}},300);
+      return false}})
 }
+function embMailManual(e,to,cc){const c=embCalc(e);
+  const txt=[`Aviso de despacho ${e.num}`,`${fdt(e.ts)} · Prepara: ${e.n||e.u||''}`,'',`Camiones: ${c.cams.length} · Palets: ${c.np} · Bultos: ${fmt(c.tb)} · Piezas: ${fmt(c.tp)} · Tiendas: ${c.st.length}`,'','RESUMEN POR TIENDA',...c.st.map(s=>`${LN(s.t)} · ${s.tf} transf. · ${fmt(s.b)} bultos · ${fmt(s.pz)} pzas`),'','DETALLE POR TRANSFERENCIA',...c.tf.map(a=>`${L(a.t)} · ${a.tr||'—'} · ${a.b}${a.b<a.N?' de '+a.N:''} bultos · ${fmt(a.pz)} pzas`)].join('\n');
+  const addr=s=>String(s||'').split(/[;,]\s*/).map(x=>x.trim()).filter(Boolean).map(encodeURIComponent).join(',');
+  location.href='mailto:'+addr(to)+'?'+(cc?'cc='+addr(cc)+'&':'')+'subject='+encodeURIComponent(`Despacho ${e.num} · ${c.cams.length} camión(es) · ${c.tb} bultos · ${c.tp} piezas`)+'&body='+encodeURIComponent(txt)}
 async function addCam(eid){try{await set(R(db,`${PB}/emb/${eid}/cam/c${Date.now()}`),{chofer:'',placa:'',ts:Date.now()})}catch(err){toast('Error: '+(err.code||err.message))}}
 function setCam(eid,cid){const x=((EMB[eid]||{}).cam||{})[cid]||{};ask('Chofer y placa · '+(EMB[eid]||{}).num,[{k:'ch',label:'Nombre del chofer',type:'text',ph:'Nombre y apellido',value:x.chofer||''},{k:'pl',label:'Placa',type:'text',ph:'Ej. AB1234',value:x.placa||''}],'Guardar',async v=>{
   const ch=(v.ch||'').trim(),pl=(v.pl||'').trim().toUpperCase();if(!ch||!pl){toast('Chofer y placa son obligatorios');return false}
