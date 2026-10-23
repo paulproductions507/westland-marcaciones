@@ -609,6 +609,8 @@ $('cliFile').onchange=async e=>{
 // ---------- transferencias ----------
 const trfOpen=new Set(),dspOpen=new Set(),dspSel=new Set();let trfStore=null;
 const sg=n=>(n>0?'+':'')+fmt(n);
+let trfTab='d';
+function despKeys(){const s=new Set();if(!palOn)startPal();Object.values(EMB||{}).forEach(e=>{if(!e||!e.desp)return;Object.values(e.cam||{}).forEach(c=>Object.values(c.pal||{}).forEach(v=>Object.keys(v.tfs||{}).forEach(k=>{const m=k.split('__');if(m[0]===RECIBO)s.add(m.slice(1).join('__'))})))});return s}
 function trfGroups(){const g={};for(const e of entries()){if((e.au&&!e.tr)||e.mir)continue;const tr=e.tr||'';const k=e.t+'|'+tr;(g[k]=g[k]||{t:e.t,tr,key:e.t+'_'+(tr||'sin'),items:[],ts:0,users:new Set()});g[k].items.push(e);g[k].ts=Math.max(g[k].ts,e.ts);g[k].users.add(e.n||e.u)}return Object.values(g)}
 const gPz=g=>g.items.reduce((a,e)=>a+e.q,0);
 const gRef=g=>new Set(g.items.map(e=>e.p)).size;
@@ -618,7 +620,7 @@ function trfCard(g){
   const b=TRB[g.key]&&TRB[g.key].b,bg=BG[g.key],d=dspOfKey(g.key),act=TRF[g.t]&&TRF[g.t].tr===g.tr&&g.tr;
   const agg={};g.items.forEach(e=>{const o=agg[e.p]=agg[e.p]||{r:e.r,p:e.p,q:0};o.q+=e.q});
   return `<details class="card" data-k="${g.key}" ${trfOpen.has(g.key)?'open':''}><summary>${L(g.t)} · ${g.t==='CRISTAL'?'Proforma':'Transf.'} ${esc(g.tr||'—')} ${act?'<span class="pill p-bl">Activa</span>':''} ${d?`<span class="pill p-ok">${esc(d.num)}</span>`:''} <span class="pill p-aq" style="margin-left:4px">${fmt(gPz(g))} pzas · ${gRef(g)} ref.</span></summary>
-  <div style="margin:8px 0"><div class="lbl">Total de bultos de esta transferencia</div><div style="display:flex;gap:8px;margin-top:5px"><input class="f" type="number" min="1" max="200" inputmode="numeric" data-bk="${g.key}" value="${b??''}" placeholder="Ej. 15"><button class="btn pri sm" data-bs="${g.key}">${g.t==='CRISTAL'?'Guardar':bg?'Actualizar':'Generar bultos'}</button></div>${bg&&g.t!=='CRISTAL'?`<div class="msg">✅ ${bg.n} bultos generados · ${gbCode(bg.first)} a ${gbCode(bg.first+bg.n-1)}</div><button class="btn sm" data-lbl="${g.key}" style="margin-top:8px;width:100%">🖨 Imprimir hoja de bultos (${bg.n})</button>`:b?'':'<div class="msg" style="color:var(--wn)">Aún sin bultos.</div>'}</div>
+  <div style="margin:8px 0"><div class="lbl">Total de bultos de esta transferencia</div><div style="display:flex;gap:8px;margin-top:5px"><input class="f" type="number" min="1" max="200" inputmode="numeric" data-bk="${g.key}" value="${b??''}" placeholder="Ej. 15"><button class="btn pri sm" data-bs="${g.key}">${g.t==='CRISTAL'?'Guardar':bg?'Actualizar':'Generar bultos'}</button></div>${bg&&g.t!=='CRISTAL'?`<div class="msg">✅ ${bg.n-Object.keys(bg.an||{}).length} bultos generados · ${gbCode(bg.first)} a ${gbCode(bg.first+bg.n-1)}</div>${Object.keys(bg.an||{}).length?`<div class="msg" style="color:var(--wn)">⛔ Anulados (no usar): ${Object.entries(bg.an).map(([n,x])=>gbCode(n)+(x.to?' → transf. '+esc(x.to):'')).join(', ')}</div>`:''}<button class="btn sm" data-lbl="${g.key}" style="margin-top:8px;width:100%">🖨 Imprimir hoja de bultos (${bg.n})</button>`:b?'':'<div class="msg" style="color:var(--wn)">Aún sin bultos.</div>'}</div>
   <div class="msg">${[...g.users].map(esc).join(', ')} · ${new Date(g.ts).toLocaleString('es')}</div><div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th class="n">Cant.</th><th></th></tr>${Object.values(agg).map(e=>`<tr><td>${esc(e.r)}</td><td>${e.p}</td><td class="n">${fmt(e.q)}</td><td><button class="btn sm" data-mv="${g.key}|${e.p}" title="Mover a otra transferencia">↔</button></td></tr>`).join('')}</table></div></details>`}
 function renderTrf(){
   const box=$('trfList'),ae=document.activeElement;if(ae&&ae.tagName==='INPUT'&&ae.dataset.bk&&box.contains(ae))return;
@@ -639,8 +641,8 @@ function renderTrf(){
     return}
   if(!trfStore){box.innerHTML='<div class="grid">'+STORES.map(t=>{const gs=all.filter(g=>g.t===t);const pz=gs.reduce((a,g)=>a+gPz(g),0),bu=gs.reduce((a,g)=>a+gBul(g),0);
     return `<div class="tile" data-ts="${t}" style="cursor:pointer"><div class="hd"><b>${L(t)}</b>${NAMES[t]?`<small>${NAMES[t]}</small>`:''}<small>${gs.length} ${t==='CRISTAL'?'proformas':'transf.'}</small></div><div class="bd">Pzas: <b>${fmt(pz)}</b><br>Bultos: <b>${fmtB(bu)}</b></div></div>`}).join('')+'</div>';return}
-  const gs=all.filter(g=>g.t===trfStore).sort((a,b)=>b.ts-a.ts);
-  box.innerHTML=`<div class="slbl">${LN(trfStore)} · ${gs.length} transferencia(s) · ${fmtB(gs.reduce((a,g)=>a+gBul(g),0))} bultos</div>`+(gs.map(trfCard).join('')||none)
+  const dk=despKeys(),gs0=all.filter(g=>g.t===trfStore).sort((a,b)=>b.ts-a.ts),nx=gs0.filter(g=>dk.has(g.key)).length,gs=gs0.filter(g=>trfTab==='x'?dk.has(g.key):!dk.has(g.key));
+  box.innerHTML=`<div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn sm ${trfTab!=='x'?'pri':''}" data-tt="d">Disponibles (${gs0.length-nx})</button><button class="btn sm ${trfTab==='x'?'pri':''}" data-tt="x">Despachadas (${nx})</button></div><div class="slbl">${LN(trfStore)} · ${gs.length} transferencia(s) · ${fmtB(gs.reduce((a,g)=>a+gBul(g),0))} bultos</div>`+(gs.map(trfCard).join('')||none)
 }
 $('tq').addEventListener('input',renderTrf);
 
@@ -729,7 +731,7 @@ async function loadUploaded(){
 }
 // <parse>
 function normH(s){return String(s??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'')}
-const HDR={ref:['estilo','style','ref','referencia','refsuplidor','refsuplidor1','refproveedor'],p:['producto','product','sku','item','codproducto','codigoproducto','nproducto'],d:['descripcion','descripcionproducto','nombre','description','desc'],upc:['codigobarras','codigodebarras','codbarras','upc','ean','barcode','codigobarra','cbarras'],rec:['recibido','totalrecibido','totalrecibidas','recibidas','cantidadrecibida','received','rec','cantrecibida','piezasrecibidas'],pb:['pzaxbult','pzasxbult','pzxbult','pzaxbulto','pzasxbulto','pzxbulto','piezasporbulto','pzaporbulto','pxb','unidadesporbulto','unidxbulto','pack','pzabulto','pzasbulto','cantidadporbulto'],pr:['precio','price','pvp','preciounitario'],dt:['disttienda','disttiendas','distribuciontiendas','distribuirtiendas','distribuir','dist','totaldistribuir','distribucion'],sal:['saldo','saldototal'],cr:['cristal'],sc:['bodega','saldosincristal','saldobodega','sc','paraalmacenar','paraguardar'],dep:['departamento','depto','dep'],div:['division','div'],lin:['linea','lin'],prov:['proveedor','suplidor','vendor','supplier','nombreproveedor'],sub:['sublinea','subclase','subcategoria','sub']};
+const HDR={ref:['estilo','style','ref','referencia','refsuplidor','refsuplidor1','refproveedor'],p:['producto','product','sku','item','codproducto','codigoproducto','nproducto'],d:['descripcion','descripcionproducto','nombre','description','desc'],upc:['codigobarras','codigodebarras','codbarras','upc','ean','barcode','codigobarra','cbarras'],rec:['recibido','titems','titem','totalitems','totalrecibido','totalrecibidas','recibidas','cantidadrecibida','received','rec','cantrecibida','piezasrecibidas'],pb:['pzaxbult','pzasxbult','pzxbult','pzaxbulto','pzasxbulto','pzxbulto','piezasporbulto','pzaporbulto','pxb','unidadesporbulto','unidxbulto','pack','pzabulto','pzasbulto','cantidadporbulto'],pr:['precio','price','pvp','preciounitario'],dt:['disttienda','disttiendas','distribuciontiendas','distribuirtiendas','distribuir','dist','totaldistribuir','distribucion'],sal:['saldo','saldototal'],cr:['cristal'],sc:['bodega','saldosincristal','saldobodega','sc','paraalmacenar','paraguardar'],dep:['departamento','depto','dep'],div:['division','div'],lin:['linea','lin'],prov:['proveedor','suplidor','vendor','supplier','nombreproveedor'],sub:['sublinea','subclase','subcategoria','sub']};
 const idStr=v=>typeof v==='number'?v.toLocaleString('fullwide',{useGrouping:false,maximumFractionDigits:0}):String(v??'').trim().replace(/\.0+$/,'');
 const strv=v=>String(v??'').trim();
 const numv=v=>{const n=parseFloat(String(v??'').replace(/[$,\s]/g,''));return isFinite(n)?n:0};
@@ -796,10 +798,12 @@ $('recUp').onclick=()=>$('recFile').click();
 $('recFile').onchange=async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
   try{
-    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});let res=null;
-    for(const sn of wb.SheetNames){const aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});const r=parseRecibo(aoa);if(!r.err){res=r;break}res=res||r}
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});let res=null,aoaOk=null;
+    for(const sn of wb.SheetNames){const aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});const r=parseRecibo(aoa);if(!r.err){res=r;aoaOk=aoa;break}res=res||r}
     if(res.err){alert(res.err+'\n\nEncabezados leídos:\n'+res.headers.join(' | ')+'\n\nSube el Excel de distribución tal como lo exporta el sistema (encabezados: Ref. Suplidor, Producto, Descripción, Pza x bult, Total Recibido, Dist Tienda, S4…S14, Cristal, Saldo, UPC…).');return}
-    ask(`Cargar recibo · ${fmt(res.items.length)} referencias`,[{k:'id',label:'Número de recibo',type:'text',value:(f.name.match(/\d{5,}/)||[''])[0]},{k:'f',label:'Fecha de ingreso del recibo',type:'date',value:today()},{k:'h',label:'Estado del recibo',type:'select',value:'n',opts:[['n','Nuevo: pendiente de surtir'],['h','Ya trabajado: dejarlo surtido y despachado']]},{k:'w',label:'Fecha y hora de despacho (solo si ya trabajado)',type:'datetime-local',value:nowLocal()}],'Cargar',async v=>{
+    /* El modelo de Distribución (embarque neto) no trae el número de recibo: se busca en las primeras filas y en el nombre del archivo; si no está, se escribe a mano. */
+    const rcDet=(()=>{for(const r of (aoaOk||[]).slice(0,8))for(const c of (r||[])){const m=String(c??'').match(/recibo\D{0,12}(\d{5,})/i);if(m)return m[1]}return(f.name.match(/\d{5,}/)||[''])[0]})();
+    ask(`Cargar recibo · ${fmt(res.items.length)} referencias`,[{k:'id',label:rcDet?'Número de recibo':'Número de recibo (no viene en el Excel: escríbelo)',type:'text',value:rcDet},{k:'f',label:'Fecha de ingreso del recibo',type:'date',value:today()},{k:'h',label:'Estado del recibo',type:'select',value:'n',opts:[['n','Nuevo: pendiente de surtir'],['h','Ya trabajado: dejarlo surtido y despachado']]},{k:'w',label:'Fecha y hora de despacho (solo si ya trabajado)',type:'datetime-local',value:nowLocal()}],'Cargar',async v=>{
       const id=(v.id||'').trim().replace(/[^A-Za-z0-9_-]/g,'');
       if(!id){toast('Número de recibo inválido');return false}
       if(!v.f){toast('Elige la fecha de ingreso');return false}
@@ -821,6 +825,7 @@ $('recFile').onchange=async e=>{
 $('trfBackBtn').onclick=()=>history.back();
 $('trfList').addEventListener('click',async e=>{
   const l1=e.target.closest('[data-lblr]');if(l1){const [k,ix]=l1.dataset.lblr.split('|');openLblRange(k,parseInt(ix,10));return}
+  const tt=e.target.closest('[data-tt]');if(tt){trfTab=tt.dataset.tt;renderTrf();return}
   const ts=e.target.closest('[data-ts]');if(ts){trfStore=ts.dataset.ts;history.pushState({c:2},'');renderTrf();window.scrollTo(0,0);return}
   const bs=e.target.closest('[data-bs]');if(bs){saveBultos(bs.dataset.bs);return}
   const lb=e.target.closest('[data-lbl]');if(lb)openLbl(lb.dataset.lbl)});
@@ -839,7 +844,7 @@ async function saveBultos(key){
     if(!(n>=1&&n<=200)){toast('Escribe un total de bultos entre 1 y 200');return}
     if(key.startsWith('CRISTAL_')){await set(R(db,`${TRBB}/${key}`),{b:n,u:USER,n:NAME,ts:Date.now()});toast(`✅ ${n} bulto(s) guardados`);i.blur();renderTrf();return}
     const cur=BG[key];
-    if(cur&&cur.n===n){toast('Ya están generados '+n+' bultos');return}
+    if(cur&&(cur.n===n||cur.n-Object.keys(cur.an||{}).length===n)){toast('Ya están generados '+(cur.n-Object.keys(cur.an||{}).length)+' bultos');return}
     if(cur){const pv=await retirePreview(RECIBO+'__'+key);if(pv.block){alert(pv.block);return}
       if(!confirm(`Ya se generaron ${cur.n} bultos (${gbCode(cur.first)} a ${gbCode(cur.first+cur.n-1)}). Si cambias a ${n} se crean números nuevos; los anteriores quedan liberados para otra transferencia y sus etiquetas dejan de servir.${pv.msg}\n\n¿Continuar?`))return}
     const first=await allocBultos(n);
@@ -1455,8 +1460,8 @@ function pfRender(){
   const a=AU,sum=a.lines.reduce((x,l)=>x+(l.desp||0),0),exc=a.lines.reduce((x,l)=>x+pfExc(l),0);
   const rows=a.lines.map((l,i)=>{const it=pfItem(l.rc,l.p),bod=it?(it.s.BODEGA||0):0,av=l.rc?pfAvail(l.rc,l.p):0,ex=pfExc(l);
     const rc=!l.cands.length?'<span class="pill p-wn">Sin recibo → PROFORMAS</span>':l.cands.length>1?`<select class="f" data-pr="${i}" style="padding:5px">${l.cands.map(id=>`<option value="${esc(id)}" ${l.rc===id?'selected':''}>#${esc(id)}</option>`).join('')}</select>`:`<span class="pill p-aq">#${esc(l.rc)}</span>`;
-    const st=!l.rc?'<span class="pill p-aq">100% surtido y despachado en PROFORMAS</span>':ex?`<span class="pill p-wn">Excede Bodega por ${fmt(ex)} → Diferencia ${fmt(ex)}</span>`:'<span class="pill p-ok">Cuadra con Bodega</span>';
-    return `<tr><td>${esc(l.ref)}</td><td>${esc(l.p)}</td><td>${esc(l.d)}</td><td class="n">${l.sol?fmt(l.sol):'—'}</td><td class="n"><input class="f" type="number" min="0" data-pq="${i}" value="${l.desp}" style="width:70px;padding:6px"></td><td>${rc}</td><td class="n">${l.rc?fmt(bod):'—'}</td><td class="n">${l.rc?fmt(av):'—'}</td><td>${st}</td><td><button class="btn sm" data-prm="${i}">✖</button></td></tr>`}).join('');
+    const st=!l.rc?'<span class="pill p-aq">100% surtido y despachado en PROFORMAS</span>':ex?`<span class="pill p-wn" style="background:rgba(255,107,107,.18);color:#ff6b6b">⛔ Sobregiro −${fmt(ex)} · ajusta los solicitados (✏)</span>`:'<span class="pill p-ok">Cuadra con Bodega</span>';
+    return `<tr><td>${esc(l.ref)}</td><td>${esc(l.p)}</td><td>${esc(l.d)}</td><td class="n">${l.sol?fmt(l.sol):'—'}</td><td class="n"><input class="f" type="number" min="0" data-pq="${i}" value="${l.desp}" style="width:70px;padding:6px"></td><td>${rc}</td><td class="n">${l.rc?fmt(bod):'—'}</td><td class="n">${l.rc?fmt(av):'—'}</td><td class="n">${l.rc?(()=>{const q=(it?(it.s.BODEGA||0):0)-pfUsed(l.rc,l.p)-l.desp;return q<0?`<b style="color:#ff6b6b">${fmt(q)}</b>`:fmt(q)})():'—'}</td><td>${st}</td><td style="white-space:nowrap">${l.rc?`<button class="btn sm ${ex?'pri':''}" data-ped="${i}" title="Ajustar solicitados por tienda">✏</button> `:''}<button class="btn sm" data-prm="${i}">✖</button></td></tr>`}).join('');
   $('auReview').innerHTML=`<div class="card"><div class="slbl">🧾 Proforma manual · Cristal · revisa antes de guardar</div>
    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
     <div><div class="lbl">Número de proforma *</div><input class="f" data-pf="tr" maxlength="20" value="${esc(a.tr)}" placeholder="Ej. 1234"></div>
@@ -1466,15 +1471,38 @@ function pfRender(){
    ${(UDIR.length&&!a.suru)?'<div class="msg" style="color:var(--wn)">⚠ Elige el surtidor: es quien recibe el crédito en producción.</div>':''}
    ${a.bad.length?`<div class="msg" style="color:var(--wn)">⚠ No encontré estos productos y se omitieron: ${a.bad.slice(0,12).map(esc).join(', ')}${a.bad.length>12?' (+'+(a.bad.length-12)+' más)':''}</div>`:''}
    <div class="msg">Las piezas se <b>descuentan del saldo de Bodega</b> del recibo indicado; lo que exceda queda como <b>Diferencia</b> (auditoría). Los productos <b>sin recibo</b> van al recibo PROFORMAS: no se comparan con Bodega (no hay inventario); quedan surtidos y despachados al 100% en el recibo PROFORMAS. Al subir su recibo y trasladarlos, ahí sí se comparan.</div>
-   <div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th>Descripción</th><th class="n">Solicitado</th><th class="n">Cant.</th><th>Recibo</th><th class="n">Saldo bodega</th><th class="n">Disponible</th><th>Estado</th><th></th></tr>${rows}</table></div>
-   <div class="msg">${fmt(a.lines.length)} líneas · <b>${fmt(sum)}</b> piezas${exc?` · <span style="color:var(--wn)"><b>${fmt(exc)}</b> pasan a Diferencia</span>`:' · todo cuadra con Bodega'}</div>
+   <div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th>Descripción</th><th class="n">Solicitado</th><th class="n">Cant.</th><th>Recibo</th><th class="n">Saldo bodega</th><th class="n">Disponible</th><th class="n">Queda</th><th>Estado</th><th></th></tr>${rows}</table></div>
+   <div class="msg">${fmt(a.lines.length)} líneas · <b>${fmt(sum)}</b> piezas${exc?` · <span style="color:#ff6b6b"><b>sobregiro de ${fmt(exc)}</b> pzas</span>: usa ✏ para bajar los solicitados de las tiendas y que alcance; si guardas así, esa cantidad queda como Diferencia`:' · todo cuadra con Bodega'}</div>
    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" id="pfSave" style="flex:1">Guardar proforma</button><button class="btn" id="pfCancel">Cancelar</button></div></div>`}
+/* Ajustar los solicitados (distribución por tienda) de un producto del recibo para que la proforma de Cristal alcance sin sobregiro.
+   Bajar lo solicitado de una tienda libera saldo de Bodega; no se permite bajar de lo ya surtido. Queda registrado quién lo cambió. */
+function pfEditStores(i){
+  if(!ISADM){toast('Solo un administrador puede ajustar los solicitados');return}
+  const l=AU.lines[i],id=l&&l.rc,x=pfItem(id,l&&l.p);if(!x){toast('Este producto no está en ningún recibo');return}
+  if(COMP[id]){toast('El recibo '+id+' ya está completado: reábrelo antes de ajustar solicitados');return}
+  const sv=t=>Object.values(AUL[id]||{}).filter(e=>e.p===x.p&&e.t===t&&!e.mir).reduce((a,e)=>a+(e.q||0),0),
+    sts=BASE_ST.filter(t=>t!=='CRISTAL'&&((x.s[t]||0)>0||sv(t)>0)),need=Math.max(0,l.desp-pfAvail(id,x.p));
+  if(!sts.length){toast('Este producto no tiene tiendas con solicitado');return}
+  ask(`Ajustar solicitados · ${x.ref||x.p}${need?` · faltan ${fmt(need)} pzas`:''}`,sts.map(t=>({k:'q'+t,label:`${LN(t)} · solicitado ${fmt(x.s[t]||0)} · ya surtido ${fmt(sv(t))} (mínimo)`,type:'number',value:String(x.s[t]||0)})),'Guardar',async v=>{
+    const nv={};for(const t of sts){const q=Math.max(0,parseInt(v['q'+t],10)||0);if(q<sv(t)){toast(`${LN(t)}: no puede ser menor a lo ya surtido (${fmt(sv(t))})`);return false}nv[t]=q}
+    const items=RECS[id].items.map(y=>({...y,s:{...y.s}})),it=items.find(y=>y.p===x.p);if(!it){toast('No se encontró el producto');return false}
+    const oldDt=sts.reduce((a,t)=>a+(it.s[t]||0),0),newDt=sts.reduce((a,t)=>a+nv[t],0),delta=oldDt-newDt;
+    if(!delta){toast('No cambiaste ninguna cantidad');return false}
+    if((it.s.BODEGA||0)+delta<0){toast(`No alcanza el saldo de Bodega para subir esos solicitados (faltan ${fmt(-((it.s.BODEGA||0)+delta))})`);return false}
+    const antes={};sts.forEach(t=>antes[t]=it.s[t]||0);
+    Object.assign(it.s,nv);it.dt=Math.max(0,(it.dt||0)-delta);it.sal=Math.max(0,(it.sal||0)+delta);it.sc=Math.max(0,(it.sc||0)+delta);it.s.BODEGA=it.sc;
+    try{await set(R(db,'meta_v1/consultas_recs/'+id+'/items'),items);RECS[id].items=items;
+      await set(push(R(db,'meta_v1/consultas_ajustes')),{id,p:x.p,r:x.ref||'',by:USER,n:NAME,ts:Date.now(),antes,despues:nv,delta});
+      try{await remove(R(db,'meta_v1/consultas_prog/'+id))}catch(e2){}
+      toast(`✅ Solicitados ajustados · Bodega ${delta>0?'+':''}${fmt(delta)} pzas`);pfRelink();pfRender()}
+    catch(err){toast('Error: '+(err.code||err.message));return false}})}
 async function pfSave(btn){
   const a=AU,pf=(a.tr||'').trim(),cn=(a.cli||'').trim();
   if(!/^[\w-]{1,20}$/.test(pf)){toast('Escribe el número de proforma (letras, números o guiones)');return}
   if(!cn){toast('Escribe el cliente de Cristal');return}
   if(UDIR.length&&!a.suru){toast('Elige el surtidor');return}if(!a.sur&&!a.suru){toast('Escribe el surtidor');return}
   const lines=a.lines.filter(l=>l.desp>0);if(!lines.length){toast('No hay piezas para guardar');return}
+  {const ex=lines.reduce((x,l)=>x+pfExc(l),0);if(ex>0&&!confirm(`Hay un SOBREGIRO de ${fmt(ex)} pzas contra el saldo de Bodega (queda en negativo).\n\nPuedes cancelar y usar ✏ para bajar los solicitados de las tiendas y que alcance.\n\n¿Guardar igual? Esa cantidad queda como Diferencia.`))return}
   btn.disabled=true;
   try{const old=(await get(R(db,`${PFB}/${pf}`))).val();
     if(old){if(!confirm(`La proforma ${pf} ya está cargada. ¿Reemplazarla? Se deshace la anterior y se registra esta.`)){btn.disabled=false;return}await pfUndo(pf,old);await auLoadLogs();pfRelink()}
@@ -1587,6 +1615,7 @@ $('auReview').addEventListener('change',e=>{if(!AU||!AU.prf)return;const d=e.tar
   else if(d.pq!==undefined)pfRender()});
 $('auReview').addEventListener('click',e=>{if(!AU||!AU.prf)return;
   if(e.target.closest('#pfCancel')){AU=null;$('auReview').innerHTML='';return}
+  const ped=e.target.closest('[data-ped]');if(ped){pfEditStores(+ped.dataset.ped);return}
   const rm=e.target.closest('[data-prm]');if(rm){AU.lines.splice(+rm.dataset.prm,1);pfRender();return}
   const sv=e.target.closest('#pfSave');if(sv)pfSave(sv)});
 
@@ -1594,22 +1623,67 @@ $('auReview').addEventListener('click',e=>{if(!AU||!AU.prf)return;
 const trStatus=g=>{const a=[];if(g.tr&&TRF[g.t]&&TRF[g.t].tr===g.tr)a.push('Activa');const d=dspOfKey(g.key);if(d)a.push('Despachada ('+d.num+')');if(BG[g.key]||(TRB[g.key]&&TRB[g.key].b))a.push('Surtida, con bultos generados');return a};
 $('trfList').addEventListener('click',e=>{const b=e.target.closest('[data-mv]');if(!b)return;e.preventDefault();e.stopPropagation();
   const [key,p]=b.dataset.mv.split('|'),all=trfGroups(),g=all.find(x=>x.key===key);if(!g)return;
-  const rows=g.items.filter(x=>x.p===p),tot=rows.reduce((a,x)=>a+x.q,0),oth=all.filter(x=>x.t===g.t&&x.key!==key);
+  const rows=g.items.filter(x=>x.p===p),tot=rows.reduce((a,x)=>a+x.q,0),oth=all.filter(x=>x.t===g.t&&x.key!==key&&!despKeys().has(x.key));
   ask(`Mover producto ${p} · ${L(g.t)}`,[
     {k:'dst',label:`Pasar de la transferencia ${g.tr||'sin número'} a…`,type:'select',value:oth[0]?(oth[0].tr||'__sin'):'__new',opts:[...oth.map(x=>[x.tr||'__sin',`${x.tr?'Transf. '+x.tr:'Sin transferencia'} · ${fmt(gPz(x))} pzas${trStatus(x).length?' · '+trStatus(x).join(', '):''}`]),['__new','➕ Otra transferencia (escribir número)']]},
     {k:'nw',label:'Número de la nueva transferencia (solo si elegiste “Otra”)',type:'text',value:'',ph:'Ej. 10317836'},
-    {k:'q',label:`Cantidad a mover (máx. ${fmt(tot)})`,type:'number',value:String(tot)}],'Mover',async v=>{
+    {k:'q',label:`Cantidad a mover (máx. ${fmt(tot)})`,type:'number',value:String(tot)},{k:'bl',label:'Bultos que se mueven con este producto (0 = no cambia ningún bulto ni etiqueta)',type:'number',value:'0'}],'Mover',async v=>{
     const tr=v.dst==='__new'?(v.nw||'').trim():v.dst==='__sin'?'':v.dst,qty=parseInt(v.q,10);
     if(v.dst==='__new'&&!tr){toast('Escribe el número de la nueva transferencia');return false}
     if(tr===(g.tr||'')){toast('Elige una transferencia distinta');return false}
     if(!(qty>=1&&qty<=tot)){toast('La cantidad debe estar entre 1 y '+tot);return false}
     const tg=oth.find(x=>(x.tr||'')===tr),st=[...trStatus(g).map(s=>`Origen ${g.tr||'sin número'}: ${s}`),...(tg?trStatus(tg).map(s=>`Destino ${tr||'sin número'}: ${s}`):[])];
     if(st.length&&!confirm(`Vas a mover ${fmt(qty)} pza(s) del producto ${p} (${LN(g.t)}) de la transferencia ${g.tr||'—'} a ${tr||'sin número'}.\n\n⚠ Estado:\n- ${st.join('\n- ')}\n\nLos bultos y etiquetas ya generados no cambian. ¿Continuar?`))return false;
-    try{let rem=qty;const up={};
+    const bl=Math.max(0,parseInt(v.bl,10)||0);
+    if(bl>0&&despKeys().has(key)){alert('Esta transferencia ya fue despachada en un packing list: no se pueden mover bultos.');return false}
+    const doMove=async()=>{let rem=qty;const up={};
       for(const x of rows){if(rem<=0)break;const take=Math.min(x.q,rem);rem-=take;
         if(take===x.q)up[x.k+'/tr']=tr;else{up[x.k+'/q']=x.q-take;const {k,...c}=x;up[push(R(db,BASE)).key]={...c,q:take,tr}}}
-      await update(R(db,BASE),up);toast(`✅ ${fmt(qty)} pza(s) movidas a ${tr||'sin transferencia'}`)}
+      await update(R(db,BASE),up)};
+    try{if(bl>0){mvBultosAsk(g,tr,qty,bl,doMove,(all.find(x=>x.t===g.t&&(x.tr||'')===tr)||{items:[]}));return false}await doMove();toast(`✅ ${fmt(qty)} pza(s) movidas a ${tr||'sin transferencia'}`)}
     catch(err){toast('Error: '+(err.code||err.message));return false}})});
+
+// ---------- Mover bultos con el producto: el bulto queda ANULADO (auditoría), se desmonta del palet y se actualiza el despacho ----------
+async function mvDsp(key,pz,b){for(const [did,d] of Object.entries(DS))for(const [ix,it] of Object.entries(d.items||{}))if(it.key===key)await update(R(db,`${DSB}/${did}/items/${ix}`),{pz,b})}
+async function mvCounts(g,dk,k,bg){ // totales de bultos: origen baja, destino sube
+  const b0=(TRB[g.key]&&TRB[g.key].b)||0,eff=bg?bg.n-Object.keys(bg.an||{}).length-k:Math.max(0,b0-k);
+  await update(R(db,`${TRBB}/${g.key}`),{b:Math.max(0,eff),u:USER,n:NAME,ts:Date.now()});
+  const d0=(TRB[dk]&&TRB[dk].b)||0,dg=BG[dk],base=dg?Math.max(d0,dg.n-Object.keys(dg.an||{}).length):d0,nb=base+k;
+  await update(R(db,`${TRBB}/${dk}`),{b:nb,u:USER,n:NAME,ts:Date.now()});return{eff:Math.max(0,eff),nb}}
+async function mvBultosAsk(g,tr,qty,bl,doMove,tg){
+  const key=g.key,bg=BG[key],dk=g.t+'_'+(tr||'sin'),rk=RECIBO+'__'+key,pzNew=Math.max(0,gPz(g)-qty),dPz=gPz(tg)+qty;
+  const fin=async(msg)=>{$('mask').classList.add('hide');toast(msg)};
+  if(!bg){try{await doMove();await mvCounts(g,dk,bl,null);if(dspOfKey(key))await mvDsp(key,pzNew,Math.max(0,((TRB[key]&&TRB[key].b)||0)-bl));if(dspOfKey(dk))await mvDsp(dk,dPz,((TRB[dk]&&TRB[dk].b)||0)+bl);fin(`✅ ${fmt(qty)} pza(s) movidas · ${bl} bulto(s) pasan a ${tr||'sin transferencia'} (aún sin etiquetas generadas)`)}catch(err){toast('Error: '+(err.code||err.message))}return}
+  let got={};const pm={};
+  try{const tx=(await get(R(db,`${PB}/tfx/${rk}`))).val();got=(tx&&tx.got)||{};
+    for(const pid of new Set(Object.values(got).filter(x=>x&&x!=='ANULADO'))){pm[pid]=(await get(R(db,`${PB}/pm/${pid}`))).val()||{}}}
+  catch(err){toast('Error: '+(err.code||err.message));return}
+  const an=bg.an||{},opts=[];
+  for(let n=bg.first;n<bg.first+bg.n;n++){if(an[n])continue;const pid=got[n],pl=pid&&pm[pid]?pm[pid]:null;opts.push([String(n),`${gbCode(n)} · ${pl?pl.num+(pl.emb?' (EN CAMIÓN)':''):'sin palet'}`])}
+  if(opts.length<bl){alert('La transferencia no tiene tantos bultos disponibles.');return}
+  ask(`¿Qué bulto(s) mueves? · transf. ${g.tr||'—'}`,Array.from({length:bl},(_,i)=>({k:'b'+i,label:`Bulto ${i+1} de ${bl} (se muestra el palet donde está)`,type:'select',value:opts[i][0],opts})),'Mover y anular',async w=>{
+    const nums=Array.from({length:bl},(_,i)=>parseInt(w['b'+i],10));
+    if(new Set(nums).size!==nums.length){toast('Elige bultos distintos');return false}
+    const enc=nums.filter(n=>got[n]&&pm[got[n]]&&pm[got[n]].emb);
+    if(enc.length){alert(`${enc.map(gbCode).join(', ')} está en un palet que ya va en camión. Descarga ese palet del camión primero.`);return false}
+    const pals=[...new Set(nums.map(n=>got[n]).filter(x=>x&&pm[x]))].map(x=>pm[x].num);
+    if(!confirm(`Se ANULAN ${nums.map(gbCode).join(', ')} (quedan en auditoría y ya no se pueden usar; los demás bultos conservan su número).\n${pals.length?`Se desmontan de: ${pals.join(', ')}.\n`:''}El despacho de la transferencia ${g.tr||'—'} se actualiza y el destino (${tr||'sin transferencia'}) suma ${bl} bulto(s).\n\n¿Continuar?`))return false;
+    try{await doMove();
+      const ts=Date.now(),newAn={...an};nums.forEach(n=>newAn[n]={to:tr||'',ts,by:USER,q:qty});
+      const a=Object.keys(newAn).length,eff=bg.n-a,adj=eff>0?Math.round(pzNew*bg.n/eff):0,G={...got};nums.forEach(n=>G[n]='ANULADO');
+      const up={};nums.forEach(n=>{const pid=got[n];if(pid&&pid!=='ANULADO'){up[`pb/${pid}/${n}`]=null;up[`pu/${pid}/${n}`]=null}});
+      for(const pid of new Set(Object.values(got).filter(x=>x&&x!=='ANULADO'))){const pb=(await get(R(db,`${PB}/pb/${pid}`))).val()||{};let nb=0,c=0;
+        for(const [n,kk] of Object.entries(pb)){if(nums.includes(+n))continue;nb++;if(kk===rk){c++;up[`pu/${pid}/${n}/pz`]=+(adj/bg.n).toFixed(2)}}
+        up[`pm/${pid}/nb`]=nb;up[`pm/${pid}/tfs/${rk}`]=c>0?{...((pm[pid]||{}).tfs||{})[rk],c,pz:adj}:null}
+      up[`tfx/${rk}`]={t:g.t,tr:g.tr||'',rec:RECIBO,first:bg.first,N:bg.n,pz:adj,got:G};up[`tfc/${rk}`]={N:bg.n,g:Object.keys(G).length};
+      await update(R(db,PB),up);
+      const ann={};nums.forEach(n=>ann[n]={rec:RECIBO,key,t:g.t,tr:g.tr||'',to:tr||'',by:USER,n:NAME,ts});await update(R(db,BULK+'/ann'),ann);
+      await update(R(db,`${BGB}/${key}`),{an:newAn});
+      const r=await mvCounts(g,dk,bl,{...bg,an:newAn});
+      if(dspOfKey(key))await mvDsp(key,pzNew,r.eff);if(dspOfKey(dk))await mvDsp(dk,dPz,r.nb);
+      toast(`✅ ${nums.map(gbCode).join(', ')} anulado(s) · despacho actualizado (${fmt(pzNew)} pzas, ${r.eff} bultos)`);
+      if(BG[dk])setTimeout(()=>alert(`La transferencia destino ${tr||'—'} ya tenía bultos generados. Ahora le toca un total de ${r.nb}: en su tarjeta pulsa “Actualizar” para crear el bulto que falta.`),300)}
+    catch(err){toast('Error: '+(err.code||err.message));return false}})}
 
 $('btnRef').onclick=softRefresh;
 
@@ -1779,7 +1853,7 @@ let palDelMode=false,palDelChk=false,palFresh=new Set(),palBumpT=0,palFbT=null,_
 function weekCut(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7)-7);return d.getTime()}
 function startPal(){if(palOn)return;palOn=true;const w=weekCut();
   onValue(query(R(db,PB+'/pm'),orderByKey(),startAt('p'+w)),s=>{PM=s.val()||{};renderPal();renderPalModal()},()=>{palOn=false});
-  onValue(query(R(db,PB+'/emb'),orderByKey(),startAt('e'+w)),s=>{EMB=s.val()||{};renderPal()},()=>{})}
+  onValue(query(R(db,PB+'/emb'),orderByKey(),startAt('e'+w)),s=>{EMB=s.val()||{};renderPal();if(typeof renderTrf==='function')renderTrf()},()=>{})}
 async function loadHist(){const w=weekCut(),box=$('histList');box.innerHTML='<div class="msg">Cargando…</div>';
   try{const [a,b]=await Promise.all([get(query(R(db,PB+'/pm'),orderByKey(),endAt('p'+(w-1)),limitToLast(40))),get(query(R(db,PB+'/emb'),orderByKey(),endAt('e'+(w-1)),limitToLast(20)))]);
     const pm=Object.values(a.val()||{}).sort((x,y)=>(y.seq||0)-(x.seq||0)),em=Object.values(b.val()||{}).sort((x,y)=>(y.seq||0)-(x.seq||0));
@@ -1830,7 +1904,7 @@ async function palScan(id,raw){
   const k=hit.rec+'__'+hit.key,info={t:hit.t,tr:hit.tr||'',rec:hit.rec,first:hit.first,N:hit.n,pz:it.pz||0};
   const own0=(p.tfs||{})[k];if(own0&&own0.N!==hit.n){alert(`Este palet tiene bultos de una versión anterior de la transferencia ${hit.tr||''} (eran ${own0.N}, ahora son ${hit.n}).\n\nUsa “🛠 Reparar y liberar bultos huérfanos” en la pantalla de Palets y vuelve a escanear.`);palBeep(false);return}
   let cl;try{cl=await claim(k,info,num,id)}catch(err){ptoast('Error: '+(err.code||err.message));return}
-  if(!cl.ok){let own=null,opm=PM[cl.by]||null;
+  if(!cl.ok){if(cl.by==='ANULADO'){alert(`El bulto ${gbCode(num)} está ANULADO (su producto se movió a otra transferencia). No se puede usar.`);palBeep(false);return}let own=null,opm=PM[cl.by]||null;
     try{if(cl.by){const [a,b]=await Promise.all([get(R(db,`${PB}/pb/${cl.by}/${num}`)),opm?Promise.resolve(null):get(R(db,`${PB}/pm/${cl.by}`))]);own=a.val();if(b)opm=b.val()}}catch(err){ptoast('Error: '+(err.code||err.message));return}
     if(own===k&&opm){alert(`El bulto ${gbCode(num)} ya está en el palet ${opm.num}.`);return}
     try{await release(k,num,cl.by);cl=await claim(k,info,num,id)}catch(err){ptoast('Error: '+(err.code||err.message));return}
@@ -2108,7 +2182,7 @@ async function allocBultos(n){let first=null;
 // Reparación total: lo que realmente está en los palets (pb) es la verdad; todo lo demás se reconstruye
 async function palRepair(btn){if(!confirm('Se revisará todo el control de bultos:\n\n• Bultos de versiones anteriores de una transferencia (números viejos) se quitan de los palets y se liberan.\n• Reservas que ya no pertenecen a ningún palet se liberan.\n• Un mismo bulto en dos palets queda solo en el más antiguo.\n• Los contadores se recalculan.\n\nLos bultos válidos que están en un palet no se tocan. ¿Continuar?'))return;
   btn.disabled=true;toast('Revisando…');
-  try{const [tx,tc,pm,pb,rg]=await Promise.all([get(R(db,PB+'/tfx')),get(R(db,PB+'/tfc')),get(R(db,PB+'/pm')),get(R(db,PB+'/pb')),get(R(db,BULK+'/ranges'))]);
+  try{const [tx,tc,pm,pb,rg,anr]=await Promise.all([get(R(db,PB+'/tfx')),get(R(db,PB+'/tfc')),get(R(db,PB+'/pm')),get(R(db,PB+'/pb')),get(R(db,BULK+'/ranges')),get(R(db,BULK+'/ann'))]);
     const TX=tx.val()||{},TC=tc.val()||{},PMA=pm.val()||{},PBA=pb.val()||{},RG=rg.val()||{};
     const up={},claims={},keep={},pzOf={},stale=[];let quit=0,libres=0;
     Object.values(PMA).forEach(p=>Object.entries(p.tfs||{}).forEach(([k,v])=>{if(v&&v.pz)pzOf[k]=v.pz}));
@@ -2122,6 +2196,7 @@ async function palRepair(btn){if(!confirm('Se revisará todo el control de bulto
       for(const [k,c] of Object.entries(cnt)){const old=(p.tfs||{})[k],r=RG[k];tfs[k]={t:r.t,tr:r.tr||'',N:r.n,pz:(old&&old.pz)||pzOf[k]||0,c};if(!old||old.c!==c||old.N!==r.n)ch=true}
       if(Object.keys(p.tfs||{}).some(k=>!cnt[k]))ch=true;
       if(ch){up[`pm/${pid}/nb`]=nb;up[`pm/${pid}/tfs`]=nb?tfs:null}}
+    Object.entries(anr.val()||{}).forEach(([n,a])=>{const k=a.rec+'__'+a.key,r=RG[k];if(r&&+n>=r.first&&+n<r.first+r.n)(claims[k]=claims[k]||{})[n]='ANULADO'});
     for(const k of new Set([...Object.keys(TX),...Object.keys(TC),...Object.keys(claims)])){
       const old=TX[k],r=RG[k],cl=claims[k]||{},ng=Object.keys(cl).length,og=(old&&old.got)||{};
       if(old&&old.first!==undefined&&(!r||r.first!==old.first||r.n!==old.N))stale.push({first:old.first,n:old.N});
