@@ -158,7 +158,7 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
 <div id="app" class="hide">
   <div class="top">
     <button class="btn sm" id="btnBack" title="Atrás" aria-label="Atrás">←</button>
-    <div class="ttl"><h1 id="ttl">Consultas</h1><small id="who">—</small></div><span style="font-size:10px;opacity:.7;margin-right:6px" id="verTag">V23 octubre-B</span>
+    <div class="ttl"><h1 id="ttl">Consultas</h1><small id="who">—</small></div><span style="font-size:10px;opacity:.7;margin-right:6px" id="verTag">V23 octubre-C</span>
     <button class="btn sm" id="btnRef" title="Actualizar" aria-label="Actualizar">⟳</button>
     <button class="btn sm hide" id="btnHome">Recibos</button>
     <a class="btn sm" id="toMarc" href="index.html" style="text-decoration:none;background:#ff3b30;color:#fff" title="Salir a Marcaciones">⎋ Salir</a>
@@ -1225,6 +1225,13 @@ $('auReview').addEventListener('click',async e=>{
   if(e.target.closest('#auCancel')){const m=AU&&AU.manual;AU=null;$('auReview').innerHTML='';if(m)auManualStart();return}
   const rm=e.target.closest('[data-arm]');if(rm){AU.lines.splice(+rm.dataset.arm,1);auRender();return}
   if(e.target.closest('#auSave'))auSave(e.target.closest('#auSave'))});
+// Recibo ACTIVO (en proceso) con la transferencia ya en curso: bloquea y explica
+async function auActiveBlock(rc,tr){
+  if(!rc||!RECS[rc]||isPs(rc)||COMP[rc]||!tr)return '';
+  try{const rb=`meta_v1/consultas/${rc}`,lg=(await get(R(db,rb+'/log'))).val()||{},tb=(await get(R(db,rb+'/trfb'))).val()||{};
+    if(Object.values(lg).some(e=>String(e.tr)===String(tr))||Object.keys(tb).some(k=>k.endsWith('_'+tr)))
+      return `⛔ El recibo #${rc} está ACTIVO (en proceso) y la transferencia ${tr} ya está en curso en ese recibo (ya tiene piezas o bultos creados). No se puede cargar de nuevo desde Túnel para evitar duplicados.\n\nSi necesitas rehacerla, quítala primero en la pestaña "Cargadas en el recibo".`}catch(e){}
+  return ''}
 async function auPut(path,o){const k=Object.keys(o);for(let i=0;i<k.length;i+=400){const p={};k.slice(i,i+400).forEach(z=>p[z]=o[z]);await update(R(db,path),p)}}
 async function auSave(btn){
   const a=AU;if(!a.tr){toast('Falta el número de transferencia');return}if(UDIR.length&&!a.suru){toast('Elige el surtidor');return}if(!a.t){toast('Elige la tienda destino');return}
@@ -1232,6 +1239,7 @@ async function auSave(btn){
   const dd=(()=>{const d=new Date(a.ts);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`})();
   btn.disabled=true;
   try{
+    if(a.src==='tun'){const bm=await auActiveBlock(a.rc,a.tr);if(bm){alert(bm);btn.disabled=false;return}}
     const old=(await get(R(db,`${AUB}/${a.tr}`))).val();
     if(old&&old.mode!=='tun'&&old.st!=='new'){alert(`La transferencia ${a.tr} ya fue incluida en el recibo de pedidos automáticos. No se puede cargar de nuevo. Si necesitas rehacerla, quítala primero en la pestaña "Cargadas en el recibo".`);btn.disabled=false;return}
     if(old&&!confirm(`La transferencia ${a.tr} ya estaba cargada como nueva. ¿Reemplazarla?`)){btn.disabled=false;return}
@@ -1275,7 +1283,7 @@ async function auList(){
     const gt=e.target.closest('[data-agoto]');
     if(gt){const g=all[gt.dataset.agoto];if(!g)return;const dest=auDest(g);
       if(g.st==='new'){if(!confirm(`Esta transferencia está nueva. Se agregará a ${isPs(dest)?'el recibo '+PSEUDO[dest]:'su recibo de origen #'+dest} y te llevo a Transferencias para generar las etiquetas de bultos. ¿Continuar?`))return;
-        try{await auRun([g])}catch(err){toast('Error: '+(err.code||err.message));return}}
+        try{if((await auRun([g]))===false)return}catch(err){toast('Error: '+(err.code||err.message));return}}
       auGoto(dest,g.tr);return}
     const d=e.target.closest('[data-adel]');if(!d)return;const tr=d.dataset.adel,m=all[tr];
     if(!confirm(`¿Quitar la transferencia ${tr}? ${m&&m.mode==='tun'?'Los recibos quedan como estaban (sin esa transferencia).':m&&m.st==='new'?'Todavía no está en el recibo.':'Se borra su surtido del recibo de pedidos automáticos.'}`))return;
@@ -1288,6 +1296,8 @@ async function auComplete(btn,nw){
   btn.disabled=true;try{await auRun(trs);await pseudoMigrate(true);AUOFF.clear();auList()}catch(err){toast('Error: '+(err.code||err.message));btn.disabled=false}
 }
 async function auRun(trs){
+  {const bl=[];for(const m of trs){if(m.mode==='tun'){const bm=await auActiveBlock(m.rc,m.tr);if(bm)bl.push({m,bm})}}
+   if(bl.length){alert(bl.map(x=>x.bm).join('\n\n'));trs=trs.filter(m=>!bl.some(x=>x.m===m));if(!trs.length)return false}}
   const now=Date.now(),up={},TG={};let nuevos=0,pz=0,toRc=0;
   const tgt=id=>{if(!TG[id]){const items=RECS[id]?RECS[id].items.map(x=>({...x,s:{...x.s}})):[],by={};items.forEach(x=>by[x.p]=x);TG[id]={ab:`meta_v1/consultas/${id}`,items,by,lg:{},dp:{},tb:{}}}return TG[id]};
   const DEPX={};for(const rid of Object.keys(RECS)){if(!isPs(rid))for(const y of RECS[rid].items)if(!DEPX[y.p])DEPX[y.p]=y}
@@ -1345,7 +1355,7 @@ function parseProformaPdf(t,fname){
   const num=s=>parseInt(String(s).replace(/,/g,''))||0;
   let m=t.match(/Proforma\s*#\s*(\d+)/i)||String(fname||'').match(/GP[_\s-]+(\d{4,})/i);
   const tr=m?m[1]:'',rows=[];
-  const re=/(\d{7})\s+(.+?)\s+(\S+)\s+(\d[\d,]*)\s+(\d{1,3}(?:\.\d+)?)\s*%\s+(\d[\d,]*)\s+(\d[\d,]*)\s+(\d[\d,]*)\s+(\d[\d,]*)/g;
+  const re=/(\d{7})\s+(.+?)\s+(\S+)\s+(\d[\d,]*)\s+(?:(\d{1,3}(?:\.\d+)?)\s*%\s+)?(\d[\d,]*)\s+(\d[\d,]*)\s+(\d[\d,]*)\s+(\d[\d,]*)/g;
   while((m=re.exec(t))){rows.push({c:m[1],d:m[2].trim(),ref:m[3],sol:num(m[6]),sur:num(m[7]),q:num(m[8]),pen:num(m[9])})}
   return{tr,rows}}
 async function pfStart(rows,fname,tr){
