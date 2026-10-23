@@ -174,7 +174,7 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
       <div class="msg">Sube el PDF (o una captura PNG/JPG) de la pantalla de Chequeo. La app lee la transferencia, la tienda y los productos; tú revisas y guardas.</div>
       <div class="lbl" style="margin-top:10px">Tipo (si el PDF es del sistema, se detecta solo)</div><select class="f" id="auSrc"><option value="auto">⚡ Automático (pedido automático)</option><option value="tun">🚇 Túnel (transferencia de un recibo)</option></select>
       <div class="lbl" style="margin-top:10px">PDF o captura</div><input class="f" type="file" id="auFile" accept=".pdf,image/*"><div class="msg" id="auMsg"></div></div>
-    <div id="pfCard" class="card hide"><h3 style="font-size:16px">Proformas manuales (clientes)</h3><div class="msg" style="margin-bottom:8px">1) Sube el PDF de la proforma (Productos de Proforma #…): se leen el número, los productos, lo solicitado y lo despachado. También puedes usar la plantilla Excel (producto y cantidad). 2) Completa el número de proforma, el cliente y el surtidor. 3) Las piezas descuentan del saldo de Bodega del recibo donde está el producto y suman a la producción del surtidor. Si un código se excede, pasa a Diferencias para auditoría. Los productos sin recibo van al recibo PROFORMAS: solo suman a producción (sin comparar con Bodega) hasta que subas su recibo y los trasladen.</div><button class="btn sm" id="pfTpl" style="width:100%">⬇ Descargar plantilla (Excel)</button><div class="lbl" style="margin-top:10px">PDF de la proforma (o plantilla Excel)</div><input class="f" type="file" id="pfFile" accept=".pdf,.xlsx,.xls,.csv"><div class="msg" id="pfMsg"></div></div>
+    <div id="pfCard" class="card hide"><h3 style="font-size:16px">Proformas manuales (clientes)</h3><div class="msg" style="margin-bottom:8px">1) Sube el PDF de la proforma (Productos de Proforma #…): se leen el número, los productos, lo solicitado y lo despachado. También puedes usar la plantilla Excel (producto y cantidad). 2) Completa el número de proforma, el cliente y el surtidor. 3) Las piezas descuentan del saldo de Bodega del recibo donde está el producto y suman a la producción del surtidor. Si un código se excede, pasa a Diferencias para auditoría. Los productos sin recibo van al recibo PROFORMAS: quedan asignados, surtidos y despachados al 100% (como los pedidos automáticos) para generar las etiquetas, hasta que subas su recibo y los trasladen.</div><button class="btn sm" id="pfTpl" style="width:100%">⬇ Descargar plantilla (Excel)</button><div class="lbl" style="margin-top:10px">PDF de la proforma (o plantilla Excel)</div><input class="f" type="file" id="pfFile" accept=".pdf,.xlsx,.xls,.csv"><div class="msg" id="pfMsg"></div></div>
     <div id="auReview"></div><div class="card"><div class="slbl" id="auListT">Transferencias cargadas</div><div id="auList"></div></div></div>
     <div id="v-pro" class="hide"><div id="prFil"></div><div id="prBody"></div></div>
     <!-- PALETS Y EMBARQUES -->
@@ -1371,7 +1371,7 @@ function pfRender(){
   const a=AU,sum=a.lines.reduce((x,l)=>x+(l.desp||0),0),exc=a.lines.reduce((x,l)=>x+pfExc(l),0);
   const rows=a.lines.map((l,i)=>{const it=pfItem(l.rc,l.p),bod=it?(it.s.BODEGA||0):0,av=l.rc?pfAvail(l.rc,l.p):0,ex=pfExc(l);
     const rc=!l.cands.length?'<span class="pill p-wn">Sin recibo → PROFORMAS</span>':l.cands.length>1?`<select class="f" data-pr="${i}" style="padding:5px">${l.cands.map(id=>`<option value="${esc(id)}" ${l.rc===id?'selected':''}>#${esc(id)}</option>`).join('')}</select>`:`<span class="pill p-aq">#${esc(l.rc)}</span>`;
-    const st=!l.rc?'<span class="pill p-aq">Solo suma a producción (sin comparar)</span>':ex?`<span class="pill p-wn">Excede Bodega por ${fmt(ex)} → Diferencia ${fmt(ex)}</span>`:'<span class="pill p-ok">Cuadra con Bodega</span>';
+    const st=!l.rc?'<span class="pill p-aq">100% surtido y despachado en PROFORMAS</span>':ex?`<span class="pill p-wn">Excede Bodega por ${fmt(ex)} → Diferencia ${fmt(ex)}</span>`:'<span class="pill p-ok">Cuadra con Bodega</span>';
     return `<tr><td>${esc(l.ref)}</td><td>${esc(l.p)}</td><td>${esc(l.d)}</td><td class="n">${l.sol?fmt(l.sol):'—'}</td><td class="n"><input class="f" type="number" min="0" data-pq="${i}" value="${l.desp}" style="width:70px;padding:6px"></td><td>${rc}</td><td class="n">${l.rc?fmt(bod):'—'}</td><td class="n">${l.rc?fmt(av):'—'}</td><td>${st}</td><td><button class="btn sm" data-prm="${i}">✖</button></td></tr>`}).join('');
   $('auReview').innerHTML=`<div class="card"><div class="slbl">🧾 Proforma manual · Cristal · revisa antes de guardar</div>
    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
@@ -1381,7 +1381,7 @@ function pfRender(){
     <div><div class="lbl">Fecha y hora</div><input class="f" type="datetime-local" data-pf="ts" value="${toLocalIn(a.ts)}"></div></div>
    ${(UDIR.length&&!a.suru)?'<div class="msg" style="color:var(--wn)">⚠ Elige el surtidor: es quien recibe el crédito en producción.</div>':''}
    ${a.bad.length?`<div class="msg" style="color:var(--wn)">⚠ No encontré estos productos y se omitieron: ${a.bad.slice(0,12).map(esc).join(', ')}${a.bad.length>12?' (+'+(a.bad.length-12)+' más)':''}</div>`:''}
-   <div class="msg">Las piezas se <b>descuentan del saldo de Bodega</b> del recibo indicado; lo que exceda queda como <b>Diferencia</b> (auditoría). Los productos <b>sin recibo</b> van al recibo PROFORMAS: no se comparan con Bodega (no hay inventario), solo suman a la producción. Al subir su recibo y trasladarlos, ahí sí se comparan.</div>
+   <div class="msg">Las piezas se <b>descuentan del saldo de Bodega</b> del recibo indicado; lo que exceda queda como <b>Diferencia</b> (auditoría). Los productos <b>sin recibo</b> van al recibo PROFORMAS: no se comparan con Bodega (no hay inventario); quedan surtidos y despachados al 100% en el recibo PROFORMAS. Al subir su recibo y trasladarlos, ahí sí se comparan.</div>
    <div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th>Descripción</th><th class="n">Solicitado</th><th class="n">Cant.</th><th>Recibo</th><th class="n">Saldo bodega</th><th class="n">Disponible</th><th>Estado</th><th></th></tr>${rows}</table></div>
    <div class="msg">${fmt(a.lines.length)} líneas · <b>${fmt(sum)}</b> piezas${exc?` · <span style="color:var(--wn)"><b>${fmt(exc)}</b> pasan a Diferencia</span>`:' · todo cuadra con Bodega'}</div>
    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" id="pfSave" style="flex:1">Guardar proforma</button><button class="btn" id="pfCancel">Cancelar</button></div></div>`}
@@ -1401,8 +1401,11 @@ async function pfSave(btn){
       for(const l of ls){const k=push(R(db,rb+'/log')).key;lgu[k]={p:l.p,r:l.ref||(pfItem(rid,l.p)||{}).ref||'',t,q:l.desp,tr:pf,u,n,ts:a.ts,d:dd,pf:1,bd:1,cn};refs.push({rid,k,p:l.p,q:l.desp})}
       await auPut(rb+'/log',lgu);try{await remove(R(db,'meta_v1/consultas_prog/'+rid))}catch(e){}}
     if(byR['']){const items=RECS[PFID]?RECS[PFID].items.map(x=>({...x,s:{...x.s}})):[],by={},T={ab:`meta_v1/consultas/${PFID}`,items,lg:{},dp:{},tb:{}};items.forEach(x=>by[x.p]=x);
+      // Igual que un pedido automático: se asigna a Cristal, queda surtido y despachado de inmediato (sin recibo previo)
       for(const l of byR['']){if(!by[l.p]){const x={n:items.length+1,ref:l.ref,p:l.p,d:l.d,pb:0,pr:l.pr||0,rec:0,sal:0,dt:0,upc:l.upc||'',cr:0,sc:0,dep:'',div:'',lin:'',sub:'',s:{BODEGA:0}};items.push(x);by[l.p]=x}
-        const k=push(R(db,T.ab+'/log')).key;T.lg[k]={p:l.p,r:l.ref||by[l.p].ref,t,q:l.desp,tr:pf,u,n,ts:a.ts,d:dd,ax:1,pf:1,nb:1,cn};auto.push({k,p:l.p,q:l.desp})}
+        const x=by[l.p];x.s[t]=(x.s[t]||0)+l.desp;x.rec=(x.rec||0)+l.desp;x.dt=(x.dt||0)+l.desp;x.ts=now;
+        const k=push(R(db,T.ab+'/log')).key;T.lg[k]={p:l.p,r:l.ref||x.ref,t,q:l.desp,tr:pf,u,n,ts:a.ts,d:dd,ax:1,pf:1,cn};
+        T.dp[l.p]={u,n,ts:a.ts,d:dd,r:l.ref||x.ref,ax:1,b:0};auto.push({k,p:l.p,q:l.desp})}
       await psSave(PFID,T,now)}
     await set(R(db,`${PFB}/${pf}`),{pf,t,cli:cn,ts:a.ts,ldt:now,suru:a.suru||'',sur:n,by:USER,file:a.file||'',pz:lines.reduce((x,l)=>x+l.desp,0),n:lines.length,exc,
       lines:lines.map(l=>({p:l.p,ref:l.ref,d:l.d,q:l.desp,rc:l.rc||''})),refs,auto});
@@ -1412,9 +1415,13 @@ async function pfSave(btn){
 async function pfUndo(pf,m){
   for(const [rid,rs] of Object.entries((m.refs||[]).reduce((o,r)=>((o[r.rid]=o[r.rid]||[]).push(r),o),{}))){const rb=`meta_v1/consultas/${rid}`,up={};rs.forEach(r=>up[r.k]=null);await update(R(db,rb+'/log'),up);
     try{await remove(R(db,'meta_v1/consultas_prog/'+rid))}catch(e){}}
-  if((m.auto||[]).length){const ab=`meta_v1/consultas/${PFID}`,up={};m.auto.forEach(r=>up[r.k]=null);await update(R(db,ab+'/log'),up);
-    const lg=(await get(R(db,ab+'/log'))).val()||{},have=new Set(Object.values(lg).map(e=>e.p)),items=(RECS[PFID]?RECS[PFID].items:[]).filter(x=>have.has(x.p)||x.rec>0);
-    await set(R(db,'meta_v1/consultas_recs/'+PFID+'/items'),items);RECS[PFID]={items}}
+  if((m.auto||[]).length){const ab=`meta_v1/consultas/${PFID}`,up={};
+    const lg0=(await get(R(db,ab+'/log'))).val()||{},its=(RECS[PFID]?RECS[PFID].items:[]).map(x=>({...x,s:{...x.s}}));
+    m.auto.forEach(r=>{up[r.k]=null;const e=lg0[r.k],x=its.find(i=>i.p===r.p);if(e&&!e.nb&&x){x.s[e.t]=Math.max(0,(x.s[e.t]||0)-e.q);x.rec=Math.max(0,(x.rec||0)-e.q);x.dt=Math.max(0,(x.dt||0)-e.q)}}); // las cargas viejas (nb) no sumaron nada
+    await update(R(db,ab+'/log'),up);
+    const lg=(await get(R(db,ab+'/log'))).val()||{},have=new Set(Object.values(lg).map(e=>e.p)),items=its.filter(x=>have.has(x.p)||x.rec>0);
+    for(const x of its){if(!have.has(x.p)){try{await remove(R(db,`${ab}/desp/${x.p}`))}catch(e){}}}
+    await set(R(db,'meta_v1/consultas_recs/'+PFID+'/items'),items);RECS[PFID]={items};try{await remove(R(db,'meta_v1/consultas_prog/'+PFID))}catch(e){}}
   await remove(R(db,`${PFB}/${pf}`))}
 // Traslada lo que quedó en los recibos propios (TÚNEL / PROFORMAS) al recibo de origen cuando ese recibo ya está cargado
 async function pseudoMigrate(silent){
@@ -1450,7 +1457,10 @@ async function pseudoMigrate(silent){
         for(const [pf,m] of Object.entries(pfs)){let ch=false;const auto=[],refs=[...(m.refs||[])],lines=(m.lines||[]).map(l=>({...l}));
           for(const a of (m.auto||[])){const mv=mvk[a.k];if(mv){refs.push({rid:mv.rid,k:mv.nk,p:a.p,q:a.q});const ln=lines.find(l=>l.p===a.p);if(ln)ln.rc=mv.rid;ch=true}else auto.push(a)}
           if(ch)await update(R(db,`${PFB}/${pf}`),{refs,auto,lines})}
-        const remP=new Set(Object.entries(lg).filter(([k])=>!mvk[k]).map(([,e])=>e.p)),items=RECS[PFID].items.filter(x=>remP.has(x.p)||x.rec>0);
+        const remP=new Set(Object.entries(lg).filter(([k])=>!mvk[k]).map(([,e])=>e.p)),its=RECS[PFID].items.map(x=>({...x,s:{...x.s}}));
+        for(const k of Object.keys(mvk)){const e=lg[k];if(!e||e.nb)continue;const x=its.find(i=>i.p===e.p);if(x){x.s[e.t]=Math.max(0,(x.s[e.t]||0)-e.q);x.rec=Math.max(0,(x.rec||0)-e.q);x.dt=Math.max(0,(x.dt||0)-e.q)}}
+        for(const x of its){if(!remP.has(x.p)){try{await remove(R(db,`${pb}/desp/${x.p}`))}catch(e){}}}
+        const items=its.filter(x=>remP.has(x.p)||x.rec>0);
         await set(R(db,'meta_v1/consultas_recs/'+PFID+'/items'),items);RECS[PFID]={items};try{await remove(R(db,'meta_v1/consultas_prog/'+PFID))}catch(e){}}}
     if(Object.keys(aubUp).length)await update(R(db,AUB),aubUp);
     if(moved)toast(`🔄 ${moved} línea(s) trasladadas a su recibo de origen, con su número de transferencia/proforma`);else if(!silent)toast('No hay productos por trasladar: ningún recibo de origen nuevo');
