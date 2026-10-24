@@ -168,12 +168,11 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
   </div>
   <div class="wrap">
     <div id="v-rec">
-      <div id="recAdm3" class="hide" style="margin-bottom:10px"><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><span id="recAdm3" class="hide" style="display:contents"><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></span><button class="btn sm pri" id="recProd"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Producción</button></div>
       <div class="card"><h2 style="font-size:20px">Elige el recibo</h2><div class="msg" style="margin-top:4px">Selecciona el recibo que vas a trabajar.</div></div>
       <div id="recMenu" style="margin-bottom:12px">
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <div id="recAdm" class="hide" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-mg="trf">🚚 Transferencias ▾</button><button class="btn sm" data-mg="dsp">📦 Despacho ▾</button></div>
-          <button class="btn sm pri" id="recProd">🏭 Producción</button>
           <button class="btn sm" data-mg="ana">📊 Análisis ▾</button>
           
         </div>
@@ -1274,14 +1273,14 @@ let PDD='';
 const pdOrg=id=>id==='AUTO'?'⚡ Automático':id==='TUNEL'?'🚇 Túnel':id==='PROFORMAS'?'🧾 Proformas':'📦 Manual (recibo)';
 const pdRec=id=>isPs(id)?PSEUDO[id]:`Recibo ${id}${PROV[id]?' · '+PROV[id]:''}`;
 async function openPdn(){
-  $('v-rec').classList.add('hide');$('v-pdn').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent='Producción';window.scrollTo(0,0);
+  $('v-rec').classList.add('hide');$('v-pdn').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent='Mi producción';window.scrollTo(0,0);
   if(!PDD)PDD=ymd(Date.now());
   $('pdBody').innerHTML='<div class="msg">Cargando producción…</div>';
   try{await statLoad(false);pdFilters();renderPdn()}catch(e){$('pdBody').innerHTML='<div class="msg">No se pudo cargar: '+esc(e.code||e.message)+'</div>'}
 }
 function pdFilters(){
   const hoy=ymd(Date.now());
-  $('pdFil').innerHTML=`<div class="card"><div class="slbl">🏭 Producción del día</div>
+  $('pdFil').innerHTML=`<div class="card"><div class="slbl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Mi producción del día</div>
    <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
     <button class="btn sm" data-pd="-1">◀</button>
     <div style="flex:1;min-width:150px"><div class="lbl">Fecha</div><input class="f" type="date" data-pd="d" value="${PDD}" max="${hoy}"></div>
@@ -1294,12 +1293,12 @@ $('pdFil').addEventListener('click',async e=>{
   if(e.target.id==='pdRef'){$('pdBody').innerHTML='<div class="msg">Actualizando…</div>';try{await statLoad(true);pdFilters();renderPdn()}catch(err){toast('Error: '+(err.code||err.message))}}});
 $('pdFil').addEventListener('change',e=>{if(e.target.dataset.pd==='d'&&e.target.value){PDD=e.target.value;pdFilters();renderPdn()}});
 function renderPdn(){
-  const ev=STEV.sv.filter(e=>e.d===PDD&&e.q>0),tot=sumF(ev,e=>e.q),mine=sumF(ev.filter(e=>e.uu===USER),e=>e.q);
-  if(!ev.length){$('pdBody').innerHTML=`<div class="card"><div class="msg">Sin piezas surtidas el ${esc(fdate(PDD))}.</div></div>`;return}
+  const ev=STEV.sv.filter(e=>e.d===PDD&&e.q>0&&e.uu===USER),tot=sumF(ev,e=>e.q); // solo lo que surtió quien inició sesión
+  if(!ev.length){$('pdBody').innerHTML=`<div class="card"><div class="msg">No tienes piezas surtidas el ${esc(fdate(PDD))}.</div></div>`;return}
   const by=(f,src=ev)=>{const m={};src.forEach(e=>{const k=f(e);(m[k]=m[k]||{q:0,n:0,r:new Set(),t:new Set()}).q+=e.q;m[k].n++;m[k].r.add(e.id);m[k].t.add(e.t)});return Object.entries(m).sort((a,b)=>b[1].q-a[1].q)};
   const bar=(q,mx)=>`<div class="bar" style="margin:0"><i style="width:${mx?Math.max(2,Math.round(q/mx*100)):0}%"></i></div>`;
-  const org=by(e=>pdOrg(e.id)),rec=by(e=>e.id),tie=by(e=>e.t),sur=by(e=>e.h?'Sin surtidor (Consultas ERP)':(e.u||'—'));
-  const mxO=org[0][1].q,mxR=rec[0][1].q,mxS=sur[0][1].q;
+  const org=by(e=>pdOrg(e.id)),rec=by(e=>e.id),tie=by(e=>e.t);
+  const mxO=org[0][1].q;
   const sub=(rows,lab)=>rows.map(([k,o])=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:13px"><span>${lab(k)}</span><b>${fmt(o)}</b></div>`).join('');
   const tiendas=tie.map(([t,o])=>{const rr=by(e=>e.id,ev.filter(e=>e.t===t));
     return `<details class="card" style="margin:0 0 8px;padding:10px 12px"><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:8px"><span><b>${esc(LN(t))}</b> <span class="msg" style="margin:0">· ${fmt(rr.length)} recibo(s)</span></span><b>${fmt(o.q)} pzas</b></summary>
@@ -1307,12 +1306,11 @@ function renderPdn(){
   const recibos=rec.map(([id,o])=>{const tt=by(e=>e.t,ev.filter(e=>e.id===id));
     return `<details class="card" style="margin:0 0 8px;padding:10px 12px"><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:8px"><span><b>${esc(pdRec(id))}</b> <span class="msg" style="margin:0">· ${esc(pdOrg(id))}</span></span><b>${fmt(o.q)} pzas</b></summary>
       <div style="margin-top:6px">${tt.map(([t,r])=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:13px"><span>${esc(LN(t))}</span><b>${fmt(r.q)}</b></div>`).join('')}</div></details>`}).join('');
-  $('pdBody').innerHTML=`<div class="kpis">${kpi('Piezas surtidas del día',fmt(tot))}${kpi('Mis piezas',fmt(mine),'am')}${kpi('Recibos / transferencias',fmt(rec.length))}${kpi('Tiendas',fmt(tie.length))}${kpi('Surtidores',fmt(sur.filter(([k])=>!/^Sin surtidor/.test(k)).length))}</div>
+  $('pdBody').innerHTML=`<div class="kpis">${kpi('Mis piezas del día',fmt(tot))}${kpi('Recibos / transferencias',fmt(rec.length))}${kpi('Tiendas',fmt(tie.length))}${kpi('Movimientos',fmt(ev.length))}</div>
    <div class="card"><div class="slbl">Por origen</div><div class="scroll"><table><tr><th>Origen</th><th class="n">Piezas</th><th class="n">%</th><th style="width:30%"></th></tr>${org.map(([k,o])=>`<tr><td>${esc(k)}</td><td class="n"><b>${fmt(o.q)}</b></td><td class="n">${(o.q/tot*100).toFixed(0)}%</td><td>${bar(o.q,mxO)}</td></tr>`).join('')}<tr><td><b>Total</b></td><td class="n"><b>${fmt(tot)}</b></td><td></td><td></td></tr></table></div></div>
-   <div class="card"><div class="slbl">Por surtidor</div><div class="scroll"><table><tr><th>Colaborador</th><th class="n">Piezas</th><th class="n">Recibos</th><th class="n">Tiendas</th><th style="width:25%"></th></tr>${sur.map(([k,o])=>`<tr><td>${esc(k)}</td><td class="n"><b>${fmt(o.q)}</b></td><td class="n">${o.r.size}</td><td class="n">${o.t.size}</td><td>${bar(o.q,mxS)}</td></tr>`).join('')}</table></div></div>
    <div class="slbl">Por tienda · toca una para ver de qué recibo salió</div>${tiendas}
    <div class="slbl" style="margin-top:12px">Por recibo · toca uno para ver su distribución por tienda</div>${recibos}
-   <div class="msg">Cuenta lo surtido con fecha ${esc(fdate(PDD))}: recibos manuales, pedidos automáticos, túnel y proformas. Lo cargado como ya trabajado (Consultas ERP) aparece como “Sin surtidor”.</div>`}
+   <div class="msg">Solo cuenta lo que tú surtiste el ${esc(fdate(PDD))}: recibos manuales, pedidos automáticos, túnel y proformas.</div>`}
 $('recProd').onclick=openPdn;
 
 function renderPro(){renderPro0();if(!$('prUp')){const d=document.createElement('div');d.id='prUp';$('prBody').appendChild(d)}if(!$('prChk')){const d=document.createElement('div');d.id='prChk';$('prBody').appendChild(d)}const [a,b]=prRange();upLoad(a,b);chkLoad(a,b)}
@@ -1398,16 +1396,17 @@ function parseErp(t){
   if(fb){sur=fb[1];bulF=+fb[2]}else{const fa=t.match(/AUTORIZADO DESPACHADO CHEQUEADO BULTOS\s+(?:\d{2}\/\w{3}\/\d{4}\s+[\d:]+\s*[ap]\.?m\.?\s+)?(\S+)\s+(\S+)/i);if(fa){const [a,b]=[fa[1],fa[2]];if(/^\d+$/.test(a)&&!/^\d+$/.test(b)){bulF=+a;sur=b}else{sur=a;bulF=+b}}}
   /* El surtidor que cuenta es quien hizo el PRIMER despacho (aparece como usuario en "Guía de Embarque #"). "provira" es la cuenta con la que se
      despacha después en Visión (despacho formal): no es una persona y nunca se toma como surtidor. */
-  {const g1=(t.match(/Gu[ií]a de Embarque\s*#:?\s+([a-z][a-z0-9._]{3,19})(?=\s)/)||[])[1],jh=(t.match(/Fecha Despacho:?\s+([a-z][a-z0-9._]{3,19})(?=\s)/)||[])[1];
-   sur=[g1,jh].find(x=>x&&!/^provira$/i.test(x))||''}
+  {const okU=x=>x&&!/^(guia|fecha|inventario|desde|hasta|nota|vehiculo|solicitado|despachado|estatus|saks|bodega|frangipani|tunnel|referencia|bultos|codigo|precio|rec|desp|solici|cantidad|total|env|sepa|descripcion|numero|inventario|distribucion|recibo)$/i.test(x)?x:'',g1=okU((t.match(/Gu[ií]a de Embarque\s*#:?\s+([A-Za-z][A-Za-z0-9._]{3,19})(?=\s)/)||[])[1]),jh=okU((t.match(/Fecha Despacho:?\s+([A-Za-z][A-Za-z0-9._]{3,19})(?=\s)/)||[])[1]);
+   sur=[g1,jh].find(x=>x&&!/^provira$/i.test(x))||(sur&&!/^provira$/i.test(sur)?sur:'')}
   const tm=t.match(/Total:\s*((?:\d+\s*){1,3})/),tot=tm?Math.max(...tm[1].trim().split(/\s+/).map(Number)):0,est=(t.match(/Estatus:\s*\(\w\)\s*(\w+)/i)||[])[1]||'';
-  const REF='[A-Z]{1,3}\\d{4,}[A-Z0-9\\-]*',N='(\\d+(?:\\.\\d+)?)';
+  const REF='(?:[A-Z]{1,3}\\d{4,}[A-Z0-9\\-]*|(?=[A-Z0-9][A-Z0-9\\-\\/\\.]*[A-Z])(?=[A-Z0-9\\-\\/\\.]*\\d)[A-Z0-9][A-Z0-9\\-\\/\\.]{3,})',N='(\\d+(?:\\.\\d+)?)';
   const re=[
+   [new RegExp(`(${REF})\\s(\\d{1,3})\\s(.*?)\\s(?<!\\d)(\\d{7})(?!\\d)\\s-\\s(?:(?!\\s\\d{1,3}\\s(?:${REF})\\s)[^])*?COLOR=\\s+(-?\\d+)\\sPZA\\s(\\d+)\\s${N}\\s(\\d+)`,'g'),m=>({ref:m[1],p:m[4],desp:+m[6],bul:0,pr:+m[7],d:m[3]})],
    [new RegExp(`(${REF})\\s(\\d{1,3})\\s(.*?)\\s(?<!\\d)(\\d{7})(?!\\d)\\s-\\s(\\d+)\\s(\\d+)\\s(?:(?:[^\\s=]+\\s){1,3})?TALLAS=[^]*?COLOR=[^]*?\\s(-?\\d+)\\sPZA\\s(\\d+)\\s${N}\\s(\\d+)`,'g'),m=>({ref:m[1],p:m[4],desp:+m[8],bul:+m[6]>0?+m[6]-+m[5]+1:0,pr:+m[9],d:m[3]})],
    [new RegExp(`(?<!\\d)(\\d{1,3})\\s(\\d+)\\s*-\\s*(\\d+)\\s(${REF})\\s(?<!\\d)(\\d{7})(?!\\d)\\s(.*?)\\sCOLOR=[^]*?TALLAS=[^]*?\\s(-?\\d+)\\sPZA\\s(\\d+)\\s(\\d+)\\s${N}\\s(\\d+)`,'g'),m=>({ref:m[4],p:m[5],desp:+m[9],bul:+m[3]>0?+m[3]-+m[2]+1:0,pr:+m[10],d:m[6]})],
    [new RegExp(`(?<!\\d)(\\d{7})(?!\\d)\\s(\\d+)\\s(\\d+)\\s(.*?)\\s(?:${N}\\sPZA|PZA\\s${N})\\s(\\d{1,3})\\sCOLOR=[^]*?TALLAS=([^]*?)\\s(${REF})\\s(\\d+)(?=\\s\\d{7}\\s|\\sPage|\\sTotal|\\sAUTORIZADO|$)`,'g'),m=>({ref:m[9],p:m[1],desp:+m[3],bul:0,pr:+(m[5]||m[6]),d:m[4]})],
    [new RegExp(`(?<!\\d)(\\d{1,3})\\s(?<!\\d)(\\d{7})(?!\\d)\\s(\\d+)\\s(\\d+)\\s(.*?)\\s(?:PZA\\s${N}|${N}\\sPZA)\\sCOLOR=[^]*?TALLAS=([^]*?)\\s(${REF})\\s(\\d+)(?=\\s\\d{1,3}\\s\\d{7}|\\sPage|\\sTotal|\\sAUTORIZADO|$)`,'g'),m=>({ref:m[8],p:m[2],desp:+m[4],bul:0,pr:+(m[6]||m[7]),d:m[5]})]];
-  let lines=[];for(const [r,f] of re){lines=[...t.matchAll(r)].map(m=>({inv:0,sol:0,res:0,...f(m),d:f(m).d.trim()}));if(lines.length)break}
+  let lines=[];for(const [r,f] of re){const c=[...t.matchAll(r)].map(m=>({inv:0,sol:0,res:0,...f(m),d:f(m).d.trim()}));if(c.length>lines.length||(c.length===lines.length&&c.length&&tm&&c.reduce((a,l)=>a+l.desp,0)===tot&&lines.reduce((a,l)=>a+l.desp,0)!==tot))lines=c} // se queda con el formato que lee más líneas (y cuadra con el total)
   lines.forEach(l=>{l.sol=l.desp});
   const bul=bulF||lines.reduce((a,l)=>a+l.bul,0);
   return{tr:num,ts:ts||Date.now(),sur,org:'BODEGA FRANGIPANI',des:dst,nota:tun?('TÚNEL'+(rc?' · Recibo '+rc:'')):((t.match(/PEDIDOS?\s+AUTOM[ÁA]TICOS?[^]{0,50}/i)||['Pedido automático'])[0].trim()),t:guessStore(dst)||guessStore(t.slice(0,1800)),lines,tot,src:tun?'tun':'auto',det:1,rc,bul,est,
@@ -1423,6 +1422,7 @@ function auMapSur(a){
   a.surRaw=a.sur||'';a.suru='';const raw=aliasKey(a.surRaw);if(!raw){a.sur='';return}
   let h=ALIAS[raw]&&UDIR.find(x=>x.u===ALIAS[raw].u);
   if(!h)h=UDIR.find(x=>aliasKey(x.u)===raw);
+  if(!h&&raw.length>=5){const c=UDIR.filter(x=>aliasKey(x.u).startsWith(raw)||raw.startsWith(aliasKey(x.u)));if(c.length===1)h=c[0]} // el sistema a veces recorta el usuario (Armalvarad → Armalvarado)
   if(!h){const c=UDIR.filter(x=>{const f=aliasKey(x.n.split(/\s+/)[0]);return f.length>=3&&raw.startsWith(f)});if(c.length===1)h=c[0]}
   if(h){a.suru=h.u;a.sur=h.n}else a.sur=''}
 function parseTransfer(t){
