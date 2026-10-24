@@ -31,6 +31,12 @@ h1,h2,h3,.sora{font-family:'72','72full','Inter',system-ui,sans-serif;margin:0}
 .sbox input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--tx);font:500 15px '72','72full','Inter',system-ui,sans-serif;height:100%}
 .sbox input::placeholder{color:#6aa3a8}
 .slbl{font:700 11px '72','72full','Inter',system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--mt);margin:0 2px 7px}
+.tile.pdo{border:2px solid #ff9a1f;background:linear-gradient(180deg,#3d2409,#2a1604);box-shadow:0 0 14px #ff9a1f40}
+.tile.pdo .hd{background:linear-gradient(135deg,#ffb347,#d36a00)}
+.tile.pdo .hd b,.tile.pdo .hd small{color:#2b1400;text-decoration:none}
+.tile.pdo .bd{color:#f3dcc0}.tile.pdo .bd b{color:#fff}
+.tile.pdu .hd{padding:12px 6px}.tile.pdu .hd b{display:block;font-size:17px;line-height:1.2;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:420px){.tile.pdu .hd b{font-size:15px}}
 .tile.dsp.pdt .hd b{text-decoration:none}.tile.pdt{cursor:pointer}.tile.pdz{opacity:.4}.pdd input.f{width:100%;min-width:0}
 .tile.bod{border-style:dashed;opacity:.9}.tile.bod .hd{background:linear-gradient(135deg,#365c63,#26474e)}
 .modal{position:fixed;inset:0;z-index:60;background:#000a;display:flex;align-items:flex-end;justify-content:center}
@@ -1326,17 +1332,16 @@ function renderPdn(){
   const tiles=ORD.map(t=>{const x=ev.filter(e=>e.t===t),q=sumF(x,e=>e.q),sm=pdSm(t);
     if(!q)return `<div class="tile pdz"><div class="hd"><b>${esc(pdNm(t))}</b>${sm?`<small>${esc(sm)}</small>`:''}</div><div class="bd">Piezas: <b>0</b></div></div>`;
     const nr=new Set(x.map(e=>e.id)).size,nt=new Set(x.map(e=>e.tr).filter(Boolean)).size;
-    return `<div class="tile dsp pdt" data-pt="${esc(t)}"><div class="hd"><b>${esc(pdNm(t))}</b>${sm?`<small>${esc(sm)}</small>`:''}</div><div class="bd">Piezas: <b>${fmt(q)}</b><br>Recibos: <b>${fmt(nr)}</b><br>Transf.: <b>${fmt(nt)}</b></div></div>`}).join('');
-  const surt=all&&!PDU?by(e=>e.uu||'—').map(([u,o])=>{const nm=(ev.find(e=>(e.uu||'—')===u)||{}).u||u,oo=by(e=>pdOrg(e.id),ev.filter(e=>(e.uu||'—')===u));
-    return `<details class="card" style="margin:0 0 8px;padding:10px 12px"><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:8px"><span><b>${esc(nm)}</b> <span class="msg" style="margin:0">· ${fmt(o.r.size)} recibo(s)</span></span><b>${fmt(o.q)} pzas</b></summary>
-      <div style="margin-top:6px">${oo.map(([k,r])=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:13px"><span>${esc(k)}</span><b>${fmt(r.q)}</b></div>`).join('')}<button class="btn sm" data-pu="${esc(u)}" style="margin-top:8px;width:100%">Ver solo a ${esc(nm)}</button></div></details>`}).join(''):'';
+    return `<div class="tile pdo pdt" data-pt="${esc(t)}"><div class="hd"><b>${esc(pdNm(t))}</b>${sm?`<small>${esc(sm)}</small>`:''}</div><div class="bd">Piezas: <b>${fmt(q)}</b><br>Recibos: <b>${fmt(nr)}</b><br>Transf.: <b>${fmt(nt)}</b></div></div>`}).join('');
+  const surt=all&&!PDU?'<div class="grid">'+by(e=>e.uu||'—').map(([u,o])=>{const xs=ev.filter(e=>(e.uu||'—')===u),nm=(xs[0]||{}).u||u,nt=new Set(xs.map(e=>e.tr).filter(Boolean)).size;
+    return `<div class="tile pdo pdt pdu" data-pu="${esc(u)}"><div class="hd"><b>${esc(nm)}</b></div><div class="bd">Piezas: <b>${fmt(o.q)}</b><br>Recibos: <b>${fmt(o.r.size)}</b><br>Transf.: <b>${fmt(nt)}</b></div></div>`}).join('')+'</div>':'';
   const recibos=rec.map(([id,o])=>{const tt=by(e=>e.t,ev.filter(e=>e.id===id));
     return `<details class="card" style="margin:0 0 8px;padding:10px 12px"><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:8px"><span><b>${esc(pdRec(id))}</b> <span class="msg" style="margin:0">· ${esc(pdOrg(id))}</span></span><b>${fmt(o.q)} pzas</b></summary>
       <div style="margin-top:6px">${tt.map(([t,r])=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:13px"><span>${esc(LN(t))}</span><b>${fmt(r.q)}</b></div>`).join('')}</div></details>`}).join('');
   $('pdBody').innerHTML=`<div class="kpis">${kpi(all?'Piezas surtidas':'Mis piezas',fmt(tot))}${kpi('Recibos / transferencias',fmt(rec.length))}${kpi('Movimientos',fmt(ev.length))}</div>
    <div class="slbl" style="margin-top:12px">Por tienda · toca una para ver recibo, transferencia, pieza y bulto</div><div class="grid">${tiles}</div>
    <div class="card" style="margin-top:12px"><div class="slbl">Por origen</div><div class="scroll"><table><tr><th>Origen</th><th class="n">Piezas</th><th class="n">%</th><th style="width:30%"></th></tr>${org.map(([k,o])=>`<tr><td>${esc(k)}</td><td class="n"><b>${fmt(o.q)}</b></td><td class="n">${(o.q/tot*100).toFixed(0)}%</td><td>${bar(o.q,mxO)}</td></tr>`).join('')}<tr><td><b>Total</b></td><td class="n"><b>${fmt(tot)}</b></td><td></td><td></td></tr></table></div></div>
-   ${surt?`<div class="slbl" style="margin-top:12px">Por surtidor · seguimiento</div>${surt}`:''}
+   ${surt?`<div class="slbl" style="margin-top:12px">Por surtidor · toca uno para ver solo su producción</div>${surt}`:''}
    <div class="slbl" style="margin-top:12px">Por recibo · toca uno para ver su distribución por tienda</div>${recibos}
    <div class="msg">${all?'Producción de los surtidores':'Solo cuenta lo que tú surtiste'} ${PDD===PDD2?'el':'del'} ${esc(rango)}: distribución de túnel, pedidos automáticos y Cristal clientes (proformas).</div>`}
 // Detalle de una tienda: recibo → transferencia → pieza → bulto
