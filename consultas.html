@@ -379,6 +379,7 @@ async function showRecList(){
       const refs=it.filter(x=>dd[x.p]).length;const si=it.filter(x=>{if(dd[x.p])return true;let a=0,s=0;st.forEach(t=>{const bx=t==='CRISTAL'?(bdm[x.p]||0):0,q=(x.s[t]||0)+bx;a+=q;s+=Math.min((m[x.p+'|'+t]||0)+bx,q)});if(!st.includes('CRISTAL')&&bdm[x.p]){a+=bdm[x.p];s+=bdm[x.p]}return a>0&&s>=a}).length;
       g={A,S,s:A?Math.round(S/A*100):0,d:it.length?Math.round(refs/it.length*100):0,r:refs,n:it.length,si,ts:Date.now()};
       set(R(db,'meta_v1/consultas_prog/'+id),g).catch(()=>{})}
+    if(id===PFID&&!(RECS[id].items||[]).length)g={...g,s:100,d:100};
     $('ra-'+id).textContent=g.s+'%';$('rb-'+id).style.width=g.s+'%';$('da-'+id).textContent=g.d+'%';$('ri-'+id).innerHTML=`Ítems surtidos <b>${fmt(g.si||0)}/${fmt(g.n||0)}</b> · despachados <b>${fmt(g.r||0)}/${fmt(g.n||0)}</b>`;$('db-'+id).style.width=g.d+'%';GP[id]=g;if(g.A!==undefined)$('rp-'+id).innerHTML=`Piezas surtidas <b>${fmt(g.S)}/${fmt(g.A)}</b> · por surtir <b style="color:var(--wn)">${fmt(Math.max(0,g.A-g.S))}</b>`}catch(e){$('ra-'+id).textContent='—';$('da-'+id).textContent='—'}}
   {const bx=$('recList'),cs=[...bx.querySelectorAll(':scope > [data-rec]')];if(cs.length>1){const kv=c=>{const i=c.dataset.rec,g=GP[i]||PROG[i]||{};return[isPs(i)?1:0,g.s||0,g.d||0]};cs.sort((a,b)=>{const x=kv(a),y=kv(b);return y[0]-x[0]||y[1]-x[1]||y[2]-x[2]}).forEach(c=>bx.appendChild(c))}}
 }
@@ -999,7 +1000,11 @@ async function softRefresh(){
     if(RECIBO){
       if(RECS[RECIBO]){DATA=dataOf(RECIBO);STORES=storesFor(DATA);byProd=Object.fromEntries(DATA.map(x=>[x.p,x]));if(cur&&byProd[cur.p])cur=byProd[cur.p]}
       resub()
-    }else await showRecList();
+    }else if(!$('v-stat').classList.contains('hide')){await statLoad(true);buildFilters();renderStat()}
+    else if(!$('v-pro').classList.contains('hide')){await statLoad(true);prFilters();renderPro()}
+    else if(!$('v-auto').classList.contains('hide')){if(window._auMode==='prf')await pfList();else if(window._auMode!=='tunm')await auList()}
+    else if(!$('v-pal').classList.contains('hide')||!$('v-pkl').classList.contains('hide')){/* palets y packing list ya escuchan en vivo */}
+    else await showRecList();
     toast('✅ Datos actualizados')
   }catch(e){toast('No se pudo actualizar: '+(e.code||e.message))}
   setTimeout(()=>b.classList.remove('spin'),500)
@@ -1095,11 +1100,11 @@ function renderStat(){
   const byR=Object.entries(grpBy(sv,dv,e=>e.id)).sort((a,b)=>b[0].localeCompare(a[0]));
   const byD=Object.entries(grpBy(sv,dv,e=>e.d)).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,31);
   $('stBody').innerHTML=`<div class="kpis">${kpi('Piezas surtidas',fmt(Spz))}${kpi('Piezas despachadas',fmt(Dpz),'am')}${kpi('Bultos despachados',fmt(Math.round(Dbu)),'am')}${kpi('Referencias despachadas',fmt(Drf))}
-    ${kpi('Recibos',fmt(rids.size)+' <small>/ '+fmt(Object.keys(RECS).length)+'</small>')}${kpi('Tiendas atendidas',fmt(sts.size))}${kpi('Surtidores',fmt(us.size))}${kpi('Avance despacho',pc,'am')}</div>
+    ${kpi('Recibos',fmt(rids.size)+' <small>/ '+fmt(Object.keys(RECS).length)+'</small>')}${kpi('Tiendas atendidas',fmt(sts.size))}${kpi('Surtidores',fmt(us.size))}${kpi('Avance despacho',pc,'am')}${kpi('Pendiente por surtir',fmt(scope.reduce((t,id)=>{const r=pendRec(id);return t+(r?r.A-r.S:0)},0)),'am')}</div>
     <div class="msg" style="margin:-4px 2px 12px">Piezas recibidas en los recibos del filtro: <b>${fmt(rec)}</b> · a distribuir a tiendas: <b>${fmt(dist)}</b>${noDate?'':' · el avance solo se calcula sin filtros de fecha, surtidor ni búsqueda'}</div>
+    <div class="card"><div class="slbl">⏳ Pendiente por surtir · por mes de ingreso del recibo</div>${pendTbl(scope)}</div>
     <div class="slbl">Tiendas · toca una para ver el detalle por mes</div>
     <div class="grid" style="margin-bottom:14px">${tOrder.map(t=>`<div class="tile" data-ss="${t}" style="cursor:pointer"><div class="hd"><b>${L(t)}</b>${NAMES[t]?`<small>${NAMES[t]}</small>`:''}</div><div class="bd">Surtido: <b>${fmt(byT[t].s)}</b><br>Despacho: <b style="color:#f5a623">${fmt(byT[t].d)}</b><div class="bar"><i style="width:${Math.round(byT[t].s/mxT*100)}%"></i></div><div class="bar" style="margin-top:4px;height:10px"><i style="width:${Math.round(byT[t].d/mxT*100)}%;background:#f5a623"></i></div></div></div>`).join('')||'<div class="msg">Sin movimientos con este filtro.</div>'}</div>
-    <div class="card"><div class="slbl">Pendiente por surtir · por mes de ingreso del recibo</div>${pendTbl(scope)}</div>
     <div class="card"><div class="slbl">Por mes</div>${dualTbl('Mes',byM,mxOf(byM),mlabel)}</div>
     <div class="card"><div class="slbl">Por proveedor</div>${dualTbl('Proveedor',byV,mxOf(byV))}</div>
     <div class="card"><div class="slbl">Por recibo</div>${dualTbl('Recibo',byR,mxOf(byR),k=>`<b>#${esc(k)}</b>${PROV[k]?`<div class="msg" style="margin:0">${esc(PROV[k])}</div>`:''}`)}</div>
@@ -1309,7 +1314,7 @@ function parseTransfer(t){
   {const pm=t.match(/(?:^|\s)(\d{1,2})\/(\d{1,2})\/(\d{2}),?\s+(\d{1,2}):(\d{2})(?:\s|$)/);
    if(pm&&+pm[2]>=1&&+pm[2]<=12&&+pm[1]>=1&&+pm[1]<=31){const p=new Date(2000+ +pm[3],+pm[2]-1,+pm[1],+pm[4],+pm[5]).getTime();if(isFinite(p)&&(!fs||p>=tsS)){ts=p;tsSrc='imp'}}}
   return{tr,ts,tsSrc,tsSol:tsS,tsAuto:ts,sur,org,des,nota,t:guessStore(des),lines,tot}}
-function openAu(mode){$('v-rec').classList.add('hide');$('v-auto').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent=mode==='auto'?'Pedidos automáticos':mode==='tun'?'Túnel':mode==='prf'?'Proformas':'Túnel manual';window.scrollTo(0,0);AU=null;$('auReview').innerHTML='';$('auMsg').textContent='';
+function openAu(mode){window._auMode=mode;$('v-rec').classList.add('hide');$('v-auto').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent=mode==='auto'?'Pedidos automáticos':mode==='tun'?'Túnel':mode==='prf'?'Proformas':'Túnel manual';window.scrollTo(0,0);AU=null;$('auReview').innerHTML='';$('auMsg').textContent='';
   $('auUpCard').classList.toggle('hide',mode==='tunm'||mode==='prf');$('pfCard').classList.toggle('hide',mode!=='prf');$('pfMsg').textContent='';$('auListT').textContent=mode==='prf'?'Proformas cargadas':'Transferencias cargadas';$('auSrc').value=mode==='auto'?'auto':'tun';if(mode==='prf')pfList();else auList();if(mode==='tunm')auManualStart()}
 $('recPrf').onclick=()=>openAu('prf');$('recAuto').onclick=()=>openAu('auto');$('recTun').onclick=()=>openAu('tun');$('recTunM').onclick=()=>openAu('tunm');
 // Túnel manual: se arma la transferencia a mano (sin PDF) y usa el mismo guardado del túnel
