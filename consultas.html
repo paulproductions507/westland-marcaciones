@@ -68,7 +68,8 @@ h1,h2,h3,.sora{font-family:'72','72full','Inter',system-ui,sans-serif;margin:0}
 .bottom{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:#041f26f2;border-top:1px solid var(--bd);display:flex;gap:10px;align-items:center}
 .bottom .sum{flex:1;font-size:12.5px;color:var(--mt)}.bottom .sum b{color:var(--ac);font-size:15px}
 table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px 8px;text-align:left;border-bottom:1px solid #17697a55}th{color:var(--mt);font-size:11px;text-transform:uppercase;letter-spacing:.06em}td.n,th.n{text-align:right;font-family:'DM Mono',monospace}
-.scroll{overflow-x:auto}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+body{max-width:100%;overflow-x:hidden}#v-auto,#v-pal,#v-pkl,#v-stat,#v-pro{max-width:100%}#v-auto .card,#mlblBody{max-width:100%;overflow-x:auto}#auList details{max-width:100%}#auList .scroll table{min-width:520px}
 .gate{max-width:420px;margin:18vh auto;text-align:center;padding:24px}
 .hide{display:none!important}
 .mpanel{margin-top:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px}.mprow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
@@ -159,8 +160,8 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
 <div id="app" class="hide">
   <div class="top">
     <button class="btn sm" id="btnBack" title="Atrás" aria-label="Atrás">←</button>
-    <div class="ttl"><h1 id="ttl">Consultas</h1><small id="who">—</small></div><span style="font-size:10px;opacity:.7;margin-right:6px" id="verTag">V23 octubre-C</span>
-    <button class="btn sm" id="btnRef" title="Actualizar" aria-label="Actualizar">⟳</button>
+    <div class="ttl"><h1 id="ttl">Consultas</h1><small id="who">—</small></div><span style="font-size:10px;opacity:.7;margin-right:6px;display:none" id="verTag">V23 octubre-C</span>
+    <button class="btn sm hide" id="btnRef" title="Actualizar" aria-label="Actualizar">⟳</button>
     <button class="btn sm hide" id="btnHome">Recibos</button>
     <a class="btn sm" id="toMarc" href="index.html" style="text-decoration:none;background:#ff3b30;color:#fff" title="Salir a Marcaciones">⎋ Salir</a>
   </div>
@@ -317,7 +318,7 @@ const RECS={"408158":{"items":[{"n":1,"ref":"BB192","p":"1637118","d":"ORL Torre
 const BUILTIN=new Set(Object.keys(RECS));
 const $=id=>document.getElementById(id);
 const fmt=n=>Number(n||0).toLocaleString('en-US');
-const bul=x=>x.pb>0?Math.floor(x.rec/x.pb):0;const totBul=it=>it.reduce((a,x)=>a+bul(x),0);const fmtB=n=>Number((+n||0).toFixed(2)).toLocaleString('en-US');
+const bul=x=>x.pb>0?Math.floor(x.rec/x.pb):0;const totBul=it=>Math.ceil(Math.round(it.reduce((a,x)=>a+(x.pb>0?x.rec/x.pb:0),0)*100)/100);const fmtB=n=>Number((+n||0).toFixed(2)).toLocaleString('en-US');
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 function toast(t){const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
@@ -361,7 +362,7 @@ async function showRecList(){
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();offLog=offCli=offDsp=offTrf=offTb=offDs=offBg=null;cur=null;RECIBO=null;$('recAdm').classList.toggle('hide',!ISADM);$('recAdm2').classList.toggle('hide',!ISADM);$('recAdm3').classList.toggle('hide',!ISADM);
   $('v-recibo').classList.add('hide');$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Consultas';
   await loadUploaded();for(const k in PSEUDO)if(RECS[k])PROV[k]=PSEUDO[k];await migrateAuto(Object.keys(RECS));autoProv().then(ch=>{if(ch&&!$('v-rec').classList.contains('hide'))showRecList()});const allIds=Object.keys(RECS),PSD={};
-  for(const id of allIds.filter(isPs)){try{const [sn,dn2]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);const m={},dd=dn2.val()||{},it=RECS[id].items||[];Object.values(sn.val()||{}).forEach(e=>{if(e.bd||e.nb)return;m[e.p+'|'+e.t]=(m[e.p+'|'+e.t]||0)+(e.q||0)});PSD[id]=it.length>0&&it.every(x=>dd[x.p]&&Object.entries(x.s||{}).every(([t,a])=>t==='BODEGA'||(m[x.p+'|'+t]||0)>=a))}catch(e){}}
+  for(const id of allIds.filter(isPs)){try{const [sn,dn2]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);const m={},dd=dn2.val()||{},it=RECS[id].items||[];Object.values(sn.val()||{}).forEach(e=>{if(e.bd||e.nb)return;m[e.p+'|'+e.t]=(m[e.p+'|'+e.t]||0)+(e.q||0)});PSD[id]=(id===PFID&&it.length===0)||it.length>0&&it.every(x=>dd[x.p]&&Object.entries(x.s||{}).every(([t,a])=>t==='BODEGA'||(m[x.p+'|'+t]||0)>=a))}catch(e){}}
   const dn=id=>!!COMP[id]||!!PSD[id];const nC=allIds.filter(dn).length;
   $('recTabs').innerHTML=`<button class="btn sm ${recTab==='a'?'pri':''}" data-rtab="a">En proceso (${allIds.length-nC})</button><button class="btn sm ${recTab==='c'?'pri':''}" data-rtab="c">✔ Completados (${nC})</button><select class="f" id="recSortSel" style="width:auto;margin-left:auto;padding:6px 10px;font-size:13px"><option value="new">↕ Más recientes</option><option value="old">↕ Más antiguos</option><option value="prov">↕ Proveedor A–Z</option><option value="num">↕ Número de recibo</option></select>`;$('recSortSel').value=recSort;
   const ids=allIds.filter(id=>dn(id)===(recTab==='c')).sort((a,b)=>{const p=(isPs(b)?1:0)-(isPs(a)?1:0);if(p)return p;const fd=id=>FECHAS[id]||'',nm=(x,y)=>String(y).localeCompare(String(x),undefined,{numeric:true});
@@ -395,7 +396,7 @@ $('recList').addEventListener('click',async e=>{
   const d=e.target.closest('[data-delrec]');
   if(d){e.stopPropagation();const id=d.dataset.delrec;if(!confirm(`¿Quitar el recibo ${id} de la lista?\nLo ya surtido y despachado queda registrado, pero el recibo no se podrá abrir hasta subirlo de nuevo.`))return;
     try{await remove(R(db,'meta_v1/consultas_recs/'+id));try{await remove(R(db,'meta_v1/consultas_fechas/'+id))}catch(e2){}delete FECHAS[id];toast('Recibo quitado');showRecList()}catch(err){toast('Error: '+(err.code||err.message))}return}
-  const c=e.target.closest('[data-rec]');if(c)selectRecibo(c.dataset.rec)});
+  const c=e.target.closest('[data-rec]');if(c){if(c.dataset.rec===PFID&&!((RECS[PFID]||{}).items||[]).length){openAu('prf');return}selectRecibo(c.dataset.rec)}});
 
 // ---------- sesión compartida con la app de marcaciones ----------
 function emailToUser(e){e=(e||'').toLowerCase();let m=e.match(/\+([^@]+)@gmail\.com$/);if(m)return m[1];if(e.endsWith('@saks.com.pa'))return e.split('@')[0];return e.split('@')[0]}
@@ -1031,6 +1032,15 @@ function buildEv(){
       st.forEach(t=>{const q=sp[p+'|'+t]||0;if(q>0)dv.push({...base,t,q,b:bu*q/tot})})}}
   STEV={sv,dv}
 }
+function pendRec(id){const c=STC[id];if(!c||isPs(id))return null;const it=RECS[id].items||[],st=storesFor(it).filter(t=>t!=='BODEGA'),sp={},bd={};
+  for(const e of Object.values(c.log||{})){if(e.mir||e.nb)continue;if(e.bd){bd[e.p]=(bd[e.p]||0)+(e.q||0);continue}sp[e.p+'|'+e.t]=(sp[e.p+'|'+e.t]||0)+(e.q||0)}
+  let A=0,S=0;it.forEach(x=>{st.forEach(t=>{const a=x.s[t]||0;A+=a;S+=Math.min(a,sp[x.p+'|'+t]||0)});const b=bd[x.p]||0;A+=b;S+=b});return{A,S}}
+function pendTbl(scope){const M={};
+  scope.forEach(id=>{const r=pendRec(id);if(!r)return;const k=(FECHAS[id]||'').slice(0,7)||'—',o=M[k]=M[k]||{n:0,A:0,S:0};o.n++;o.A+=r.A;o.S+=r.S});
+  const rows=Object.entries(M).sort((a,b)=>b[0].localeCompare(a[0])),mx=Math.max(1,...rows.map(([,o])=>o.A-o.S)),T=rows.reduce((t,[,o])=>({n:t.n+o.n,A:t.A+o.A,S:t.S+o.S}),{n:0,A:0,S:0});
+  if(!rows.length)return '<div class="msg">Sin recibos con este filtro.</div>';
+  return `<div class="scroll"><table><tr><th>Mes</th><th class="n">Recibos</th><th class="n">A distribuir</th><th class="n">Surtidas</th><th class="n">Pendiente</th><th style="width:22%"></th></tr>${rows.map(([k,o])=>{const p=o.A-o.S;return `<tr><td>${k==='—'?'Sin fecha':esc(mlabel(k))}</td><td class="n">${fmt(o.n)}</td><td class="n">${fmt(o.A)}</td><td class="n">${fmt(o.S)}</td><td class="n"><b style="color:${p?'var(--wn)':'var(--ok)'}">${fmt(p)}</b></td><td><div class="bar" style="margin:0"><i style="width:${p?Math.max(2,Math.round(p/mx*100)):0}%;background:#f5a623"></i></div></td></tr>`}).join('')}<tr><td><b>Total</b></td><td class="n"><b>${fmt(T.n)}</b></td><td class="n"><b>${fmt(T.A)}</b></td><td class="n"><b>${fmt(T.S)}</b></td><td class="n"><b>${fmt(T.A-T.S)}</b></td><td></td></tr></table></div>
+  <div class="msg">Pendiente = piezas asignadas a tiendas que todavía no se han surtido, agrupadas por la fecha de ingreso del recibo.</div>`}
 function okEv(e,skipT){const f=STF;
   if(!ISADM&&e.uu!==USER)return false;
   if(f.m&&(e.d||'').slice(0,7)!==f.m)return false;if(f.d1&&e.d<f.d1)return false;if(f.d2&&e.d>f.d2)return false;
@@ -1089,6 +1099,7 @@ function renderStat(){
     <div class="msg" style="margin:-4px 2px 12px">Piezas recibidas en los recibos del filtro: <b>${fmt(rec)}</b> · a distribuir a tiendas: <b>${fmt(dist)}</b>${noDate?'':' · el avance solo se calcula sin filtros de fecha, surtidor ni búsqueda'}</div>
     <div class="slbl">Tiendas · toca una para ver el detalle por mes</div>
     <div class="grid" style="margin-bottom:14px">${tOrder.map(t=>`<div class="tile" data-ss="${t}" style="cursor:pointer"><div class="hd"><b>${L(t)}</b>${NAMES[t]?`<small>${NAMES[t]}</small>`:''}</div><div class="bd">Surtido: <b>${fmt(byT[t].s)}</b><br>Despacho: <b style="color:#f5a623">${fmt(byT[t].d)}</b><div class="bar"><i style="width:${Math.round(byT[t].s/mxT*100)}%"></i></div><div class="bar" style="margin-top:4px;height:10px"><i style="width:${Math.round(byT[t].d/mxT*100)}%;background:#f5a623"></i></div></div></div>`).join('')||'<div class="msg">Sin movimientos con este filtro.</div>'}</div>
+    <div class="card"><div class="slbl">Pendiente por surtir · por mes de ingreso del recibo</div>${pendTbl(scope)}</div>
     <div class="card"><div class="slbl">Por mes</div>${dualTbl('Mes',byM,mxOf(byM),mlabel)}</div>
     <div class="card"><div class="slbl">Por proveedor</div>${dualTbl('Proveedor',byV,mxOf(byV))}</div>
     <div class="card"><div class="slbl">Por recibo</div>${dualTbl('Recibo',byR,mxOf(byR),k=>`<b>#${esc(k)}</b>${PROV[k]?`<div class="msg" style="margin:0">${esc(PROV[k])}</div>`:''}`)}</div>
@@ -1626,9 +1637,12 @@ async function pfList(){
   const box=$('auList');box.innerHTML='<div class="msg">Cargando…</div>';let all={};
   try{all=(await get(R(db,PFB))).val()||{}}catch(e){}
   const rows=Object.values(all).sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,60);
-  box.innerHTML=`<button class="btn sm" id="auMig" style="width:100%;margin-bottom:10px">🔄 Trasladar productos de Túnel / Proformas a su recibo de origen</button>`+(rows.map(m=>`<div class="card" style="margin:0 0 8px"><div style="display:flex;gap:10px;align-items:center"><div style="flex:1"><b class="sora">${esc(m.pf)}</b> <span class="pill p-aq">Cristal</span>${m.cli?` <span class="pill p-bl">${esc(m.cli)}</span>`:''}${m.exc?` <span class="pill p-wn">Diferencia ${fmt(m.exc)}</span>`:''}<div class="msg" style="margin:4px 0 0">${fdt(m.ts)} · Surtidor <b>${esc(m.sur||'')}</b> · ${fmt(m.n||0)} líneas · ${fmt(m.pz||0)} pzas · ${[...new Set((m.lines||[]).map(l=>l.rc?'recibo #'+l.rc:'recibo PROFORMAS'))].join(', ')}</div><details style="margin-top:6px"><summary style="cursor:pointer;color:var(--ac)">Ver productos y etiquetas (${(m.lines||[]).length})</summary><div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th>Descripción</th><th class="n">Cant.</th><th>Recibo</th><th></th></tr>${(m.lines||[]).map((l,i)=>`<tr><td>${esc(l.ref||'')}</td><td>${esc(l.p)}</td><td>${esc(l.d||'')}</td><td class="n">${fmt(l.q)}</td><td>${l.rc?'#'+esc(l.rc):'PROFORMAS'}</td><td><button class="btn sm" data-pfpz="${esc(m.pf)}|${i}">🏷</button></td></tr>`).join('')}</table></div></details></div><button class="btn sm" data-pfdel="${esc(m.pf)}">🗑 Quitar</button></div></div>`).join('')||'<div class="msg">Aún no hay proformas. Sube una arriba.</div>');
+  box.innerHTML=`<button class="btn sm" id="auMig" style="width:100%;margin-bottom:8px">🔄 Trasladar productos de Túnel / Proformas a su recibo de origen</button><button class="btn sm" id="pfQclr" style="width:100%;margin-bottom:10px">🧹 Cancelar impresiones pendientes en cola</button>`+(rows.map(m=>`<div class="card" style="margin:0 0 8px"><div style="display:flex;gap:10px;align-items:center"><div style="flex:1"><b class="sora">${esc(m.pf)}</b> <span class="pill p-aq">Cristal</span>${m.cli?` <span class="pill p-bl">${esc(m.cli)}</span>`:''}${m.exc?` <span class="pill p-wn">Diferencia ${fmt(m.exc)}</span>`:''}${m.lb&&m.lb.n?` <span class="pill p-bl">${fmt(m.lb.n)} bulto(s)</span>`:''}<div class="msg" style="margin:4px 0 0">${fdt(m.ts)} · Surtidor <b>${esc(m.sur||'')}</b> · ${fmt(m.n||0)} líneas · ${fmt(m.pz||0)} pzas · ${[...new Set((m.lines||[]).map(l=>l.rc?'recibo #'+l.rc:'recibo PROFORMAS'))].join(', ')}</div><details style="margin-top:6px"><summary style="cursor:pointer;color:var(--ac)">Ver productos (${(m.lines||[]).length})</summary><div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th>Descripción</th><th class="n">Cant.</th><th>Recibo</th></tr>${(m.lines||[]).map(l=>`<tr><td>${esc(l.ref||'')}</td><td>${esc(l.p)}</td><td>${esc(l.d||'')}</td><td class="n">${fmt(l.q)}</td><td>${l.rc?'#'+esc(l.rc):'PROFORMAS'}</td></tr>`).join('')}</table></div></details></div><button class="btn sm pri" data-pfbl="${esc(m.pf)}">🏷 Etiquetas (bultos)</button><button class="btn sm" data-pfdel="${esc(m.pf)}">🗑 Quitar</button></div></div>`).join('')||'<div class="msg">Aún no hay proformas. Sube una arriba.</div>');
   box.onclick=async e=>{if(e.target.closest('#auMig')){await pseudoMigrate();pfList();return}
-    const zb=e.target.closest('[data-pfpz]');if(zb){const [pf,ix]=zb.dataset.pfpz.split('|'),l=((all[pf]||{}).lines||[])[Number(ix)];if(l)openPz(String(l.p),{p:String(l.p),ref:l.ref||'',q:l.q||1});return}
+    if(e.target.closest('#pfQclr')){try{const v=(await get(R(db,PRQ+'/pend'))).val()||{},k=Object.keys(v);if(!k.length){toast('No hay impresiones pendientes');return}
+      if(!confirm(`Hay ${k.length} trabajo(s) en la cola (${k.reduce((a,i)=>a+(v[i].n||0),0)} hoja(s)). ¿Cancelarlos todos? No se imprimirán.`))return;
+      await remove(R(db,PRQ+'/pend'));toast('✅ Cola de impresión vacía')}catch(err){toast('Error: '+(err.code||err.message))}return}
+    const bl=e.target.closest('[data-pfbl]');if(bl){openPfLbl(bl.dataset.pfbl,all[bl.dataset.pfbl]);return}
     const d=e.target.closest('[data-pfdel]');if(!d)return;const pf=d.dataset.pfdel,m=all[pf];if(!m)return;
     if(!confirm(`¿Quitar la proforma ${pf}? Se borra su surtido de los recibos, vuelve el saldo de Bodega y deja de sumar a la producción.`))return;
     try{await pfUndo(pf,m);toast('Proforma quitada');pfList()}catch(err){toast('Error: '+(err.code||err.message))}}}
@@ -1894,6 +1908,34 @@ $('mlblBody').addEventListener('input',e=>{
 });
 // ---------- Etiquetas por pieza (Cristal) · solo número de producto, 12 por hoja ----------
 let pzSt=null;
+
+// ---------- Etiquetas de BULTOS de una proforma (Cristal): la cantidad de bultos se escribe a mano ----------
+let pfLb=null;
+function pfLbPrev(){const k=Math.max(1,Math.min(PER,pfLb.n||1));return sheetHTML('CR','PRF '+pfLb.pf,'Cristal',Math.max(1,pfLb.n||1),pfLb.first||1,rangeIdx(1,k))}
+function pfLbTxt(){const n=pfLb.n;return n>0?`🖨 Imprimir ${n} bulto(s) · ${Math.ceil(n/PER)} hoja(s)`:'🖨 Imprimir'}
+function openPfLbl(pf,m){
+  const lb=(m&&m.lb)||{};pfLb={pf,n:lb.n||0,first:lb.first||0,saved:lb.n||0};
+  history.pushState({c:4},'');$('mlbl').classList.remove('hide');
+  $('mlblBody').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2 style="font-size:17px">Etiquetas de bultos · Proforma ${esc(pf)}</h2><button class="btn sm" id="pfbX">Cerrar</button></div>
+  <div class="msg" style="margin:4px 0 10px">${m&&m.cli?'Cliente <b>'+esc(m.cli)+'</b> · ':''}Escribe cuántos bultos lleva esta proforma. Cada hoja trae ${PER} etiquetas. Los números GB se asignan al imprimir y, si repites la misma cantidad, se reutilizan.</div>
+  <div id="pfbPrev"></div>
+  <div style="margin-top:12px"><div class="lbl">Cantidad de bultos</div><input class="f" type="number" inputmode="numeric" min="1" max="${PER*20}" id="pfbQty" value="${pfLb.n||''}" placeholder="Ej. 12"></div>
+  <button class="btn pri" id="pfbPrint" style="width:100%;margin-top:14px;padding:13px"></button>`;
+  pfLbPaint()}
+function pfLbPaint(){$('pfbPrev').innerHTML=pfLb.n>0?pfLbPrev():'<div class="msg">Escribe la cantidad de bultos para ver la etiqueta</div>';$('pfbPrint').textContent=pfLbTxt();paintPreview($('pfbPrev'))}
+$('mlblBody').addEventListener('click',async e=>{
+  if(e.target.id==='pfbX'){history.back();return}
+  if(e.target.id!=='pfbPrint')return;
+  const n=pfLb.n;if(!(n>=1)){toast('Escribe cuántos bultos son');return}
+  const sheets=Math.ceil(n/PER);if(sheets>20){toast(`Máximo 20 hojas (${20*PER} bultos) por envío`);return}
+  e.target.disabled=true;
+  try{let first=(pfLb.saved===n&&pfLb.first)?pfLb.first:await allocBultos(n);if(first===null||first===undefined)throw new Error('No se pudo reservar la numeración');
+    let zpl='';for(let s=1;s<=n;s+=PER)zpl+=zplSheet('CR','PRF '+pfLb.pf,'Cristal',n,first,rangeIdx(s,Math.min(n,s+PER-1)))+'\n';
+    await enqueuePrint(zpl,{tr:pfLb.pf,t:'CRISTAL',n:sheets});
+    try{await set(R(db,PFB+'/'+pfLb.pf+'/lb'),{n,first,u:USER,ts:Date.now()})}catch(e2){}
+    history.back()}catch(err){toast('Error: '+(err.code||err.message));e.target.disabled=false}
+});
+$('mlblBody').addEventListener('input',e=>{if(e.target.id!=='pfbQty')return;pfLb.n=Math.max(0,parseInt(e.target.value,10)||0);pfLbPaint()});
 const PZ_MAX_HOJAS=30;
 function zplPieces(p,k){
   const out=['^XA^CI28^PW812^LL609^LH0,0','^FO276,0^GB1,609,1^FS','^FO532,0^GB1,609,1^FS'];
@@ -1908,7 +1950,7 @@ function pzSheetHTML(p,k){
   [1,2,3].forEach(r=>h+=`<div style="position:absolute;left:0;top:${14+r*146-8}px;width:812px;height:1px;background:#bbb"></div>`);
   for(let i=0;i<k;i++){const col=i%3,row=Math.floor(i/3),x=34+col*256,y=14+row*146;
     h+=`<div style="position:absolute;left:${x}px;top:${y}px;font:800 44px Arial,sans-serif;line-height:44px">${esc(p)}</div>`
-      +`<svg class="bcg" data-code="${esc(p)}" style="position:absolute;left:${x+8}px;top:${y+54}px"></svg>`}
+      +`<div style="position:absolute;left:${x+8}px;top:${y+54}px"><svg class="bcg" data-code="${esc(p)}"></svg></div>`}
   return h+'</div></div>'
 }
 function pzBtnTxt(){const q=pzSt.q;return q>0?`🖨 Imprimir ${q} etiqueta(s) · ${Math.ceil(q/PER)} hoja(s)`:'🖨 Imprimir'}
