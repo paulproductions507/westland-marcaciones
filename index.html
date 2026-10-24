@@ -2469,7 +2469,21 @@ function listenNotifs(){
     });
   });
 }
+const DEVID=Math.random().toString(36).slice(2);let _ctrlOn=false;
+// Señal global: cuando provira la emite, todos los dispositivos con esta versión cierran sesión y recargan la app nueva
+function startCtrl(){if(_ctrlOn)return;_ctrlOn=true;let first=true,seen=0;
+  onValue(R(db,'meta_v1/app_ctrl/all'),sn=>{const v=sn.val(),at=(v&&v.at)||0;if(first){first=false;seen=at;return}
+    if(!at||at===seen)return;seen=at;if(v.dev===DEVID)return;
+    toast('🔄 Actualización: vuelve a iniciar sesión','',5000);
+    setTimeout(async()=>{try{await doLogout()}catch(e){}
+      try{if(navigator.serviceWorker){(await navigator.serviceWorker.getRegistrations()).forEach(r=>r.unregister())}if(window.caches){(await caches.keys()).forEach(k=>caches.delete(k))}}catch(e){}
+      location.replace(location.pathname+'?v='+Date.now())},1200)},()=>{})}
+// Botón oculto (solo provira): 7 toques seguidos sobre el título de la barra superior envían la señal
+{let n=0,t0=0;document.addEventListener('click',async e=>{if(!e.target.closest('.tb-title')||CU!==SUPERADMIN)return;const now=Date.now();if(now-t0>4000)n=0;t0=now;if(++n<7)return;n=0;
+  if(!confirm('¿Cerrar la sesión de TODOS los dispositivos (Marcaciones y Consultas)? Tendrán que iniciar sesión de nuevo.'))return;
+  try{await set(R(db,'meta_v1/app_ctrl/all'),{at:Date.now(),by:CU,dev:DEVID});toast('✅ Señal enviada a todos los dispositivos','ok',4000)}catch(err){toast('No se pudo enviar: '+(err.code||err.message),'err',4000)}})}
 function startSess(){
+  startCtrl();
   clearInterval(sTimer);sLeft=300;el('sess-bar').style.display='none';lastActive=Date.now();
   sTimer=setInterval(()=>{
     // Recalculate from real elapsed time (handles background/resume correctly)
