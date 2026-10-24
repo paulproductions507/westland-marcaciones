@@ -2474,6 +2474,7 @@ function startSess(){
   sTimer=setInterval(()=>{
     // Recalculate from real elapsed time (handles background/resume correctly)
     const elapsed=Math.floor((Date.now()-lastActive)/1000);
+    if(CU===SUPERADMIN){lastActive=Date.now();sLeft=300;el('sess-bar').style.display='none';el('sess-tmr').textContent='⏱ ∞';return;}
     sLeft=Math.max(0,300-elapsed);
     el('sess-tmr').textContent=`⏱ ${String(Math.floor(sLeft/60)).padStart(2,'0')}:${String(sLeft%60).padStart(2,'0')}`;
     if(sLeft<=60){el('sess-bar').style.display='block';el('sess-cd').textContent=sLeft;}
@@ -2575,6 +2576,9 @@ function fmtDiaLargo(iso){const d=new Date(iso+'T12:00:00');return `${DIA_LARGO[
 // Todos los usuarios (incluyendo provira y aalvarado) inician sesión con el mismo formato
 // de correo de acceso del proyecto westland-marcaciones: +alias@gmail.com. Solo aojo
 // conserva su cuenta real @saks.com.pa.
+// Correo REAL para avisos/correos (el alias +usuario@gmail.com es solo para iniciar sesión en Firebase)
+const REAL_MAIL={provira:'provira@saks.com.pa'};
+const realMail=(user,em)=>REAL_MAIL[String(user||'').toLowerCase()]||em||'';
 const u2e=u=>{
   const uu=String(u).toLowerCase();
   return ['aojo'].includes(uu)
@@ -2902,7 +2906,7 @@ async function ensureDefaults(){
   if(!hs.exists())writes.push(set(R(db,HOR),{dia:"todos",inicio:"09:00",fin:"18:00",duracionAlm:60}));
   if(!fs.exists())writes.push(set(R(db,FER),{}));
   if(!us.exists())writes.push(set(R(db,USERS),{
-    provira:{nombre:"Paul Rovira",cedula:"8-859-12",user:"provira",email:u2e("provira"),rol:"Administrador",tarifa:{regular:20,domingo:25,feriado:30,especial:46.15},profileUrl:""},
+    provira:{nombre:"Paul Rovira",cedula:"8-859-12",user:"provira",email:"provira@saks.com.pa",rol:"Administrador",tarifa:{regular:20,domingo:25,feriado:30,especial:46.15},profileUrl:""},
     aalvarado:{nombre:"Armando Alvarado",cedula:"8-514-658",user:"aalvarado",email:u2e("aalvarado"),rol:"Administrador",tarifa:{regular:20,domingo:25,feriado:35,especial:46.15},profileUrl:""},
     jdecerega:{nombre:"Javier Decerega",cedula:"",user:"jdecerega",email:"jdecerega@saks.com.pa",rol:"Gerente",tarifa:{regular:0,domingo:0,feriado:0,especial:0},profileUrl:""},
     aojo:{nombre:"Aida Ojo",cedula:"",user:"aojo",email:"aojo@saks.com.pa",rol:"Gerente",tarifa:{regular:0,domingo:0,feriado:0,especial:0},profileUrl:""}
@@ -5197,7 +5201,7 @@ el('lforg').addEventListener('click',async e=>{
   const user=el('lu').value.trim();
   const subj=encodeURIComponent('Solicitud restablecimiento contraseña — Westland Marcaciones');
   const body=encodeURIComponent(`Buenas,\n\nEl usuario "${user||'(no especificado)'}" solicita restablecer su contraseña en el sistema de marcaciones Westland.\n\nFavor atender a la brevedad.\n\nGracias.`);
-  window.open(`mailto:westlandoutletjugueterianivel+provira@gmail.com?subject=${subj}&body=${body}`,'_blank');
+  window.open(`mailto:provira@saks.com.pa?subject=${subj}&body=${body}`,'_blank');
   toast('Se abrió tu correo para enviar la solicitud','ok',4000);
 });
 el('btn-logout').addEventListener('click',async()=>{await doLogout();toast('Sesión cerrada');});
@@ -5442,7 +5446,7 @@ el('btn-confirmar-envio-banco').addEventListener('click',async function(){
     emailjs.init(ejs.publicKey);
     const nombreColab=(CUM&&CUM.nombre)||CU;
     const cedula=(CUM&&CUM.cedula)||'(no registrada)';
-    const emailColab=(CUM&&CUM.email)||'(no registrado)';
+    const emailColab=realMail(CU,CUM&&CUM.email)||'(no registrado)';
     const msg='<div style="font-family:Arial,sans-serif;color:#022;max-width:600px">'
       +'<h2 style="color:#00313C;margin:0 0 4px 0">📋 Datos Bancarios — '+nombreColab+'</h2>'
       +'<p style="font-size:13px;color:#555;margin:0 0 14px 0">El colaborador <strong>'+nombreColab+'</strong> ha registrado sus datos de pago.</p>'
@@ -5492,7 +5496,7 @@ el('btn-enviar-banco-mailto')?.addEventListener('click',function(){
   const tel=metodo==='yappy'?el('banco-yappy-tel').value.trim():'';
   const nombreColab=(CUM&&CUM.nombre)||CU;
   const cedula=(CUM&&CUM.cedula)||'(no registrada)';
-  const emailColab=(CUM&&CUM.email)||'(no registrado)';
+  const emailColab=realMail(CU,CUM&&CUM.email)||'(no registrado)';
   const asunto=encodeURIComponent('Datos bancarios — '+nombreColab+' — Juguetería Westland Nivel 300');
   const cuerpo=encodeURIComponent(
     'Estimado/a Javier Decerega,\n\n'
@@ -6276,7 +6280,7 @@ async function loadBandejaBanco(){
         +`<input type="checkbox" class="bandeja-check" data-uid="${uid}" style="width:auto;accent-color:var(--ac)">`
         +`<div style="flex:1">`
         +`<div style="font-size:13px;font-weight:800;color:var(--tx)">${v.nombre||uid} <span style="color:var(--mt);font-size:11px;font-weight:400">(${uid})</span></div>`
-        +`<div style="font-size:11px;color:var(--mt)">Cédula: ${v.cedula||'—'} · Email: ${v.email||'—'}</div>`
+        +`<div style="font-size:11px;color:var(--mt)">Cédula: ${v.cedula||'—'} · Email: ${realMail(v.user,v.email)||'—'}</div>`
         +`<div style="font-size:12px;color:var(--ac);margin-top:3px">${metodo} · ${v.banco||'—'} · <strong>${cuenta}</strong> · ${v.tipoCuenta||'—'}</div>`
         +`<div style="font-size:10px;color:var(--mt);margin-top:2px">Recibido: ${v.ts?new Date(v.ts).toLocaleString('es'):'—'}`
         +(v.archivoNombre?` · 📎 ${v.archivoNombre}`:'')
@@ -6329,7 +6333,7 @@ el('btn-bandeja-enviar')?.addEventListener('click',async()=>{
     const bg=i%2===0?'':'background:#f9f9f9';
     return`<tr style="${bg}"><td style="${TD}"><strong>${d.nombre}</strong><br><span style="font-size:10px;color:#888">${d.uid}</span></td>`
       +`<td style="${TD}">${d.cedula||'—'}</td>`
-      +`<td style="${TD}">${d.email||'—'}</td>`
+      +`<td style="${TD}">${realMail(d.user,d.email)||'—'}</td>`
       +`<td style="${TD}">${metodo}</td>`
       +`<td style="${TD}">${d.banco||'—'}</td>`
       +`<td style="${TD}">${d.tipoCuenta||'—'}</td>`
@@ -6372,7 +6376,7 @@ async function depositarEnBandeja(userKey,bancoData){
       ...bancoData,
       nombre:u.nombre||userKey,
       cedula:u.cedula||'',
-      email:u.email||u.perfil?.email||'',
+      email:realMail(u.user,u.email||u.perfil?.email),
       ts:new Date().toISOString()
     });
   }catch(e){console.warn('Error depositando en bandeja:',e);}
@@ -10934,7 +10938,7 @@ async function enviarAcusePorCorreo(acuse){
   if(!toEmail){
     try{
       const all=await getUsers();
-      const emails=acuse.destinatarios.filter(d=>!d.esArea).map(d=>Object.values(all).find(u=>u.user===d.id)?.email).filter(Boolean);
+      const emails=acuse.destinatarios.filter(d=>!d.esArea).map(d=>realMail(d.id,Object.values(all).find(u=>u.user===d.id)?.email)).filter(Boolean);
       toEmail=emails.join(',');
     }catch(e){}
   }
