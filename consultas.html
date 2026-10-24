@@ -761,6 +761,33 @@ function parseRecibo(aoa){
   return{items,dup,prov:pv}
 }
 // </parse>
+/* Respaldo de lectura de .xlsx: algunos exportes guardan los textos como inlineStr con "<is >" y SheetJS los lee vacíos. Se lee el zip directo. */
+async function xlsxRaw(buf){
+  const u=new Uint8Array(buf),dv=new DataView(buf),td=new TextDecoder();let e=-1;
+  for(let i=u.length-22;i>=Math.max(0,u.length-70000);i--){if(dv.getUint32(i,true)===0x06054b50){e=i;break}}
+  if(e<0)throw new Error('zip');
+  const n=dv.getUint16(e+10,true);let o=dv.getUint32(e+16,true);const ents={};
+  for(let k=0;k<n;k++){if(dv.getUint32(o,true)!==0x02014b50)break;
+    const m=dv.getUint16(o+10,true),cs=dv.getUint32(o+20,true),nl=dv.getUint16(o+28,true),el=dv.getUint16(o+30,true),cl=dv.getUint16(o+32,true),lo=dv.getUint32(o+42,true),name=td.decode(u.subarray(o+46,o+46+nl));
+    ents[name]={m,cs,lo};o+=46+nl+el+cl}
+  const rd=async nm=>{const x=ents[nm];if(!x)return null;const ds=x.lo+30+dv.getUint16(x.lo+26,true)+dv.getUint16(x.lo+28,true),raw=u.subarray(ds,ds+x.cs);
+    if(x.m===0)return td.decode(raw);
+    return td.decode(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer())};
+  const dec=s=>s.replace(/&#x([0-9a-f]+);/gi,(_,x)=>String.fromCharCode(parseInt(x,16))).replace(/&#(\d+);/g,(_,x)=>String.fromCharCode(+x)).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
+  const txt=s=>{let r='',m;const re=/<t\b[^>]*>([\s\S]*?)<\/t>/g;while((m=re.exec(s)))r+=m[1];return dec(r)};
+  const ss=[];const sx=await rd('xl/sharedStrings.xml');if(sx){let m;const re=/<si\b[^>]*>([\s\S]*?)<\/si>/g;while((m=re.exec(sx)))ss.push(txt(m[1]))}
+  const out=[];
+  for(const nm of Object.keys(ents).filter(k=>/^xl\/worksheets\/sheet\d+\.xml$/.test(k)).sort((a,b)=>parseInt(a.match(/(\d+)\.xml/)[1])-parseInt(b.match(/(\d+)\.xml/)[1]))){
+    const xml=await rd(nm),aoa=[];let rm;const rr=/<row\b[^>]*>([\s\S]*?)<\/row>/g;
+    while((rm=rr.exec(xml))){const ra=rm[0].match(/<row\b[^>]*?\br="(\d+)"/);let cm;const cr=/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g,row=[];
+      while((cm=cr.exec(rm[1]))){const at=cm[1],ref=(at.match(/\br="([A-Z]+)\d+"/)||[])[1],t=(at.match(/\bt="(\w+)"/)||[])[1],body=cm[2]||'';if(!ref)continue;
+        let ci=0;for(const ch of ref)ci=ci*26+ch.charCodeAt(0)-64;ci--;
+        const vm=body.match(/<v\b[^>]*>([\s\S]*?)<\/v>/);let v='';
+        if(t==='inlineStr')v=txt(body);else if(t==='s')v=vm?(ss[+vm[1]]??''):'';else if(t==='str'||t==='e')v=vm?dec(vm[1]):'';else if(t==='b')v=vm?vm[1]==='1':'';else if(vm){const x=parseFloat(vm[1]);v=isFinite(x)?x:dec(vm[1])}
+        while(row.length<ci)row.push('');row[ci]=v}
+      const ri=ra?parseInt(ra[1],10)-1:aoa.length;while(aoa.length<ri)aoa.push([]);aoa[ri]=row}
+    out.push(aoa)}
+  return out}
 // ---------- Proveedor: se lee del Historial de recibos (Control Logístico), por número de recibo. No se guarda nada. ----------
 const LOGREC='logistica_recibos_v1';
 async function findProv(idList){
@@ -798,8 +825,9 @@ $('recUp').onclick=()=>$('recFile').click();
 $('recFile').onchange=async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
   try{
-    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});let res=null,aoaOk=null;
+    const buf=await f.arrayBuffer(),wb=XLSX.read(buf,{type:'array'});let res=null,aoaOk=null;
     for(const sn of wb.SheetNames){const aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});const r=parseRecibo(aoa);if(!r.err){res=r;aoaOk=aoa;break}res=res||r}
+    if(res&&res.err){try{for(const aoa of await xlsxRaw(buf)){const r=parseRecibo(aoa);if(!r.err){res=r;aoaOk=aoa;break}}}catch(e2){}}
     if(res.err){alert(res.err+'\n\nEncabezados leídos:\n'+res.headers.join(' | ')+'\n\nSube el Excel de distribución tal como lo exporta el sistema (encabezados: Ref. Suplidor, Producto, Descripción, Pza x bult, Total Recibido, Dist Tienda, S4…S14, Cristal, Saldo, UPC…).');return}
     /* El modelo de Distribución (embarque neto) no trae el número de recibo: se busca en las primeras filas y en el nombre del archivo; si no está, se escribe a mano. */
     const rcDet=(()=>{for(const r of (aoaOk||[]).slice(0,8))for(const c of (r||[])){const m=String(c??'').match(/recibo\D{0,12}(\d{5,})/i);if(m)return m[1]}return(f.name.match(/\d{5,}/)||[''])[0]})();
