@@ -347,13 +347,13 @@ function selectRecibo(id){
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();
   RECIBO=id;DATA=dataOf(id);BASE=`meta_v1/consultas/${id}/log`;CBASE=`meta_v1/consultas/${id}/clientes`;DSPB=`meta_v1/consultas/${id}/desp`;TRFB=`meta_v1/consultas/${id}/trf`;TRBB=`meta_v1/consultas/${id}/trfb`;DSB=`meta_v1/consultas/${id}/dsps`;BGB=`meta_v1/consultas/${id}/bgen`;
   STORES=storesFor(DATA);byProd=Object.fromEntries(DATA.map(x=>[x.p,x]));LD.log=0;LD.dsp=0;LOG={};CLI={};DSP={};TRF={};TRB={};DS={};BG={};trfEdit=null;trfStore=null;dspSel.clear();cur=null;shown=40;
-  offLog=onValue(R(db,BASE),s=>{LD.log=1;LOG=s.val()||{};renderAll()},e=>{toast('Sin acceso a datos: '+e.code)});
-  offCli=onValue(R(db,CBASE),s=>{CLI=s.val()||{};renderAll()},()=>{});
-  offDsp=onValue(R(db,DSPB),s=>{LD.dsp=1;DSP=s.val()||{};renderAll()},()=>{});
-  offTrf=onValue(R(db,TRFB),s=>{TRF=s.val()||{};renderAll()},()=>{});
-  offTb=onValue(R(db,TRBB),s=>{TRB=s.val()||{};renderAll()},()=>{});
-  offDs=onValue(R(db,DSB),s=>{DS=s.val()||{};renderAll()},()=>{});
-  offBg=onValue(R(db,BGB),s=>{BG=s.val()||{};renderAll()},()=>{});
+  offLog=onValue(R(db,BASE),s=>{LD.log=1;LOG=s.val()||{};renderAllSoon()},e=>{toast('Sin acceso a datos: '+e.code)});
+  offCli=onValue(R(db,CBASE),s=>{CLI=s.val()||{};renderAllSoon()},()=>{});
+  offDsp=onValue(R(db,DSPB),s=>{LD.dsp=1;DSP=s.val()||{};renderAllSoon()},()=>{});
+  offTrf=onValue(R(db,TRFB),s=>{TRF=s.val()||{};renderAllSoon()},()=>{});
+  offTb=onValue(R(db,TRBB),s=>{TRB=s.val()||{};renderAllSoon()},()=>{});
+  offDs=onValue(R(db,DSB),s=>{DS=s.val()||{};renderAllSoon()},()=>{});
+  offBg=onValue(R(db,BGB),s=>{BG=s.val()||{};renderAllSoon()},()=>{});
   $('v-rec').classList.add('hide');$('v-recibo').classList.remove('hide');$('btnHome').classList.remove('hide');
   $('ttl').textContent='Recibo '+id+(PROV[id]?' · '+PROV[id]:'');$('admCli').classList.toggle('hide',!ISADM);
   $('v-prod').classList.add('hide');$('v-list').classList.remove('hide');$('q').value='';
@@ -523,7 +523,9 @@ function openProd(p){history.pushState({c:2},'');
 function closeProd(){cur=null;$('mdsp').classList.add('hide');$('v-prod').classList.add('hide');$('v-list').classList.remove('hide');$('bar').classList.add('hide');renderAll();$('q').focus()}
 $('pback').onclick=closeProd;
 function renderProd(){
-  if(!cur)return;const x=cur;for(const t of STORES){if(sel[t]&&!sel[t].nw&&t!=='CRISTAL')sel[t].tr=lastTr(t)}
+  if(!cur)return;const x=cur;
+  for(const t of STORES){const S=sel[t];if(!S||(t==='CRISTAL'&&hasCli(x.p)))continue;const pn=Math.max(0,(x.s[t]||0)-sur(x.p,t));if(pn===0){S.on=false;S.q=0;S.ed=false}else if(!S.ed||S.q>pn)S.q=pn}
+for(const t of STORES){if(sel[t]&&!sel[t].nw&&t!=='CRISTAL')sel[t].tr=lastTr(t)}
   $('ppos').textContent=`#${x.n} de ${DATA.length}`;
   $('pinfo').innerHTML=`<div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;justify-content:space-between"><div><div class="lbl">Estilo</div><h2 style="font-size:24px">${esc(x.ref)}</h2></div><div style="text-align:right"><div class="lbl">Producto</div><div class="sora" style="font-size:32px;color:var(--ac);line-height:1">${x.p}</div></div></div><div style="color:var(--mt);margin-top:2px">${esc(x.d)}</div><div style="margin-top:8px">${pillFor(x)}</div>
    <div class="kv"><div><span class="lbl">Código barras</span><b style="font-family:'DM Mono'">${x.upc}</b></div><div><span class="lbl">Recibido</span><b>${fmt(x.rec)}</b></div><div><span class="lbl">Pza x bulto</span><b>${fmt(x.pb)}</b></div><div><span class="lbl">Total bultos</span><b style="color:var(--ac)">${fmtB(bul(x))}</b></div><div><span class="lbl">Precio</span><b>$${Number(x.pr||0).toFixed(2)}</b></div><div><span class="lbl">Dist. tiendas</span><b>${fmt(x.dt)}</b></div></div>
@@ -552,10 +554,10 @@ $('phist').addEventListener('click',async e=>{const k=e.target.dataset.del;if(!k
 $('tiles').addEventListener('click',e=>{const sgb=e.target.closest('[data-sug]');if(sgb){sugAsk(sgb.dataset.sug);return}const sgv=e.target.closest('[data-sugv]');if(sgv){sugView(sgv.dataset.sugv);return}const pz=e.target.closest('[data-pz]');if(pz){openPz(pz.dataset.pz);return}const b=e.target.closest('[data-cli]');if(b)openCli(b.dataset.cli);const n=e.target.closest('[data-trnew]');if(n){const t=n.dataset.trnew;sel[t].nw=true;sel[t].tr='';renderProd();const i=document.querySelector(`[data-tr="${t}"]`);if(i)i.focus()}});
 $('tiles').addEventListener('change',e=>{
   const t=e.target.dataset.ck;if(t){sel[t].on=e.target.checked;renderProd();return}
-  if(e.target.dataset.q){sel[e.target.dataset.q].q=parseInt(e.target.value)||0;updateBar()}
+  if(e.target.dataset.q){sel[e.target.dataset.q].q=parseInt(e.target.value)||0;sel[e.target.dataset.q].ed=true;updateBar()}
   if(e.target.dataset.tr){const tt=e.target.dataset.tr;sel[tt].tr=tt==='CRISTAL'?e.target.value.replace(/[^\w-]/g,''):e.target.value.replace(/\D/g,'');updateBar()}
 });
-$('tiles').addEventListener('input',e=>{if(e.target.dataset.q){sel[e.target.dataset.q].q=parseInt(e.target.value)||0;updateBar()}if(e.target.dataset.tr){const tt=e.target.dataset.tr;sel[tt].tr=tt==='CRISTAL'?e.target.value.replace(/[^\w-]/g,''):e.target.value.replace(/\D/g,'');updateBar()}});
+$('tiles').addEventListener('input',e=>{if(e.target.dataset.q){sel[e.target.dataset.q].q=parseInt(e.target.value)||0;sel[e.target.dataset.q].ed=true;updateBar()}if(e.target.dataset.tr){const tt=e.target.dataset.tr;sel[tt].tr=tt==='CRISTAL'?e.target.value.replace(/[^\w-]/g,''):e.target.value.replace(/\D/g,'');updateBar()}});
 $('chkAll').onchange=e=>{for(const t of STORES){if(t==='CRISTAL'&&hasCli(cur.p))continue;const a=cur.s[t]||0,pend=Math.max(0,a-sur(cur.p,t));if(pend>0){sel[t].on=e.target.checked;sel[t].q=pend}}renderProd()};
 function updateBar(){
   if(!cur)return;const on=STORES.filter(t=>sel[t].on);const pz=on.reduce((a,t)=>a+(sel[t].q||0),0);
@@ -1019,13 +1021,13 @@ $('dfXls').onclick=()=>{
 // ---------- Actualizar sin salir de la app ----------
 function resub(){
   if(!RECIBO)return;for(const f of [offLog,offCli,offDsp,offTrf,offTb,offDs,offBg])if(f)f();
-  offLog=onValue(R(db,BASE),s=>{LD.log=1;LOG=s.val()||{};renderAll()},e=>{toast('Sin acceso a datos: '+e.code)});
-  offCli=onValue(R(db,CBASE),s=>{CLI=s.val()||{};renderAll()},()=>{});
-  offDsp=onValue(R(db,DSPB),s=>{LD.dsp=1;DSP=s.val()||{};renderAll()},()=>{});
-  offTrf=onValue(R(db,TRFB),s=>{TRF=s.val()||{};renderAll()},()=>{});
-  offTb=onValue(R(db,TRBB),s=>{TRB=s.val()||{};renderAll()},()=>{});
-  offDs=onValue(R(db,DSB),s=>{DS=s.val()||{};renderAll()},()=>{});
-  offBg=onValue(R(db,BGB),s=>{BG=s.val()||{};renderAll()},()=>{})
+  offLog=onValue(R(db,BASE),s=>{LD.log=1;LOG=s.val()||{};renderAllSoon()},e=>{toast('Sin acceso a datos: '+e.code)});
+  offCli=onValue(R(db,CBASE),s=>{CLI=s.val()||{};renderAllSoon()},()=>{});
+  offDsp=onValue(R(db,DSPB),s=>{LD.dsp=1;DSP=s.val()||{};renderAllSoon()},()=>{});
+  offTrf=onValue(R(db,TRFB),s=>{TRF=s.val()||{};renderAllSoon()},()=>{});
+  offTb=onValue(R(db,TRBB),s=>{TRB=s.val()||{};renderAllSoon()},()=>{});
+  offDs=onValue(R(db,DSB),s=>{DS=s.val()||{};renderAllSoon()},()=>{});
+  offBg=onValue(R(db,BGB),s=>{BG=s.val()||{};renderAllSoon()},()=>{})
 }
 async function softRefresh(){
   const b=$('btnRef');if(b.classList.contains('spin'))return;b.classList.add('spin');
@@ -2452,6 +2454,7 @@ $('btnHome').onclick=()=>{closeCli();showRecList();window.scrollTo(0,0)};
 $('recMenu').addEventListener('click',e=>{const b=e.target.closest('[data-mg]');if(!b)return;const g=b.dataset.mg,p=$('mp-'+g),open=!p.classList.contains('hide');
   document.querySelectorAll('.mpanel').forEach(x=>x.classList.add('hide'));document.querySelectorAll('[data-mg]').forEach(x=>x.classList.remove('pri'));
   if(!open){p.classList.remove('hide');b.classList.add('pri')}});
+let _raT=0;function renderAllSoon(){if(_raT)return;_raT=setTimeout(()=>{_raT=0;renderAll()},150)}
 function renderAll(){if(!RECIBO)return;renderGlobal();renderCli();if(!$('v-list').classList.contains('hide')){renderList()}if(cur){const ae=document.activeElement;if(!(ae&&ae.tagName==='INPUT'&&ae.closest('#tiles')))renderProd()}if(!$('v-trf').classList.contains('hide')){renderTrfPanel();renderTrf()}if(!$('v-dsp').classList.contains('hide'))renderDespacho();if(!$('v-dif').classList.contains('hide'))renderDif();if(!$('v-est').classList.contains('hide'))renderEst()}
 </script>
 </body></html>
