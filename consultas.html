@@ -566,11 +566,13 @@ function updateBar(){
 }
 $('bsave').onclick=async()=>{
   const on=STORES.filter(t=>sel[t].on);if(!on.length)return;
+  if(!ONLINE){toast(NOCON);return}
   for(const t of on){
     if(!(sel[t].q>0)){toast(`${L(t)}: cantidad inválida`);return}
     if(t!=='CRISTAL'&&!/^\d{8,10}$/.test(sel[t].tr)){toast(`${L(t)}: la transferencia debe tener 8 a 10 dígitos`);return}
     const pend=Math.max(0,(cur.s[t]||0)-sur(cur.p,t));
-    if(sel[t].q>pend&&!confirm(`${L(t)}: surtes ${sel[t].q} y solo quedaban ${pend} pendientes. ¿Continuar?`))return
+    if(sel[t].q>pend){const msg=pend===0?`⛔ ${L(t)}: este producto ya fue surtido completo por otro compañero.`:`⛔ ${L(t)}: intentas surtir ${sel[t].q} pero solo quedan ${pend} pendientes.`;
+      if(!(ISADM&&confirm(msg+'\n\nComo administrador puedes forzarlo, pero se duplicaría el surtido. ¿Surtir de todos modos?'))){toast(msg+' Se actualizó la pantalla.');renderProd();return}}
   }
   $('bsave').disabled=true;
   try{
@@ -607,7 +609,10 @@ $('mcliBody').addEventListener('input',e=>{if(e.target.id==='cliTr')cliTr=e.targ
 $('mcliBody').addEventListener('change',e=>{if(e.target.dataset.cc){cliSel[e.target.dataset.cc].on=e.target.checked}});
 async function saveCli(){
   const rows=cliRows(cliP).filter(r=>cliSel[r.key]&&cliSel[r.key].on);if(!rows.length){toast('Marca al menos un cliente');return}
-  for(const r of rows){const q=cliSel[r.key].q;if(!(q>0)){toast(`${r.c}: cantidad inválida`);return}if(q>r.pend&&!confirm(`${r.c}: surtes ${q} y solo quedaban ${r.pend}. ¿Continuar?`))return}
+  if(!ONLINE){toast(NOCON);return}
+  for(const r of rows){const q=cliSel[r.key].q;if(!(q>0)){toast(`${r.c}: cantidad inválida`);return}
+    if(q>r.pend){const msg=r.pend===0?`⛔ ${r.c}: ya fue surtido completo.`:`⛔ ${r.c}: intentas surtir ${q} pero solo quedan ${r.pend}.`;
+      if(!(ISADM&&confirm(msg+'\n\nComo administrador puedes forzarlo, pero se duplicaría el surtido. ¿Surtir de todos modos?'))){toast(msg+' Se actualizó la pantalla.');renderCli();return}}}
   const ts=Date.now(),d=today();
   try{for(const r of rows){await push(R(db,BASE),{p:cliP,r:byProd[cliP].ref,t:'CRISTAL',q:cliSel[r.key].q,tr:cliTr,u:USER,n:NAME,ts,d,ck:r.key,cn:r.c,pos:r.pos||'',ro:r.ro||''})}
     toast('✅ Surtido de clientes guardado');cliSel={};renderCli()}catch(e){toast('Error al guardar: '+(e.code||e.message))}
@@ -732,18 +737,29 @@ function renderTrfPanel(){
   const n=STORES.filter(t=>t!=='CRISTAL'&&TRF[t]&&TRF[t].tr).length,tot=STORES.filter(t=>t!=='CRISTAL').length;
   const c=$('trfPanelCnt');c.textContent=`${n} / ${tot}`;c.className='pill '+(n>=tot?'p-ok':'p-wn');
   box.innerHTML=STORES.filter(t=>t!=='CRISTAL').map(t=>{const a=TRF[t]&&TRF[t].tr;
-    if(a&&trfEdit!==t)return `<div class="trow"><b>${L(t)}</b><span class="tv">${esc(a)}</span><button class="btn sm" data-pe="${t}">＋ Nueva</button></div>`;
+    if(a&&trfEdit!==t){const oc=orphanTr(t).length;return `<div class="trow"><b>${L(t)}</b><span class="tv">${esc(a)}</span><button class="btn sm" data-pe="${t}">＋ Nueva</button></div>${oc?`<div class="msg" style="color:var(--wn);margin:0 0 8px;display:flex;gap:8px;align-items:center;justify-content:space-between"><span>⚠ ${oc} surtido(s) de ${L(t)} sin transferencia</span><button class="btn pri sm" data-pf="${t}">Asignar ${esc(a)}</button></div>`:''}`}
     return `<div class="trow"><b>${L(t)}</b><input class="f" inputmode="numeric" maxlength="10" data-pi="${t}" placeholder="# transferencia${t==='CRISTAL'?' (opcional)':''}"><button class="btn pri sm" data-ps="${t}">Aplicar</button>${a?'<button class="btn sm" data-pc="1">✕</button>':''}</div>`}).join('')
     +'<div class="msg">Cada tienda tiene su transferencia: todos los productos que se surtan la heredan hasta que agregues una nueva.</div>'
 }
+// Surtidos de una tienda que quedaron SIN transferencia (se surtió antes de crearla). Excluye Cristal, bodega y cargas históricas ERP.
+function orphanTr(t){return entries().filter(e=>e.t===t&&!e.tr&&!e.au&&!e.mir&&!e.bd&&!e.nb)}
+async function backfillTr(t,tr,ask){
+  const lst=orphanTr(t);if(!lst.length||t==='CRISTAL')return 0;
+  const pz=lst.reduce((a,e)=>a+(e.q||0),0),refs=new Set(lst.map(e=>e.p)).size;
+  const dsp=[...new Set(lst.map(e=>e.p))].filter(p=>DSP[p]).length;
+  if(ask&&!confirm(`${L(t)}: hay ${lst.length} surtido(s) (${fmt(pz)} pzas · ${refs} ref.) que quedaron SIN transferencia${dsp?`, ${dsp} ya despachada(s)`:''}.\n\n¿Asignarles la transferencia ${tr}?`))return 0;
+  const up={};lst.forEach(e=>{up[e.k+'/tr']=tr});
+  const ks=Object.keys(up);for(let i=0;i<ks.length;i+=400){const part={};ks.slice(i,i+400).forEach(z=>part[z]=up[z]);await update(R(db,BASE),part)}
+  return lst.length}
 async function applyTrf(t){
   const i=document.querySelector(`[data-pi="${t}"]`);const v=(i?i.value:'').replace(/\D/g,'');
   if(!/^\d{8,10}$/.test(v)){toast('La transferencia debe tener 8 a 10 dígitos');return}
-  try{await set(R(db,`${TRFB}/${t}`),{tr:v,u:USER,n:NAME,ts:Date.now()});trfEdit=null;toast(`✅ ${L(t)}: transferencia ${v}`)}catch(e){toast('Error: '+(e.code||e.message))}
+  try{await set(R(db,`${TRFB}/${t}`),{tr:v,u:USER,n:NAME,ts:Date.now()});trfEdit=null;const nb=await backfillTr(t,v,true);toast(`✅ ${L(t)}: transferencia ${v}${nb?` · ${nb} surtido(s) vinculados`:''}`)}catch(e){toast('Error: '+(e.code||e.message))}
 }
 $('trfPanelBody').addEventListener('click',e=>{
   const pe=e.target.closest('[data-pe]');if(pe){trfEdit=pe.dataset.pe;renderTrfPanel();const i=document.querySelector(`[data-pi="${trfEdit}"]`);if(i)i.focus();return}
   if(e.target.closest('[data-pc]')){trfEdit=null;renderTrfPanel();return}
+  const pf=e.target.closest('[data-pf]');if(pf){const t=pf.dataset.pf,tr=lastTr(t);if(!tr)return;pf.disabled=true;backfillTr(t,tr,true).then(n=>{if(n)toast(`✅ ${n} surtido(s) de ${L(t)} vinculados a la transferencia ${tr}`);renderTrfPanel()}).catch(err=>{pf.disabled=false;toast('Error: '+(err.code||err.message))});return}
   const ps=e.target.closest('[data-ps]');if(ps)applyTrf(ps.dataset.ps)});
 $('trfPanelBody').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.dataset.pi){e.preventDefault();applyTrf(e.target.dataset.pi)}});
 
@@ -761,6 +777,8 @@ function startCtrl(){if(_ctrlOn)return;_ctrlOn=true;let first=true,seen=0;
 {let n=0,t0=0;$('ttl').addEventListener('click',async()=>{if(USER!=='provira')return;const now=Date.now();if(now-t0>4000)n=0;t0=now;if(++n<7)return;n=0;
   if(!confirm('¿Cerrar la sesión de TODOS los dispositivos (Marcaciones y Consultas)? Tendrán que iniciar sesión de nuevo.'))return;
   try{await fbSet(R(db,'meta_v1/app_ctrl/all'),{at:Date.now(),by:USER,dev:DEVID});toast('✅ Señal enviada a todos los dispositivos')}catch(err){toast('No se pudo enviar: '+(err.code||err.message))}})}
+let ONLINE=true;onValue(R(db,'.info/connected'),s=>{ONLINE=!!s.val()},()=>{});
+const NOCON='⛔ Sin conexión: espera a que vuelva para no duplicar surtidos';
 const LUKEY='cons_lu_v2';let _sigOn=false;
 function luApply(d){FECHAS=d.f||{};COMP=d.c||{};RECDEP=d.dep||{};const v=d.v||{};
   for(const id of Object.keys(v)){if(BUILTIN.has(id))continue;const it=Object.values(v[id].items||{}).sort((a,b)=>(a.n||0)-(b.n||0));RECS[id]={items:it.map(x=>({...x,s:x.s||{}})),up:true}}
