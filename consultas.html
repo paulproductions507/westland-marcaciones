@@ -31,6 +31,7 @@ h1,h2,h3,.sora{font-family:'72','72full','Inter',system-ui,sans-serif;margin:0}
 .sbox input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--tx);font:500 15px '72','72full','Inter',system-ui,sans-serif;height:100%}
 .sbox input::placeholder{color:#6aa3a8}
 .slbl{font:700 11px '72','72full','Inter',system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--mt);margin:0 2px 7px}
+.tile.dsp.pdt .hd b{text-decoration:none}.tile.pdt{cursor:pointer}.tile.pdz{opacity:.4}.pdd input.f{width:100%;min-width:0}
 .tile.bod{border-style:dashed;opacity:.9}.tile.bod .hd{background:linear-gradient(135deg,#365c63,#26474e)}
 .modal{position:fixed;inset:0;z-index:60;background:#000a;display:flex;align-items:flex-end;justify-content:center}
 .modal>div{width:100%;max-width:640px;max-height:92vh;overflow:auto;background:var(--bg2);border:1px solid var(--bd);border-radius:20px 20px 0 0;padding:16px 14px calc(16px + env(safe-area-inset-bottom))}
@@ -1269,48 +1270,92 @@ function renderPro0(){
 }
 $('recPro').onclick=openPro;
 /* ===== Producción del día (para surtidores y administradores) ===== */
-let PDD='';
-const pdOrg=id=>id==='AUTO'?'⚡ Automático':id==='TUNEL'?'🚇 Túnel':id==='PROFORMAS'?'🧾 Proformas':'📦 Manual (recibo)';
+let PDD='',PDD2='',PDALL=false,PDU='',PDEV=[];
+// Orígenes: manual de recibo y túnel son lo mismo → "Distribución de túnel"
+const pdOrg=id=>id==='AUTO'?'⚡ Distribución de pedido automático':id==='PROFORMAS'?'🧾 Cristal clientes (proformas)':'🚇 Distribución de túnel';
 const pdRec=id=>isPs(id)?PSEUDO[id]:`Recibo ${id}${PROV[id]?' · '+PROV[id]:''}`;
+const pdNm=t=>t==='CRISTAL'?'Cristal':L(t),pdSm=t=>t==='CRISTAL'?'Clientes':(NAMES[t]||'');
 async function openPdn(){
   $('v-rec').classList.add('hide');$('v-pdn').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent='Mi producción';window.scrollTo(0,0);
-  if(!PDD)PDD=ymd(Date.now());
+  if(!PDD||!PDD2){PDD=PDD2=ymd(Date.now())}
   $('pdBody').innerHTML='<div class="msg">Cargando producción…</div>';
   try{await statLoad(false);pdFilters();renderPdn()}catch(e){$('pdBody').innerHTML='<div class="msg">No se pudo cargar: '+esc(e.code||e.message)+'</div>'}
 }
 function pdFilters(){
-  const hoy=ymd(Date.now());
-  $('pdFil').innerHTML=`<div class="card"><div class="slbl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Mi producción del día</div>
-   <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+  const hoy=ymd(Date.now()),one=PDD===PDD2;
+  const us=ISADM?[...new Map(STEV.sv.filter(e=>e.uu&&e.d>=PDD&&e.d<=PDD2&&e.q>0).map(e=>[e.uu,e.u])).entries()].sort((a,b)=>String(a[1]).localeCompare(String(b[1]))):[];
+  if(PDU&&!us.some(x=>x[0]===PDU))us.push([PDU,PDU]);
+  $('pdFil').innerHTML=`<div class="card pdd"><div class="slbl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>${ISADM&&PDALL?'Producción de todos':'Mi producción'}</div>
+   <div style="display:grid;gap:8px;max-width:240px">
+    <div><div class="lbl">Desde</div><input class="f" type="date" data-pdi="d1" value="${PDD}" max="${hoy}"></div>
+    <div><div class="lbl">Hasta</div><input class="f" type="date" data-pdi="d2" value="${PDD2}" max="${hoy}"></div></div>
+   <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
     <button class="btn sm" data-pd="-1">◀</button>
-    <div style="flex:1;min-width:150px"><div class="lbl">Fecha</div><input class="f" type="date" data-pd="d" value="${PDD}" max="${hoy}"></div>
-    <button class="btn sm" data-pd="+1" ${PDD>=hoy?'disabled':''}>▶</button>
-    <button class="btn sm ${PDD===hoy?'pri':''}" data-pd="hoy">Hoy</button>
-    <button class="btn sm" id="pdRef">⟳</button></div></div>`}
+    <button class="btn sm ${one&&PDD===hoy?'pri':''}" data-pd="hoy">Hoy</button>
+    <button class="btn sm" data-pd="+1" ${PDD2>=hoy?'disabled':''}>▶</button>
+    <button class="btn sm" id="pdRef">⟳</button></div>
+   ${ISADM?`<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-weight:700;cursor:pointer"><input type="checkbox" data-pdi="all" ${PDALL?'checked':''} style="width:20px;height:20px;accent-color:var(--ac)"> Ver todos los surtidores</label>
+   ${PDALL?`<div style="margin-top:8px;max-width:240px"><div class="lbl">Surtidor</div><select class="f" data-pdi="u"><option value="">Todos</option>${us.map(([u,n])=>`<option value="${esc(u)}" ${PDU===u?'selected':''}>${esc(n)}</option>`).join('')}</select></div>`:''}`:''}</div>`}
+const pdShift=(s,n)=>{const d=new Date(s+'T00:00:00');d.setDate(d.getDate()+n);return ymd(d.getTime())};
 $('pdFil').addEventListener('click',async e=>{
   const b=e.target.closest('[data-pd]'),hoy=ymd(Date.now());
-  if(b){const v=b.dataset.pd;if(v==='hoy')PDD=hoy;else if(v==='-1'||v==='+1'){const d=new Date(PDD+'T00:00:00');d.setDate(d.getDate()+(v==='+1'?1:-1));PDD=ymd(d.getTime());if(PDD>hoy)PDD=hoy}if(v!=='d'){pdFilters();renderPdn()}return}
+  if(b){const v=b.dataset.pd;
+    if(v==='hoy'){PDD=PDD2=hoy}
+    else{const n=v==='+1'?1:-1;PDD=pdShift(PDD,n);PDD2=pdShift(PDD2,n);if(PDD2>hoy){PDD2=hoy;if(PDD>PDD2)PDD=PDD2}}
+    pdFilters();renderPdn();return}
   if(e.target.id==='pdRef'){$('pdBody').innerHTML='<div class="msg">Actualizando…</div>';try{await statLoad(true);pdFilters();renderPdn()}catch(err){toast('Error: '+(err.code||err.message))}}});
-$('pdFil').addEventListener('change',e=>{if(e.target.dataset.pd==='d'&&e.target.value){PDD=e.target.value;pdFilters();renderPdn()}});
+$('pdFil').addEventListener('change',e=>{const k=e.target.dataset.pdi;if(!k)return;
+  if(k==='d1'&&e.target.value){PDD=e.target.value;if(PDD>PDD2)PDD2=PDD}
+  else if(k==='d2'&&e.target.value){PDD2=e.target.value;if(PDD2<PDD)PDD=PDD2}
+  else if(k==='all'){PDALL=e.target.checked;if(!PDALL)PDU=''}
+  else if(k==='u'){PDU=e.target.value}
+  else return;
+  pdFilters();renderPdn()});
 function renderPdn(){
-  const ev=STEV.sv.filter(e=>e.d===PDD&&e.q>0&&e.uu===USER),tot=sumF(ev,e=>e.q); // solo lo que surtió quien inició sesión
-  if(!ev.length){$('pdBody').innerHTML=`<div class="card"><div class="msg">No tienes piezas surtidas el ${esc(fdate(PDD))}.</div></div>`;return}
+  const all=ISADM&&PDALL;$('ttl').textContent=all?'Producción de todos':'Mi producción';
+  const ev=STEV.sv.filter(e=>e.d>=PDD&&e.d<=PDD2&&e.q>0&&(all?(!PDU||e.uu===PDU):e.uu===USER)),tot=sumF(ev,e=>e.q);
+  PDEV=ev;
+  const rango=PDD===PDD2?fdate(PDD):`${fdate(PDD)} – ${fdate(PDD2)}`;
+  if(!ev.length){$('pdBody').innerHTML=`<div class="card"><div class="msg">${all?'No hay piezas surtidas':'No tienes piezas surtidas'} ${PDD===PDD2?'el':'del'} ${esc(rango)}.</div></div>`;return}
   const by=(f,src=ev)=>{const m={};src.forEach(e=>{const k=f(e);(m[k]=m[k]||{q:0,n:0,r:new Set(),t:new Set()}).q+=e.q;m[k].n++;m[k].r.add(e.id);m[k].t.add(e.t)});return Object.entries(m).sort((a,b)=>b[1].q-a[1].q)};
   const bar=(q,mx)=>`<div class="bar" style="margin:0"><i style="width:${mx?Math.max(2,Math.round(q/mx*100)):0}%"></i></div>`;
-  const org=by(e=>pdOrg(e.id)),rec=by(e=>e.id),tie=by(e=>e.t);
+  const org=by(e=>pdOrg(e.id)),rec=by(e=>e.id);
   const mxO=org[0][1].q;
-  const sub=(rows,lab)=>rows.map(([k,o])=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:13px"><span>${lab(k)}</span><b>${fmt(o)}</b></div>`).join('');
-  const tiendas=tie.map(([t,o])=>{const rr=by(e=>e.id,ev.filter(e=>e.t===t));
-    return `<details class="card" style="margin:0 0 8px;padding:10px 12px"><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:8px"><span><b>${esc(LN(t))}</b> <span class="msg" style="margin:0">· ${fmt(rr.length)} recibo(s)</span></span><b>${fmt(o.q)} pzas</b></summary>
-      <div style="margin-top:6px">${rr.map(([id,r])=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:13px"><span>${esc(pdOrg(id))} · ${esc(pdRec(id))}</span><b>${fmt(r.q)}</b></div>`).join('')}</div></details>`}).join('');
+  // Tiendas con el mismo diseño del túnel (S4, S5…): toca una para ver recibo · transferencia · pieza · bulto
+  const ORD=[...BASE_ST,...[...new Set(ev.map(e=>e.t))].filter(t=>!BASE_ST.includes(t)&&t!=='—')];
+  const tiles=ORD.map(t=>{const x=ev.filter(e=>e.t===t),q=sumF(x,e=>e.q),sm=pdSm(t);
+    if(!q)return `<div class="tile pdz"><div class="hd"><b>${esc(pdNm(t))}</b>${sm?`<small>${esc(sm)}</small>`:''}</div><div class="bd">Piezas: <b>0</b></div></div>`;
+    const nr=new Set(x.map(e=>e.id)).size,nt=new Set(x.map(e=>e.tr).filter(Boolean)).size;
+    return `<div class="tile dsp pdt" data-pt="${esc(t)}"><div class="hd"><b>${esc(pdNm(t))}</b>${sm?`<small>${esc(sm)}</small>`:''}</div><div class="bd">Piezas: <b>${fmt(q)}</b><br>Recibos: <b>${fmt(nr)}</b><br>Transf.: <b>${fmt(nt)}</b></div></div>`}).join('');
+  const surt=all&&!PDU?by(e=>e.uu||'—').map(([u,o])=>{const nm=(ev.find(e=>(e.uu||'—')===u)||{}).u||u,oo=by(e=>pdOrg(e.id),ev.filter(e=>(e.uu||'—')===u));
+    return `<details class="card" style="margin:0 0 8px;padding:10px 12px"><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:8px"><span><b>${esc(nm)}</b> <span class="msg" style="margin:0">· ${fmt(o.r.size)} recibo(s)</span></span><b>${fmt(o.q)} pzas</b></summary>
+      <div style="margin-top:6px">${oo.map(([k,r])=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:13px"><span>${esc(k)}</span><b>${fmt(r.q)}</b></div>`).join('')}<button class="btn sm" data-pu="${esc(u)}" style="margin-top:8px;width:100%">Ver solo a ${esc(nm)}</button></div></details>`}).join(''):'';
   const recibos=rec.map(([id,o])=>{const tt=by(e=>e.t,ev.filter(e=>e.id===id));
     return `<details class="card" style="margin:0 0 8px;padding:10px 12px"><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:8px"><span><b>${esc(pdRec(id))}</b> <span class="msg" style="margin:0">· ${esc(pdOrg(id))}</span></span><b>${fmt(o.q)} pzas</b></summary>
       <div style="margin-top:6px">${tt.map(([t,r])=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:13px"><span>${esc(LN(t))}</span><b>${fmt(r.q)}</b></div>`).join('')}</div></details>`}).join('');
-  $('pdBody').innerHTML=`<div class="kpis">${kpi('Mis piezas del día',fmt(tot))}${kpi('Recibos / transferencias',fmt(rec.length))}${kpi('Tiendas',fmt(tie.length))}${kpi('Movimientos',fmt(ev.length))}</div>
-   <div class="card"><div class="slbl">Por origen</div><div class="scroll"><table><tr><th>Origen</th><th class="n">Piezas</th><th class="n">%</th><th style="width:30%"></th></tr>${org.map(([k,o])=>`<tr><td>${esc(k)}</td><td class="n"><b>${fmt(o.q)}</b></td><td class="n">${(o.q/tot*100).toFixed(0)}%</td><td>${bar(o.q,mxO)}</td></tr>`).join('')}<tr><td><b>Total</b></td><td class="n"><b>${fmt(tot)}</b></td><td></td><td></td></tr></table></div></div>
-   <div class="slbl">Por tienda · toca una para ver de qué recibo salió</div>${tiendas}
+  $('pdBody').innerHTML=`<div class="kpis">${kpi(all?'Piezas surtidas':'Mis piezas',fmt(tot))}${kpi('Recibos / transferencias',fmt(rec.length))}${kpi('Movimientos',fmt(ev.length))}</div>
+   <div class="slbl" style="margin-top:12px">Por tienda · toca una para ver recibo, transferencia, pieza y bulto</div><div class="grid">${tiles}</div>
+   <div class="card" style="margin-top:12px"><div class="slbl">Por origen</div><div class="scroll"><table><tr><th>Origen</th><th class="n">Piezas</th><th class="n">%</th><th style="width:30%"></th></tr>${org.map(([k,o])=>`<tr><td>${esc(k)}</td><td class="n"><b>${fmt(o.q)}</b></td><td class="n">${(o.q/tot*100).toFixed(0)}%</td><td>${bar(o.q,mxO)}</td></tr>`).join('')}<tr><td><b>Total</b></td><td class="n"><b>${fmt(tot)}</b></td><td></td><td></td></tr></table></div></div>
+   ${surt?`<div class="slbl" style="margin-top:12px">Por surtidor · seguimiento</div>${surt}`:''}
    <div class="slbl" style="margin-top:12px">Por recibo · toca uno para ver su distribución por tienda</div>${recibos}
-   <div class="msg">Solo cuenta lo que tú surtiste el ${esc(fdate(PDD))}: recibos manuales, pedidos automáticos, túnel y proformas.</div>`}
+   <div class="msg">${all?'Producción de los surtidores':'Solo cuenta lo que tú surtiste'} ${PDD===PDD2?'el':'del'} ${esc(rango)}: distribución de túnel, pedidos automáticos y Cristal clientes (proformas).</div>`}
+// Detalle de una tienda: recibo → transferencia → pieza → bulto
+function pdTileOpen(t){
+  const all=ISADM&&PDALL,x=PDEV.filter(e=>e.t===t);if(!x.length)return;
+  const dvB={};STEV.dv.forEach(d=>{if(d.t===t){const k=d.id+'|'+d.p;dvB[k]=(dvB[k]||0)+(d.b||0)}});
+  const sq={};x.forEach(e=>{const k=e.id+'|'+e.p;sq[k]=(sq[k]||0)+e.q});
+  const G={};x.forEach(e=>{const gk=e.id+'|'+(e.tr||'');const g=(G[gk]=G[gk]||{id:e.id,tr:e.tr||'',rows:{}});const rk=e.p+'|'+(all?e.uu:'');
+    const r=(g.rows[rk]=g.rows[rk]||{p:e.p,r:e.r,ds:e.ds,u:e.u,q:0,b:0});r.q+=e.q;r.b+=(dvB[e.id+'|'+e.p]||0)*e.q/sq[e.id+'|'+e.p]});
+  const gs=Object.values(G).sort((a,b)=>String(a.id).localeCompare(String(b.id))||String(a.tr).localeCompare(String(b.tr)));
+  const tq=sumF(x,e=>e.q);
+  $('mstBody').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div class="lbl">${PDD===PDD2?esc(fdate(PDD)):esc(fdate(PDD))+' – '+esc(fdate(PDD2))}</div><div class="sora" style="font-size:22px;color:var(--ac)">${esc(pdNm(t))}${pdSm(t)?' · '+esc(pdSm(t)):''}</div></div><button class="btn sm" id="mstX">Cerrar</button></div>
+   <div class="msg">${fmt(tq)} pzas · ${gs.length} recibo/transferencia(s)</div>
+   ${gs.map(g=>{const rs=Object.values(g.rows).sort((a,b)=>b.q-a.q),gq=sumF(rs,r=>r.q),gb=sumF(rs,r=>r.b);
+    return `<div class="card" style="margin:10px 0 0;padding:10px 12px"><div style="display:flex;justify-content:space-between;gap:8px"><span><b>${esc(pdRec(g.id))}</b><br><span class="msg" style="margin:0">${esc(pdOrg(g.id))} · Transf. ${esc(g.tr||'—')}</span></span><span style="text-align:right"><b>${fmt(gq)} pzas</b><br><span class="msg" style="margin:0">${gb?fmtB(gb)+' bultos':'sin bultos'}</span></span></div>
+     <div class="scroll"><table><tr><th>Estilo</th><th>Producto</th>${all?'<th>Surtidor</th>':''}<th class="n">Pzas</th><th class="n">Bultos</th></tr>${rs.map(r=>`<tr><td>${esc(r.r||'')}</td><td>${esc(r.p)}</td>${all?`<td>${esc(r.u||'')}</td>`:''}<td class="n"><b>${fmt(r.q)}</b></td><td class="n">${r.b?fmtB(r.b):'—'}</td></tr>`).join('')}</table></div></div>`}).join('')}`;
+  $('mst').classList.remove('hide')}
+$('pdBody').addEventListener('click',e=>{const t=e.target.closest('[data-pt]');if(t){pdTileOpen(t.dataset.pt);return}
+  const u=e.target.closest('[data-pu]');if(u){PDU=u.dataset.pu;pdFilters();renderPdn();window.scrollTo(0,0)}});
 $('recProd').onclick=openPdn;
 
 function renderPro(){renderPro0();if(!$('prUp')){const d=document.createElement('div');d.id='prUp';$('prBody').appendChild(d)}if(!$('prChk')){const d=document.createElement('div');d.id='prChk';$('prBody').appendChild(d)}const [a,b]=prRange();upLoad(a,b);chkLoad(a,b)}
