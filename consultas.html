@@ -190,7 +190,7 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
 <div id="app" class="hide">
   <div class="top">
     <button class="btn sm" id="btnBack" title="Atrás" aria-label="Atrás">←</button>
-    <div class="ttl"><h1 id="ttl">Consultas</h1><small id="who">—</small></div><span style="font-size:10px;opacity:.7;margin-right:6px;display:none" id="verTag">V25 octubre-C</span>
+    <div class="ttl"><h1 id="ttl">Consultas</h1><small id="who">—</small></div><span id="incDot" class="hide" style="width:7px;height:7px;border-radius:50%;background:#f5a623;opacity:.55;margin-right:6px;flex:none"></span><span style="font-size:10px;opacity:.7;margin-right:6px;display:none" id="verTag">V25 octubre-C</span>
     <button class="btn sm hide" id="btnRef" title="Actualizar" aria-label="Actualizar">⟳</button>
     <button class="btn sm hide" id="btnPal">🧱 Palets</button><button class="btn sm hide" id="btnPkl">📋 Packing</button><button class="btn sm hide" id="btnRecBack">↩ Recibo</button><button class="btn sm hide" id="btnHome">Recibos</button>
     <a class="btn sm" id="toMarc" href="index.html" style="text-decoration:none;background:#ff3b30;color:#fff" title="Salir a Marcaciones">⎋ Salir</a>
@@ -286,6 +286,7 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
         </div>
         <div class="legend"><span class="pill p-aq">Sin surtir</span><span class="pill p-wn">Parcial</span><span class="pill p-bl">Surtido</span><span class="pill p-ok">Despachado</span></div>
         <div class="grid" id="tiles"></div>
+        <div id="hsBox" class="hide" style="margin-top:12px"><button class="btn" id="hsBtn" style="width:100%">🗂 Registrar surtido ya hecho (asignar a un surtidor)</button><div class="msg" style="margin:6px 2px 0">Solo administrador. Para piezas que ya se surtieron antes de usar la app: eliges tienda, cantidad, surtidor y fecha.</div></div>
         <div id="dspBox" style="margin-top:14px"></div>
         <details class="card" style="margin-top:12px" open><summary>Movimientos de este producto</summary><div id="phist"></div></details>
       </div>
@@ -398,6 +399,7 @@ async function migrateAuto(ids){
       if(v.length&&v.every(x=>x.au)){const o={u:AUTO_U,n:AUTO_N,ts:v[0].ts||Date.now(),au:1};await set(R(db,'meta_v1/consultas_comp/'+id),o);COMP[id]=o}}catch(e){}}
 }
 async function showRecList(){
+  ensureWorked();
   $('v-stat').classList.add('hide');$('v-auto').classList.add('hide');$('v-pro').classList.add('hide');$('v-pdn').classList.add('hide');$('v-pal').classList.add('hide');$('v-pkl').classList.add('hide');$('mst').classList.add('hide');
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();offLog=offCli=offDsp=offTrf=offTb=offDs=offBg=null;cur=null;RECIBO=null;$('recAdm').classList.toggle('hide',!ISADM);$('recAdm2').classList.toggle('hide',!ISADM);$('recAdm3').classList.toggle('hide',!ISADM);
   $('v-recibo').classList.add('hide');$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');PALBACK=null;$('btnPal').classList.add('hide');$('btnPkl').classList.add('hide');$('btnRecBack').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Consultas';
@@ -547,18 +549,16 @@ function doSearch(){
   const v=$('q').value;if(!v.trim())return;
   let m=matchCode(v);
   if(STF2!=='all'&&m.length){const mi=m.filter(x=>inSt(x,STF2));
-    if(!mi.length){const x=m[0];$('q').value='';shown=40;renderList();
-      $('qmsg').textContent=`❌ ${x.ref} no se encuentra en ${L(STF2)}${NAMES[STF2]?' · '+NAMES[STF2]:''}. Sigue con el siguiente.`;$('qmsg').className='msg err';
-      try{navigator.vibrate&&navigator.vibrate([120,60,120])}catch(_){}toast(`❌ ${x.ref} no está en ${L(STF2)}`);$('q').focus();return}
+    if(!mi.length){const x=m[0];scanBad(`❌ ${x.ref} no se encuentra en ${L(STF2)}${NAMES[STF2]?' · '+NAMES[STF2]:''}. Sigue con el siguiente.`);return}
     m=mi}
   if(STSF!=='all'&&m.length){const mj=m.filter(x=>stSt(x)===STSF);
-    if(!mj.length){const x=m[0],est=STLBL[stSt(x)]||'';$('q').value='';shown=40;renderList();
-      $('qmsg').textContent=`⏭ ${x.ref} ${STF2!=='all'?'es de '+L(STF2)+' pero ':''}está en estado "${est}" (buscas "${STLBL[STSF]}"). Siguiente.`;$('qmsg').className='msg err';
-      try{navigator.vibrate&&navigator.vibrate([120,60,120])}catch(_){}toast(`⏭ ${x.ref}: ${est}`);$('q').focus();return}
+    if(!mj.length){const x=m[0],est=STLBL[stSt(x)]||'';scanBad(`⏭ ${x.ref} ${STF2!=='all'?'es de '+L(STF2)+' pero ':''}está en estado "${est}" (buscas "${STLBL[STSF]}"). Siguiente.`);return}
     m=mj}
   if(m.length===1){openProd(m[0].p);$('q').value='';$('qmsg').textContent='Al escanear el código se abre el producto directo.';$('qmsg').className='msg';return}
   if(m.length>1){$('qmsg').textContent=`${m.length} coincidencias exactas — elige una.`;$('q').value='';filtered=m;$('list').innerHTML='';m.forEach(x=>{});showMatches(m);return}
-  renderList();const n=filtered.length;$('qmsg').textContent=n?`${n} resultado(s) por texto.`:(STF2!=='all'?`No se encuentra en ${L(STF2)}.`:'No se encontró ese código en el recibo.');$('qmsg').className='msg'+(n?'':' err')
+  renderList();const n=filtered.length;
+  if(!n){scanBad(STF2!=='all'?`❌ No se encuentra en ${L(STF2)}. Sigue con el siguiente.`:'❌ No se encontró ese código en el recibo.');return}
+  $('qmsg').textContent=`${n} resultado(s) por texto.`;$('qmsg').className='msg'
 }
 function showMatches(m){$('list').innerHTML=m.map(x=>`<div class="row st-${stFull(x)}" data-p="${x.p}"><div style="flex:1"><div class="st">${esc(x.ref)} · ${x.p}</div><div class="ds">${esc(x.d)}</div></div>${pillFor(x)}</div>`).join('');$('more').classList.add('hide');$('all').classList.add('hide')}
 $('q').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();doSearch()}});
@@ -580,7 +580,7 @@ function renderProd(){
   if(!cur)return;const x=cur;
   for(const t of STORES){const S=sel[t];if(!S||(t==='CRISTAL'&&hasCli(x.p)))continue;const pn=Math.max(0,(x.s[t]||0)-sur(x.p,t));if(pn===0){S.on=false;S.q=0;S.ed=false}else if(!S.ed||S.q>pn)S.q=pn}
 for(const t of STORES){if(sel[t]&&!sel[t].nw&&t!=='CRISTAL')sel[t].tr=lastTr(t)}
-  $('ppos').textContent=`#${x.n} de ${DATA.length}`;
+  $('ppos').textContent=`#${x.n} de ${DATA.length}`;$('hsBox').classList.toggle('hide',!ISADM);
   $('pinfo').innerHTML=`<div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;justify-content:space-between"><div><div class="lbl">Estilo</div><h2 style="font-size:24px">${esc(x.ref)}</h2></div><div style="text-align:right"><div class="lbl">Producto</div><div class="sora" style="font-size:32px;color:var(--ac);line-height:1">${x.p}</div></div></div><div style="color:var(--mt);margin-top:2px">${esc(x.d)}</div><div style="margin-top:8px">${pillFor(x)}</div>
    <div class="kv"><div><span class="lbl">Código barras</span><b style="font-family:'DM Mono'">${x.upc}</b></div><div><span class="lbl">Recibido</span><b>${fmt(x.rec)}</b></div>${ajList(x).filter(a=>a.num).map(a=>`<div><span class="lbl">${a.tp==='dis'?'Salida por ajuste':'Entrada por ajuste'}</span><b class="${a.tp==='dis'?'neg':'pos'}">${a.tp==='dis'?'−':'+'}${fmt(a.q)}</b><small style="display:block;color:var(--mt)">Ajuste nº ${esc(a.num)}</small></div>`).join('')}<div><span class="lbl">Pza x bulto</span><b>${fmt(x.pb)}</b></div><div><span class="lbl">Total bultos</span><b style="color:var(--ac)">${fmtB(bul(x))}</b></div><div><span class="lbl">Precio</span><b>$${Number(x.pr||0).toFixed(2)}</b></div><div><span class="lbl">Dist. tiendas</span><b>${fmt(x.dt)}</b></div></div>
    <div class="msg" style="margin-top:8px">${esc([x.dep,x.div,x.lin,x.sub].filter(Boolean).join(' › '))}</div>`;
@@ -629,11 +629,13 @@ $('bsave').onclick=async()=>{
     if(sel[t].q>pend){const msg=pend===0?`⛔ ${L(t)}: este producto ya fue surtido completo por otro compañero.`:`⛔ ${L(t)}: intentas surtir ${sel[t].q} pero solo quedan ${pend} pendientes.`;
       if(!(ISADM&&confirm(msg+'\n\nComo administrador puedes forzarlo, pero se duplicaría el surtido. ¿Surtir de todos modos?'))){toast(msg+' Se actualizó la pantalla.');renderProd();return}}
   }
+  let W={u:USER,n:NAME};
+  if(INC&&ISADM){if(on.some(t=>t!=='CRISTAL')){toast('Modo asignación: solo se permite Cristal');return}W=await incPick();if(!W)return}
   $('bsave').disabled=true;
   try{
     const ts=Date.now(),d=today();
     for(const t of on){
-      await push(R(db,BASE),{p:cur.p,r:cur.ref,t,q:sel[t].q,tr:sel[t].tr,u:USER,n:NAME,ts,d});
+      await push(R(db,BASE),{p:cur.p,r:cur.ref,t,q:sel[t].q,tr:sel[t].tr,u:W.u,n:W.n,ts,d});
       if(t!=='CRISTAL'&&sel[t].tr&&sel[t].tr!==lastTr(t)){await set(R(db,`${TRFB}/${t}`),{tr:sel[t].tr,u:USER,n:NAME,ts})}
     }
     toast('✅ Surtido guardado');closeProd()
@@ -668,8 +670,9 @@ async function saveCli(){
   for(const r of rows){const q=cliSel[r.key].q;if(!(q>0)){toast(`${r.c}: cantidad inválida`);return}
     if(q>r.pend){const msg=r.pend===0?`⛔ ${r.c}: ya fue surtido completo.`:`⛔ ${r.c}: intentas surtir ${q} pero solo quedan ${r.pend}.`;
       if(!(ISADM&&confirm(msg+'\n\nComo administrador puedes forzarlo, pero se duplicaría el surtido. ¿Surtir de todos modos?'))){toast(msg+' Se actualizó la pantalla.');renderCli();return}}}
+  let W={u:USER,n:NAME};if(INC&&ISADM){W=await incPick();if(!W)return}
   const ts=Date.now(),d=today();
-  try{for(const r of rows){await push(R(db,BASE),{p:cliP,r:byProd[cliP].ref,t:'CRISTAL',q:cliSel[r.key].q,tr:cliTr,u:USER,n:NAME,ts,d,ck:r.key,cn:r.c,pos:r.pos||'',ro:r.ro||''})}
+  try{for(const r of rows){await push(R(db,BASE),{p:cliP,r:byProd[cliP].ref,t:'CRISTAL',q:cliSel[r.key].q,tr:cliTr,u:W.u,n:W.n,ts,d,ck:r.key,cn:r.c,pos:r.pos||'',ro:r.ro||''})}
     toast('✅ Surtido de clientes guardado');cliSel={};renderCli()}catch(e){toast('Error al guardar: '+(e.code||e.message))}
 }
 // Carga de clientes por plantilla Excel (solo administradores)
@@ -763,9 +766,9 @@ function openDsp(){
   $('mdsp').classList.remove('hide')
 }
 async function runDsp(){
-  const x=cur;if(!x)return;const b=$('dspBtn');if(!b)return;DSPANIM=true;b.classList.add('busy');const t0=Date.now();
+  const x=cur;if(!x)return;const b=$('dspBtn');if(!b)return;let W={u:USER,n:NAME};if(INC&&ISADM){W=await incPick();if(!W)return}DSPANIM=true;b.classList.add('busy');const t0=Date.now();
   try{
-    await set(R(db,`${DSPB}/${x.p}`),{u:USER,n:NAME,ts:Date.now(),d:today(),r:x.ref});
+    await set(R(db,`${DSPB}/${x.p}`),{u:W.u,n:W.n,ts:Date.now(),d:today(),r:x.ref});
     const w=1400-(Date.now()-t0);if(w>0)await new Promise(r=>setTimeout(r,w));
     b.classList.remove('busy');b.classList.add('done');b.innerHTML='<span>✓ Despachado</span>';
     toast(`✅ ${x.ref} despachado y completado`);
@@ -947,6 +950,56 @@ async function autoClose(id,items,ts){
   await set(R(db,'meta_v1/consultas_prog/'+id),{s:100,d:100,r:n,n,si:n,ts:Date.now()});
   const o={u:AUTO_U,n:AUTO_N,ts,au:1};await set(R(db,'meta_v1/consultas_comp/'+id),o);COMP[id]=o
 }
+// Recibos integrados en la app que ya fueron trabajados: se cierran solos una vez (surtido y despacho al 100% por Consultas ERP)
+const WORKED={"407909":new Date(2026,8,30,12,0).getTime()};let _wkOn=false;
+async function ensureWorked(){if(_wkOn||!ISADM)return;_wkOn=true;let did=0;
+  for(const id of Object.keys(WORKED)){if(!RECS[id]||COMP[id])continue;
+    try{if((await get(R(db,'meta_v1/consultas_comp/'+id))).exists())continue;await autoClose(id,RECS[id].items,WORKED[id]);did++}catch(e){}}
+  if(did){toast('✅ Recibo '+Object.keys(WORKED).join(', ')+' cerrado como trabajado (100%)');if(!RECIBO)showRecList()}}
+$('hsBtn').onclick=async()=>{
+  if(!cur||!ISADM)return;if(COMP[RECIBO]){toast('El recibo está completado: reábrelo antes');return}
+  await auLoadDir();if(!UDIR.length){toast('No se pudo leer la lista de surtidores');return}
+  const x=cur,pen=t=>Math.max(0,(x.s[t]||0)-sur(x.p,t)),ts0=STORES.filter(t=>pen(t)>0);
+  if(!ts0.length){toast('Este producto no tiene piezas pendientes por surtir');return}
+  let last={};try{last=JSON.parse(localStorage.getItem('cons_hs')||'{}')}catch(e){}
+  const defT=ts0.includes(STF2)?STF2:(ts0.includes('CRISTAL')?'CRISTAL':ts0[0]);
+  ask(`Surtido ya hecho · ${x.ref}`,[
+    {k:'t',label:'Tienda',type:'select',value:defT,opts:ts0.map(t=>[t,L(t)+(NAMES[t]?' · '+NAMES[t]:'')+' (pendiente '+fmt(pen(t))+')'])},
+    {k:'q',label:'Cantidad ya surtida (vacío = todo lo pendiente de esa tienda)',type:'number',value:''},
+    {k:'u',label:'Surtidor',type:'select',value:last.u||'',opts:[['','Elegir…'],...UDIR.map(z=>[z.u,z.n+' ('+z.u+')'])]},
+    {k:'w',label:'Fecha y hora en que se surtió',type:'datetime-local',value:last.w||nowLocal()},
+    {k:'d',label:'¿Ya fue despachada la referencia?',type:'select',value:last.d||'s',opts:[['s','Sí, ya fue despachada'],['n','No, solo surtida']]}],'Registrar',async v=>{
+    const t=v.t,p0=pen(t),q=v.q?Math.round(+v.q):p0,su=UDIR.find(z=>z.u===v.u),wts=new Date(v.w).getTime();
+    if(!su){toast('Elige el surtidor');return false}
+    if(!(q>0)||q>p0){toast(`Cantidad inválida: pendiente ${fmt(p0)}`);return false}
+    if(!isFinite(wts)){toast('Fecha inválida');return false}
+    try{
+      await push(R(db,BASE),{p:x.p,r:x.ref,t,q,tr:'',u:su.u,n:su.n,ts:wts,d:ymd(wts),hs:1,by:USER,bn:NAME});
+      try{localStorage.setItem('cons_hs',JSON.stringify({u:su.u,w:v.w,d:v.d}))}catch(e){}
+      const quedan=STORES.some(z=>pen(z)-(z===t?q:0)>0);let msg=`✅ ${fmt(q)} pzas de ${L(t)} asignadas a ${su.n}`;
+      if(v.d==='s'){if(quedan)msg+=' · no se despachó: aún hay tiendas pendientes';else if(!DSP[x.p]){await set(R(db,`${DSPB}/${x.p}`),{u:su.u,n:su.n,ts:wts,d:ymd(wts),r:x.ref,b:bul(x),hs:1});msg+=' · referencia despachada'}}
+      toast(msg);closeProd()}
+    catch(err){toast('Error: '+(err.code||err.message));return false}})};
+// Sonido y destello (el iPhone no permite vibrar desde una web)
+let _acx=null;const unlockAc=()=>{try{_acx=_acx||new(window.AudioContext||window.webkitAudioContext)();if(_acx.state==='suspended')_acx.resume()}catch(e){}};
+['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,unlockAc,{passive:true}));
+function beepTone(fs,sq){try{unlockAc();if(!_acx)return;let t=_acx.currentTime;for(const f of fs){const o=_acx.createOscillator(),g=_acx.createGain();o.type=sq?'square':'sine';o.frequency.value=f;g.gain.value=.22;o.connect(g);g.connect(_acx.destination);o.start(t);o.stop(t+.16);t+=.2}}catch(e){}}
+function scanBad(msg){const q=$('q');beepTone([240,180],true);try{navigator.vibrate&&navigator.vibrate([350,120,350])}catch(_){}
+  const bx=q.closest('.sbox')||q;bx.style.boxShadow='0 0 0 3px #ff3b30';setTimeout(()=>{bx.style.boxShadow=''},700);
+  q.value='';shown=40;renderList();$('qmsg').textContent=msg;$('qmsg').className='msg err';q.focus()}
+// ---------- Modo asignación (oculto, solo administrador): 5 toques seguidos al título. El surtido de Cristal se registra a nombre del surtidor que elijas, no de la sesión ----------
+let INC=false;try{INC=sessionStorage.getItem('cons_inc')==='1'}catch(e){}
+function incPaint(){$('incDot').classList.toggle('hide',!(INC&&ISADM))}
+{let tp=[];const incTap=()=>{if(!ISADM)return;const n=Date.now();tp=tp.filter(z=>n-z<3000);tp.push(n);if(tp.length>=5){tp=[];INC=!INC;try{sessionStorage.setItem('cons_inc',INC?'1':'0')}catch(e){}beepTone(INC?[660,880]:[440,330]);incPaint()}};
+  $('ttl').addEventListener('click',incTap);document.querySelector('[data-t=cons]').addEventListener('click',incTap)}
+async function incPick(){
+  await auLoadDir();if(!UDIR.length){toast('No se pudo leer la lista de surtidores');return null}
+  let last='';try{last=localStorage.getItem('cons_inc_u')||''}catch(e){}
+  return new Promise(res=>{
+    ask('Asignar surtido a…',[{k:'u',label:'Surtidor',type:'select',value:last,opts:[['','Elegir…'],...UDIR.map(z=>[z.u,z.n+' ('+z.u+')'])]}],'Asignar',v=>{
+      const su=UDIR.find(z=>z.u===v.u);if(!su){toast('Elige el surtidor');return false}
+      try{localStorage.setItem('cons_inc_u',su.u)}catch(e){}res({u:su.u,n:su.n})});
+    const no=$('askNo');if(no)no.addEventListener('click',()=>res(null),{once:true})})}
 $('recUp').onclick=()=>$('recFile').click();
 $('recFile').onchange=async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
@@ -2786,7 +2839,7 @@ $('btnBack').addEventListener('click',()=>{
 // ---------- navegación ----------
 // Rol surtidor: solo Consulta (surtido) y Transferencias (números de transferencia). El resto es solo de administradores.
 const TABS_ADM=['dsp','dif','est'];
-function applyRole(){document.querySelectorAll('.tab').forEach(b=>{if(TABS_ADM.includes(b.dataset.t))b.classList.toggle('hide',!ISADM)})}
+function applyRole(){document.querySelectorAll('.tab').forEach(b=>{if(TABS_ADM.includes(b.dataset.t))b.classList.toggle('hide',!ISADM)});incPaint()}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
   if(!ISADM&&TABS_ADM.includes(b.dataset.t))return;
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
