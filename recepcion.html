@@ -1,0 +1,71 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="theme-color" content="#06222b"><title>Recepción · Frangipani</title>
+<style>:root{--bg:#06222b;--cd:#0b3a44;--bd:#17606e;--tx:#e8f6f8;--mt:#8fb7bf;--ac:#2de2c9;--ok:#2fe08a;--wn:#f5b942;--er:#ff6b61}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px system-ui,sans-serif;padding:env(safe-area-inset-top) 14px 40px}
+h1{font-size:20px;margin:16px 0 4px}.m{color:var(--mt);font-size:13px}.c{background:var(--cd);border:1px solid var(--bd);border-radius:14px;padding:14px;margin:10px 0}
+button,input,textarea{font:inherit;border-radius:12px;border:1px solid var(--bd);background:#04161c;color:var(--tx);padding:12px;width:100%}
+button{background:var(--cd);font-weight:700;cursor:pointer}button.p{background:var(--ac);color:#04161c;border:0}button:disabled{opacity:.5}
+.r{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--bd);border-radius:12px;margin:6px 0;cursor:pointer}.r.on{background:#0f5a3a;border-color:var(--ok)}
+.r b{flex:1}.k{width:26px;height:26px;border-radius:8px;border:2px solid var(--mt);display:grid;place-items:center}.on .k{background:var(--ok);border-color:var(--ok);color:#04161c}
+.top{display:flex;justify-content:space-between;align-items:center}.top button{width:auto;padding:8px 12px}.e{color:var(--er)}</style></head><body><div id="a"></div>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js"></script>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+import{getAuth,signInWithEmailAndPassword,signOut}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+import{getDatabase,ref as R,get,update,query,orderByKey,startAt}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+const FB={apiKey:"AIzaSyCn7bUx8PdK-1TCmOnffWJYLouC5vdGMIE",authDomain:"westland-marcaciones.firebaseapp.com",projectId:"westland-marcaciones",storageBucket:"westland-marcaciones.appspot.com",messagingSenderId:"477907187320",appId:"1:477907187320:web:c04ef5b3b8ff5773b99f8d",databaseURL:"https://westland-marcaciones-default-rtdb.firebaseio.com"};const app=initializeApp(FB),auth=getAuth(app),db=getDatabase(app);
+const PB='meta_v1/consultas_palets',KEY='rec_sess',HORA=36e5,$=id=>document.getElementById(id);
+const esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fdt=t=>t?new Date(t).toLocaleString('es',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+let EM={},cur=null,chk={},ses=null,busy=false;
+const sess=()=>{try{const v=JSON.parse(localStorage.getItem(KEY)||'null');return v&&v.exp>Date.now()?v:null}catch(e){return null}};
+const calc=e=>{const cams=Object.entries(e.cam||{}).map(([cid,c])=>({cid,chofer:c.chofer||'',placa:c.placa||'',pals:Object.entries(c.pal||{}).map(([id,v])=>({id,n:v.n,b:v.b||0})).sort((a,b)=>parseInt(String(a.n).replace(/\D/g,''))-parseInt(String(b.n).replace(/\D/g,'')))}));
+  const all=cams.flatMap(c=>c.pals);return{cams,all,np:all.length,nb:all.reduce((t,p)=>t+p.b,0)}};
+const u2e=u=>{const uu=String(u).toLowerCase();return ['aojo'].includes(uu)?`${uu}@saks.com.pa`:`westlandoutletjugueterianivel+${uu}@gmail.com`};
+const salir=()=>{localStorage.removeItem(KEY);login()};
+function login(msg){signOut(auth).catch(()=>{});$('a').innerHTML=`<h1>📥 Recepción de despachos</h1><div class="m">Centro de distribución Frangipani</div><div class="c"><div class="m" style="margin-bottom:8px">${msg||'Entra con tu usuario y contraseña de recepción. La sesión dura 1 hora o hasta que termines de recibir.'}</div><input id="lu" placeholder="Usuario" autocomplete="off" autocapitalize="none"><input id="lp" type="password" inputmode="numeric" placeholder="Contraseña" style="margin-top:10px"><button class="p" id="go" style="margin-top:10px">Entrar</button></div>`;
+  const go=async()=>{const u=$('lu').value.trim().toLowerCase(),p=$('lp').value;if(!u||!p){return}$('go').disabled=true;$('go').textContent='Verificando…';
+    try{await signInWithEmailAndPassword(auth,u2e(u),p);
+      const x=(await get(R(db,'meta_v1/recepcion_users/'+u))).val();
+      if(!x||x.baja)throw{m:'Este usuario no es de recepción o fue anulado.'};
+      if(x.usado)throw{m:'Este usuario ya fue usado para una recepción.'};
+      if(x.vence<Date.now())throw{m:'Este usuario venció. Pide uno nuevo.'};
+      ses={user:u,name:x.nombre,exp:Math.min(Date.now()+HORA,x.vence)};localStorage.setItem(KEY,JSON.stringify(ses));list()}
+    catch(e){await signOut(auth).catch(()=>{});const bad=['auth/invalid-credential','auth/wrong-password','auth/user-not-found','auth/invalid-email'].includes(e.code);login(e.m||(bad?'Usuario o contraseña incorrectos.':'No se pudo entrar: '+(e.code||e.message)))}};
+  $('go').onclick=go;$('lp').onkeydown=e=>{if(e.key==='Enter')go()}}
+async function list(){ses=sess();if(!ses)return login('La sesión venció. Escribe tu nombre otra vez.');
+  $('a').innerHTML=`<div class="top"><h1>Despachos por recibir</h1><button id="out">Salir</button></div><div class="m">${esc(ses.name)} · cargando…</div>`;$('out').onclick=salir;
+  try{EM=(await get(query(R(db,PB+'/emb'),orderByKey(),startAt('e'+(Date.now()-21*864e5))))).val()||{}}catch(e){$('a').innerHTML+=`<div class="c e">No se pudo cargar: ${esc(e.code||e.message)}</div>`;return}
+  const L=Object.entries(EM).filter(([,e])=>e.desp&&!e.rec).sort((a,b)=>(b[1].seq||0)-(a[1].seq||0));
+  $('a').innerHTML=`<div class="top"><h1>Despachos por recibir</h1><button id="out">Salir</button></div><div class="m">${esc(ses.name)} · verifica el número con la hoja del chofer</div>`+(L.length?L.map(([id,e])=>{const c=calc(e);return`<div class="c" data-o="${id}"><b style="font-size:20px">Despacho ${esc(e.num)}</b><div class="m">${fdt((e.desp&&e.desp.ts)||e.ts)} · ${c.cams.length} camión(es)</div><div style="margin-top:6px">${c.np} palets · ${c.nb} bultos</div></div>`}).join(''):'<div class="c m">No hay despachos pendientes por recibir.</div>');
+  $('out').onclick=salir;$('a').onclick=e=>{const d=e.target.closest('[data-o]');if(d)open(d.dataset.o)}}
+function open(id){cur=id;chk={};draw()}
+function draw(){ses=sess();if(!ses)return login('La sesión venció. Escribe tu nombre otra vez.');const e=EM[cur],c=calc(e),n=c.all.filter(p=>chk[p.id]).length;
+  $('a').innerHTML=`<div class="top"><h1>Despacho ${esc(e.num)}</h1><button id="bk">←</button></div><div class="m">${fdt((e.desp&&e.desp.ts)||e.ts)} · ${c.np} palets · ${c.nb} bultos</div>
+  <div class="c"><input id="sc" inputmode="numeric" placeholder="Escanea o escribe el Nº de palet"></div>`+c.cams.map(k=>`<div class="m" style="margin-top:12px">🚛 ${esc(k.chofer)} ${k.placa?'· '+esc(k.placa):''}</div>`+k.pals.map(p=>`<div class="r ${chk[p.id]?'on':''}" data-p="${p.id}"><span class="k">${chk[p.id]?'✓':''}</span><b>${esc(p.n)}</b><span class="m">${p.b} bultos</span></div>`).join('')).join('')+
+  `<div class="c"><div style="margin-bottom:8px"><b>${n}</b> de ${c.np} palets recibidos</div><button id="all">Marcar todos</button><textarea id="nt" rows="2" placeholder="Observaciones (faltantes, daños…)" style="margin-top:10px"></textarea><button class="p" id="ok" style="margin-top:10px">Confirmar recepción</button></div>`;
+  const nt=window._nt||'';$('nt').value=nt;$('nt').oninput=()=>window._nt=$('nt').value;
+  $('bk').onclick=()=>list();$('all').onclick=()=>{c.all.forEach(p=>chk[p.id]=1);draw()};
+  $('a').querySelectorAll('[data-p]').forEach(r=>r.onclick=()=>{chk[r.dataset.p]=!chk[r.dataset.p];draw()});
+  $('sc').onkeydown=ev=>{if(ev.key!=='Enter')return;const q=$('sc').value.replace(/\D/g,'');const p=c.all.find(x=>String(x.n).replace(/\D/g,'')===q);if(!p){alert('Ese palet no pertenece a este despacho.');$('sc').value='';return}chk[p.id]=1;draw();$('sc').focus()};
+  $('ok').onclick=()=>fin()}
+async function fin(){if(busy)return;const e=EM[cur],c=calc(e),got=c.all.filter(p=>chk[p.id]),falt=c.all.filter(p=>!chk[p.id]);
+  if(!got.length){alert('Marca al menos un palet.');return}
+  if(falt.length&&!confirm(`Faltan ${falt.length} palet(s): ${falt.map(p=>p.n).join(', ')}.\n¿Confirmar la recepción con estos faltantes?`))return;
+  if(!falt.length&&!confirm('¿Confirmar la recepción completa?'))return;
+  busy=true;const ts=Date.now(),nota=($('nt').value||'').trim(),up={[`emb/${cur}/rec`]:{by:ses.name,u:ses.user,ts,pals:Object.fromEntries(got.map(p=>[p.id,1])),falt:falt.map(p=>p.n),nota}};
+  got.forEach(p=>up[`pm/${p.id}/rcv`]={by:ses.name,u:ses.user,ts,e:cur});
+  try{await update(R(db,PB),up)}catch(err){busy=false;alert('No se pudo guardar: '+(err.code||err.message));return}
+  let mail='ok';try{await correo(e,c,got,falt,nota,ts)}catch(err){mail='fail'}
+  try{await update(R(db,PB),{[`emb/${cur}/rec/mail`]:mail})}catch(x){}
+  try{await update(R(db,'meta_v1/recepcion_users/'+ses.user),{usado:ts,despacho:e.num})}catch(x){}
+  localStorage.removeItem(KEY);signOut(auth).catch(()=>{});window._nt='';busy=false;
+  $('a').innerHTML=`<h1>✅ Recepción registrada</h1><div class="c">Despacho <b>${esc(e.num)}</b><br>${got.length} palet(s) recibidos${falt.length?` · <span class="e">${falt.length} faltante(s)</span>`:''}<br><span class="m">Recibió: ${esc(ses.name)} · ${fdt(ts)}</span><br><span class="m">${mail==='ok'?'Correo de recepción enviado.':'El correo no se pudo enviar; la recepción sí quedó guardada.'}</span></div><button class="p" id="nx">Terminar</button>`;$('nx').onclick=()=>login()}
+async function correo(e,c,got,falt,nota,ts){const cfg=(await get(R(db,'meta_v1/email_cfg'))).val(),mm=e.mail||(await get(R(db,PB+'/cfg'))).val()||{};
+  if(!cfg||!cfg.serviceId||!cfg.templateId||!cfg.publicKey||!mm.to)throw 0;emailjs.init(cfg.publicKey);
+  const row=(a,b)=>`<tr><td style="padding:6px 10px;border-bottom:1px solid #d9e1e8;color:#5a6b7a">${a}</td><td style="padding:6px 10px;border-bottom:1px solid #d9e1e8"><b>${b}</b></td></tr>`;
+  const html=`<div style="font-family:Arial,sans-serif;max-width:560px"><h2 style="color:#0b3b5c">Recepción del despacho ${esc(e.num)}</h2><table style="border-collapse:collapse;width:100%">${row('Recibió',esc(ses.name))}${row('Fecha y hora',new Date(ts).toLocaleString('es'))}${row('Palets esperados',c.np)}${row('Palets recibidos',got.length+' ('+got.map(p=>esc(p.n)).join(', ')+')')}${row('Faltantes',falt.length?`<span style="color:#c0392b">${falt.map(p=>esc(p.n)).join(', ')}</span>`:'Ninguno')}${row('Observaciones',esc(nota)||'—')}</table></div>`;
+  await emailjs.send('service_gqk1da3',cfg.templateId,{to_email:mm.to,cc_email:mm.cc||'',subject:`RE: Despacho ${e.num} · Recepción ${falt.length?'con faltantes':'completa'}`,html_content:html,message:`Recepción del despacho ${e.num} por ${ses.name}: ${got.length}/${c.np} palets.`,saludo:'',periodo:e.num,timestamp:new Date().toLocaleString('es')})}
+(async()=>{try{await auth.authStateReady()}catch(e){}
+  const s=sess();setInterval(()=>{if(!sess()&&$('go')===null&&!busy&&localStorage.getItem(KEY))list()},60000);
+  if(s&&auth.currentUser&&auth.currentUser.email===u2e(s.user))list();else login()})();
+</script></body></html>

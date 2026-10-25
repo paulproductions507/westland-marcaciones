@@ -836,6 +836,17 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="inv-list" style="margin-top:12px"></div>
           </div></div>
 
+          <div class="asec"><div class="ashdr" data-ac="ac-rcp"><span>📥 Usuarios de recepción (CD Frangipani)</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-rcp">
+            <div style="font-size:11px;color:var(--mt);margin-bottom:9px;line-height:1.45">Cuentas temporales para recibir despachos en <b>recepcion.html</b>. Entran con usuario y contraseña; la contraseña la genera el sistema y se muestra una sola vez. Vence a las 12 horas, o al confirmar una recepción.</div>
+            <div class="fg2">
+              <div class="fg"><label>Nombre completo</label><input class="fc" id="rcp-nombre"></div>
+              <div class="fg"><label>Usuario (sin espacios)</label><input class="fc" id="rcp-user" placeholder="ej: dpinto" autocapitalize="none"></div>
+            </div>
+            <button class="btn bp bsm" id="btn-rcp-new" style="width:auto;margin-top:4px">➕ Crear usuario de recepción</button>
+            <div id="rcp-list" style="margin-top:12px"></div>
+          </div></div>
+
           <div class="asec"><div class="ashdr" data-ac="ac-baja"><span>🗃 Colaboradores dados de baja</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-baja">
             <div style="font-size:11px;color:var(--mt);margin-bottom:9px;line-height:1.45">Colaboradores que ya no están laborando. No aparecen en ninguna lista activa (turnos, pago, marcación), pero su ficha y su historial siguen intactos. Si vuelve a trabajar con nosotros, "♻ Restaurar" lo regresa tal cual estaba.</div>
@@ -2277,7 +2288,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import{getAuth,signInWithEmailAndPassword,signOut,EmailAuthProvider,reauthenticateWithCredential,updatePassword}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+import{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,EmailAuthProvider,reauthenticateWithCredential,updatePassword}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import{getDatabase,ref as R,set,push,get,onValue,remove,update,query,limitToLast,orderByKey,orderByChild,equalTo,startAt,endAt}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 const FB={apiKey:"AIzaSyCn7bUx8PdK-1TCmOnffWJYLouC5vdGMIE",authDomain:"westland-marcaciones.firebaseapp.com",projectId:"westland-marcaciones",storageBucket:"westland-marcaciones.appspot.com",messagingSenderId:"477907187320",appId:"1:477907187320:web:c04ef5b3b8ff5773b99f8d",databaseURL:"https://westland-marcaciones-default-rtdb.firebaseio.com"};
@@ -8127,6 +8138,33 @@ el('btn-inv-save')?.addEventListener('click',async()=>{
     ['inv-nombre','inv-user','inv-ced','inv-hasta','inv-tr','inv-td','inv-tf'].forEach(id=>el(id).value='');
     toast('Colaborador temporal guardado ✓','ok');renderInvitados();refreshUI();
   }catch(e){toast('⛔ No se pudo guardar','err');console.error(e);}
+});
+
+// ── USUARIOS DE RECEPCIÓN (CD Frangipani): cuentas temporales con usuario y contraseña (Firebase Auth) para recepcion.html ──
+const RCP='meta_v1/recepcion_users';
+async function renderRcp(){const box=el('rcp-list');if(!box)return;
+  try{const v=(await get(R(db,RCP))).val()||{},now=Date.now(),L=Object.values(v).sort((a,b)=>(b.creado||0)-(a.creado||0));
+    box.innerHTML=L.length?L.map(x=>{const st=x.baja?'🚫 anulado':x.usado?'✅ ya recibió'+(x.despacho?' el despacho '+escHtml(x.despacho):'')+' · '+new Date(x.usado).toLocaleString('es'):x.vence<now?'⌛ vencido':'🟢 activo hasta '+new Date(x.vence).toLocaleString('es');
+      return `<div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:9px 11px;margin-bottom:7px;font-size:12px"><div><strong>${escHtml(x.nombre)}</strong> · <code>${escHtml(x.user)}</code></div><div style="color:var(--mt);margin-top:3px">${st}</div>${(!x.baja&&!x.usado&&x.vence>=now)?`<button class="btn bg bsm" style="width:auto;margin-top:6px" data-rq="${escHtml(x.user)}">🚫 Anular</button>`:''}</div>`}).join(''):'<div style="font-size:12px;color:var(--mt)">Sin usuarios de recepción.</div>';
+    box.querySelectorAll('[data-rq]').forEach(b=>b.addEventListener('click',async()=>{if(!confirm('¿Anular este usuario de recepción?'))return;try{await update(R(db,`${RCP}/${b.dataset.rq}`),{baja:Date.now()});addLog(`Usuario de recepción anulado: ${b.dataset.rq} (por ${CU})`);renderRcp()}catch(e){toast('⛔ No se pudo anular','err')}}));
+  }catch(e){box.innerHTML='<div style="font-size:12px;color:var(--dn)">Error al cargar: '+escHtml(e.message||e)+'</div>'}}
+document.querySelector('[data-ac="ac-rcp"]')?.addEventListener('click',renderRcp);
+el('btn-rcp-new')?.addEventListener('click',async()=>{
+  const nombre=el('rcp-nombre').value.trim(),u0=el('rcp-user').value.trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+  if(nombre.length<5||u0.length<3){toast('Escribe el nombre completo y un usuario de al menos 3 letras','err');return}
+  const user='rc'+u0,pass=Array.from(crypto.getRandomValues(new Uint32Array(8)),n=>n%10).join('');
+  el('btn-rcp-new').disabled=true;
+  try{if((await get(R(db,`${RCP}/${user}`))).exists()){toast('Ese usuario ya existe; usa otro','err');return}
+    const sec=initializeApp(FB,'rcp'+Date.now()),a2=getAuth(sec);
+    await createUserWithEmailAndPassword(a2,u2e(user),pass);await signOut(a2);
+    await set(R(db,`${RCP}/${user}`),{user,nombre,creado:Date.now(),vence:Date.now()+12*36e5,por:CU});
+    addLog(`Usuario de recepción creado: ${user} · ${nombre} (por ${CU})`);
+    try{await navigator.clipboard.writeText(`Usuario: ${user}  Contraseña: ${pass}`)}catch(e){}
+    el('rcp-nombre').value='';el('rcp-user').value='';
+    alert(`Usuario de recepción creado\n\nNombre: ${nombre}\nUsuario: ${user}\nContraseña: ${pass}\n\nEntrégaselas a esa persona. La contraseña NO se vuelve a mostrar (ya se copió al portapapeles). Vence en 12 horas o al confirmar una recepción.`);
+    renderRcp();
+  }catch(e){toast(e.code==='auth/email-already-in-use'?'Ya existe una cuenta con ese usuario; usa otro':'⛔ No se pudo crear: '+(e.code||e.message),'err',6000);console.error(e)}
+  finally{el('btn-rcp-new').disabled=false}
 });
 
 // ── BITÁCORA DE PERÍODOS LABORALES ──────────────────────────────────────
