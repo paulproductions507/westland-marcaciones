@@ -747,6 +747,14 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               Usuario: <strong>jdecerega</strong> &nbsp; Contraseña inicial: <strong>Wl2024#Ger</strong><br>
               <span style="color:var(--mt)">Email: jdecerega@saks.com.pa · El gerente debe cambiar su contraseña en su primer acceso.</span>
             </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+              <button class="btn bp bsm" id="btn-nuevo-user" type="button" style="width:auto">➕ Nuevo usuario</button>
+              <button class="btn bg bsm" id="btn-exp-users" type="button" style="width:auto">⬇ CSV</button>
+            </div>
+            <input class="fc" id="users-q" type="search" placeholder="🔎 Buscar usuario por nombre, usuario o cédula…" style="margin-bottom:10px">
+            <div id="users-list" style="margin-top:6px"></div>
+            <div class="mbd" id="modal-user"><div class="mbox" style="max-width:600px">
+              <h3 id="mu-title">Nuevo usuario</h3>
             <div class="fg2">
               <div class="fg"><label>Nombre</label><input class="fc" id="u-nombre"></div>
               <div class="fg"><label>Usuario (login)</label><input class="fc" id="u-user"></div>
@@ -813,11 +821,11 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
                 <label for="u-sinacum" style="font-size:12.5px;font-weight:700;color:var(--mt);text-transform:none;letter-spacing:0">🚫 No aplicar acumulado semanal a este colaborador (descuento siempre por su jornada real, sin cubrir con sobrante de otros días)</label>
               </div>
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-              <button class="btn bp bsm" id="btn-save-user" style="width:auto">💾 Guardar</button>
-              <button class="btn bg bsm" id="btn-exp-users">⬇ CSV</button>
-            </div>
-            <div id="users-list" style="margin-top:13px"></div>
+              <div class="mfoot">
+                <button class="btn bg bsm" id="btn-cancel-user" type="button" style="width:auto">Cancelar</button>
+                <button class="btn bp bsm" id="btn-save-user" type="button" style="width:auto">💾 Guardar</button>
+              </div>
+            </div></div>
           </div></div>
 
           <div class="asec" id="sec-invitados"><div class="ashdr" data-ac="ac-inv"><span>🧑‍🤝‍🧑 Colaboradores temporales</span><span class="ach">▾</span></div>
@@ -1197,18 +1205,18 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="descman-lista" style="margin-top:10px"></div>
           </div></div>
 
-          <div class="asec"><div class="ashdr" data-ac="ac-adel"><span>⏩ Horas adelantadas (sábado → domingo)</span><span class="ach">▾</span></div>
+          <div class="asec"><div class="ashdr" data-ac="ac-adel"><span>⏩ Horas adelantadas (cualquier día de la semana)</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-adel">
-            <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Habilita un <strong>sábado</strong> con salida extendida. Ese día los colaboradores marcan su hora real (hasta la hora límite) y los minutos trabajados de más pasan a un saldo que cubre el faltante del <strong>domingo de la misma semana</strong> (ej. salir más temprano) sin descuento. No genera pago extra ni pasa a otra semana. Se ve en Vista Semanal, Vista RRHH y los listados, con la fecha de origen.</div>
-            <div class="fg"><label>Sábado</label><input type="date" class="fc" id="adel-fecha"></div>
+            <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Habilita un <strong>día de lunes a sábado</strong> con salida extendida. Ese día los colaboradores marcan su hora real (hasta la hora límite) y los minutos trabajados de más pasan a un saldo que cubre el faltante de los <strong>días siguientes de la misma semana</strong> (ej. el domingo) sin descuento. No genera pago extra ni pasa a otra semana. Si las horas ya pasaron y no se habilitó el día, usa la sección “banco (semanas anteriores)”. Se ve en Vista Semanal, Vista RRHH y los listados, con la fecha de origen.</div>
+            <div class="fg"><label>Día a habilitar (lunes a sábado)</label><input type="date" class="fc" id="adel-fecha"></div>
             <div class="fg"><label>Hora límite de salida</label><input type="time" class="fc" id="adel-hasta" value="19:00"></div>
-            <button class="btn bp bsm" id="btn-adel" style="width:auto;margin-top:6px">⏩ Habilitar sábado</button>
+            <button class="btn bp bsm" id="btn-adel" style="width:auto;margin-top:6px">⏩ Habilitar día</button>
             <button class="btn bg bsm" id="btn-adel-quitar" style="width:auto;margin-top:6px">🗑 Quitar</button>
             <div id="adel-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
           </div></div>
 
-          <div class="asec"><div class="ashdr" data-ac="ac-banco"><span>⏳ Horas adelantadas — banco (semanas anteriores)</span><span class="ach">▾</span></div>
-          <div class="asbdy" id="ac-banco">
+          <div class="asec"><div class="ashdr" data-ac="ac-hbanco"><span>⏳ Horas adelantadas — banco (semanas anteriores)</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-hbanco">
             <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Son las MISMAS horas adelantadas de los sábados, pero de semanas anteriores (ej. se quedaron esperando un contenedor y se les deben). <strong>No modifica sus marcaciones</strong>: se registra la fecha, los minutos y el motivo (queda en bitácora). El saldo <strong>no vence</strong> y pasa de semana en semana hasta que lo apliques a un día con faltante; al aplicarlo se consume y lo que sobre sigue disponible. Nunca paga extra: solo cubre el faltante de ese día.</div>
             <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;margin-bottom:10px">
               <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;font-weight:700;color:var(--tx);text-transform:none;letter-spacing:0;cursor:pointer"><input type="checkbox" id="adel-ocultar" checked style="margin-top:2px"><span>🙈 Ocultar la nota de origen a RRHH y en los listados/correos</span></label>
@@ -1228,7 +1236,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div class="fg"><label>Minutos a aplicar</label><input type="number" class="fc" id="bancoap-min" min="1"></div>
             <button class="btn bg bsm" id="btn-bancoap-sug" type="button" style="width:auto;margin-top:4px">💡 Sugerir faltante de ese día</button>
             <button class="btn bp bsm" id="btn-bancoap" type="button" style="width:auto;margin-top:4px">✅ Aplicar al día</button>
-            <div id="banco-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
+            <div id="hbanco-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
             <div id="banco-detalle" style="margin-top:10px"></div>
           </div></div>
 
@@ -3542,7 +3550,7 @@ function origenTxt(list){return (list||[]).map(o=>`${fmtFechaDM(o.fecha)}${o.mot
 // Texto de origen de las horas adelantadas que cubrieron el día k (sábado habilitado y/o banco)
 function trazaAdel(k,res,orig){
   const parts=[];
-  if((((res&&res.mapAdel)||{})[k]||0)>0)Object.keys((res&&res.adelGen)||{}).sort().forEach(f=>parts.push(`sábado ${fmtFechaDM(f)}`));
+  if((((res&&res.mapAdel)||{})[k]||0)>0)Object.keys((res&&res.adelGen)||{}).sort().forEach(f=>parts.push(`${DIA_LARGO[new Date(f+'T00:00:00').getDay()].toLowerCase()} ${fmtFechaDM(f)}`));
   if((((res&&res.mapBanco)||{})[k]||0)>0&&orig&&orig[k])parts.push(orig[k].map(o=>`${fmtFechaDM(o.fecha)}${o.motivo?' · '+o.motivo:''}`).join(', '));
   return parts.join(' + ');
 }
@@ -4244,13 +4252,9 @@ window.editUser=async function(userKey){
   const pf=u.pagoFijo||{};const pfOn=!!(pf.activo&&Array.isArray(pf.dias)&&pf.dias.length);
   el('u-pf-on').checked=pfOn;el('u-pf-row').style.display=pfOn?'block':'none';
   document.querySelectorAll('.u-pf-dia').forEach(cb=>{cb.checked=pfOn&&pf.dias.includes(parseInt(cb.value));});
-  // Open the usuarios accordion
-  const b=el('ac-us');if(!b.classList.contains('open'))b.classList.add('open');
-  const panel=el('admin-body');if(panel.style.display!=='block')panel.style.display='block';
-  el('u-nombre').focus();
   if(el('u-finicio'))el('u-finicio').value=u.fechaInicio||'';
   loadBitacora(userKey);
-  toast('Usuario cargado para editar. Modifica y presiona Guardar.','ok',4000);
+  openUserModal('Editar usuario · '+(u.nombre||userKey));
 };
 // "Eliminar" un colaborador ahora significa darlo de baja: su ficha se mueve a un archivo
 // aparte (usuarios_archivados) — deja de aparecer en todas las listas activas (turnos, pago,
@@ -5586,7 +5590,7 @@ async function canMark(date,user,preList){
       const [fh,fm]=sch.fin.split(':').map(Number);
       let finMin=fh*60+fm;const nowMin=date.getHours()*60+date.getMinutes();
       // Sábado con horas adelantadas habilitado por el admin: la salida puede extenderse hasta la hora límite
-      if(date.getDay()===6){
+      if(date.getDay()!==0){
         try{const ac=await withTimeout(getAdelantoCfg(isoD(date)),3000);
           if(ac&&ac.hasta){const[ah,am]=String(ac.hasta).split(':').map(Number);finMin=Math.max(finMin,(ah||0)*60+(am||0));}
         }catch(e){}
@@ -6853,7 +6857,7 @@ async function deltaEntradaAlmuerzoDia(user,fechaISO,dayMarks,almCfg,horcolUser,
   // trabajados después de la salida programada (hasta la hora límite habilitada), sin pasar de lo
   // que realmente trabajó de más ese día.
   let adelantoMin=0;
-  if(completo&&by['Salida Final']&&new Date(fechaISO+'T00:00:00').getDay()===6){
+  if(completo&&by['Salida Final']&&new Date(fechaISO+'T00:00:00').getDay()!==0){
     try{
       const ac=await getAdelantoCfg(fechaISO);
       if(ac&&ac.hasta){
@@ -7155,7 +7159,7 @@ async function renderVistaSemanal(refDate,hastaDate){
         const acumReg=acumAplicado-adelAplic-bancoAplic;
         const acumHtml=(acumReg>0.0001?`<div style="color:#00c9a7;font-size:9px;font-weight:700;margin-top:1px">💧 +${Math.round(acumReg*60)} min cubiertos con sobrante de la semana</div>`:'')
           +((adelAplic+bancoAplic)>0?`<div style="color:#38bdf8;font-size:9px;font-weight:700;margin-top:1px">⏩ Trabajó ${hrs.toFixed(2)}h + ${Math.round((adelAplic+bancoAplic)*60)} min adelantados</div><div style="color:var(--mt);font-size:9px;line-height:1.3">Origen: ${escHtml(trazaAdel(k,acumResult,bancoOrigU))}</div>`:'')
-          +(adelGenMin>0?`<div style="color:#38bdf8;font-size:9px;font-weight:700;margin-top:1px">⏩ ${adelGenMin} min adelantados para el domingo (sin pago extra)</div>`:'');
+          +(adelGenMin>0?`<div style="color:#38bdf8;font-size:9px;font-weight:700;margin-top:1px">⏩ ${adelGenMin} min adelantados para días siguientes de la semana (sin pago extra)</div>`:'');
         // Hueco de secuencia: ej. tiene Regreso Alm. pero no Salida Alm. — esa marca probablemente
         // sigue atascada en el teléfono del colaborador. Se avisa aparte de "incompleto" (4/4
         // normal cuando aún no termina el día) para no generar falsas alarmas.
@@ -7880,12 +7884,12 @@ el('adel-ocultar')?.addEventListener('change',async()=>{
     toast(c.checked?'🙈 Oculta para RRHH ✓':'👁 Visible para RRHH ✓','ok');
   }catch(e){c.checked=!c.checked;toast('⛔ No se pudo guardar','err');}
 });
-document.querySelector('[data-ac="ac-banco"]')?.addEventListener('click',()=>setTimeout(()=>{renderBancoUser();cargarOcultarNota();},50));
+document.querySelector('[data-ac="ac-hbanco"]')?.addEventListener('click',()=>setTimeout(()=>{renderBancoUser();cargarOcultarNota();},50));
 el('btn-banco-todos')?.addEventListener('click',()=>{Array.from(el('banco-users').options).forEach(o=>{o.selected=true;});});
 el('btn-banco-add')?.addEventListener('click',async()=>{
   const fecha=el('banco-fecha').value,min=parseInt(el('banco-min').value,10),motivo=(el('banco-motivo').value||'').trim();
   const users=Array.from(el('banco-users').selectedOptions).map(o=>o.value);
-  const st=el('banco-status');
+  const st=el('hbanco-status');
   if(!fecha||!min||min<=0||!motivo||!users.length){toast('Completa fecha, minutos, motivo y colaboradores','err');return;}
   const btn=el('btn-banco-add');btn.disabled=true;
   try{
@@ -7901,7 +7905,7 @@ el('btn-banco-add')?.addEventListener('click',async()=>{
   btn.disabled=false;
 });
 el('btn-bancoap-sug')?.addEventListener('click',async()=>{
-  const user=el('bancoap-user').value,fecha=el('bancoap-fecha').value,st=el('banco-status');
+  const user=el('bancoap-user').value,fecha=el('bancoap-fecha').value,st=el('hbanco-status');
   if(!user||!fecha){toast('Elige colaborador y día','err');return;}
   try{
     const marks=((await getHist(fecha))||[]).filter(m=>m.user===user);
@@ -7918,7 +7922,7 @@ el('btn-bancoap-sug')?.addEventListener('click',async()=>{
   }catch(e){if(st)st.textContent='No se pudo calcular el faltante.';}
 });
 el('btn-bancoap')?.addEventListener('click',async()=>{
-  const user=el('bancoap-user').value,fecha=el('bancoap-fecha').value,min=parseInt(el('bancoap-min').value,10),st=el('banco-status');
+  const user=el('bancoap-user').value,fecha=el('bancoap-fecha').value,min=parseInt(el('bancoap-min').value,10),st=el('hbanco-status');
   if(!user||!fecha||!min||min<=0){toast('Completa colaborador, día y minutos','err');return;}
   const btn=el('btn-bancoap');btn.disabled=true;
   try{
@@ -7938,7 +7942,7 @@ el('btn-bancoap')?.addEventListener('click',async()=>{
 async function cargarAdelForm(fecha){
   const st=el('adel-status');if(!st||!fecha)return;
   const dow=new Date(fecha+'T00:00:00').getDay();
-  if(dow!==6){st.textContent='⚠ Esa fecha no es sábado.';return;}
+  if(dow===0){st.textContent='⚠ Elige un día de lunes a sábado (el domingo es el día que recibe las horas).';return;}
   const v=await getAdelantoCfg(fecha,true);
   if(v){el('adel-hasta').value=v.hasta||'19:00';st.textContent=`✅ Habilitado hasta las ${v.hasta} (por ${v.por||'?'})`;}
   else st.textContent='Sin horas adelantadas en esta fecha.';
@@ -7946,15 +7950,15 @@ async function cargarAdelForm(fecha){
 el('adel-fecha')?.addEventListener('change',()=>cargarAdelForm(el('adel-fecha').value));
 el('btn-adel')?.addEventListener('click',async()=>{
   const fecha=el('adel-fecha').value,hasta=el('adel-hasta').value,st=el('adel-status');
-  if(!fecha||!hasta){toast('Elige el sábado y la hora límite','err');return;}
-  if(new Date(fecha+'T00:00:00').getDay()!==6){toast('La fecha debe ser sábado','err');return;}
+  if(!fecha||!hasta){toast('Elige el día y la hora límite','err');return;}
+  if(new Date(fecha+'T00:00:00').getDay()===0){toast('Elige de lunes a sábado','err');return;}
   const btn=el('btn-adel');btn.disabled=true;
   try{
     await set(R(db,`${ADELANTO}/${fecha}`),{hasta,por:CU,ts:Date.now()});
     _adelCache.delete(fecha);
-    await addLog(`⏩ Horas adelantadas habilitadas: sábado ${fecha} hasta ${hasta} (por ${CU})`);
+    await addLog(`⏩ Horas adelantadas habilitadas: ${DIA_LARGO[new Date(fecha+'T00:00:00').getDay()].toLowerCase()} ${fecha} hasta ${hasta} (por ${CU})`);
     if(st)st.textContent=`✅ Habilitado hasta las ${hasta}. Los colaboradores ya pueden marcar su salida hasta esa hora.`;
-    toast('⏩ Sábado habilitado ✓','ok');
+    toast('⏩ Día habilitado ✓','ok');
   }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo guardar','err');}
   btn.disabled=false;
 });
@@ -7964,7 +7968,7 @@ el('btn-adel-quitar')?.addEventListener('click',async()=>{
   try{
     await set(R(db,`${ADELANTO}/${fecha}`),null);
     _adelCache.delete(fecha);try{localStorage.removeItem(adelantoLocalKey(fecha));}catch(e){}
-    await addLog(`⏩ Horas adelantadas quitadas del sábado ${fecha} (por ${CU})`);
+    await addLog(`⏩ Horas adelantadas quitadas del ${fecha} (por ${CU})`);
     if(st)st.textContent='Quitado.';toast('Quitado ✓','ok');
   }catch(e){toast('⛔ Error al quitar','err');}
 });
@@ -8069,6 +8073,31 @@ el('btn-man').addEventListener('click',async()=>{
 // USUARIOS
 el('u-te-on').addEventListener('change',()=>{el('u-te-row').style.display=el('u-te-on').checked?'block':'none';if(!el('u-te-on').checked)el('u-te').value='';});
 el('u-pf-on').addEventListener('change',()=>{el('u-pf-row').style.display=el('u-pf-on').checked?'block':'none';if(!el('u-pf-on').checked)document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);});
+
+// ── USUARIOS: modal "Nuevo usuario / Editar usuario" ──────────────────────────────────────────
+function clearUserForm(){
+  ['u-nombre','u-user','u-ced','u-email','u-tr','u-td','u-tf','u-te','u-finicio'].forEach(id=>{if(el(id))el(id).value='';});
+  if(el('u-rol'))el('u-rol').value='Colaborador';
+  el('u-te-on').checked=false;el('u-te-row').style.display='none';el('u-pf-on').checked=false;el('u-pf-row').style.display='none';el('u-sinacum').checked=false;
+  document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);
+  if(el('bita-list'))el('bita-list').innerHTML='';if(el('bita-resumen'))el('bita-resumen').textContent='';
+  ['bita-desde','bita-hasta','bita-nota'].forEach(id=>{if(el(id))el(id).value='';});
+}
+function openUserModal(titulo){
+  const m=el('modal-user');if(!m)return;
+  if(m.parentElement!==document.body)document.body.appendChild(m); // fuera del acordeón para que cubra toda la pantalla
+  el('mu-title').textContent=titulo||'Nuevo usuario';
+  m.classList.add('open');const b=m.querySelector('.mbox');if(b)b.scrollTop=0;
+}
+function closeUserModal(){const m=el('modal-user');if(m)m.classList.remove('open');}
+el('btn-nuevo-user')?.addEventListener('click',()=>{clearUserForm();openUserModal('Nuevo usuario');setTimeout(()=>el('u-nombre')?.focus(),60);});
+el('btn-cancel-user')?.addEventListener('click',closeUserModal);
+el('modal-user')?.addEventListener('mousedown',e=>{if(e.target===el('modal-user'))closeUserModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&el('modal-user')?.classList.contains('open'))closeUserModal();});
+el('users-q')?.addEventListener('input',()=>{
+  const q=el('users-q').value.trim().toLowerCase();
+  document.querySelectorAll('#users-list .uitem').forEach(d=>{d.style.display=(!q||d.textContent.toLowerCase().includes(q))?'':'none';});
+});
 el('btn-save-user').addEventListener('click',async()=>{
   const nombre=el('u-nombre').value.trim(),user=el('u-user').value.trim();
   if(!nombre||!user){toast('Nombre y usuario obligatorios','err');return;}
@@ -8091,7 +8120,7 @@ el('btn-save-user').addEventListener('click',async()=>{
       await saveSemActivosRemote([...activos,user]);
     }
   }catch(e){}
-  toast('Usuario guardado ✓','ok');['u-nombre','u-user','u-ced','u-email','u-tr','u-td','u-tf','u-te','u-finicio'].forEach(id=>el(id).value='');el('u-te-on').checked=false;el('u-te-row').style.display='none';el('u-pf-on').checked=false;el('u-pf-row').style.display='none';el('u-sinacum').checked=false;document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);refreshUI();
+  toast('Usuario guardado ✓','ok');['u-nombre','u-user','u-ced','u-email','u-tr','u-td','u-tf','u-te','u-finicio'].forEach(id=>el(id).value='');el('u-te-on').checked=false;el('u-te-row').style.display='none';el('u-pf-on').checked=false;el('u-pf-row').style.display='none';el('u-sinacum').checked=false;document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);refreshUI();closeUserModal();
 });
 
 // ── COLABORADORES TEMPORALES ───────────────────────────────────────────
