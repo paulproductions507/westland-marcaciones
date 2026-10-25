@@ -1959,6 +1959,14 @@ function sugOf(x){
   return{ts,nv,exc,A,baja,sob:Math.max(0,exc-baja)}}
 function crRows(p){entries();const m={};for(const e of _eA)if(e.bd&&e.p===p){const k=e.tr?String(e.tr):'';m[k]=(m[k]||0)+(e.q||0)}return Object.entries(m).filter(r=>r[1]>0)}
 function crHtml(p){const tot=bodUsed(p);return tot?`<tr><td>${L('CRISTAL')}</td><td class="n">${fmt(0)}</td><td class="n"><b>${fmt(tot)}</b></td></tr>`:''}
+let SUGSYNC=null;
+$('maskBody').addEventListener('click',async e=>{if(!e.target.closest('#sugSync')||!SUGSYNC||!ISADM)return;const {p,ini,fin}=SUGSYNC;
+  if(COMP[RECIBO]){toast('El recibo ya está completado: reábrelo antes');return}
+  const items=RECS[RECIBO].items.map(z=>({...z,s:{...z.s},so:{...(z.so||{})}})),it=items.find(z=>String(z.p)===String(p));if(!it)return;
+  let dl=0;for(const t of Object.keys(fin)){if(t==='BODEGA'||t==='CRISTAL')continue;dl+=(it.s[t]||0)-fin[t];it.s[t]=fin[t];if(it.so[t]==null&&ini[t]!=null)it.so[t]=ini[t]}
+  it.dt=Math.max(0,(it.dt||0)-dl);
+  try{await set(R(db,'meta_v1/consultas_recs/'+RECIBO+'/items'),items);RECS[RECIBO].items=items;DATA=dataOf(RECIBO);byProd=Object.fromEntries(DATA.map(z=>[z.p,z]));if(cur)cur=byProd[cur.p]||null;$('mask').classList.add('hide');toast('✅ Tiendas ajustadas al sugerido');renderAll()}
+  catch(err){toast('Error: '+(err.code||err.message))}});
 async function sugView(p){const x=byProd[p];if(!x)return;let all={};try{all=(await get(R(db,'meta_v1/consultas_ajustes'))).val()||{}}catch(e){toast('No se pudo leer el historial');return}
   const ls=Object.values(all).filter(a=>String(a.id||a.rec||'')===String(RECIBO)&&String(a.p)===String(p)&&a.sug).sort((a,b)=>(a.ts||0)-(b.ts||0));
   if(!ls.length){toast('Este producto aún no tiene un sugerido aplicado');return}
@@ -1967,7 +1975,7 @@ async function sugView(p){const x=byProd[p];if(!x)return;let all={};try{all=(awa
   try{const it0=(RECS[RECIBO].items||[]).find(z=>String(z.p)===String(p));const falta=it0&&Object.keys(ini).some(t=>t!=='BODEGA'&&t!=='CRISTAL'&&!(it0.so&&it0.so[t]!=null));
     if(falta){const items=RECS[RECIBO].items.map(z=>({...z,s:{...z.s}})),it=items.find(z=>String(z.p)===String(p));it.so={...(it.so||{})};for(const t of Object.keys(ini)){if(t!=='BODEGA'&&t!=='CRISTAL'&&it.so[t]==null)it.so[t]=ini[t]}
       await set(R(db,'meta_v1/consultas_recs/'+RECIBO+'/items'),items);RECS[RECIBO].items=items;DATA=dataOf(RECIBO);byProd=Object.fromEntries(DATA.map(z=>[z.p,z]));if(cur)cur=byProd[cur.p]||null;renderProd()}}catch(e){}
-  $('maskBody').innerHTML=`<h2 style="font-size:18px;margin-bottom:4px">Sugerido aplicado · ${esc(x.ref||x.p)}</h2><div class="msg" style="margin:0 0 6px">Producto <b>${esc(x.p)}</b> · ${esc(fdt(last.ts))} · ${esc(last.n||last.by||'')}</div><div class="scroll"><table><tr><th>Tienda</th><th class="n">Solicitado</th><th class="n">Sugerido</th></tr>${ts.map(t=>`<tr><td>${L(t)}</td><td class="n">${fmt(ini[t])}</td><td class="n"><b>${fmt(fin[t])}</b></td></tr>`).join('')}${crHtml(x.p)}<tr><td><b>Total</b></td><td class="n"><b>${fmt(A)}</b></td><td class="n"><b>${fmt(F+bodUsed(x.p))}</b></td></tr>${ajRow(x)}</table></div><div style="display:flex;gap:10px;margin-top:16px"><button class="btn pri" id="askNo" style="flex:1">Cerrar</button></div>`;
+  $('maskBody').innerHTML=`<h2 style="font-size:18px;margin-bottom:4px">Sugerido aplicado · ${esc(x.ref||x.p)}</h2><div class="msg" style="margin:0 0 6px">Producto <b>${esc(x.p)}</b> · ${esc(fdt(last.ts))} · ${esc(last.n||last.by||'')}</div><div class="scroll"><table><tr><th>Tienda</th><th class="n">Solicitado</th><th class="n">Sugerido</th></tr>${ts.map(t=>`<tr><td>${L(t)}</td><td class="n">${fmt(ini[t])}</td><td class="n"><b>${fmt(fin[t])}</b></td></tr>`).join('')}${crHtml(x.p)}<tr><td><b>Total</b></td><td class="n"><b>${fmt(A)}</b></td><td class="n"><b>${fmt(F+bodUsed(x.p))}</b></td></tr>${ajRow(x)}</table></div>${(()=>{SUGSYNC={p,ini,fin};const dif=ts.filter(t=>(x.s[t]||0)!==(fin[t]||0));return dif.length?`<div class="msg" style="color:var(--wn);margin-top:8px">⚠ Las tiendas no coinciden con este sugerido (hoy tienen ${ts.map(t=>L(t)+' '+(x.s[t]||0)).join(', ')}).</div><button class="btn" id="sugSync" style="width:100%;margin-top:8px">Aplicar estas cantidades a las tiendas</button>`:''})()}<div style="display:flex;gap:10px;margin-top:16px"><button class="btn pri" id="askNo" style="flex:1">Cerrar</button></div>`;
   askCb=null;$('mask').classList.remove('hide')}
 function sugAsk(p){const x=byProd[p],sg=x&&sugOf(x);if(!sg){toast('No hay diferencia que ajustar');return}
   $('maskBody').innerHTML=`<h2 style="font-size:18px;margin-bottom:4px">Sugerido · ${esc(x.ref||x.p)}</h2><div class="msg" style="margin:0 0 6px">Producto <b>${esc(x.p)}</b></div><div class="msg">Distribuido ${fmt(sg.A)}${bodUsed(x.p)?` + Cristal ${fmt(bodUsed(x.p))}`:''} = <b>${fmt(sg.A+bodUsed(x.p))}</b> · Recibido ${fmt(x.rec)} · Excedente <b>−${fmt(sg.exc)}</b>. Se bajan los solicitados de todas las tiendas en la misma proporción.</div><div class="scroll"><table><tr><th>Tienda</th><th class="n">Solicitado</th><th class="n">Sugerido</th></tr>${sg.ts.map(t=>`<tr><td>${L(t)}</td><td class="n">${fmt(x.s[t])}</td><td class="n"><b>${fmt(sg.nv[t])}</b></td></tr>`).join('')}${crHtml(x.p)}<tr><td><b>Total</b></td><td class="n"><b>${fmt(sg.A)}</b></td><td class="n"><b>${fmt(sg.A-sg.baja+bodUsed(x.p))}</b></td></tr>${ajRow(x)}</table></div>${sg.sob>0?`<div class="msg" style="color:var(--wn)">⚠ ${fmt(sg.sob)} pzas no se pueden bajar de las tiendas porque ya están surtidas.</div>${crAv(x)>0?`<button class="btn pri" id="askCr" data-p="${x.p}" style="width:100%;margin-top:8px">Aplicar a Cristal (${fmt(Math.min(sg.sob,crAv(x)))} pzas)</button>`:'<div class="msg">Cristal no tiene piezas disponibles para cubrirlo.</div>'}`:''}<div style="display:flex;gap:10px;margin-top:16px"><button class="btn" id="askNo" style="flex:1">Cancelar</button><button class="btn pri" id="askOk" style="flex:1">Aplicar todo</button></div>`;
@@ -2031,7 +2039,7 @@ async function histMig(){if(!ISADM)return;
 function RC_SET(id,items){RECS[id].items=items}
 function ajPaint(){const b=$('pajs');if(!b||!cur)return;const l=(AJC||[]).filter(a=>String(a.p)===String(cur.p)&&String(a.id||'')===String(RECIBO));
   b.innerHTML=l.length?`<div class="slbl" style="margin-top:10px">Ajustes manuales</div><div class="scroll"><table><tr><th>Fecha</th><th>Tipo</th><th>Cambios</th><th>Con</th><th>Por</th><th></th></tr>${l.map(a=>{const o=byProd[a.par]||{},ks=Object.keys(a.antes||{});return `<tr><td>${esc(fdt(a.ts))}</td><td><b class="${a.tp==='dis'?'neg':'pos'}">${a.tp==='dis'?'−':'+'}${fmt(a.q||0)}</b></td><td>${ks.map(t=>`${esc(L(t))} ${fmt(a.antes[t])}→<b>${fmt((a.despues||{})[t])}</b>`).join('<br>')}</td><td>${esc(o.ref||'')}<br><small style="color:var(--mt)">${esc(a.par||'')}</small></td><td>${esc(a.n||a.by||'')}</td><td>${ISADM&&a.par?`<button class="btn sm" data-ajdel="${a.ts}">✕ Anular</button>`:''}</td></tr>`}).join('')}</table></div>`:''}
-function ajHtml(){return (ISADM?`<button class="btn sm" data-aj="1" style="margin-top:10px;width:100%">🔄 Ajuste manual (aumento / disminución)</button>`:'')+'<div id="pajs"></div>'}
+function ajHtml(){return (ISADM?`<button class="btn sm" data-aj="1" style="margin-top:10px;width:100%">🔄 Ajuste manual (aumento / disminución)</button>`:'')+(ISADM?`<button class="btn sm" data-ajfix="1" style="margin-top:8px;width:100%">⚖ Corregir saldo de Bodega</button>`:'')+'<div id="pajs"></div>'}
 let AJY=null;
 // ---------- Registro informativo de ajustes manuales (nº de ajuste del sistema pendiente / aplicado) ----------
 // Inventario en el sistema mientras el ajuste no tenga nº: saldo actual sin los ajustes pendientes (INV)
@@ -2047,24 +2055,45 @@ async function ajNum(p,ts){if(!ISADM){toast('Solo un administrador puede registr
   try{await set(R(db,'meta_v1/consultas_recs/'+RECIBO+'/items'),items);RECS[RECIBO].items=items;DATA=dataOf(RECIBO);byProd=Object.fromEntries(DATA.map(z=>[z.p,z]));if(cur)cur=byProd[cur.p]||null;toast(`✅ Nº de ajuste ${v} registrado`);renderAll()}
   catch(err){toast('Error: '+(err.code||err.message))}}
 // Anular un ajuste manual aplicado: revierte Bodega en los dos productos (aumento y disminución), quita su registro y el error del surtidor
-async function ajUndo(ts){if(!ISADM){toast('Solo un administrador puede anular ajustes');return}
+let AJBUSY=false;
+async function ajUndo(ts){if(AJBUSY)return;if(!ISADM){toast('Solo un administrador puede anular ajustes');return}
   if(COMP[RECIBO]){toast('El recibo ya está completado: reábrelo antes de anular');return}
-  if(!confirm('¿Anular este ajuste? Se revierte en los dos productos (aumento y disminución) y se borra su registro.'))return;
+  if(!confirm('¿Anular este ajuste? Se revierte en los dos productos (aumento y disminución), incluido el sugerido que se aplicó después, y se borra su registro.'))return;
+  AJBUSY=true;
+  try{
   let all={};try{all=(await get(R(db,'meta_v1/consultas_ajustes'))).val()||{}}catch(e){toast('No se pudo leer el historial');return}
   const ks=Object.keys(all).filter(k=>String(all[k].ts)===String(ts)&&all[k].cruce&&String(all[k].id||'')===String(RECIBO));
-  if(!ks.length){toast('No se encontró el ajuste');return}
-  const items=RECS[RECIBO].items.map(z=>({...z,s:{...z.s}}));
+  if(!ks.length){toast('Ese ajuste ya no existe');return}
+  const items=RECS[RECIBO].items.map(z=>({...z,s:{...z.s},so:{...(z.so||{})}})),sk=[];
   for(const k of ks){const a=all[k],it=items.find(z=>String(z.p)===String(a.p));if(!it)continue;
     const d=((a.despues||{}).BODEGA||0)-((a.antes||{}).BODEGA||0);
-    if(d){it.sc=(it.sc||0)-d;it.s.BODEGA=it.sc;it.rec=Math.max(0,(it.rec||0)-d);it.sal=(it.cr||0)+it.sc}
+    if(d){it.sc=(it.sc||0)-d;it.rec=Math.max(0,(it.rec||0)-d)}
+    for(const k2 of Object.keys(all)){const g=all[k2];if(g.sug&&String(g.id||'')===String(RECIBO)&&String(g.p)===String(a.p)&&(g.ts||0)>=Number(ts)){
+      for(const t of Object.keys(g.antes||{})){if(t==='BODEGA'||t==='CRISTAL')continue;it.s[t]=g.antes[t];delete it.so[t]}
+      const dl=g.delta||0;it.dt=(it.dt||0)+dl;it.sc=(it.sc||0)-dl;sk.push(k2)}}
+    it.s.BODEGA=it.sc;it.sal=(it.cr||0)+it.sc;
     it.ajs=(it.ajs||[]).filter(z=>String(z.ts)!==String(ts))}
-  try{await set(R(db,'meta_v1/consultas_recs/'+RECIBO+'/items'),items);
-    for(const k of ks)await remove(R(db,'meta_v1/consultas_ajustes/'+k));
-    try{const er=(await get(R(db,'meta_v1/consultas_err'))).val()||{};for(const k of Object.keys(er)){const e=er[k];if(String(e.ts)===String(ts)&&e.k==='ajuste'&&String(e.id)===String(RECIBO))await remove(R(db,'meta_v1/consultas_err/'+k))}STERRT=0}catch(e2){}
-    RECS[RECIBO].items=items;DATA=dataOf(RECIBO);byProd=Object.fromEntries(DATA.map(z=>[z.p,z]));if(cur)cur=byProd[cur.p]||null;
-    toast('✅ Ajuste anulado en los dos productos');renderAll();ajLoad()}
-  catch(err){toast('Error: '+(err.code||err.message))}}
+  await set(R(db,'meta_v1/consultas_recs/'+RECIBO+'/items'),items);
+  for(const k of ks.concat(sk))await remove(R(db,'meta_v1/consultas_ajustes/'+k));
+  try{const er=(await get(R(db,'meta_v1/consultas_err'))).val()||{};for(const k of Object.keys(er)){const e=er[k];if(String(e.ts)===String(ts)&&e.k==='ajuste'&&String(e.id)===String(RECIBO))await remove(R(db,'meta_v1/consultas_err/'+k))}STERRT=0}catch(e2){}
+  RECS[RECIBO].items=items;DATA=dataOf(RECIBO);byProd=Object.fromEntries(DATA.map(z=>[z.p,z]));if(cur)cur=byProd[cur.p]||null;
+  toast('✅ Ajuste anulado en los dos productos');renderAll();ajLoad()}
+  catch(err){toast('Error: '+(err.code||err.message))}
+  finally{AJBUSY=false}}
 $('phist').addEventListener('click',e=>{const b=e.target.closest('[data-ajdel]');if(b)ajUndo(b.dataset.ajdel)});
+
+// Corregir el saldo de Bodega de un producto (deja registro). Útil cuando un saldo quedó descuadrado.
+async function ajFix(){if(!ISADM||!cur){return}
+  if(COMP[RECIBO]){toast('El recibo ya está completado: reábrelo antes');return}
+  const x=cur,v=prompt(`Saldo CORRECTO de Bodega para ${x.ref} · ${x.p}\n(saldo actual en el sistema: ${x.s.BODEGA||0})`,String(x.s.BODEGA||0));if(v===null)return;
+  const n=parseInt(v);if(isNaN(n)){toast('Escribe un número');return}const diff=n-(x.s.BODEGA||0);if(!diff){toast('Sin cambios');return}
+  const items=RECS[RECIBO].items.map(z=>({...z,s:{...z.s}})),it=items.find(z=>String(z.p)===String(x.p));if(!it)return;const ts=Date.now(),antes=it.sc||0;
+  it.sc=n;it.s.BODEGA=n;it.rec=Math.max(0,(it.rec||0)+diff);it.sal=(it.cr||0)+n;
+  try{await set(R(db,'meta_v1/consultas_recs/'+RECIBO+'/items'),items);
+    await set(push(R(db,'meta_v1/consultas_ajustes')),{id:RECIBO,p:x.p,r:x.ref||'',d:x.d||'',by:USER,n:NAME,ts,antes:{BODEGA:antes},despues:{BODEGA:n},delta:diff,corr:1});
+    RECS[RECIBO].items=items;DATA=dataOf(RECIBO);byProd=Object.fromEntries(DATA.map(z=>[z.p,z]));cur=byProd[x.p]||null;toast(`✅ Saldo de Bodega corregido: ${antes} → ${n}`);renderAll()}
+  catch(err){toast('Error: '+(err.code||err.message))}}
+$('phist').addEventListener('click',e=>{if(e.target.closest('[data-ajfix]'))ajFix()});
 // Plan de un ajuste sobre una referencia: Cristal (clientes) no se toca; con saldo en Bodega se ajusta ahí; si no, en la distribución de tiendas
 function ajPlan(x,tp,q){const nv={},ord=STORES.filter(t=>t!=='CRISTAL'&&t!=='BODEGA'),free=Math.max(0,(x.s.BODEGA||0)-bodUsed(x.p));let r=q,bodD=0,dtd=0;
   if(tp==='dis'){bodD=-r;r=0}
