@@ -461,6 +461,7 @@ onAuthStateChanged(auth,async u=>{
   $('who').textContent=`${NAME} · ${ISADM?'Administrador':'Surtidor'}`;
   $('gate').classList.add('hide');$('app').classList.remove('hide');startCtrl();
   showRecList();
+  if(ISADM)setTimeout(histMig,3000);
 });
 
 // ---------- cálculos ----------
@@ -547,13 +548,13 @@ for(const t of STORES){if(sel[t]&&!sel[t].nw&&t!=='CRISTAL')sel[t].tr=lastTr(t)}
    <div class="kv"><div><span class="lbl">Código barras</span><b style="font-family:'DM Mono'">${x.upc}</b></div><div><span class="lbl">Recibido</span><b>${fmt(x.rec)}</b></div><div><span class="lbl">Pza x bulto</span><b>${fmt(x.pb)}</b></div><div><span class="lbl">Total bultos</span><b style="color:var(--ac)">${fmtB(bul(x))}</b></div><div><span class="lbl">Precio</span><b>$${Number(x.pr||0).toFixed(2)}</b></div><div><span class="lbl">Dist. tiendas</span><b>${fmt(x.dt)}</b></div></div>
    <div class="msg" style="margin-top:8px">${esc([x.dep,x.div,x.lin,x.sub].filter(Boolean).join(' › '))}</div>`;
   $('tiles').innerHTML=TILES().filter(t=>t==='BODEGA'||t==='CRISTAL'||(x.s[t]||0)>0||sur(x.p,t)>0).map(t=>{
-    if(t==='BODEGA'){return `<div class="tile bod"><div class="hd"><b>Bodega</b><small>${x.p}</small></div><div class="bd">Saldo<br><b style="font-size:22px;color:${(x.s.BODEGA||0)-bodUsed(x.p)<0?'var(--ng,#ff6b61)':'var(--ac)'}">${(x.s.BODEGA||0)-bodUsed(x.p)<0?'−'+fmt(bodUsed(x.p)-(x.s.BODEGA||0)):fmt(Math.max(0,(x.s.BODEGA||0)-bodUsed(x.p))+bodAbs(x))}</b>${(x.s.BODEGA||0)-bodUsed(x.p)<0?'<div class="tr" style="color:#ff6b61">Sobregiro: sugiere para dejar en cero</div>':''}<div class="tr" style="color:var(--mt)">${bodUsed(x.p)?`Saldo ${fmt(x.s.BODEGA||0)} − proformas ${fmt(bodUsed(x.p))}`:'Para almacenar'}${bodAbs(x)?`<br><b style="color:var(--ac)">${sg(bodAbs(x))} pzas absorbidas</b> por diferencia en tiendas`:''}</div>${(()=>{const df=diffNet(x)+bodAbs(x);return df?`<div style="margin-top:6px;font-weight:800" class="${df<0?'neg':'pos'}">Diferencia: ${sg(df)} pzas</div><div class="tr" style="color:var(--mt)">Validar físico y solicitar ajuste</div>`:(bodAbs(x)?`<div class="tr" style="color:var(--mt);margin-top:4px">Validar físico y solicitar ajuste</div>`:'')})()}${sugOf(x)?`<button class="btn pri sm" data-sug="${x.p}" style="width:100%;margin-top:8px">💡 Sugerido</button>`:(bodUsed(x.p)?`<button class="btn sm" data-sugv="${x.p}" style="width:100%;margin-top:8px">👁 Ver sugerido</button>`:'')}</div></div>`}
+    if(t==='BODEGA'){return `<div class="tile bod"><div class="hd"><b>Bodega</b><small>${x.p}</small></div><div class="bd">Saldo<br><b style="font-size:22px;color:${(x.s.BODEGA||0)-bodUsed(x.p)<0?'var(--ng,#ff6b61)':'var(--ac)'}">${(x.s.BODEGA||0)-bodUsed(x.p)<0?'−'+fmt(bodUsed(x.p)-(x.s.BODEGA||0)):fmt(Math.max(0,(x.s.BODEGA||0)-bodUsed(x.p))+bodAbs(x))}</b>${(x.s.BODEGA||0)-bodUsed(x.p)<0?'<div class="tr" style="color:#ff6b61">Sobregiro: sugiere para dejar en cero</div>':''}<div class="tr" style="color:var(--mt)">${bodUsed(x.p)?`Saldo ${fmt(x.s.BODEGA||0)} − proformas ${fmt(bodUsed(x.p))}`:'Para almacenar'}${bodAbs(x)?`<br><b style="color:var(--ac)">${sg(bodAbs(x))} pzas absorbidas</b> por diferencia en tiendas`:''}</div>${(()=>{const df=diffNet(x)+bodAbs(x);return df?`<div style="margin-top:6px;font-weight:800" class="${df<0?'neg':'pos'}">Diferencia: ${sg(df)} pzas</div><div class="tr" style="color:var(--mt)">Validar físico y solicitar ajuste</div>`:(bodAbs(x)?`<div class="tr" style="color:var(--mt);margin-top:4px">Validar físico y solicitar ajuste</div>`:'')})()}${ajBox(x)}${sugOf(x)?`<button class="btn pri sm" data-sug="${x.p}" style="width:100%;margin-top:8px">💡 Sugerido</button>`:(bodUsed(x.p)?`<button class="btn sm" data-sugv="${x.p}" style="width:100%;margin-top:8px">👁 Ver sugerido</button>`:'')}</div></div>`}
     const bx=t==='CRISTAL'?bodUsed(x.p):0,a=(x.s[t]||0)+bx,s=sur(x.p,t)+bx,pend=Math.max(0,a-s),S=sel[t];
     const isD=!!DSP[x.p];const cls=isD?'dsp':(a>0&&s>=a?'full':s>0?'part':'');
     const trs=[...new Set(entries().filter(e=>e.p===x.p&&e.t===t&&e.tr).map(e=>e.tr))];
     const dis=a===0||pend===0||isD,cl=t==='CRISTAL'&&hasCli(x.p);
     return `<div class="tile ${cls} ${S.on&&!cl?'sel':''}" data-t="${t}"><div class="hd"><b>${L(t)}</b><small>${x.p}</small></div>
-      <div class="bd">Distribuir: <b>${fmt(a)}</b><br>Surtidas: <b>${fmt(s)}</b><br>Pendiente: <b style="color:${pend?'var(--wn)':'var(--ok)'}">${fmt(pend)}</b>${trs.length?`<div class="tr">${t==='CRISTAL'?'Proforma':'Transf'}: ${trs.map(esc).join(', ')}</div>`:''}${t==='CRISTAL'&&cl?'<div class="tr">Por proforma · clientes</div>':''}</div>
+      <div class="bd">${t!=='CRISTAL'&&soOf(x,t)!=null&&soOf(x,t)!==a?`<span style="color:var(--mt)">Solicitado: <b>${fmt(soOf(x,t))}</b></span><br>`:''}Distribuir: <b>${fmt(a)}</b><br>Surtidas: <b>${fmt(s)}</b><br>Pendiente: <b style="color:${pend?'var(--wn)':'var(--ok)'}">${fmt(pend)}</b>${trs.length?`<div class="tr">${t==='CRISTAL'?'Proforma':'Transf'}: ${trs.map(esc).join(', ')}</div>`:''}${t==='CRISTAL'&&cl?'<div class="tr">Por proforma · clientes</div>':''}</div>
       ${cl?`<div style="padding:0 6px 8px"><button class="btn pri sm" data-cli="${x.p}" style="width:100%" ${isD?'disabled':''}>👥 Clientes</button></div>`:`<label class="ck"><input type="checkbox" data-ck="${t}" ${S.on?'checked':''} ${dis?'disabled':''}> ${dis?(a===0?'Sin asignar':isD?'Despachado':'Surtido ✓'):'Surtido'}</label>
       <div class="ed"><input type="number" min="1" inputmode="numeric" data-q="${t}" value="${S.q}" placeholder="Cant.">${trBlock(t,S)}</div>`}${t==='CRISTAL'?`<div style="padding:0 6px 8px"><button class="btn sm" data-pz="${x.p}" style="width:100%">🏷 Etiquetas por pieza</button></div>`:''}</div>`}).join('');
   $('phist').innerHTML=histTable(entries().filter(e=>e.p===x.p).sort((a,b)=>b.ts-a.ts),true)+ajHtml();if(AJC)ajPaint();else ajLoad();
@@ -567,7 +568,7 @@ function histTable(list,del){
   if(!list.length)return '<div class="msg">Aún sin movimientos.</div>';
   return `<div class="scroll"><table><tr><th>Fecha</th><th>Tienda</th><th class="n">Cant.</th><th>Transf.</th><th>Surtidor</th>${del?'<th></th>':''}</tr>${list.map(e=>`<tr><td>${new Date(e.ts).toLocaleString('es',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td><td>${L(e.t)}${e.cn?`<br><small style="color:var(--mt)">${esc(e.cn)}</small>`:''}</td><td class="n">${fmt(e.q)}</td><td>${esc(e.tr||"—")}</td><td>${esc(e.n||e.u)}</td>${del?`<td>${(ISADM||e.u===USER)?`<button class="btn sm" data-del="${e.k}">✕</button>`:''}</td>`:''}</tr>`).join('')}</table></div>`}
 $('phist').addEventListener('click',async e=>{const k=e.target.dataset.del;if(!k)return;if(!confirm('¿Eliminar este movimiento de surtido?'))return;const en=LOG[k];if(en&&en.u&&en.u!==USER&&!en.au&&!en.ax)await set(push(R(db,'meta_v1/consultas_err')),{id:RECIBO,p:en.p,r:en.r||'',k:'eliminar',q:en.q||0,who:en.u,wn:en.n||en.u,by:USER,bn:NAME,ts:Date.now()});await remove(R(db,`${BASE}/${k}`));toast('Movimiento eliminado')});
-$('tiles').addEventListener('click',e=>{const sgb=e.target.closest('[data-sug]');if(sgb){sugAsk(sgb.dataset.sug);return}const sgv=e.target.closest('[data-sugv]');if(sgv){sugView(sgv.dataset.sugv);return}const pz=e.target.closest('[data-pz]');if(pz){openPz(pz.dataset.pz);return}const b=e.target.closest('[data-cli]');if(b)openCli(b.dataset.cli);const n=e.target.closest('[data-trnew]');if(n){const t=n.dataset.trnew;sel[t].nw=true;sel[t].tr='';renderProd();const i=document.querySelector(`[data-tr="${t}"]`);if(i)i.focus()}});
+$('tiles').addEventListener('click',e=>{const ajn=e.target.closest('[data-ajn]');if(ajn){ajNum(cur&&cur.p,ajn.dataset.ajn);return}const sgb=e.target.closest('[data-sug]');if(sgb){sugAsk(sgb.dataset.sug);return}const sgv=e.target.closest('[data-sugv]');if(sgv){sugView(sgv.dataset.sugv);return}const pz=e.target.closest('[data-pz]');if(pz){openPz(pz.dataset.pz);return}const b=e.target.closest('[data-cli]');if(b)openCli(b.dataset.cli);const n=e.target.closest('[data-trnew]');if(n){const t=n.dataset.trnew;sel[t].nw=true;sel[t].tr='';renderProd();const i=document.querySelector(`[data-tr="${t}"]`);if(i)i.focus()}});
 $('tiles').addEventListener('change',e=>{
   const t=e.target.dataset.ck;if(t){sel[t].on=e.target.checked;renderProd();return}
   if(e.target.dataset.q){sel[e.target.dataset.q].q=parseInt(e.target.value)||0;sel[e.target.dataset.q].ed=true;updateBar()}
@@ -1962,10 +1963,10 @@ async function sugView(p){const x=byProd[p];if(!x)return;let all={};try{all=(awa
   if(!ls.length){toast('Este producto aún no tiene un sugerido aplicado');return}
   const ini={},fin={};ls.forEach(a=>{for(const t of Object.keys(a.antes||{})){if(!(t in ini))ini[t]=a.antes[t];fin[t]=(a.despues||{})[t]}});
   const ts=Object.keys(ini).sort((a,b)=>BASE_ST.indexOf(a)-BASE_ST.indexOf(b)),A=ts.reduce((s,t)=>s+(ini[t]||0),0),F=ts.reduce((s,t)=>s+(fin[t]||0),0),last=ls[ls.length-1];
-  $('maskBody').innerHTML=`<h2 style="font-size:18px;margin-bottom:4px">Sugerido aplicado · ${esc(x.ref||x.p)}</h2><div class="msg" style="margin:0 0 6px">Producto <b>${esc(x.p)}</b> · ${esc(fdt(last.ts))} · ${esc(last.n||last.by||'')}</div><div class="scroll"><table><tr><th>Tienda</th><th class="n">Solicitado</th><th class="n">Sugerido</th></tr>${ts.map(t=>`<tr><td>${L(t)}</td><td class="n">${fmt(ini[t])}</td><td class="n"><b>${fmt(fin[t])}</b></td></tr>`).join('')}${crHtml(x.p)}<tr><td><b>Total</b></td><td class="n"><b>${fmt(A)}</b></td><td class="n"><b>${fmt(F+bodUsed(x.p))}</b></td></tr></table></div><div style="display:flex;gap:10px;margin-top:16px"><button class="btn pri" id="askNo" style="flex:1">Cerrar</button></div>`;
+  $('maskBody').innerHTML=`<h2 style="font-size:18px;margin-bottom:4px">Sugerido aplicado · ${esc(x.ref||x.p)}</h2><div class="msg" style="margin:0 0 6px">Producto <b>${esc(x.p)}</b> · ${esc(fdt(last.ts))} · ${esc(last.n||last.by||'')}</div><div class="scroll"><table><tr><th>Tienda</th><th class="n">Solicitado</th><th class="n">Sugerido</th></tr>${ts.map(t=>`<tr><td>${L(t)}</td><td class="n">${fmt(ini[t])}</td><td class="n"><b>${fmt(fin[t])}</b></td></tr>`).join('')}${crHtml(x.p)}<tr><td><b>Total</b></td><td class="n"><b>${fmt(A)}</b></td><td class="n"><b>${fmt(F+bodUsed(x.p))}</b></td></tr>${ajRow(x)}</table></div><div style="display:flex;gap:10px;margin-top:16px"><button class="btn pri" id="askNo" style="flex:1">Cerrar</button></div>`;
   askCb=null;$('mask').classList.remove('hide')}
 function sugAsk(p){const x=byProd[p],sg=x&&sugOf(x);if(!sg){toast('No hay diferencia que ajustar');return}
-  $('maskBody').innerHTML=`<h2 style="font-size:18px;margin-bottom:4px">Sugerido · ${esc(x.ref||x.p)}</h2><div class="msg" style="margin:0 0 6px">Producto <b>${esc(x.p)}</b></div><div class="msg">Distribuido ${fmt(sg.A)}${bodUsed(x.p)?` + Cristal ${fmt(bodUsed(x.p))}`:''} = <b>${fmt(sg.A+bodUsed(x.p))}</b> · Recibido ${fmt(x.rec)} · Excedente <b>−${fmt(sg.exc)}</b>. Se bajan los solicitados de todas las tiendas en la misma proporción.</div><div class="scroll"><table><tr><th>Tienda</th><th class="n">Solicitado</th><th class="n">Sugerido</th></tr>${sg.ts.map(t=>`<tr><td>${L(t)}</td><td class="n">${fmt(x.s[t])}</td><td class="n"><b>${fmt(sg.nv[t])}</b></td></tr>`).join('')}${crHtml(x.p)}<tr><td><b>Total</b></td><td class="n"><b>${fmt(sg.A)}</b></td><td class="n"><b>${fmt(sg.A-sg.baja+bodUsed(x.p))}</b></td></tr></table></div>${sg.sob>0?`<div class="msg" style="color:var(--wn)">⚠ ${fmt(sg.sob)} pzas no se pueden bajar de las tiendas porque ya están surtidas.</div>${crAv(x)>0?`<button class="btn pri" id="askCr" data-p="${x.p}" style="width:100%;margin-top:8px">Aplicar a Cristal (${fmt(Math.min(sg.sob,crAv(x)))} pzas)</button>`:'<div class="msg">Cristal no tiene piezas disponibles para cubrirlo.</div>'}`:''}<div style="display:flex;gap:10px;margin-top:16px"><button class="btn" id="askNo" style="flex:1">Cancelar</button><button class="btn pri" id="askOk" style="flex:1">Aplicar todo</button></div>`;
+  $('maskBody').innerHTML=`<h2 style="font-size:18px;margin-bottom:4px">Sugerido · ${esc(x.ref||x.p)}</h2><div class="msg" style="margin:0 0 6px">Producto <b>${esc(x.p)}</b></div><div class="msg">Distribuido ${fmt(sg.A)}${bodUsed(x.p)?` + Cristal ${fmt(bodUsed(x.p))}`:''} = <b>${fmt(sg.A+bodUsed(x.p))}</b> · Recibido ${fmt(x.rec)} · Excedente <b>−${fmt(sg.exc)}</b>. Se bajan los solicitados de todas las tiendas en la misma proporción.</div><div class="scroll"><table><tr><th>Tienda</th><th class="n">Solicitado</th><th class="n">Sugerido</th></tr>${sg.ts.map(t=>`<tr><td>${L(t)}</td><td class="n">${fmt(x.s[t])}</td><td class="n"><b>${fmt(sg.nv[t])}</b></td></tr>`).join('')}${crHtml(x.p)}<tr><td><b>Total</b></td><td class="n"><b>${fmt(sg.A)}</b></td><td class="n"><b>${fmt(sg.A-sg.baja+bodUsed(x.p))}</b></td></tr>${ajRow(x)}</table></div>${sg.sob>0?`<div class="msg" style="color:var(--wn)">⚠ ${fmt(sg.sob)} pzas no se pueden bajar de las tiendas porque ya están surtidas.</div>${crAv(x)>0?`<button class="btn pri" id="askCr" data-p="${x.p}" style="width:100%;margin-top:8px">Aplicar a Cristal (${fmt(Math.min(sg.sob,crAv(x)))} pzas)</button>`:'<div class="msg">Cristal no tiene piezas disponibles para cubrirlo.</div>'}`:''}<div style="display:flex;gap:10px;margin-top:16px"><button class="btn" id="askNo" style="flex:1">Cancelar</button><button class="btn pri" id="askOk" style="flex:1">Aplicar todo</button></div>`;
   askCb=()=>sugApply([x]);$('mask').classList.remove('hide')}
 const crAv=x=>Math.max(0,(x.s.CRISTAL||0)-sur(x.p,'CRISTAL'));
 // Último recurso: si las tiendas no alcanzan (ya surtidas), lo que falta sale de Cristal
@@ -1983,6 +1984,7 @@ async function sugApply(list){
   const items=RECS[RECIBO].items.map(y=>({...y,s:{...y.s}})),logs=[],ts=Date.now();let n=0,pz=0,sob=0;
   for(const x of list){const sg=sugOf(x);if(!sg)continue;const it=items.find(y=>y.p===x.p);if(!it)continue;
     const antes={},despues={};let delta=0;sg.ts.forEach(t=>{antes[t]=it.s[t]||0;despues[t]=sg.nv[t];delta+=antes[t]-despues[t]});if(!delta)continue;
+    it.so={...(it.so||{})};sg.ts.forEach(t=>{if(it.so[t]==null)it.so[t]=antes[t]});
     Object.assign(it.s,despues);it.dt=Math.max(0,(it.dt||0)-delta);it.sal=Math.max(0,(it.sal||0)+delta);it.sc=Math.max(0,(it.sc||0)+delta);it.s.BODEGA=it.sc;
     logs.push({id:RECIBO,p:x.p,r:x.ref||'',d:x.d||'',by:USER,n:NAME,ts,antes,despues,delta,sug:1});n++;pz+=delta;if(sg.exc-delta>0)sob+=sg.exc-delta}
   if(!n){toast('No hay diferencias que ajustar');return false}
@@ -1997,10 +1999,50 @@ $('dfList').addEventListener('click',e=>{if(!e.target.closest('#dfSug'))return;c
 // ---------- Cruce de referencias: una se surtió de más y otra de menos en la misma tienda ----------
 let AJC=null;
 async function ajLoad(){try{const all=(await get(R(db,'meta_v1/consultas_ajustes'))).val()||{};AJC=Object.values(all).filter(a=>a.cruce).sort((a,b)=>(b.ts||0)-(a.ts||0))}catch(e){AJC=[]}ajPaint()}
+const soOf=(x,t)=>{const v=x.so&&x.so[t]!=null?x.so[t]:null;return v};
+const ajList=x=>(x.ajs||[]).slice().sort((a,b)=>(a.ts||0)-(b.ts||0));
+
+// ---------- Depuración única del historial: pasa a cada producto (en TODOS los recibos, despachados o no) lo que hoy solo está en el historial ----------
+// Guarda en el propio producto: so = solicitado original por tienda (antes del primer sugerido) y ajs = ajustes manuales (aumento/disminución, saldo anterior, nº pendiente).
+// Se ejecuta una sola vez (marca meta_v1/consultas_mig_hist); después el sistema lee solo lo guardado, sin consultar el historial.
+async function histMig(){if(!ISADM)return;
+  try{if((await get(R(db,'meta_v1/consultas_mig_hist'))).exists())return}catch(e){return}
+  try{await loadUploaded(true)}catch(e){}
+  let all={};try{all=(await get(R(db,'meta_v1/consultas_ajustes'))).val()||{}}catch(e){return}
+  const by={};Object.values(all).forEach(a=>{const id=String(a.id||a.rec||'');if(id&&a.p!=null)(by[id]=by[id]||[]).push(a)});
+  let nRec=0,nIt=0;
+  try{for(const id of Object.keys(by)){const rc=RECS[id];if(!rc||!rc.items)continue;
+      const ls=by[id].sort((a,b)=>(a.ts||0)-(b.ts||0)),items=rc.items.map(z=>({...z,s:{...z.s}}));let ch=false;
+      for(const it of items){const mine=ls.filter(a=>String(a.p)===String(it.p));if(!mine.length)continue;let c=false;
+        for(const a of mine){
+          if(a.sug){it.so={...(it.so||{})};for(const t of Object.keys(a.antes||{})){if(t==='BODEGA'||t==='CRISTAL')continue;if(it.so[t]==null){it.so[t]=a.antes[t];c=true}}}
+          if(a.cruce&&a.par&&a.antes&&'BODEGA' in a.antes&&!(it.ajs||[]).some(z=>String(z.ts)===String(a.ts))){
+            const pr=items.find(z=>String(z.p)===String(a.par));
+            it.ajs=[...(it.ajs||[]),{ts:a.ts,tp:a.tp,q:a.q||a.delta||0,base:a.antes.BODEGA||0,par:a.par,pr:(pr&&pr.ref)||'',num:''}];c=true}}
+        if(c){nIt++;ch=true}}
+      if(ch){await set(R(db,'meta_v1/consultas_recs/'+id+'/items'),items);RC_SET(id,items);nRec++}}
+    await set(R(db,'meta_v1/consultas_mig_hist'),{ts:Date.now(),by:USER,recibos:nRec,productos:nIt});
+    if(nIt){toast(`✅ Historial depurado: ${nIt} producto(s) en ${nRec} recibo(s)`);if(RECIBO&&RECS[RECIBO]){DATA=dataOf(RECIBO);byProd=Object.fromEntries(DATA.map(z=>[z.p,z]));if(cur)cur=byProd[cur.p]||null;renderAll()}}}
+  catch(err){console.warn('histMig',err)}}
+function RC_SET(id,items){RECS[id].items=items}
 function ajPaint(){const b=$('pajs');if(!b||!cur)return;const l=(AJC||[]).filter(a=>String(a.p)===String(cur.p)&&String(a.id||'')===String(RECIBO));
   b.innerHTML=l.length?`<div class="slbl" style="margin-top:10px">Ajustes manuales</div><div class="scroll"><table><tr><th>Fecha</th><th>Tipo</th><th>Cambios</th><th>Con</th><th>Por</th></tr>${l.map(a=>{const o=byProd[a.par]||{},ks=Object.keys(a.antes||{});return `<tr><td>${esc(fdt(a.ts))}</td><td><b class="${a.tp==='dis'?'neg':'pos'}">${a.tp==='dis'?'−':'+'}${fmt(a.q||0)}</b></td><td>${ks.map(t=>`${esc(L(t))} ${fmt(a.antes[t])}→<b>${fmt((a.despues||{})[t])}</b>`).join('<br>')}</td><td>${esc(o.ref||'')}<br><small style="color:var(--mt)">${esc(a.par||'')}</small></td><td>${esc(a.n||a.by||'')}</td></tr>`}).join('')}</table></div>`:''}
 function ajHtml(){return (ISADM?`<button class="btn sm" data-aj="1" style="margin-top:10px;width:100%">🔄 Ajuste manual (aumento / disminución)</button>`:'')+'<div id="pajs"></div>'}
 let AJY=null;
+// ---------- Registro informativo de ajustes manuales (nº de ajuste del sistema pendiente / aplicado) ----------
+function ajBox(x){const l=ajList(x);if(!l.length)return '';
+  return l.map(a=>{const sgn=a.tp==='dis'?'−':'+',kind=a.tp==='dis'?'Disminución':'Aumento',ref=esc((a.pr?a.pr+' · ':'')+a.par);
+    return `<div style="margin-top:8px;padding:6px;border-radius:10px;background:#0b3a44;border:1px solid var(--bd);text-align:left;font-size:11px">📋 Ajuste ${kind}: <b class="${a.tp==='dis'?'neg':'pos'}">${sgn}${fmt(a.q)} pzas</b><br><span style="color:var(--mt)">Con ${ref}</span><br>${a.num?`Ajuste nº <b>${esc(a.num)}</b> ✓`:`<span style="color:var(--wn)">Pendiente de nº de ajuste</span><br>Inventario en sistema (saldo anterior): <b>${fmt(a.base)}</b>`}${!a.num&&ISADM?`<button class="btn sm" data-ajn="${a.ts}" style="width:100%;margin-top:6px"># Registrar nº de ajuste</button>`:''}</div>`}).join('')}
+// Total del ajuste aplicado (para mostrarlo en el Sugerido)
+function ajDisTot(x){return ajList(x).filter(a=>a.tp==='dis').reduce((t,a)=>t+(a.q||0),0)}
+function ajRow(x){const d=ajDisTot(x);return d?`<tr><td>Ajuste aplicado</td><td class="n"></td><td class="n neg"><b>−${fmt(d)} pzas</b></td></tr>`:''}
+async function ajNum(p,ts){if(!ISADM){toast('Solo un administrador puede registrar el nº de ajuste');return}
+  const x=byProd[p];if(!x)return;const a=ajList(x).find(z=>String(z.ts)===String(ts));if(!a)return;
+  const v=(prompt(`Nº de ajuste (${a.tp==='dis'?'disminución':'aumento'} ${a.tp==='dis'?'−':'+'}${a.q}) · ${x.ref} · ${x.p}`,'')||'').trim();if(!v)return;
+  const items=RECS[RECIBO].items.map(z=>({...z,s:{...z.s}})),it=items.find(z=>z.p===p);if(!it)return;
+  it.ajs=ajList(x).map(z=>String(z.ts)===String(ts)?{...z,num:v,nts:Date.now(),nby:NAME||USER}:z);
+  try{await set(R(db,'meta_v1/consultas_recs/'+RECIBO+'/items'),items);RECS[RECIBO].items=items;DATA=dataOf(RECIBO);byProd=Object.fromEntries(DATA.map(z=>[z.p,z]));if(cur)cur=byProd[cur.p]||null;toast(`✅ Nº de ajuste ${v} registrado`);renderAll()}
+  catch(err){toast('Error: '+(err.code||err.message))}}
 // Plan de un ajuste sobre una referencia: Cristal (clientes) no se toca; con saldo en Bodega se ajusta ahí; si no, en la distribución de tiendas
 function ajPlan(x,tp,q){const nv={},ord=STORES.filter(t=>t!=='CRISTAL'&&t!=='BODEGA'),free=Math.max(0,(x.s.BODEGA||0)-bodUsed(x.p));let r=q,bodD=0,dtd=0;
   if(tp==='dis'){bodD=-r;r=0}
@@ -2020,19 +2062,19 @@ function ajOpen(){const x=cur;if(!x)return;if(!ISADM){toast('Solo un administrad
   askCb=async v=>{const q=parseInt(v.q)||0;if(q<1){toast('Escribe las piezas');return false}if(!AJY){toast('Elige la otra referencia');return false}
     return await ajApply(x,byProd[AJY],v.tp,q,v.su)};
   $('mask').classList.remove('hide')}
-$('maskBody').addEventListener('input',e=>{if(e.target.id!=='ajq')return;const q=normH(e.target.value);
+$('maskBody').addEventListener('input',e=>{if(e.target.id!=='ajq')return;if(AJY){AJY=null;$('ajsel').innerHTML=''}const q=normH(e.target.value);
   const m=q?DATA.filter(y=>cur&&y.p!==cur.p&&(normH(y.ref).includes(q)||String(y.p).includes(q)||String(y.upc).includes(q)||normH(y.d).includes(q))).slice(0,8):[];
   $('ajres').innerHTML=m.map(y=>`<button class="btn sm" data-ajy="${y.p}" style="width:100%;text-align:left;margin-top:4px;white-space:normal">${esc(y.ref)} · ${y.p}<br><small style="color:var(--mt)">${esc(y.d)}</small></button>`).join('')});
-$('maskBody').addEventListener('click',e=>{const b=e.target.closest('[data-ajy]');if(!b)return;AJY=b.dataset.ajy;const y=byProd[AJY];$('ajres').innerHTML='';$('ajq').value='';$('ajsel').innerHTML=`Otra referencia: <b>${esc(y.ref)}</b> · ${y.p}<br>${esc(y.d)}`});
+$('maskBody').addEventListener('click',e=>{const b=e.target.closest('[data-ajy]');if(!b)return;AJY=b.dataset.ajy;const y=byProd[AJY];$('ajres').innerHTML='';$('ajq').value=`${y.ref} · ${y.p}`;$('ajsel').innerHTML=`✅ Referencia seleccionada<br>Estilo: <b>${esc(y.ref)}</b> · Producto: <b>${y.p}</b><br>${esc(y.d)}`});
 async function ajApply(x,y,tp,q,su){
   if(COMP[RECIBO]){toast('El recibo ya está completado: reábrelo antes de ajustar');return false}
   const ty=tp==='aum'?'dis':'aum',px=ajPlan(x,tp,q),py=ajPlan(y,ty,q);
   const lf=px.left+py.left;
-  if(!confirm(`${x.ref} ${tp==='aum'?'AUMENTO +':'DISMINUCIÓN −'}${q}: ${ajTxt(x,px)}\n${y.ref} ${ty==='aum'?'AUMENTO +':'DISMINUCIÓN −'}${q}: ${ajTxt(y,py)}${[[x,px],[y,py]].filter(([z,p])=>(z.s.BODEGA||0)+p.bodD<0).map(([z,p])=>`\n\n⚠ ${z.ref}: Bodega quedará en ${(z.s.BODEGA||0)+p.bodD} (sobregiro). Luego aplica 💡 Sugerido para dejarla en cero.`).join('')}\n\n¿Aplicar ajuste?`))return false;
+  if(!confirm(`${x.ref} · ${x.p} ${tp==='aum'?'AUMENTO +':'DISMINUCIÓN −'}${q}: ${ajTxt(x,px)}\n${y.ref} · ${y.p} ${ty==='aum'?'AUMENTO +':'DISMINUCIÓN −'}${q}: ${ajTxt(y,py)}${[[x,px],[y,py]].filter(([z,p])=>(z.s.BODEGA||0)+p.bodD<0).map(([z,p])=>`\n\n⚠ ${z.ref} · ${z.p}: Bodega quedará en ${(z.s.BODEGA||0)+p.bodD} (sobregiro). Luego aplica 💡 Sugerido para dejarla en cero.`).join('')}\n\n¿Aplicar ajuste?`))return false;
   const items=RECS[RECIBO].items.map(z=>({...z,s:{...z.s}})),ts=Date.now(),logs=[];
   for(const [z,pl,t2,par] of [[x,px,tp,y],[y,py,ty,x]]){const it=items.find(i=>i.p===z.p);if(!it)continue;const antes={},despues={};
     for(const t of Object.keys(pl.nv)){antes[t]=it.s[t]||0;despues[t]=pl.nv[t];it.s[t]=pl.nv[t]}
-    if(pl.bodD){antes.BODEGA=it.sc||0;it.sc=(it.sc||0)+pl.bodD;it.s.BODEGA=it.sc;despues.BODEGA=it.sc}
+    if(pl.bodD){it.ajs=[...(it.ajs||[]),{ts,tp:t2,q,base:it.sc||0,par:par.p,pr:par.ref||'',num:''}];antes.BODEGA=it.sc||0;it.sc=(it.sc||0)+pl.bodD;it.s.BODEGA=it.sc;despues.BODEGA=it.sc}
     it.dt=Math.max(0,(it.dt||0)+pl.dtd);it.rec=Math.max(0,(it.rec||0)+pl.dtd+pl.bodD);it.sal=(it.cr||0)+(it.sc||0);
     logs.push({id:RECIBO,p:z.p,r:z.ref||'',d:z.d||'',by:USER,n:NAME,ts,antes,despues,delta:q,cruce:1,tp:t2,q,par:par.p})}
   try{await set(R(db,'meta_v1/consultas_recs/'+RECIBO+'/items'),items);
@@ -2040,7 +2082,7 @@ async function ajApply(x,y,tp,q,su){
     if(su&&su!==USER){const sn=(entries().find(e=>e.u===su&&e.p===x.p)||{}).n||su;await set(push(R(db,'meta_v1/consultas_err')),{id:RECIBO,p:x.p,r:x.ref||'',k:'ajuste',q,who:su,wn:sn,by:USER,bn:NAME,ts});STERRT=0}
     try{await remove(R(db,'meta_v1/consultas_prog/'+RECIBO))}catch(e2){}
     RECS[RECIBO].items=items;DATA=dataOf(RECIBO);byProd=Object.fromEntries(DATA.map(z=>[z.p,z]));if(cur)cur=byProd[cur.p]||null;
-    toast(`✅ Ajuste aplicado: ${x.ref} y ${y.ref} · ${fmt(q)} pzas`);renderAll();ajLoad()}
+    toast(`✅ Ajuste aplicado: ${x.ref} · ${x.p} y ${y.ref} · ${y.p} · ${fmt(q)} pzas`);renderAll();ajLoad()}
   catch(err){toast('Error: '+(err.code||err.message));return false}}
 $('phist').addEventListener('click',e=>{if(e.target.closest('[data-aj]'))ajOpen()});
 // Historial de ajustes: producto, recibo, tiendas, solicitado inicial y nueva cantidad (descargable en Excel)
