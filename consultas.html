@@ -461,7 +461,7 @@ onAuthStateChanged(auth,async u=>{
   $('who').textContent=`${NAME} · ${ISADM?'Administrador':'Surtidor'}`;
   $('gate').classList.add('hide');$('app').classList.remove('hide');startCtrl();
   showRecList();
-  if(ISADM){setTimeout(histMig,3000);setTimeout(fixOnce,6000)}
+  if(ISADM)setTimeout(histMig,3000);
 });
 
 // ---------- cálculos ----------
@@ -2039,7 +2039,7 @@ async function histMig(){if(!ISADM)return;
 function RC_SET(id,items){RECS[id].items=items}
 function ajPaint(){const b=$('pajs');if(!b||!cur)return;const l=(AJC||[]).filter(a=>String(a.p)===String(cur.p)&&String(a.id||'')===String(RECIBO));
   b.innerHTML=l.length?`<div class="slbl" style="margin-top:10px">Ajustes manuales</div><div class="scroll"><table><tr><th>Fecha</th><th>Tipo</th><th>Cambios</th><th>Con</th><th>Por</th><th></th></tr>${l.map(a=>{const o=byProd[a.par]||{},ks=Object.keys(a.antes||{});return `<tr><td>${esc(fdt(a.ts))}</td><td><b class="${a.tp==='dis'?'neg':'pos'}">${a.tp==='dis'?'−':'+'}${fmt(a.q||0)}</b></td><td>${ks.map(t=>`${esc(L(t))} ${fmt(a.antes[t])}→<b>${fmt((a.despues||{})[t])}</b>`).join('<br>')}</td><td>${esc(o.ref||'')}<br><small style="color:var(--mt)">${esc(a.par||'')}</small></td><td>${esc(a.n||a.by||'')}</td><td>${ISADM&&a.par?`<button class="btn sm" data-ajdel="${a.ts}">✕ Anular</button>`:''}</td></tr>`}).join('')}</table></div>`:''}
-function ajHtml(){return (ISADM?`<button class="btn sm" data-aj="1" style="margin-top:10px;width:100%">🔄 Ajuste manual (aumento / disminución)</button>`:'')+(ISADM?`<button class="btn sm" data-ajfix="1" style="margin-top:8px;width:100%">⚖ Corregir saldo de Bodega</button>`:'')+'<div id="pajs"></div>'}
+function ajHtml(){return (ISADM?`<button class="btn sm" data-aj="1" style="margin-top:10px;width:100%">🔄 Ajuste manual (aumento / disminución)</button>`:'')+'<div id="pajs"></div>'}
 let AJY=null;
 // ---------- Registro informativo de ajustes manuales (nº de ajuste del sistema pendiente / aplicado) ----------
 // Inventario en el sistema mientras el ajuste no tenga nº: saldo actual sin los ajustes pendientes (INV)
@@ -2082,35 +2082,7 @@ async function ajUndo(ts){if(AJBUSY)return;if(!ISADM){toast('Solo un administrad
   finally{AJBUSY=false}}
 $('phist').addEventListener('click',e=>{const b=e.target.closest('[data-ajdel]');if(b)ajUndo(b.dataset.ajdel)});
 
-// Corregir el saldo de Bodega de un producto (deja registro). Útil cuando un saldo quedó descuadrado.
-async function ajFix(){if(!ISADM||!cur){return}
-  if(COMP[RECIBO]){toast('El recibo ya está completado: reábrelo antes');return}
-  const x=cur,v=prompt(`Saldo CORRECTO de Bodega para ${x.ref} · ${x.p}\n(saldo actual en el sistema: ${x.s.BODEGA||0})`,String(x.s.BODEGA||0));if(v===null)return;
-  const n=parseInt(v);if(isNaN(n)){toast('Escribe un número');return}const diff=n-(x.s.BODEGA||0);if(!diff){toast('Sin cambios');return}
-  const items=RECS[RECIBO].items.map(z=>({...z,s:{...z.s}})),it=items.find(z=>String(z.p)===String(x.p));if(!it)return;const ts=Date.now(),antes=it.sc||0;
-  it.sc=n;it.s.BODEGA=n;it.rec=Math.max(0,(it.rec||0)+diff);it.sal=(it.cr||0)+n;
-  try{await set(R(db,'meta_v1/consultas_recs/'+RECIBO+'/items'),items);
-    await set(push(R(db,'meta_v1/consultas_ajustes')),{id:RECIBO,p:x.p,r:x.ref||'',d:x.d||'',by:USER,n:NAME,ts,antes:{BODEGA:antes},despues:{BODEGA:n},delta:diff,corr:1});
-    RECS[RECIBO].items=items;DATA=dataOf(RECIBO);byProd=Object.fromEntries(DATA.map(z=>[z.p,z]));cur=byProd[x.p]||null;toast(`✅ Saldo de Bodega corregido: ${antes} → ${n}`);renderAll()}
-  catch(err){toast('Error: '+(err.code||err.message))}}
-$('phist').addEventListener('click',e=>{if(e.target.closest('[data-ajfix]'))ajFix()});
 
-// Corrección única (recibo 408158, productos 1637496 y 1637497): quedaron saldos de Bodega de −26 / +26 por un 'Anular' ejecutado dos veces.
-// Solo actúa si ambos productos siguen exactamente así y no tienen ningún ajuste registrado; deja registro y una marca para no repetirse.
-async function fixOnce(){if(!ISADM)return;
-  try{if((await get(R(db,'meta_v1/consultas_fix_408158'))).exists())return}catch(e){return}
-  const rc=RECS['408158'];if(!rc||!rc.items)return;
-  const items=rc.items.map(z=>({...z,s:{...z.s}})),a=items.find(z=>String(z.p)==='1637496'),b=items.find(z=>String(z.p)==='1637497');
-  const ok=a&&b&&(a.sc||0)===-26&&(b.sc||0)===26&&!(a.ajs||[]).length&&!(b.ajs||[]).length;
-  try{
-    if(ok){const ts=Date.now();
-      for(const it of [a,b]){const antes=it.sc||0;it.sc=0;it.s.BODEGA=0;it.sal=(it.cr||0);
-        await set(push(R(db,'meta_v1/consultas_ajustes')),{id:'408158',p:it.p,r:it.ref||'',d:it.d||'',by:USER,n:NAME,ts,antes:{BODEGA:antes},despues:{BODEGA:0},delta:-antes,corr:1})}
-      await set(R(db,'meta_v1/consultas_recs/408158/items'),items);RECS['408158'].items=items;
-      if(RECIBO==='408158'){DATA=dataOf(RECIBO);byProd=Object.fromEntries(DATA.map(z=>[z.p,z]));if(cur)cur=byProd[cur.p]||null;renderAll()}
-      toast('✅ Saldos de Bodega corregidos en 1637496 y 1637497 (quedaron en 0)')}
-    await set(R(db,'meta_v1/consultas_fix_408158'),{ts:Date.now(),by:USER,aplicado:!!ok})}
-  catch(err){console.warn('fixOnce',err)}}
 // Plan de un ajuste sobre una referencia: Cristal (clientes) no se toca; con saldo en Bodega se ajusta ahí; si no, en la distribución de tiendas
 function ajPlan(x,tp,q){const nv={},ord=STORES.filter(t=>t!=='CRISTAL'&&t!=='BODEGA'),free=Math.max(0,(x.s.BODEGA||0)-bodUsed(x.p));let r=q,bodD=0,dtd=0;
   if(tp==='dis'){bodD=-r;r=0}
