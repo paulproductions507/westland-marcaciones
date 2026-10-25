@@ -551,6 +551,11 @@ function doSearch(){
       $('qmsg').textContent=`❌ ${x.ref} no se encuentra en ${L(STF2)}${NAMES[STF2]?' · '+NAMES[STF2]:''}. Sigue con el siguiente.`;$('qmsg').className='msg err';
       try{navigator.vibrate&&navigator.vibrate([120,60,120])}catch(_){}toast(`❌ ${x.ref} no está en ${L(STF2)}`);$('q').focus();return}
     m=mi}
+  if(STSF!=='all'&&m.length){const mj=m.filter(x=>stSt(x)===STSF);
+    if(!mj.length){const x=m[0],est=STLBL[stSt(x)]||'';$('q').value='';shown=40;renderList();
+      $('qmsg').textContent=`⏭ ${x.ref} ${STF2!=='all'?'es de '+L(STF2)+' pero ':''}está en estado "${est}" (buscas "${STLBL[STSF]}"). Siguiente.`;$('qmsg').className='msg err';
+      try{navigator.vibrate&&navigator.vibrate([120,60,120])}catch(_){}toast(`⏭ ${x.ref}: ${est}`);$('q').focus();return}
+    m=mj}
   if(m.length===1){openProd(m[0].p);$('q').value='';$('qmsg').textContent='Al escanear el código se abre el producto directo.';$('qmsg').className='msg';return}
   if(m.length>1){$('qmsg').textContent=`${m.length} coincidencias exactas — elige una.`;$('q').value='';filtered=m;$('list').innerHTML='';m.forEach(x=>{});showMatches(m);return}
   renderList();const n=filtered.length;$('qmsg').textContent=n?`${n} resultado(s) por texto.`:(STF2!=='all'?`No se encuentra en ${L(STF2)}.`:'No se encontró ese código en el recibo.');$('qmsg').className='msg'+(n?'':' err')
