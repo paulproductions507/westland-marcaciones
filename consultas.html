@@ -762,6 +762,10 @@ function renderDsp(){
   box.innerHTML=ptH+`<button class="dspbtn" id="dspBtn" ${no?'disabled':''}><span>🚚 Despachar</span></button>${no?'<div class="msg" style="text-align:center">Surte al menos una tienda para poder despachar.</div>':''}`
 }
 // Despacho parcial: por tienda. Lo ya despachado de una tienda queda en despt/{producto}/{tienda}.q (piezas acumuladas)
+let DSPW=null;
+function dspSurHTML(){let last='';try{last=localStorage.getItem('cons_inc_u')||''}catch(e){}
+  return `<div style="text-align:left;margin:12px 0 4px"><div class="lbl">Asignar a surtidor</div><select class="f" id="dspSur"><option value="">Elegir…</option>${UDIR.map(z=>`<option value="${esc(z.u)}" ${z.u===last?'selected':''}>${esc(z.n)} (${esc(z.u)})</option>`).join('')}</select></div>`}
+function dspSurW(){const v=$('dspSur')&&$('dspSur').value,su=UDIR.find(z=>z.u===v);if(!su)return null;try{localStorage.setItem('cons_inc_u',su.u)}catch(e){}return{u:su.u,n:su.n}}
 const dsq=(p,t)=>{const v=DSPT[p]&&DSPT[p][t];return v&&v.q||0};
 function dspStoreS(x,t){const bx=t==='CRISTAL'?bodUsed(x.p):0;return Math.min(sur(x.p,t)+bx,(x.s[t]||0)+bx)}
 function dspCands(x){return STORES.filter(t=>t!=='BODEGA').map(t=>({t,s:dspStoreS(x,t),d:dsq(x.p,t)})).filter(o=>o.s>o.d)}
@@ -770,20 +774,22 @@ function openDspFull(){
   $('mdspBody').innerHTML=`<div style="text-align:center;padding:6px 4px 2px"><div style="font-size:42px">🚚</div><h2 style="font-size:20px;margin:6px 0">¿Despachar ${esc(x.ref)}?</h2><div class="msg">Producto ${x.p} · ${fmt(s)} de ${fmt(a)} pzas surtidas · ${fmtB(bul(x))} bultos</div>${pend>0?`<div class="msg" style="color:var(--wn)">Aún faltan ${fmt(pend)} pzas (${falt.join(', ')}). Se marcará como completada de todos modos.</div>`:'<div class="msg">Al confirmar, esta referencia queda completada.</div>'}<div style="display:flex;gap:10px;margin-top:14px"><button class="btn" id="dspNo" style="flex:1">Cancelar</button><button class="btn pri" id="dspYes" style="flex:1">Sí, despachar</button></div></div>`;
   $('mdsp').classList.remove('hide')
 }
-function openDsp(){
-  const x=cur,{a,s}=totalsOf(x),pend=a-s;
-  if(pend<=0&&!Object.keys(DSPT[x.p]||{}).length){openDspFull();return}
+async function openDsp(){
+  const x=cur,{a,s}=totalsOf(x),pend=a-s,inc=INC&&ISADM;
+  if(inc)await auLoadDir();
+  const inj=()=>{if(!inc)return;const n=$('dspNo');if(n&&n.parentElement)n.parentElement.insertAdjacentHTML('beforebegin',dspSurHTML())};
+  if(pend<=0&&!Object.keys(DSPT[x.p]||{}).length){openDspFull();inj();return}
   const cs=dspCands(x),tot=cs.reduce((n,o)=>n+o.s-o.d,0);
   const rows=cs.map(o=>`<label class="ck" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--bd,#2a4a60);border-radius:12px;margin:6px 0;text-align:left"><input type="checkbox" data-dpt="${esc(o.t)}" data-dpq="${o.s-o.d}" checked><span style="flex:1"><b>${esc(L(o.t))}</b></span><b>${fmt(o.s-o.d)} pzas</b></label>`).join('');
   $('mdspBody').innerHTML=`<div style="text-align:center;padding:6px 4px 2px"><div style="font-size:42px">🚚</div><h2 style="font-size:20px;margin:6px 0">¿Despachar lo surtido de ${esc(x.ref)}?</h2><div class="msg">Producto ${x.p}. Solo se despacha lo que marques: las demás tiendas siguen pendientes.</div>${rows||'<div class="msg" style="color:var(--wn)">No hay piezas surtidas nuevas por despachar.</div>'}<div style="display:flex;gap:10px;margin-top:14px"><button class="btn" id="dspNo" style="flex:1">Cancelar</button><button class="btn pri" id="dspPart" style="flex:1" ${cs.length?'':'disabled'}>Sí, despachar ${fmt(tot)} pzas</button></div><button class="btn sm" id="dspYes" style="width:100%;margin-top:12px">Completar toda la referencia${pend>0?` (aunque falten ${fmt(pend)} pzas)`:''}</button></div>`;
-  $('mdsp').classList.remove('hide')
+  inj();$('mdsp').classList.remove('hide')
 }
 async function runDspPart(){
   const x=cur;if(!x)return;const ts=[...$('mdspBody').querySelectorAll('input[data-dpt]:checked')].map(i=>i.dataset.dpt);
   if(!ts.length){toast('Marca al menos una tienda');return}
-  $('mdsp').classList.add('hide');
   let W={u:USER,n:NAME};
-  try{if(INC&&ISADM){W=await incPick();if(!W){toast('Despacho cancelado');return}}}catch(e){toast('Error al elegir surtidor: '+(e.message||e));return}
+  if(INC&&ISADM){W=dspSurW();if(!W){toast('Elige el surtidor');return}}
+  $('mdsp').classList.add('hide');
   try{const ts0=Date.now();let tot=0;
     for(const t of ts){const s=dspStoreS(x,t),d=dsq(x.p,t);if(s<=d)continue;tot+=s-d;await set(R(db,`${DSPTB}/${x.p}/${t}`),{q:s,u:W.u,n:W.n,ts:ts0,d:today(),r:x.ref})}
     const all=STORES.filter(t=>t!=='BODEGA').every(t=>{const bx=t==='CRISTAL'?bodUsed(x.p):0,a=(x.s[t]||0)+bx;if(a===0)return true;const s=dspStoreS(x,t);return s>=a&&(ts.includes(t)||dsq(x.p,t)>=s)});
@@ -793,7 +799,7 @@ async function runDspPart(){
   if(cur)renderProd()
 }
 async function runDsp(){
-  const x=cur;if(!x)return;const b=$('dspBtn');if(!b)return;let W={u:USER,n:NAME};if(INC&&ISADM){W=await incPick();if(!W)return}DSPANIM=true;b.classList.add('busy');const t0=Date.now();
+  const x=cur;if(!x)return;const b=$('dspBtn');if(!b)return;let W={u:USER,n:NAME};if(INC&&ISADM){W=DSPW||await incPick();DSPW=null;if(!W)return}DSPANIM=true;b.classList.add('busy');const t0=Date.now();
   try{
     await set(R(db,`${DSPB}/${x.p}`),{u:W.u,n:W.n,ts:Date.now(),d:today(),r:x.ref});
     const w=1400-(Date.now()-t0);if(w>0)await new Promise(r=>setTimeout(r,w));
@@ -814,7 +820,7 @@ $('dspBox').addEventListener('click',async e=>{
 
   if(e.target.closest('#dspUndo')){if(!cur||!confirm('¿Reabrir esta referencia?'))return;try{const dd0=DSP[cur.p]||{};if(dd0.u&&dd0.u!==USER&&!dd0.au&&!dd0.ax)await set(push(R(db,'meta_v1/consultas_err')),{id:RECIBO,p:cur.p,r:cur.ref,k:'reabrir',who:dd0.u,wn:dd0.n||dd0.u,by:USER,bn:NAME,ts:Date.now()});await remove(R(db,`${DSPB}/${cur.p}`));await remove(R(db,`${DSPTB}/${cur.p}`));toast('Referencia reabierta')}catch(err){toast('Error: '+(err.code||err.message))}}
 });
-$('mdspBody').addEventListener('click',e=>{if(e.target.id==='dspNo')$('mdsp').classList.add('hide');if(e.target.id==='dspPart')runDspPart();if(e.target.id==='dspYes'){$('mdsp').classList.add('hide');runDsp()}});
+$('mdspBody').addEventListener('click',e=>{if(e.target.id==='dspNo')$('mdsp').classList.add('hide');if(e.target.id==='dspPart')runDspPart();if(e.target.id==='dspYes'){DSPW=null;if(INC&&ISADM){DSPW=dspSurW();if(!DSPW){toast('Elige el surtidor');return}}$('mdsp').classList.add('hide');runDsp()}});
 $('mdspBody').addEventListener('change',e=>{if(!e.target.dataset.dpt)return;const b=$('dspPart');if(!b)return;const cs=[...$('mdspBody').querySelectorAll('input[data-dpt]:checked')];const n=cs.reduce((a,i)=>a+(+i.dataset.dpq||0),0);b.textContent=cs.length?`Sí, despachar ${fmt(n)} pzas`:'Marca una tienda';b.disabled=!cs.length});
 
 // ---------- Transferencia activa por tienda ----------
