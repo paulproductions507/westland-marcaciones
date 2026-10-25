@@ -35,6 +35,14 @@ h1,h2,h3,.sora{font-family:'72','72full','Inter',system-ui,sans-serif;margin:0}
 .tile.pdo .hd{background:linear-gradient(135deg,#ffb347,#d36a00)}
 .tile.pdo .hd b,.tile.pdo .hd small{color:#2b1400;text-decoration:none}
 .tile.pdo .bd{color:#f3dcc0}.tile.pdo .bd b{color:#fff}
+.tile.pdn{border:2px solid #3f66d9;background:linear-gradient(180deg,#0c1d47,#07122e);box-shadow:0 0 14px #1e3a8a66}
+.tile.pdn .hd{background:linear-gradient(135deg,#1f3f94,#0a1f50)}
+.tile.pdn .hd b,.tile.pdn .hd small{color:#fff;text-shadow:0 1px 2px #000}
+.tile.pdn .bd{color:#c9d6f5}.tile.pdn .bd b{color:#fff}
+.tile.pdr{border:2px solid var(--ac);background:linear-gradient(180deg,#0e4c5a,#082f38);box-shadow:0 0 14px #18d0c840}
+.tile.pdr .hd{background:linear-gradient(135deg,var(--ac2),#0b6f7d)}
+.tile.pdr .hd b,.tile.pdr .hd small,.tile.pdr .bd,.tile.pdr .bd b{color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000}
+.tile.pdr .hd small{white-space:normal;overflow-wrap:anywhere}
 .tile.pdu .hd{padding:12px 6px}.tile.pdu .hd b{display:block;font-size:17px;line-height:1.2;white-space:normal;overflow-wrap:anywhere}
 @media(max-width:420px){.tile.pdu .hd b{font-size:15px}}
 .tile.dsp.pdt .hd b{text-decoration:none}.tile.pdt{cursor:pointer}.tile.pdz{opacity:.4}.pdd input.f{width:100%;min-width:0}
@@ -548,7 +556,7 @@ for(const t of STORES){if(sel[t]&&!sel[t].nw&&t!=='CRISTAL')sel[t].tr=lastTr(t)}
       <div class="bd">Distribuir: <b>${fmt(a)}</b><br>Surtidas: <b>${fmt(s)}</b><br>Pendiente: <b style="color:${pend?'var(--wn)':'var(--ok)'}">${fmt(pend)}</b>${trs.length?`<div class="tr">${t==='CRISTAL'?'Proforma':'Transf'}: ${trs.map(esc).join(', ')}</div>`:''}${t==='CRISTAL'&&cl?'<div class="tr">Por proforma · clientes</div>':''}</div>
       ${cl?`<div style="padding:0 6px 8px"><button class="btn pri sm" data-cli="${x.p}" style="width:100%" ${isD?'disabled':''}>👥 Clientes</button></div>`:`<label class="ck"><input type="checkbox" data-ck="${t}" ${S.on?'checked':''} ${dis?'disabled':''}> ${dis?(a===0?'Sin asignar':isD?'Despachado':'Surtido ✓'):'Surtido'}</label>
       <div class="ed"><input type="number" min="1" inputmode="numeric" data-q="${t}" value="${S.q}" placeholder="Cant.">${trBlock(t,S)}</div>`}${t==='CRISTAL'?`<div style="padding:0 6px 8px"><button class="btn sm" data-pz="${x.p}" style="width:100%">🏷 Etiquetas por pieza</button></div>`:''}</div>`}).join('');
-  $('phist').innerHTML=histTable(entries().filter(e=>e.p===x.p).sort((a,b)=>b.ts-a.ts),true);
+  $('phist').innerHTML=histTable(entries().filter(e=>e.p===x.p).sort((a,b)=>b.ts-a.ts),true)+ajHtml();if(AJC)ajPaint();else ajLoad();
   renderDsp();$('chkAll').disabled=!!DSP[x.p];
   updateBar()
 }
@@ -1332,12 +1340,11 @@ function renderPdn(){
   const tiles=ORD.map(t=>{const x=ev.filter(e=>e.t===t),q=sumF(x,e=>e.q),sm=pdSm(t);
     if(!q)return `<div class="tile pdz"><div class="hd"><b>${esc(pdNm(t))}</b>${sm?`<small>${esc(sm)}</small>`:''}</div><div class="bd">Piezas: <b>0</b></div></div>`;
     const nr=new Set(x.map(e=>e.id)).size,nt=new Set(x.map(e=>e.tr).filter(Boolean)).size;
-    return `<div class="tile pdo pdt" data-pt="${esc(t)}"><div class="hd"><b>${esc(pdNm(t))}</b>${sm?`<small>${esc(sm)}</small>`:''}</div><div class="bd">Piezas: <b>${fmt(q)}</b><br>Recibos: <b>${fmt(nr)}</b><br>Transf.: <b>${fmt(nt)}</b></div></div>`}).join('');
+    return `<div class="tile ${PDU?'dsp':'pdo'} pdt" data-pt="${esc(t)}"><div class="hd"><b>${esc(pdNm(t))}</b>${sm?`<small>${esc(sm)}</small>`:''}</div><div class="bd">Piezas: <b>${fmt(q)}</b><br>Recibos: <b>${fmt(nr)}</b><br>Transf.: <b>${fmt(nt)}</b></div></div>`}).join('');
   const surt=all&&!PDU?'<div class="grid">'+by(e=>e.uu||'—').map(([u,o])=>{const xs=ev.filter(e=>(e.uu||'—')===u),nm=(xs[0]||{}).u||u,nt=new Set(xs.map(e=>e.tr).filter(Boolean)).size;
-    return `<div class="tile pdo pdt pdu" data-pu="${esc(u)}"><div class="hd"><b>${esc(nm)}</b></div><div class="bd">Piezas: <b>${fmt(o.q)}</b><br>Recibos: <b>${fmt(o.r.size)}</b><br>Transf.: <b>${fmt(nt)}</b></div></div>`}).join('')+'</div>':'';
-  const recibos=rec.map(([id,o])=>{const tt=by(e=>e.t,ev.filter(e=>e.id===id));
-    return `<details class="card" style="margin:0 0 8px;padding:10px 12px"><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:8px"><span><b>${esc(pdRec(id))}</b> <span class="msg" style="margin:0">· ${esc(pdOrg(id))}</span></span><b>${fmt(o.q)} pzas</b></summary>
-      <div style="margin-top:6px">${tt.map(([t,r])=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:13px"><span>${esc(LN(t))}</span><b>${fmt(r.q)}</b></div>`).join('')}</div></details>`}).join('');
+    return `<div class="tile pdn pdt pdu" data-pu="${esc(u)}"><div class="hd"><b>${esc(nm)}</b></div><div class="bd">Piezas: <b>${fmt(o.q)}</b><br>Recibos: <b>${fmt(o.r.size)}</b><br>Transf.: <b>${fmt(nt)}</b></div></div>`}).join('')+'</div>':'';
+  const recibos='<div class="grid">'+rec.map(([id,o])=>{const nt=new Set(ev.filter(e=>e.id===id).map(e=>e.tr).filter(Boolean)).size,sm=[(!isPs(id)&&PROV[id])||'',pdOrg(id)].filter(Boolean).join(' · ');
+    return `<div class="tile pdr pdt" data-pr="${esc(id)}"><div class="hd"><b>${isPs(id)?esc(PSEUDO[id]):'Recibo '+esc(id)}</b><small>${esc(sm)}</small></div><div class="bd">Piezas: <b>${fmt(o.q)}</b><br>Tiendas: <b>${fmt(o.t.size)}</b><br>Transf.: <b>${fmt(nt)}</b></div></div>`}).join('')+'</div>';
   $('pdBody').innerHTML=`<div class="kpis">${kpi(all?'Piezas surtidas':'Mis piezas',fmt(tot))}${kpi('Recibos / transferencias',fmt(rec.length))}${kpi('Movimientos',fmt(ev.length))}</div>
    <div class="slbl" style="margin-top:12px">Por tienda · toca una para ver recibo, transferencia, pieza y bulto</div><div class="grid">${tiles}</div>
    <div class="card" style="margin-top:12px"><div class="slbl">Por origen</div><div class="scroll"><table><tr><th>Origen</th><th class="n">Piezas</th><th class="n">%</th><th style="width:30%"></th></tr>${org.map(([k,o])=>`<tr><td>${esc(k)}</td><td class="n"><b>${fmt(o.q)}</b></td><td class="n">${(o.q/tot*100).toFixed(0)}%</td><td>${bar(o.q,mxO)}</td></tr>`).join('')}<tr><td><b>Total</b></td><td class="n"><b>${fmt(tot)}</b></td><td></td><td></td></tr></table></div></div>
@@ -1345,21 +1352,33 @@ function renderPdn(){
    <div class="slbl" style="margin-top:12px">Por recibo · toca uno para ver su distribución por tienda</div>${recibos}
    <div class="msg">${all?'Producción de los surtidores':'Solo cuenta lo que tú surtiste'} ${PDD===PDD2?'el':'del'} ${esc(rango)}: distribución de túnel, pedidos automáticos y Cristal clientes (proformas).</div>`}
 // Detalle de una tienda: recibo → transferencia → pieza → bulto
-function pdTileOpen(t){
-  const all=ISADM&&PDALL,x=PDEV.filter(e=>e.t===t);if(!x.length)return;
+let PDREC='';
+const pdHdr=(ttl,sub,bk)=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div class="lbl">${PDD===PDD2?esc(fdate(PDD)):esc(fdate(PDD))+' – '+esc(fdate(PDD2))}</div><div class="sora" style="font-size:20px;color:var(--ac)">${ttl}</div></div><div style="display:flex;gap:6px">${bk?'<button class="btn sm" id="mstBk">◀</button>':''}<button class="btn sm" id="mstX">Cerrar</button></div></div>${sub}`;
+// Cubículo de un recibo: tiendas (verde) con lo surtido en ese recibo
+function pdRecOpen(id){
+  const all=ISADM&&PDALL,x=PDEV.filter(e=>e.id===id);if(!x.length)return;PDREC=id;
+  const ORD=[...BASE_ST,...[...new Set(x.map(e=>e.t))].filter(t=>!BASE_ST.includes(t)&&t!=='—')];
+  const tiles=ORD.map(t=>{const y=x.filter(e=>e.t===t);if(!y.length)return'';const nt=new Set(y.map(e=>e.tr).filter(Boolean)).size,nu=new Set(y.map(e=>e.uu)).size;
+    return `<div class="tile dsp pdt" data-prt="${esc(t)}"><div class="hd"><b>${esc(pdNm(t))}</b>${pdSm(t)?`<small>${esc(pdSm(t))}</small>`:''}</div><div class="bd">Piezas: <b>${fmt(sumF(y,e=>e.q))}</b><br>Transf.: <b>${fmt(nt)}</b>${all&&!PDU?`<br>Surtidores: <b>${nu}</b>`:''}</div></div>`}).join('');
+  $('mstBody').innerHTML=pdHdr(esc(pdRec(id)),`<div class="msg">${esc(pdOrg(id))} · ${fmt(sumF(x,e=>e.q))} pzas · toca una tienda para ver sus transferencias y productos</div><div class="grid" style="margin-top:10px">${tiles}</div>`,false);
+  $('mst').classList.remove('hide')}
+// Detalle de una tienda (opcional: dentro de un recibo): transferencia → producto → bulto, con lo que surtió cada colaborador
+function pdTileOpen(t,rid){
+  const all=ISADM&&PDALL,x=PDEV.filter(e=>e.t===t&&(!rid||e.id===rid));if(!x.length)return;
   const dvB={};STEV.dv.forEach(d=>{if(d.t===t){const k=d.id+'|'+d.p;dvB[k]=(dvB[k]||0)+(d.b||0)}});
   const sq={};x.forEach(e=>{const k=e.id+'|'+e.p;sq[k]=(sq[k]||0)+e.q});
-  const G={};x.forEach(e=>{const gk=e.id+'|'+(e.tr||'');const g=(G[gk]=G[gk]||{id:e.id,tr:e.tr||'',rows:{}});const rk=e.p+'|'+(all?e.uu:'');
+  const G={};x.forEach(e=>{const gk=e.id+'|'+(e.tr||'');const g=(G[gk]=G[gk]||{id:e.id,tr:e.tr||'',rows:{},us:{}});g.us[e.u]=(g.us[e.u]||0)+e.q;const rk=e.p+'|'+(all?e.uu:'');
     const r=(g.rows[rk]=g.rows[rk]||{p:e.p,r:e.r,ds:e.ds,u:e.u,q:0,b:0});r.q+=e.q;r.b+=(dvB[e.id+'|'+e.p]||0)*e.q/sq[e.id+'|'+e.p]});
   const gs=Object.values(G).sort((a,b)=>String(a.id).localeCompare(String(b.id))||String(a.tr).localeCompare(String(b.tr)));
-  const tq=sumF(x,e=>e.q);
-  $('mstBody').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div class="lbl">${PDD===PDD2?esc(fdate(PDD)):esc(fdate(PDD))+' – '+esc(fdate(PDD2))}</div><div class="sora" style="font-size:22px;color:var(--ac)">${esc(pdNm(t))}${pdSm(t)?' · '+esc(pdSm(t)):''}</div></div><button class="btn sm" id="mstX">Cerrar</button></div>
-   <div class="msg">${fmt(tq)} pzas · ${gs.length} recibo/transferencia(s)</div>
-   ${gs.map(g=>{const rs=Object.values(g.rows).sort((a,b)=>b.q-a.q),gq=sumF(rs,r=>r.q),gb=sumF(rs,r=>r.b);
-    return `<div class="card" style="margin:10px 0 0;padding:10px 12px"><div style="display:flex;justify-content:space-between;gap:8px"><span><b>${esc(pdRec(g.id))}</b><br><span class="msg" style="margin:0">${esc(pdOrg(g.id))} · Transf. ${esc(g.tr||'—')}</span></span><span style="text-align:right"><b>${fmt(gq)} pzas</b><br><span class="msg" style="margin:0">${gb?fmtB(gb)+' bultos':'sin bultos'}</span></span></div>
-     <div class="scroll"><table><tr><th>Estilo</th><th>Producto</th>${all?'<th>Surtidor</th>':''}<th class="n">Pzas</th><th class="n">Bultos</th></tr>${rs.map(r=>`<tr><td>${esc(r.r||'')}</td><td>${esc(r.p)}</td>${all?`<td>${esc(r.u||'')}</td>`:''}<td class="n"><b>${fmt(r.q)}</b></td><td class="n">${r.b?fmtB(r.b):'—'}</td></tr>`).join('')}</table></div></div>`}).join('')}`;
+  $('mstBody').innerHTML=pdHdr(`${esc(pdNm(t))}${pdSm(t)?' · '+esc(pdSm(t)):''}`,`<div class="msg">${rid?esc(pdRec(rid))+' · ':''}${fmt(sumF(x,e=>e.q))} pzas · ${gs.length} transferencia(s)</div>
+   ${gs.map(g=>{const rs=Object.values(g.rows).sort((a,b)=>b.q-a.q),gq=sumF(rs,r=>r.q),gb=sumF(rs,r=>r.b),us=Object.entries(g.us);
+    return `<div class="card" style="margin:10px 0 0;padding:10px 12px"><div style="display:flex;justify-content:space-between;gap:8px"><span><b>${rid?'':esc(pdRec(g.id))+'<br>'}Transf. ${esc(g.tr||'—')}</b><br><span class="msg" style="margin:0">${esc(pdOrg(g.id))}</span></span><span style="text-align:right"><b>${fmt(gq)} pzas</b><br><span class="msg" style="margin:0">${gb?fmtB(gb)+' bultos':'sin bultos'}</span></span></div>
+     ${all&&us.length?`<div class="msg" style="margin:4px 0 0">Surtió: ${us.map(([u,q])=>`<b>${esc(u)}</b> ${fmt(q)}`).join(' · ')}</div>`:''}
+     <div class="scroll"><table><tr><th>Estilo</th><th>Producto</th>${all?'<th>Surtidor</th>':''}<th class="n">Pzas</th><th class="n">Bultos</th></tr>${rs.map(r=>`<tr><td>${esc(r.r||'')}</td><td>${esc(r.p)}<div class="msg" style="margin:0;font-size:11px">${esc(r.ds||'')}</div></td>${all?`<td>${esc(r.u||'')}</td>`:''}<td class="n"><b>${fmt(r.q)}</b></td><td class="n">${r.b?fmtB(r.b):'—'}</td></tr>`).join('')}</table></div></div>`}).join('')}`,!!rid);
   $('mst').classList.remove('hide')}
-$('pdBody').addEventListener('click',e=>{const t=e.target.closest('[data-pt]');if(t){pdTileOpen(t.dataset.pt);return}
+$('mst').addEventListener('click',e=>{const b=e.target.closest('[data-prt]');if(b){pdTileOpen(b.dataset.prt,PDREC);return}if(e.target.id==='mstBk')pdRecOpen(PDREC)});
+$('pdBody').addEventListener('click',e=>{const r=e.target.closest('[data-pr]');if(r){pdRecOpen(r.dataset.pr);return}
+  const t=e.target.closest('[data-pt]');if(t){pdTileOpen(t.dataset.pt);return}
   const u=e.target.closest('[data-pu]');if(u){PDU=u.dataset.pu;pdFilters();renderPdn();window.scrollTo(0,0)}});
 $('recProd').onclick=openPdn;
 
@@ -1964,10 +1983,39 @@ async function sugApply(list){
     toast(`✅ Ajustado: ${n} producto(s) · ${fmt(pz)} pzas liberadas${sob?` · quedan ${fmt(sob)} pzas de diferencia (ya estaban surtidas)`:''}`);renderAll()}
   catch(err){toast('Error: '+(err.code||err.message));return false}}
 $('dfList').addEventListener('click',e=>{if(!e.target.closest('#dfSug'))return;const l=DATA.filter(x=>sugOf(x));if(l.length&&confirm(`Se ajustarán los solicitados de ${l.length} producto(s) con diferencia en Bodega, en proporción para todas sus tiendas. ¿Aplicar todo?`))sugApply(l)});
+
+// ---------- Cruce de referencias: una se surtió de más y otra de menos en la misma tienda ----------
+let AJC=null;
+async function ajLoad(){try{const all=(await get(R(db,'meta_v1/consultas_ajustes'))).val()||{};AJC=Object.values(all).filter(a=>a.cruce).sort((a,b)=>(b.ts||0)-(a.ts||0))}catch(e){AJC=[]}ajPaint()}
+function ajPaint(){const b=$('pajs');if(!b||!cur)return;const l=(AJC||[]).filter(a=>String(a.p)===String(cur.p)&&String(a.id||'')===String(RECIBO));
+  b.innerHTML=l.length?`<div class="slbl" style="margin-top:10px">Ajustes de cruce</div><div class="scroll"><table><tr><th>Fecha</th><th>Tienda</th><th class="n">Antes</th><th class="n">Después</th><th>Con</th><th>Por</th></tr>${l.map(a=>{const t=Object.keys(a.antes||{})[0],o=byProd[a.par]||{};return `<tr><td>${esc(fdt(a.ts))}</td><td>${esc(L(t))}</td><td class="n">${fmt(a.antes[t])}</td><td class="n"><b>${fmt((a.despues||{})[t])}</b></td><td>${esc(o.ref||'')}<br><small style="color:var(--mt)">${esc(a.par||'')}</small></td><td>${esc(a.n||a.by||'')}</td></tr>`}).join('')}</table></div>`:''}
+function ajHtml(){return (ISADM?`<button class="btn sm" data-aj="1" style="margin-top:10px;width:100%">🔄 Ajuste: cruce con otra referencia</button>`:'')+'<div id="pajs"></div>'}
+function ajOpen(){const x=cur;if(!x)return;if(!ISADM){toast('Solo un administrador puede aplicar ajustes');return}
+  const op=[];for(const t of STORES){if(t==='BODEGA'||t==='CRISTAL')continue;const dx=sur(x.p,t)-(x.s[t]||0);if(!dx||!(sur(x.p,t)>0||DSP[x.p]))continue;
+    DATA.forEach(y=>{if(y.p===x.p)return;const dy=sur(y.p,t)-(y.s[t]||0);if(dy&&Math.sign(dy)!==Math.sign(dx)&&(sur(y.p,t)>0||DSP[y.p]))op.push({t,y,dx,dy,m:Math.min(Math.abs(dx),Math.abs(dy))})})}
+  if(!op.length){toast('No hay otra referencia con diferencia contraria en la misma tienda');return}
+  ask('Ajuste · cruce con otra referencia',[{k:'o',label:'Tienda · otra referencia (diferencia)',type:'select',opts:op.map((o,i)=>[i,`${L(o.t)} · ${o.y.ref} (${o.y.p}) · ${sg(o.dy)} · esta ${sg(o.dx)}`]),value:0},{k:'q',label:'Piezas a cruzar',type:'number',value:String(op[0].m)}],'Aplicar ajuste',async v=>{
+    const o=op[+v.o],q=parseInt(v.q)||0;if(q<1||q>o.m){toast('Cantidad inválida (máximo '+o.m+')');return false}
+    const plus=o.dx>0?x:o.y,minus=o.dx>0?o.y:x;await crossApply({t:o.t,a:plus,b:minus,q})})}
+$('phist').addEventListener('click',e=>{if(e.target.closest('[data-aj]'))ajOpen()});
+async function crossApply(o){
+  if(!ISADM){toast('Solo un administrador puede aplicar ajustes');return}
+  if(COMP[RECIBO]){toast('El recibo ya está completado: reábrelo antes de ajustar');return}
+  if(!confirm(`Cruce en ${L(o.t)}: ${o.a.ref} +${o.q} y ${o.b.ref} −${o.q}. Bodega no cambia. ¿Aplicar?`))return;
+  const items=RECS[RECIBO].items.map(y=>({...y,s:{...y.s}})),A=items.find(y=>y.p===o.a.p),B=items.find(y=>y.p===o.b.p),ts=Date.now();if(!A||!B)return;
+  const aA=A.s[o.t]||0,aB=B.s[o.t]||0;if(aB-o.q<0){toast('Cantidad inválida');return}
+  A.s[o.t]=aA+o.q;B.s[o.t]=aB-o.q;A.dt=(A.dt||0)+o.q;B.dt=Math.max(0,(B.dt||0)-o.q);
+  const lg=(it,a,b,par)=>({id:RECIBO,p:it.p,r:it.ref||'',d:it.d||'',by:USER,n:NAME,ts,antes:{[o.t]:a},despues:{[o.t]:b},delta:a-b,cruce:1,par});
+  try{await set(R(db,'meta_v1/consultas_recs/'+RECIBO+'/items'),items);
+    await set(push(R(db,'meta_v1/consultas_ajustes')),lg(A,aA,aA+o.q,B.p));await set(push(R(db,'meta_v1/consultas_ajustes')),lg(B,aB,aB-o.q,A.p));
+    try{await remove(R(db,'meta_v1/consultas_prog/'+RECIBO))}catch(e2){}
+    RECS[RECIBO].items=items;DATA=dataOf(RECIBO);byProd=Object.fromEntries(DATA.map(y=>[y.p,y]));if(cur)cur=byProd[cur.p]||null;
+    toast(`✅ Cruce aplicado en ${L(o.t)}: ${fmt(o.q)} pzas`);renderAll();ajLoad()}
+  catch(err){toast('Error: '+(err.code||err.message))}}
 // Historial de ajustes: producto, recibo, tiendas, solicitado inicial y nueva cantidad (descargable en Excel)
 $('recAdj').onclick=async()=>{let all={};try{all=(await get(R(db,'meta_v1/consultas_ajustes'))).val()||{}}catch(e){toast('No se pudo leer el historial');return}
   const rows=Object.values(all).sort((a,b)=>(b.ts||0)-(a.ts||0)).flatMap(a=>{const id=String(a.id||a.rec||''),it=((RECS[id]||{}).items||[]).find(i=>String(i.p)===String(a.p))||{};
-    return Object.keys(a.antes||{}).filter(t=>(a.antes[t]||0)!==((a.despues||{})[t]||0)).map(t=>[fdt(a.ts),id,a.r||it.ref||'',Number(a.p),a.d||it.d||'',L(t),a.antes[t]||0,(a.despues||{})[t]||0,a.n||a.by||'',a.sug?'Sugerido':'Manual'])});
+    return Object.keys(a.antes||{}).filter(t=>(a.antes[t]||0)!==((a.despues||{})[t]||0)).map(t=>[fdt(a.ts),id,a.r||it.ref||'',Number(a.p),a.d||it.d||'',L(t),a.antes[t]||0,(a.despues||{})[t]||0,a.n||a.by||'',a.cruce?'Cruce':a.sug?'Sugerido':'Manual'])});
   const hd=['Fecha','Recibo','Estilo','Producto','Descripción','Tienda','Solicitado inicial','Nueva cantidad','Usuario','Origen'];
   $('maskBody').innerHTML=`<h2 style="font-size:18px;margin-bottom:4px">📜 Historial de ajustes</h2><div class="msg">${fmt(rows.length)} cambio(s) de tienda registrados.</div><div class="scroll" style="max-height:50vh;overflow:auto"><table><tr><th>Fecha</th><th>Recibo</th><th>Producto</th><th>Tienda</th><th class="n">Inicial</th><th class="n">Nueva</th></tr>${rows.slice(0,80).map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${r[3]}</td><td>${esc(r[5])}</td><td class="n">${fmt(r[6])}</td><td class="n"><b>${fmt(r[7])}</b></td></tr>`).join('')||'<tr><td colspan="6" class="msg">Sin ajustes.</td></tr>'}</table></div><div style="display:flex;gap:10px;margin-top:16px"><button class="btn" id="askNo" style="flex:1">Cerrar</button><button class="btn pri" id="ajXls" style="flex:1">Descargar Excel</button></div>`;
   $('ajXls').onclick=()=>{if(!rows.length){toast('No hay ajustes para exportar');return}const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet([hd,...rows]);ws['!cols']=[{wch:20},{wch:12},{wch:12},{wch:10},{wch:40},{wch:10},{wch:16},{wch:14},{wch:16},{wch:10}];XLSX.utils.book_append_sheet(wb,ws,'Ajustes');XLSX.writeFile(wb,'historial_ajustes_solicitados.xlsx')};
