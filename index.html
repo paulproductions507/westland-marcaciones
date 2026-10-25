@@ -6801,6 +6801,7 @@ function computeHrs(marks,almCfg){
     const lunch=by["Salida Alm."]&&by["Regreso Alm."]?(by["Regreso Alm."]-by["Salida Alm."])/60000:cfg.minutos;
     raw=raw-lunch;
   }
+  raw=Math.round(raw); // minuto entero: los segundos de las marcaciones nunca generan descuentos de centavos
   if(raw>8*60)raw=8*60;if(raw<0)raw=0;
   return +(raw/60);
 }
@@ -6816,6 +6817,7 @@ function computeHrsParcial(marks,almCfg){
     if(by["Salida Alm."]&&by["Regreso Alm."]){raw-=(by["Regreso Alm."]-by["Salida Alm."])/60000;}
     else if(by["Salida Alm."]&&!by["Regreso Alm."]){raw-=(new Date(last.stamp)-by["Salida Alm."])/60000;raw=Math.max(0,raw);}
   }
+  raw=Math.round(raw); // minuto entero (ver computeHrs)
   if(raw>8*60)raw=8*60;if(raw<0)raw=0;
   return +(raw/60);
 }
@@ -6885,7 +6887,7 @@ function computeHrsExcedente(marks,almCfg){
   if(!by["Entrada"]||!by["Salida Final"])return 0;
   let raw=(by["Salida Final"]-by["Entrada"])/60000;
   if(cfg.descontar){const lunch=by["Salida Alm."]&&by["Regreso Alm."]?(by["Regreso Alm."]-by["Salida Alm."])/60000:cfg.minutos;raw-=lunch;}
-  return Math.max(0,(raw-8*60)/60);
+  return Math.max(0,(Math.round(raw)-8*60)/60);
 }
 // dias: [{k,deficitMin,excedenteMin}, ...] — un colaborador, una semana/rango, ya en minutos y
 // ya acotados a Entrada+Almuerzo (ver deltaEntradaAlmuerzoDia). El faltante más antiguo se cubre
@@ -7849,6 +7851,30 @@ el('btn-descman')?.addEventListener('click',async()=>{
   btn.disabled=false;
 });
 // BANCO DE HORAS PENDIENTES
+// VALIDACIÓN estricta de horas adelantadas contra las marcaciones reales de esa fecha:
+// 1) el colaborador debe tener Entrada y Salida Final ese día (si estuvo ausente, no se permite);
+// 2) solo cuentan los minutos que salió DESPUÉS de su hora de salida programada;
+// 3) lo ya registrado para esa misma fecha (otros créditos) se descuenta del máximo.
+async function validarCreditoBanco(user,fecha,min,excluirId){
+  try{
+    const marks=((await getHist(fecha))||[]).filter(m=>m.user===user);
+    const by={};marks.forEach(m=>{if(m&&m.tipo)by[m.tipo]=new Date(m.stamp);});
+    if(!by['Entrada'])return{ok:false,max:0,msg:'no tiene marcaciones ese día (ausente)'};
+    if(!by['Salida Final'])return{ok:false,max:0,msg:'no tiene Salida Final ese día'};
+    const base=await getHorarioBaseDe(user,fecha);
+    const[fh,fm]=String(base.fin||'17:00').split(':').map(Number);
+    const finProg=(fh||0)*60+(fm||0);
+    const salidaReal=by['Salida Final'].getHours()*60+by['Salida Final'].getMinutes();
+    const extra=salidaReal-finProg;
+    const hh=n=>`${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;
+    if(extra<=0)return{ok:false,max:0,msg:`salió a las ${hh(salidaReal)} y su horario termina a las ${hh(finProg)}: no se quedó de más`};
+    const b=await getBancoUser(user,true);
+    const yaOtros=Object.entries((b&&b.creditos)||{}).filter(([id,x])=>id!==excluirId&&x.fecha===fecha).reduce((a,[,x])=>a+(+x.min||0),0);
+    const max=Math.max(0,extra-yaOtros);
+    if(min>max)return{ok:false,max,msg:`solo se quedó ${extra} min después de las ${hh(finProg)} (salió ${hh(salidaReal)})${yaOtros?`, ya tiene ${yaOtros} min registrados`:''}; máximo permitido ${max} min`};
+    return{ok:true,max,msg:''};
+  }catch(e){return{ok:false,max:0,msg:'no se pudieron verificar las marcaciones ('+(e.message||e)+')'};}
+}
 async function renderBancoUser(){
   const user=el('bancoap-user')?.value,sd=el('bancoap-saldo'),det=el('banco-detalle');
   if(!user||!sd)return;
@@ -7861,6 +7887,12 @@ async function renderBancoUser(){
   const row=(txt,attrs)=>`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:6px 9px;margin-bottom:5px;font-size:11.5px"><span>${txt}</span><button type="button" class="btn bg bsm btn-banco-del" ${attrs} style="width:auto;padding:3px 8px;font-size:10.5px">🗑 Quitar</button></div>`;
   det.innerHTML=(cr.length?`<div style="font-size:11px;font-weight:700;color:var(--mt);margin-bottom:5px">Horas adelantadas registradas:</div>`+cr.map(([id,x])=>row(`➕ ${escHtml(x.fecha)} — ${x.min} min — ${escHtml(x.motivo||'')} <span style="color:var(--mt)">(${escHtml(x.por||'?')})</span>`,`data-tipo="cred" data-id="${escHtml(id)}"`)).join(''):'<div style="font-size:11px;color:var(--mt)">Sin horas adelantadas registradas.</div>')
    +(co.length?`<div style="font-size:11px;font-weight:700;color:var(--mt);margin:8px 0 5px">Ya aplicadas a días:</div>`+co.map(([f,x])=>row(`➖ ${escHtml(f)} — ${x.min} min <span style="color:var(--mt)">(${escHtml(x.por||'?')}) · origen: ${escHtml(origenTxt(bancoOrigenes(b)[f])||'—')}</span>`,`data-tipo="cons" data-id="${escHtml(f)}"`)).join(''):'');
+  // Revisa cada crédito ya registrado contra las marcaciones reales y avisa si no coincide
+  det.querySelectorAll('.btn-banco-del[data-tipo="cred"]').forEach(async bt=>{
+    const c=(b.creditos||{})[bt.dataset.id];if(!c)return;
+    const v=await validarCreditoBanco(user,c.fecha,+c.min||0,bt.dataset.id);
+    if(!v.ok){const sp=bt.parentElement.querySelector('span');if(sp)sp.insertAdjacentHTML('beforeend',`<br><strong style="color:#ff6b6b">⚠ No coincide con sus marcaciones: ${escHtml(v.msg)}. Quítalo.</strong>`);}
+  });
   det.querySelectorAll('.btn-banco-del').forEach(bt=>bt.addEventListener('click',async()=>{
     if(!confirm('¿Quitar este registro?'))return;
     try{
@@ -7893,14 +7925,26 @@ el('btn-banco-add')?.addEventListener('click',async()=>{
   if(!fecha||!min||min<=0||!motivo||!users.length){toast('Completa fecha, minutos, motivo y colaboradores','err');return;}
   const btn=el('btn-banco-add');btn.disabled=true;
   try{
+    // El sistema verifica las marcaciones reales: no deja registrar a quien no vino o no se quedó de más
+    const okUsers=[],rechazados=[];
     for(const u of users){
+      const v=await validarCreditoBanco(u,fecha,min);
+      if(v.ok)okUsers.push(u);else rechazados.push(`${u}: ${v.msg}`);
+    }
+    for(const u of okUsers){
       const id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
       await set(R(db,`${BANCO}/${u}/creditos/${id}`),{fecha,min,motivo,por:CU,ts:Date.now()});
       _bancoCache.delete(u);
     }
-    await addLog(`⏳ Horas adelantadas registradas: ${users.join(', ')} — ${min} min del ${fecha} — "${motivo}" (por ${CU})`);
-    if(st)st.textContent=`✅ Registrado: ${min} min para ${users.length} colaborador(es).`;
-    toast('⏳ Registrado ✓','ok');el('banco-motivo').value='';renderBancoUser();
+    if(okUsers.length)await addLog(`⏳ Horas adelantadas registradas: ${okUsers.join(', ')} — ${min} min del ${fecha} — "${motivo}" (por ${CU})`);
+    if(rechazados.length)await addLog(`⛔ Horas adelantadas RECHAZADAS por no coincidir con marcaciones (${fecha}, ${min} min): ${rechazados.join(' | ')} (por ${CU})`);
+    if(st){
+      st.style.whiteSpace='pre-line';
+      st.textContent=(okUsers.length?`✅ Registrado: ${min} min para ${okUsers.length} colaborador(es).`:'')+(rechazados.length?`${okUsers.length?'\n':''}⛔ No registrado:\n• ${rechazados.join('\n• ')}`:'');
+    }
+    if(rechazados.length)toast(`⛔ ${rechazados.length} rechazado(s) por no coincidir con marcaciones`,'err',6000);
+    else toast('⏳ Registrado ✓','ok');
+    if(okUsers.length)el('banco-motivo').value='';renderBancoUser();
   }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo registrar','err');}
   btn.disabled=false;
 });
