@@ -781,8 +781,9 @@ function openDsp(){
 async function runDspPart(){
   const x=cur;if(!x)return;const ts=[...$('mdspBody').querySelectorAll('input[data-dpt]:checked')].map(i=>i.dataset.dpt);
   if(!ts.length){toast('Marca al menos una tienda');return}
-  let W={u:USER,n:NAME};if(INC&&ISADM){W=await incPick();if(!W)return}
   $('mdsp').classList.add('hide');
+  let W={u:USER,n:NAME};
+  try{if(INC&&ISADM){W=await incPick();if(!W){toast('Despacho cancelado');return}}}catch(e){toast('Error al elegir surtidor: '+(e.message||e));return}
   try{const ts0=Date.now();let tot=0;
     for(const t of ts){const s=dspStoreS(x,t),d=dsq(x.p,t);if(s<=d)continue;tot+=s-d;await set(R(db,`${DSPTB}/${x.p}/${t}`),{q:s,u:W.u,n:W.n,ts:ts0,d:today(),r:x.ref})}
     const all=STORES.filter(t=>t!=='BODEGA').every(t=>{const bx=t==='CRISTAL'?bodUsed(x.p):0,a=(x.s[t]||0)+bx;if(a===0)return true;const s=dspStoreS(x,t);return s>=a&&(ts.includes(t)||dsq(x.p,t)>=s)});
