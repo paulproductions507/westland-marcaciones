@@ -758,7 +758,7 @@ function renderDsp(){
   if(!cur||DSPANIM)return;const x=cur,d=DSP[x.p],{a,s}=totalsOf(x),box=$('dspBox');
   if(d){box.innerHTML=`<div class="dsp-done"><div class="dsp-ck">✓</div><div><b style="font:800 16px '72','72full','Inter',system-ui,sans-serif">Despachado</b><div class="msg" style="margin:2px 0 0">${esc(d.n||d.u)} · ${new Date(d.ts).toLocaleString('es',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div>${ISADM?'<button class="btn sm" id="dspUndo" style="margin-left:auto">Reabrir</button>':''}</div>`;return}
   const no=a>0&&s===0,pt=Object.entries(DSPT[x.p]||{}).filter(([t,v])=>v&&v.q>0);
-  const ptH=pt.length?`<div class="msg" style="margin:0 0 8px">📦 Despachado parcial: ${pt.map(([t,v])=>`<b>${esc(L(t))}</b> ${fmt(v.q)} pzas${ISADM?` <button class="btn sm" data-dsptu="${esc(t)}" style="padding:2px 8px;margin-left:2px">↩</button>`:''}`).join(' · ')}</div>`:'';
+  const ptH=pt.length?`<div class="msg" style="margin:0 0 8px">📦 Despachado parcial: ${pt.map(([t,v])=>`<b>${esc(L(t))}</b> ${fmt(v.q)} pzas`).join(' · ')}</div>`:'';
   box.innerHTML=ptH+`<button class="dspbtn" id="dspBtn" ${no?'disabled':''}><span>🚚 Despachar</span></button>${no?'<div class="msg" style="text-align:center">Surte al menos una tienda para poder despachar.</div>':''}`
 }
 // Despacho parcial: por tienda. Lo ya despachado de una tienda queda en despt/{producto}/{tienda}.q (piezas acumuladas)
@@ -785,7 +785,9 @@ async function runDspPart(){
   $('mdsp').classList.add('hide');
   try{const ts0=Date.now();let tot=0;
     for(const t of ts){const s=dspStoreS(x,t),d=dsq(x.p,t);if(s<=d)continue;tot+=s-d;await set(R(db,`${DSPTB}/${x.p}/${t}`),{q:s,u:W.u,n:W.n,ts:ts0,d:today(),r:x.ref})}
-    toast(`✅ Despachado: ${ts.map(L).join(', ')} · ${fmt(tot)} pzas`)
+    const all=STORES.filter(t=>t!=='BODEGA').every(t=>{const bx=t==='CRISTAL'?bodUsed(x.p):0,a=(x.s[t]||0)+bx;if(a===0)return true;const s=dspStoreS(x,t);return s>=a&&(ts.includes(t)||dsq(x.p,t)>=s)});
+    if(all){await set(R(db,`${DSPB}/${x.p}`),{u:W.u,n:W.n,ts:ts0,d:today(),r:x.ref});toast(`✅ ${x.ref}: todas las tiendas despachadas · referencia completada`)}
+    else toast(`✅ Despachado: ${ts.map(L).join(', ')} · ${fmt(tot)} pzas`)
   }catch(e){toast('Error al despachar: '+(e.code||e.message))}
   if(cur)renderProd()
 }
@@ -808,8 +810,8 @@ $('compBox').addEventListener('click',async e=>{
 });
 $('dspBox').addEventListener('click',async e=>{
   if(e.target.closest('#dspBtn')){openDsp();return}
-  const tu=e.target.closest('[data-dsptu]');if(tu){const t=tu.dataset.dsptu;if(!cur||!confirm(`¿Reabrir el despacho parcial de ${L(t)}?`))return;try{await remove(R(db,`${DSPTB}/${cur.p}/${t}`));toast('Despacho parcial reabierto')}catch(err){toast('Error: '+(err.code||err.message))}return}
-  if(e.target.closest('#dspUndo')){if(!cur||!confirm('¿Reabrir esta referencia?'))return;try{const dd0=DSP[cur.p]||{};if(dd0.u&&dd0.u!==USER&&!dd0.au&&!dd0.ax)await set(push(R(db,'meta_v1/consultas_err')),{id:RECIBO,p:cur.p,r:cur.ref,k:'reabrir',who:dd0.u,wn:dd0.n||dd0.u,by:USER,bn:NAME,ts:Date.now()});await remove(R(db,`${DSPB}/${cur.p}`));toast('Referencia reabierta')}catch(err){toast('Error: '+(err.code||err.message))}}
+
+  if(e.target.closest('#dspUndo')){if(!cur||!confirm('¿Reabrir esta referencia?'))return;try{const dd0=DSP[cur.p]||{};if(dd0.u&&dd0.u!==USER&&!dd0.au&&!dd0.ax)await set(push(R(db,'meta_v1/consultas_err')),{id:RECIBO,p:cur.p,r:cur.ref,k:'reabrir',who:dd0.u,wn:dd0.n||dd0.u,by:USER,bn:NAME,ts:Date.now()});await remove(R(db,`${DSPB}/${cur.p}`));await remove(R(db,`${DSPTB}/${cur.p}`));toast('Referencia reabierta')}catch(err){toast('Error: '+(err.code||err.message))}}
 });
 $('mdspBody').addEventListener('click',e=>{if(e.target.id==='dspNo')$('mdsp').classList.add('hide');if(e.target.id==='dspPart')runDspPart();if(e.target.id==='dspYes'){$('mdsp').classList.add('hide');runDsp()}});
 $('mdspBody').addEventListener('change',e=>{if(!e.target.dataset.dpt)return;const b=$('dspPart');if(!b)return;const cs=[...$('mdspBody').querySelectorAll('input[data-dpt]:checked')];const n=cs.reduce((a,i)=>a+(+i.dataset.dpq||0),0);b.textContent=cs.length?`Sí, despachar ${fmt(n)} pzas`:'Marca una tienda';b.disabled=!cs.length});
