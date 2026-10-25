@@ -2030,7 +2030,7 @@ async function histMig(){if(!ISADM)return;
   catch(err){console.warn('histMig',err)}}
 function RC_SET(id,items){RECS[id].items=items}
 function ajPaint(){const b=$('pajs');if(!b||!cur)return;const l=(AJC||[]).filter(a=>String(a.p)===String(cur.p)&&String(a.id||'')===String(RECIBO));
-  b.innerHTML=l.length?`<div class="slbl" style="margin-top:10px">Ajustes manuales</div><div class="scroll"><table><tr><th>Fecha</th><th>Tipo</th><th>Cambios</th><th>Con</th><th>Por</th></tr>${l.map(a=>{const o=byProd[a.par]||{},ks=Object.keys(a.antes||{});return `<tr><td>${esc(fdt(a.ts))}</td><td><b class="${a.tp==='dis'?'neg':'pos'}">${a.tp==='dis'?'−':'+'}${fmt(a.q||0)}</b></td><td>${ks.map(t=>`${esc(L(t))} ${fmt(a.antes[t])}→<b>${fmt((a.despues||{})[t])}</b>`).join('<br>')}</td><td>${esc(o.ref||'')}<br><small style="color:var(--mt)">${esc(a.par||'')}</small></td><td>${esc(a.n||a.by||'')}</td></tr>`}).join('')}</table></div>`:''}
+  b.innerHTML=l.length?`<div class="slbl" style="margin-top:10px">Ajustes manuales</div><div class="scroll"><table><tr><th>Fecha</th><th>Tipo</th><th>Cambios</th><th>Con</th><th>Por</th><th></th></tr>${l.map(a=>{const o=byProd[a.par]||{},ks=Object.keys(a.antes||{});return `<tr><td>${esc(fdt(a.ts))}</td><td><b class="${a.tp==='dis'?'neg':'pos'}">${a.tp==='dis'?'−':'+'}${fmt(a.q||0)}</b></td><td>${ks.map(t=>`${esc(L(t))} ${fmt(a.antes[t])}→<b>${fmt((a.despues||{})[t])}</b>`).join('<br>')}</td><td>${esc(o.ref||'')}<br><small style="color:var(--mt)">${esc(a.par||'')}</small></td><td>${esc(a.n||a.by||'')}</td><td>${ISADM&&a.par?`<button class="btn sm" data-ajdel="${a.ts}">✕ Anular</button>`:''}</td></tr>`}).join('')}</table></div>`:''}
 function ajHtml(){return (ISADM?`<button class="btn sm" data-aj="1" style="margin-top:10px;width:100%">🔄 Ajuste manual (aumento / disminución)</button>`:'')+'<div id="pajs"></div>'}
 let AJY=null;
 // ---------- Registro informativo de ajustes manuales (nº de ajuste del sistema pendiente / aplicado) ----------
@@ -2046,6 +2046,25 @@ async function ajNum(p,ts){if(!ISADM){toast('Solo un administrador puede registr
   it.ajs=ajList(x).map(z=>String(z.ts)===String(ts)?{...z,num:v,nts:Date.now(),nby:NAME||USER}:z);
   try{await set(R(db,'meta_v1/consultas_recs/'+RECIBO+'/items'),items);RECS[RECIBO].items=items;DATA=dataOf(RECIBO);byProd=Object.fromEntries(DATA.map(z=>[z.p,z]));if(cur)cur=byProd[cur.p]||null;toast(`✅ Nº de ajuste ${v} registrado`);renderAll()}
   catch(err){toast('Error: '+(err.code||err.message))}}
+// Anular un ajuste manual aplicado: revierte Bodega en los dos productos (aumento y disminución), quita su registro y el error del surtidor
+async function ajUndo(ts){if(!ISADM){toast('Solo un administrador puede anular ajustes');return}
+  if(COMP[RECIBO]){toast('El recibo ya está completado: reábrelo antes de anular');return}
+  if(!confirm('¿Anular este ajuste? Se revierte en los dos productos (aumento y disminución) y se borra su registro.'))return;
+  let all={};try{all=(await get(R(db,'meta_v1/consultas_ajustes'))).val()||{}}catch(e){toast('No se pudo leer el historial');return}
+  const ks=Object.keys(all).filter(k=>String(all[k].ts)===String(ts)&&all[k].cruce&&String(all[k].id||'')===String(RECIBO));
+  if(!ks.length){toast('No se encontró el ajuste');return}
+  const items=RECS[RECIBO].items.map(z=>({...z,s:{...z.s}}));
+  for(const k of ks){const a=all[k],it=items.find(z=>String(z.p)===String(a.p));if(!it)continue;
+    const d=((a.despues||{}).BODEGA||0)-((a.antes||{}).BODEGA||0);
+    if(d){it.sc=(it.sc||0)-d;it.s.BODEGA=it.sc;it.rec=Math.max(0,(it.rec||0)-d);it.sal=(it.cr||0)+it.sc}
+    it.ajs=(it.ajs||[]).filter(z=>String(z.ts)!==String(ts))}
+  try{await set(R(db,'meta_v1/consultas_recs/'+RECIBO+'/items'),items);
+    for(const k of ks)await remove(R(db,'meta_v1/consultas_ajustes/'+k));
+    try{const er=(await get(R(db,'meta_v1/consultas_err'))).val()||{};for(const k of Object.keys(er)){const e=er[k];if(String(e.ts)===String(ts)&&e.k==='ajuste'&&String(e.id)===String(RECIBO))await remove(R(db,'meta_v1/consultas_err/'+k))}STERRT=0}catch(e2){}
+    RECS[RECIBO].items=items;DATA=dataOf(RECIBO);byProd=Object.fromEntries(DATA.map(z=>[z.p,z]));if(cur)cur=byProd[cur.p]||null;
+    toast('✅ Ajuste anulado en los dos productos');renderAll();ajLoad()}
+  catch(err){toast('Error: '+(err.code||err.message))}}
+$('phist').addEventListener('click',e=>{const b=e.target.closest('[data-ajdel]');if(b)ajUndo(b.dataset.ajdel)});
 // Plan de un ajuste sobre una referencia: Cristal (clientes) no se toca; con saldo en Bodega se ajusta ahí; si no, en la distribución de tiendas
 function ajPlan(x,tp,q){const nv={},ord=STORES.filter(t=>t!=='CRISTAL'&&t!=='BODEGA'),free=Math.max(0,(x.s.BODEGA||0)-bodUsed(x.p));let r=q,bodD=0,dtd=0;
   if(tp==='dis'){bodD=-r;r=0}
