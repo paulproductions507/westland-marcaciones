@@ -182,7 +182,7 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
 <div id="app" class="hide">
   <div class="top">
     <button class="btn sm" id="btnBack" title="Atrás" aria-label="Atrás">←</button>
-    <div class="ttl"><h1 id="ttl">Consultas</h1><small id="who">—</small></div><span style="font-size:10px;opacity:.7;margin-right:6px;display:none" id="verTag">V25 octubre-B</span>
+    <div class="ttl"><h1 id="ttl">Consultas</h1><small id="who">—</small></div><span style="font-size:10px;opacity:.7;margin-right:6px;display:none" id="verTag">V25 octubre-C</span>
     <button class="btn sm hide" id="btnRef" title="Actualizar" aria-label="Actualizar">⟳</button>
     <button class="btn sm hide" id="btnPal">🧱 Palets</button><button class="btn sm hide" id="btnRecBack">↩ Recibo</button><button class="btn sm hide" id="btnHome">Recibos</button>
     <a class="btn sm" id="toMarc" href="index.html" style="text-decoration:none;background:#ff3b30;color:#fff" title="Salir a Marcaciones">⎋ Salir</a>
@@ -259,7 +259,7 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
           <div class="slbl">Escanear o escribir</div><div class="search"><label class="sbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2de2c9" stroke-width="2" stroke-linecap="round"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M7 9v6M11 9v6M14 9v6M17 9v6"/></svg><input id="q" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Código de barras, estilo o producto"></label><button class="btn pri" id="qgo" style="height:46px;padding:0 18px">Buscar</button></div>
           <div id="qmsg" class="msg">Al escanear el código se abre el producto directo.</div>
           <div id="stChips" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"></div>
-          <div class="slbl" style="margin:12px 2px 6px">Filtrar por tienda</div><div id="stStore" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none"></div>
+          <div class="slbl" style="margin:12px 2px 6px">Filtrar por tienda</div><select class="f" id="stStore" style="width:100%;max-width:360px;height:44px;font-weight:700"></select>
         </div>
         <div id="admCli" class="hide" style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm" id="btnCli">📥 Cargar clientes (Excel)</button><button class="btn sm" id="btnTpl">📄 Plantilla</button><input type="file" id="cliFile" accept=".xlsx,.xls,.csv" class="hide"></div>
         <div class="msg" id="cnt" style="margin:0 2px 8px;font-weight:700"></div>
@@ -514,7 +514,7 @@ function renderList(){
   const q=$('q').value.trim().toLowerCase();
   const base0=q?DATA.filter(x=>[x.p,x.ref,x.d,x.upc].join(' ').toLowerCase().includes(q)):DATA;
   if(STF2!=='all'&&!TILES().includes(STF2))STF2='all';
-  $('stStore').innerHTML=['all',...TILES().filter(t=>t===STF2||base0.some(x=>inSt(x,t)))].map(t=>`<button class="btn sm ${STF2===t?'pri':''}" data-st2="${t}" style="flex:none;white-space:nowrap">${t==='all'?'Todas':L(t)+' ('+fmt(base0.filter(x=>inSt(x,t)).length)+')'}</button>`).join('');
+  {const sel=$('stStore');if(document.activeElement!==sel){sel.innerHTML=['all',...TILES().filter(t=>t===STF2||base0.some(x=>inSt(x,t)))].map(t=>`<option value="${t}">${t==='all'?'Todas las tiendas ('+fmt(base0.length)+')':L(t)+(NAMES[t]?' · '+NAMES[t]:'')+' ('+fmt(base0.filter(x=>inSt(x,t)).length)+')'}</option>`).join('');sel.value=STF2}}
   const base=STF2==='all'?base0:base0.filter(x=>inSt(x,STF2));
   const cn={all:base.length,no:0,wn:0,ok:0,dsp:0,none:0};base.forEach(x=>cn[stSt(x)]++);
   $('stChips').innerHTML=Object.keys(STLBL).map(k=>`<button class="btn sm ${STSF===k?'pri':''}" data-sf="${k}">${STLBL[k]} (${fmt(cn[k])})</button>`).join('');
@@ -524,7 +524,7 @@ function renderList(){
   $('more').classList.toggle('hide',filtered.length<=shown);$('all').classList.toggle('hide',filtered.length<=shown);
   $('cnt').textContent=`Mostrando ${fmt(Math.min(shown,filtered.length))} de ${fmt(filtered.length)} productos${q||STSF!=='all'||STF2!=='all'?' (filtrado'+(STF2!=='all'?': '+L(STF2):'')+(STSF!=='all'?': '+STLBL[STSF]:'')+')':` en el recibo`}`
 }
-$('stStore').addEventListener('click',e=>{const b=e.target.closest('[data-st2]');if(b){STF2=b.dataset.st2;shown=40;renderList()}});
+$('stStore').addEventListener('change',e=>{STF2=e.target.value||'all';shown=40;renderList()});
 $('stChips').addEventListener('click',e=>{const b=e.target.closest('[data-sf]');if(b){STSF=b.dataset.sf;shown=40;renderList()}});
 $('list').addEventListener('click',e=>{const r=e.target.closest('.row');if(r)openProd(r.dataset.p)});
 $('more').onclick=()=>{shown+=60;renderList()};
