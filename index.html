@@ -4343,6 +4343,7 @@ async function renderColabBaja(){
   }catch(e){c.innerHTML='<div style="color:var(--dn);font-size:12px">Error al cargar.</div>';}
 }
 function fillSelects(obj){
+  { const _cl={};Object.entries(obj||{}).forEach(([k,v])=>{if(v&&v.user&&v.nombre)_cl[k]=v;});obj=_cl; } // ignora registros dañados (sin usuario/nombre) que salían como "undefined (undefined)"
   const users=Object.values(obj||{});
   const withAll=['gen-user','bor-user','rpt-users'];
   ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user','tcol-user','descman-user','emerg-sr-user','banco-users','bancoap-user'].forEach(id=>{
@@ -7087,7 +7088,8 @@ async function renderVistaSemanal(refDate,hastaDate){
     const diasInfoAcum=diasInfoAcumRaw.filter(Boolean);
     const acumResult=calcularAcumuladoSemana(diasInfoAcum);
     const acumuladoSemana=acumResult.map;
-    const bancoOrigU=bancoOrigenes(await getBancoUser(u.user));
+    const bancoRawU=await getBancoUser(u.user);
+    const bancoOrigU=bancoOrigenes(bancoRawU);
     html+=`<tr>`;
     html+=`<td style="padding:6px 8px;border:1px solid var(--bd);background:var(--sf);vertical-align:top">`
       +`<div style="font-weight:700;color:var(--tx);font-size:12px">${u.nombre}</div>`
@@ -7161,7 +7163,17 @@ async function renderVistaSemanal(refDate,hastaDate){
         const acumReg=acumAplicado-adelAplic-bancoAplic;
         const acumHtml=(acumReg>0.0001?`<div style="color:#00c9a7;font-size:9px;font-weight:700;margin-top:1px">💧 +${Math.round(acumReg*60)} min cubiertos con sobrante de la semana</div>`:'')
           +((adelAplic+bancoAplic)>0?`<div style="color:#38bdf8;font-size:9px;font-weight:700;margin-top:1px">⏩ Trabajó ${hrs.toFixed(2)}h + ${Math.round((adelAplic+bancoAplic)*60)} min adelantados</div><div style="color:var(--mt);font-size:9px;line-height:1.3">Origen: ${escHtml(trazaAdel(k,acumResult,bancoOrigU))}</div>`:'')
-          +(adelGenMin>0?`<div style="color:#38bdf8;font-size:9px;font-weight:700;margin-top:1px">⏩ ${adelGenMin} min adelantados para días siguientes de la semana (sin pago extra)</div>`:'');
+          +(adelGenMin>0?`<div style="color:#38bdf8;font-size:9px;font-weight:700;margin-top:1px">⏩ ${adelGenMin} min adelantados para días siguientes de la semana (sin pago extra)</div>`:'')
+          +(adelGenMin>0?(()=>{
+            const left=Math.min(adelGenMin,Math.max(0,Math.round(acumResult.adelantoDisponibleMin||0)));
+            if(!(left>0))return '';
+            const yaB=Object.values((bancoRawU&&bancoRawU.creditos)||{}).filter(x=>x.fecha===k).reduce((aa,x)=>aa+(+x.min||0),0);
+            const sob=left-yaB;
+            if(sob<=0)return `<div style="color:#00c9a7;font-size:9px;font-weight:700;margin-top:1px">✅ ${yaB} min sin usar ya están en el banco</div>`;
+            const dom=isoD(isoDateAdd(getLunesDeSemana(k),6));
+            if(dom<isoD(new Date()))return `<div style="color:#f59e0b;font-size:9px;font-weight:700;margin-top:2px">↩️ Sin usar: ${sob} min (no hubo faltante en días siguientes)</div><button type="button" data-adel-banco="${u.user}|${k}|${sob}" style="margin-top:3px;padding:3px 7px;font-size:9.5px;font-weight:800;border-radius:8px;border:1px solid #f59e0b;background:transparent;color:#f59e0b;cursor:pointer">➕ Pasar al banco</button>`;
+            return `<div style="color:#f59e0b;font-size:9px;font-weight:700;margin-top:2px">↩️ Sin usar por ahora: ${sob} min (al cerrar la semana podrás pasarlos al banco)</div>`;
+          })():'');
         // Hueco de secuencia: ej. tiene Regreso Alm. pero no Salida Alm. — esa marca probablemente
         // sigue atascada en el teléfono del colaborador. Se avisa aparte de "incompleto" (4/4
         // normal cuando aún no termina el día) para no generar falsas alarmas.
@@ -7918,6 +7930,23 @@ el('adel-ocultar')?.addEventListener('change',async()=>{
 });
 document.querySelector('[data-ac="ac-hbanco"]')?.addEventListener('click',()=>setTimeout(()=>{renderBancoUser();cargarOcultarNota();},50));
 el('btn-banco-todos')?.addEventListener('click',()=>{Array.from(el('banco-users').options).forEach(o=>{o.selected=true;});});
+// Pasa al banco las horas adelantadas de un sábado que NO se usaron (el colaborador no tuvo faltante después)
+document.addEventListener('click',async e=>{
+  const b=e.target.closest&&e.target.closest('[data-adel-banco]');if(!b)return;
+  const[user,fecha,minS]=String(b.dataset.adelBanco||'').split('|');const min=parseInt(minS,10);
+  if(!user||!fecha||!(min>0))return;
+  b.disabled=true;
+  try{
+    const v=await validarCreditoBanco(user,fecha,min);
+    if(!v.ok){toast(`⛔ ${user}: ${v.msg}`,'err',10000);b.disabled=false;return;}
+    const id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    await set(R(db,`${BANCO}/${user}/creditos/${id}`),{fecha,min,motivo:'Sobrante de horas adelantadas del sábado (sin faltante en días siguientes)',por:CU,ts:Date.now()});
+    _bancoCache.delete(user);
+    await addLog(`⏳ Sobrante de horas adelantadas pasado al banco: ${user} — ${min} min del ${fecha} (por ${CU})`);
+    toast(`✅ ${min} min pasaron al banco de ${user}`,'ok');
+    b.outerHTML='<span style="color:#00c9a7;font-size:9.5px;font-weight:800">✅ En banco</span>';
+  }catch(err){toast('⛔ No se pudo pasar al banco','err');b.disabled=false;}
+});
 el('btn-banco-add')?.addEventListener('click',async()=>{
   const fecha=el('banco-fecha').value,min=parseInt(el('banco-min').value,10),motivo=(el('banco-motivo').value||'').trim();
   const users=Array.from(el('banco-users').selectedOptions).map(o=>o.value);
@@ -7942,7 +7971,7 @@ el('btn-banco-add')?.addEventListener('click',async()=>{
       st.style.whiteSpace='pre-line';
       st.textContent=(okUsers.length?`✅ Registrado: ${min} min para ${okUsers.length} colaborador(es).`:'')+(rechazados.length?`${okUsers.length?'\n':''}⛔ No registrado:\n• ${rechazados.join('\n• ')}`:'');
     }
-    if(rechazados.length)toast(`⛔ ${rechazados.length} rechazado(s) por no coincidir con marcaciones`,'err',6000);
+    if(rechazados.length)toast(`⛔ ${rechazados[0]}`+(rechazados.length>1?` (+${rechazados.length-1} más)`:''),'err',10000);
     else toast('⏳ Registrado ✓','ok');
     if(okUsers.length)el('banco-motivo').value='';renderBancoUser();
   }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo registrar','err');}
