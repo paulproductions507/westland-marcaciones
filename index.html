@@ -1226,8 +1226,11 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div class="fg"><label>Fecha en que se quedaron</label><input type="date" class="fc" id="banco-fecha"></div>
             <div class="fg"><label>Minutos adelantados</label><input type="number" class="fc" id="banco-min" min="1" value="60"></div>
             <div class="fg"><label>Motivo / comentario</label><input type="text" class="fc" id="banco-motivo" placeholder="ej. Esperaron 3 contenedores después de las 5:00 pm"></div>
-            <div class="fg"><label>Colaboradores (mantén presionado para elegir varios)</label><select class="fc" id="banco-users" multiple size="6"></select></div>
+            <div class="fg"><label>Colaboradores</label><select class="fc" id="banco-users" multiple size="6" style="display:none"></select>
+              <div id="banco-users-checks" style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:6px 10px;max-height:260px;overflow:auto"></div>
+              <div id="banco-users-info" style="font-size:12px;font-weight:700;margin-top:6px;color:var(--mt)">Ninguno seleccionado</div></div>
             <button class="btn bg bsm" id="btn-banco-todos" type="button" style="width:auto;margin-top:4px">Seleccionar todos</button>
+            <button class="btn bg bsm" id="btn-banco-ninguno" type="button" style="width:auto;margin-top:4px">Ninguno</button>
             <button class="btn bp bsm" id="btn-banco-add" type="button" style="width:auto;margin-top:4px">⏳ Registrar horas adelantadas</button>
             <div style="font-size:11.5px;font-weight:800;color:var(--ac);margin:14px 0 4px">2) Aplicar saldo a un día</div>
             <div class="fg"><label>Colaborador</label><select class="fc" id="bancoap-user"></select></div>
@@ -2542,6 +2545,7 @@ const getUsers=async()=>{
   if(USERS_CACHE)return USERS_CACHE;
   const s=await get(R(db,USERS));
   USERS_CACHE=s.exists()?s.val():{};
+  try{USERS_CACHE=Object.fromEntries(Object.entries(USERS_CACHE||{}).filter(([k,v])=>v&&v.user));}catch(e){} // descarta registros dañados que salían como "undefined (undefined)"
   // Auto-corrige la ETIQUETA "rol" para que coincida con el permiso real (ADMINS/GERENTES son
   // las listas que de verdad mandan). Antes, el rol quedaba grabado como "Colaborador" para
   // cualquiera creado desde el formulario (porque esa era la única opción visible), aunque ya
@@ -7169,7 +7173,11 @@ async function renderVistaSemanal(refDate,hastaDate){
             if(!(left>0))return '';
             const yaB=Object.values((bancoRawU&&bancoRawU.creditos)||{}).filter(x=>x.fecha===k).reduce((aa,x)=>aa+(+x.min||0),0);
             const sob=left-yaB;
-            if(sob<=0)return `<div style="color:#00c9a7;font-size:9px;font-weight:700;margin-top:1px">✅ ${yaB} min sin usar ya están en el banco</div>`;
+            if(sob<=0){
+              const sal=bancoSaldoMin(bancoRawU);
+              const consL=Object.entries((bancoRawU&&bancoRawU.consumos)||{}).sort((a,c)=>a[0].localeCompare(c[0])).map(([f,x])=>`${fmtFechaDM(f)} (${x.min} min)`).join('; ');
+              return `<div style="color:#00c9a7;font-size:9px;font-weight:700;margin-top:1px">✅ ${yaB} min registrados en el banco · saldo disponible: ${sal>0?fmtMinHM(sal):'0h 00m'}</div>`+(consL?`<div style="color:#f59e0b;font-size:9px;font-weight:700;margin-top:1px">Ya aplicados a: ${consL} — revisa en Banco si ese día tuvo marcaciones</div>`:'');
+            }
             const dom=isoD(isoDateAdd(getLunesDeSemana(k),6));
             if(dom<isoD(new Date()))return `<div style="color:#f59e0b;font-size:9px;font-weight:700;margin-top:2px">↩️ Sin usar: ${sob} min (no hubo faltante en días siguientes)</div><button type="button" data-adel-banco="${u.user}|${k}|${sob}" style="margin-top:3px;padding:3px 7px;font-size:9.5px;font-weight:800;border-radius:8px;border:1px solid #f59e0b;background:transparent;color:#f59e0b;cursor:pointer">➕ Pasar al banco</button>`;
             return `<div style="color:#f59e0b;font-size:9px;font-weight:700;margin-top:2px">↩️ Sin usar por ahora: ${sob} min (al cerrar la semana podrás pasarlos al banco)</div>`;
@@ -7905,6 +7913,12 @@ async function renderBancoUser(){
     const v=await validarCreditoBanco(user,c.fecha,+c.min||0,bt.dataset.id);
     if(!v.ok){const sp=bt.parentElement.querySelector('span');if(sp)sp.insertAdjacentHTML('beforeend',`<br><strong style="color:#ff6b6b">⚠ No coincide con sus marcaciones: ${escHtml(v.msg)}. Quítalo.</strong>`);}
   });
+  det.querySelectorAll('.btn-banco-del[data-tipo="cons"]').forEach(async bt=>{
+    const f=bt.dataset.id;
+    try{const mk=((await getHist(f))||[]).filter(m=>m.user===user);
+      if(!mk.length){const sp=bt.parentElement.querySelector('span');if(sp)sp.insertAdjacentHTML('beforeend',`<br><strong style="color:#ff6b6b">⚠ Ese día no tiene marcaciones: esta aplicación no tuvo efecto. Quítala para devolver las horas al saldo.</strong>`);}
+    }catch(e){}
+  });
   det.querySelectorAll('.btn-banco-del').forEach(bt=>bt.addEventListener('click',async()=>{
     if(!confirm('¿Quitar este registro?'))return;
     try{
@@ -7929,7 +7943,28 @@ el('adel-ocultar')?.addEventListener('change',async()=>{
   }catch(e){c.checked=!c.checked;toast('⛔ No se pudo guardar','err');}
 });
 document.querySelector('[data-ac="ac-hbanco"]')?.addEventListener('click',()=>setTimeout(()=>{renderBancoUser();cargarOcultarNota();},50));
-el('btn-banco-todos')?.addEventListener('click',()=>{Array.from(el('banco-users').options).forEach(o=>{o.selected=true;});});
+el('btn-banco-todos')?.addEventListener('click',()=>{Array.from(el('banco-users').options).forEach(o=>{o.selected=true;});renderBancoChecks();});
+el('btn-banco-ninguno')?.addEventListener('click',()=>{Array.from(el('banco-users').options).forEach(o=>{o.selected=false;});renderBancoChecks();});
+// Lista de colaboradores con casillas (reemplaza el selector múltiple, que en iPhone mostraba "0 elementos")
+function renderBancoChecks(){
+  const sel=el('banco-users'),box=el('banco-users-checks'),info=el('banco-users-info');
+  if(!sel||!box)return;
+  const opts=Array.from(sel.options);
+  const updInfo=()=>{
+    const names=opts.filter(o=>o.selected).map(o=>o.textContent.replace(/\s*\([^)]*\)\s*$/,''));
+    if(info){info.textContent=names.length?`✅ Seleccionaste ${names.length}: ${names.join(', ')}`:'Ninguno seleccionado';info.style.color=names.length?'var(--ac)':'var(--mt)';}
+  };
+  box.innerHTML='';
+  opts.forEach(o=>{
+    const row=document.createElement('label');
+    row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 2px;font-size:14px;text-transform:none;letter-spacing:0;color:var(--tx);cursor:pointer';
+    const cb=document.createElement('input');cb.type='checkbox';cb.checked=o.selected;cb.style.cssText='width:auto;accent-color:var(--ac)';
+    cb.addEventListener('change',()=>{o.selected=cb.checked;updInfo();});
+    row.appendChild(cb);row.appendChild(document.createTextNode(o.textContent));box.appendChild(row);
+  });
+  updInfo();
+}
+try{const _bs=el('banco-users');if(_bs){new MutationObserver(()=>renderBancoChecks()).observe(_bs,{childList:true});renderBancoChecks();}}catch(e){}
 // Pasa al banco las horas adelantadas de un sábado que NO se usaron (el colaborador no tuvo faltante después)
 document.addEventListener('click',async e=>{
   const b=e.target.closest&&e.target.closest('[data-adel-banco]');if(!b)return;
@@ -8001,6 +8036,8 @@ el('btn-bancoap')?.addEventListener('click',async()=>{
   try{
     const b=await getBancoUser(user,true);const saldo=bancoSaldoMin(b);
     if(min>saldo){toast(`El saldo disponible es ${saldo} min`,'err');btn.disabled=false;return;}
+    const _mk=((await getHist(fecha))||[]).filter(m=>m.user===user);
+    if(!_mk.length){const _m='⛔ '+user+' no tiene marcaciones el '+fecha+' (no vino): no hay faltante que cubrir. Las horas se quedan en su saldo.';if(st)st.textContent=_m;toast(_m,'err',10000);btn.disabled=false;return;}
     const prev=+(((b.consumos||{})[fecha]||{}).min)||0;
     await set(R(db,`${BANCO}/${user}/consumos/${fecha}`),{min:prev+min,por:CU,ts:Date.now()});
     _bancoCache.delete(user);
