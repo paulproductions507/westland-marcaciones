@@ -1051,7 +1051,48 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="fer-list" style="margin-top:9px"></div>
           </div></div>
 
-          <div class="asec"><div class="ashdr" data-ac="ac-pro"><span>🎲 Marcación aleatoria</span><span class="ach">▾</span></div>
+          <div class="asec"><div class="ashdr" data-ac="ac-ed"><span>🔍 Editar marcaciones</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-ed">
+            <style>.ed-row.ed-changed{border-color:var(--ac)!important;background:rgba(0,201,167,.09)!important}</style>
+            <div class="fg"><label>Fecha</label><input type="date" class="fc" id="ed-fecha"></div>
+            <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:8px">
+              <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">👥 Usuarios a editar (uno o varios)</div>
+              <div id="ed-user-checks" style="display:flex;flex-direction:column;gap:9px;max-height:220px;overflow-y:auto"></div>
+              <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;align-items:center">
+                <button class="btn bg bsm" id="btn-ed-todos" style="font-size:11px;padding:4px 10px;width:auto">✅ Todos</button>
+                <button class="btn bg bsm" id="btn-ed-ninguno" style="font-size:11px;padding:4px 10px;width:auto;color:var(--mt)">☐ Ninguno</button>
+                <span id="ed-sel-count" style="margin-left:auto;font-size:11px;color:var(--mt)"></span>
+              </div>
+            </div>
+            <button class="btn bg bsm" id="btn-cargar-ed" style="margin-top:8px">🔎 Cargar marcaciones</button>
+            <div style="font-size:11px;color:var(--mt);margin-top:7px;line-height:1.45">💡 Escribe la hora de 1 a 12; el <strong>AM/PM se ajusta solo</strong> según el turno de cada usuario (una salida a las 5 queda en PM). Solo se guardan las marcaciones que cambies.</div>
+            <div id="ed-list" style="margin-top:11px"></div>
+            <div id="ed-footer" style="display:none">
+              <div class="fg" style="margin-top:8px"><label>Comentario obligatorio (uno solo para todas las ediciones)</label>
+                <input class="fc" id="ed-motivo-buscar" placeholder="🔎 Buscar comentario..." style="margin-bottom:6px">
+                <select class="fc" id="ed-preset">
+                  <option value="">— Comentario rápido —</option>
+                  <option>Corrección de marcaciones</option>
+                  <option>Olvidó marcar</option>
+                  <option>Falla de conexión o del sistema</option>
+                  <option>Ajuste según turno asignado</option>
+                  <option>Adelanto de planilla solicitado por RRHH</option>
+                  <option>Marcación duplicada</option>
+                  <option>Marcación fuera de secuencia</option>
+                  <option>Permiso o salida autorizada</option>
+                  <option>Llegó tarde por causa justificada</option>
+                  <option>Corrección de AM/PM</option>
+                  <option value="__otro__">Otro (escribir abajo)</option>
+                </select>
+                <textarea class="fc" id="ed-comment" rows="2" style="margin-top:6px" placeholder="Este comentario sale en la columna Notas del correo semanal"></textarea>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:7px">
+                <button class="btn bp bsm" id="btn-save-ed" style="width:auto">💾 Guardar cambios</button>
+                <button class="btn bd bsm" id="btn-del-ed">🗑 Borrar sel.</button>
+              </div>
+            </div>
+          </div></div>
+<div class="asec"><div class="ashdr" data-ac="ac-pro"><span>🎲 Marcación aleatoria</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-pro">
             <div style="background:var(--sf);border-radius:var(--rs);padding:13px;border:1px solid var(--bd);margin-bottom:11px">
               <div style="font-size:13px;font-weight:700;color:var(--ac);margin-bottom:9px">Generar</div>
@@ -1116,8 +1157,28 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               <button class="btn bp bsm" id="btn-genu" style="width:auto;margin-top:8px">▶ Generar esta marcación para los seleccionados</button>
             </div>
           </div></div>
-
-          <div class="asec"><div class="ashdr" data-ac="ac-bor"><span>🗑 Borrar marcación</span><span class="ach">▾</span></div>
+<div class="asec"><div class="ashdr" data-ac="ac-man"><span>✍ Marcación manual</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-man">
+            <div class="fg2">
+              <div class="fg"><label>Fecha y hora</label><input type="datetime-local" class="fc" id="man-dt" step="1"></div>
+              <div class="fg"><label>Segundos</label><input type="number" class="fc" id="man-seg" min="0" max="59" placeholder="0-59" value="0"></div>
+            </div>
+            <div class="fg2" style="margin-top:8px">
+              <div class="fg"><label>Usuario</label><select class="fc" id="man-user"></select></div>
+              <div class="fg"><label>Tipo (opcional)</label>
+                <select class="fc" id="man-tipo">
+                  <option value="">Automático (según orden del día)</option>
+                  <option value="Entrada">Entrada</option>
+                  <option value="Salida Alm.">Salida Alm.</option>
+                  <option value="Regreso Alm.">Regreso Alm.</option>
+                  <option value="Salida Final">Salida Final</option>
+                </select>
+              </div>
+            </div>
+            <div style="font-size:11px;color:var(--mt);margin-top:6px">💡 El campo de hora ya admite segundos directamente (HH:MM:SS). El campo "Segundos" es opcional, por si tu navegador no muestra ese selector.</div>
+            <button class="btn bp bsm" id="btn-man" style="width:auto;margin-top:6px">✅ Registrar</button>
+          </div></div>
+<div class="asec"><div class="ashdr" data-ac="ac-bor"><span>🗑 Borrar marcación</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-bor">
             <div style="background:var(--sf);border-radius:var(--rs);padding:13px;border:1px solid rgba(255,71,87,.2)">
               <div style="font-size:13px;font-weight:700;color:var(--dn);margin-bottom:9px">Borrar</div>
@@ -1138,48 +1199,8 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             </div>
           </div></div>
 
-          <div class="asec"><div class="ashdr" data-ac="ac-ed"><span>🔍 Editar marcaciones</span><span class="ach">▾</span></div>
-          <div class="asbdy" id="ac-ed">
-            <style>.ed-row.ed-changed{border-color:var(--ac)!important;background:rgba(0,201,167,.09)!important}</style>
-            <div class="fg"><label>Fecha</label><input type="date" class="fc" id="ed-fecha"></div>
-            <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:8px">
-              <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">👥 Usuarios a editar (uno o varios)</div>
-              <div id="ed-user-checks" style="display:flex;flex-direction:column;gap:9px;max-height:220px;overflow-y:auto"></div>
-              <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;align-items:center">
-                <button class="btn bg bsm" id="btn-ed-todos" style="font-size:11px;padding:4px 10px;width:auto">✅ Todos</button>
-                <button class="btn bg bsm" id="btn-ed-ninguno" style="font-size:11px;padding:4px 10px;width:auto;color:var(--mt)">☐ Ninguno</button>
-                <span id="ed-sel-count" style="margin-left:auto;font-size:11px;color:var(--mt)"></span>
-              </div>
-            </div>
-            <button class="btn bg bsm" id="btn-cargar-ed" style="margin-top:8px">🔎 Cargar marcaciones</button>
-            <div style="font-size:11px;color:var(--mt);margin-top:7px;line-height:1.45">💡 Escribe la hora de 1 a 12; el <strong>AM/PM se ajusta solo</strong> según el turno de cada usuario (una salida a las 5 queda en PM). Solo se guardan las marcaciones que cambies.</div>
-            <div id="ed-list" style="margin-top:11px"></div>
-            <div id="ed-footer" style="display:none">
-              <div class="fg" style="margin-top:8px"><label>Comentario obligatorio (uno solo para todas las ediciones)</label>
-                <input class="fc" id="ed-motivo-buscar" placeholder="🔎 Buscar comentario..." style="margin-bottom:6px">
-                <select class="fc" id="ed-preset">
-                  <option value="">— Comentario rápido —</option>
-                  <option>Corrección de marcaciones</option>
-                  <option>Olvidó marcar</option>
-                  <option>Falla de conexión o del sistema</option>
-                  <option>Ajuste según turno asignado</option>
-                  <option>Adelanto de planilla solicitado por RRHH</option>
-                  <option>Marcación duplicada</option>
-                  <option>Marcación fuera de secuencia</option>
-                  <option>Permiso o salida autorizada</option>
-                  <option>Llegó tarde por causa justificada</option>
-                  <option>Corrección de AM/PM</option>
-                  <option value="__otro__">Otro (escribir abajo)</option>
-                </select>
-                <textarea class="fc" id="ed-comment" rows="2" style="margin-top:6px" placeholder="Este comentario sale en la columna Notas del correo semanal"></textarea>
-              </div>
-              <div style="display:flex;gap:8px;margin-top:7px">
-                <button class="btn bp bsm" id="btn-save-ed" style="width:auto">💾 Guardar cambios</button>
-                <button class="btn bd bsm" id="btn-del-ed">🗑 Borrar sel.</button>
-              </div>
-            </div>
-          </div></div>
-
+          
+          
 
           <div class="asec"><div class="ashdr" data-ac="ac-rsync"><span>📡 Forzar sincronización remota</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-rsync">
@@ -1284,28 +1305,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="emerg-status" style="font-size:11px;color:var(--mt);margin-top:7px"></div>
           </div></div>
 
-          <div class="asec"><div class="ashdr" data-ac="ac-man"><span>✍ Marcación manual</span><span class="ach">▾</span></div>
-          <div class="asbdy" id="ac-man">
-            <div class="fg2">
-              <div class="fg"><label>Fecha y hora</label><input type="datetime-local" class="fc" id="man-dt" step="1"></div>
-              <div class="fg"><label>Segundos</label><input type="number" class="fc" id="man-seg" min="0" max="59" placeholder="0-59" value="0"></div>
-            </div>
-            <div class="fg2" style="margin-top:8px">
-              <div class="fg"><label>Usuario</label><select class="fc" id="man-user"></select></div>
-              <div class="fg"><label>Tipo (opcional)</label>
-                <select class="fc" id="man-tipo">
-                  <option value="">Automático (según orden del día)</option>
-                  <option value="Entrada">Entrada</option>
-                  <option value="Salida Alm.">Salida Alm.</option>
-                  <option value="Regreso Alm.">Regreso Alm.</option>
-                  <option value="Salida Final">Salida Final</option>
-                </select>
-              </div>
-            </div>
-            <div style="font-size:11px;color:var(--mt);margin-top:6px">💡 El campo de hora ya admite segundos directamente (HH:MM:SS). El campo "Segundos" es opcional, por si tu navegador no muestra ese selector.</div>
-            <button class="btn bp bsm" id="btn-man" style="width:auto;margin-top:6px">✅ Registrar</button>
-          </div></div>
-
+          
 
           <div class="asec"><div class="ashdr" data-ac="ac-extrap"><span>⏱ Hora extra pendiente</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-extrap">
