@@ -87,7 +87,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px 8px;t
 body{max-width:100%;overflow-x:hidden}#v-auto,#v-pal,#v-pkl,#v-stat,#v-pro{max-width:100%}#v-auto .card,#mlblBody{max-width:100%;overflow-x:auto}#auList details{max-width:100%}#auList .scroll table{min-width:520px}
 .gate{max-width:420px;margin:18vh auto;text-align:center;padding:24px}
 .hide{display:none!important}
-#recTabs{flex-wrap:nowrap!important;gap:6px!important}#recTabs .btn{padding:8px 10px;font-size:13px;white-space:nowrap}#recSortSel{margin:0!important}
+#recBtns .btn{padding:7px 8px;font-size:12px;white-space:nowrap;flex:0 1 auto;min-width:0}#recBtns .btn svg{margin-right:4px!important}#recTabs{flex-wrap:nowrap!important;gap:6px!important}#recTabs .btn{padding:8px 10px;font-size:13px;white-space:nowrap}#recSortSel{margin:0!important}
 .mpanel{margin-top:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px}.mprow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 input.f,select.f{padding:11px;border-radius:12px;border:1px solid var(--bd);background:#02171c;color:var(--tx);font:600 14px '72','72full','Inter',system-ui,sans-serif;width:100%}
 .toast{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:var(--sf2);border:1px solid var(--ac);padding:11px 16px;border-radius:12px;z-index:99;font-weight:700;font-size:13px;max-width:92vw}
@@ -197,7 +197,7 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
   </div>
   <div class="wrap">
     <div id="v-rec">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><span id="recAdm3" class="hide" style="display:contents"><button class="btn sm pri" id="recUp">📥 Subir recibo (Excel)</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></span><button class="btn sm pri" id="recProd"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Producción</button><button class="btn sm pri" id="recBul">🏷 Etiqueta de bulto</button></div>
+      <div id="recBtns" style="display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:10px"><span id="recAdm3" class="hide" style="display:contents"><button class="btn sm pri" id="recUp">📥 Subir archivo</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></span><button class="btn sm pri" id="recProd"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Producción</button><button class="btn sm pri" id="recBul">🏷 Etiqueta de bulto</button></div>
       <div class="card"><h2 style="font-size:20px">Elige el recibo</h2><div class="msg" style="margin-top:4px">Selecciona el recibo que vas a trabajar.</div></div>
       <div id="recMenu" style="margin-bottom:12px">
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -552,8 +552,11 @@ function doSearch(){
     if(!mi.length){const x=m[0];scanBad(`❌ ${x.ref} no se encuentra en ${L(STF2)}${NAMES[STF2]?' · '+NAMES[STF2]:''}. Sigue con el siguiente.`);return}
     m=mi}
   if(STSF!=='all'&&m.length){const mj=m.filter(x=>stSt(x)===STSF);
-    if(!mj.length){const x=m[0],est=STLBL[stSt(x)]||'';scanBad(`⏭ ${x.ref} ${STF2!=='all'?'es de '+L(STF2)+' pero ':''}está en estado "${est}" (buscas "${STLBL[STSF]}"). Siguiente.`);return}
-    m=mj}
+    if(!mj.length){const x=m[0],est=STLBL[stSt(x)]||'';
+      // Alerta con pase: avisa el estado real y deja continuar (Sí abre el producto; No lo descarta y sigue con el siguiente)
+      beepTone([440,330]);try{navigator.vibrate&&navigator.vibrate([200])}catch(_){}
+      if(!confirm(`⚠ ${x.ref} · ${x.p}\n${STF2!=='all'?'Es de '+L(STF2)+' pero está':'Está'} en estado "${est}" y estás buscando "${STLBL[STSF]}".\n\n¿Desea continuar?`)){scanBad(`⏭ ${x.ref} está en estado "${est}" (buscas "${STLBL[STSF]}"). Siguiente.`);return}}
+    else m=mj}
   if(m.length===1){openProd(m[0].p);$('q').value='';$('qmsg').textContent='Al escanear el código se abre el producto directo.';$('qmsg').className='msg';return}
   if(m.length>1){$('qmsg').textContent=`${m.length} coincidencias exactas — elige una.`;$('q').value='';filtered=m;$('list').innerHTML='';m.forEach(x=>{});showMatches(m);return}
   renderList();const n=filtered.length;
@@ -2222,6 +2225,11 @@ function ajPlan(x,tp,q){const nv={},ord=STORES.filter(t=>t!=='CRISTAL'&&t!=='BOD
 const ajTxt=(x,pl)=>Object.keys(pl.nv).map(t=>`${L(t)} ${x.s[t]||0}→${pl.nv[t]}`).concat(pl.bodD?[`Bodega ${sg(pl.bodD)}`]:[]).join(', ')||'sin cambios';
 function ajSur(x){const m={};entries().forEach(e=>{if(e.p!==x.p||!e.u||e.au||e.ax||e.bd||e.mir)return;const o=m[e.u]=m[e.u]||{n:e.n||e.u,q:0};o.q+=e.q||0});
   return Object.entries(m).sort((a,b)=>b[1].q-a[1].q).map(([u,o])=>`<option value="${esc(u)}">${esc(o.n)} · ${fmt(o.q)} pzas</option>`).join('')+'<option value="">Sin error (no se asigna)</option>'}
+// Resuelve la otra referencia: la elegida en la lista o, si solo escribió el código, la única coincidencia (exacta o única candidata)
+function ajResolve(){if(AJY&&byProd[AJY])return AJY;const raw=String(($('ajq')||{}).value||'').trim(),q=normH(raw);if(!q||!cur)return null;
+  const c=DATA.filter(y=>y.p!==cur.p&&(normH(y.ref).includes(q)||String(y.p).includes(q)||String(y.upc).includes(q)||normH(y.d).includes(q)));
+  const ex=c.filter(y=>String(y.p)===raw||String(y.upc)===raw||normH(y.ref)===q);
+  const y=ex.length===1?ex[0]:(c.length===1?c[0]:null);return y?y.p:null}
 function ajOpen(){const x=cur;if(!x)return;if(!ISADM){toast('Solo un administrador puede aplicar ajustes');return}AJY=null;
   $('maskBody').innerHTML=`<h2 style="font-size:18px;margin-bottom:4px">Ajuste manual · ${esc(x.ref)}</h2><div class="msg" style="margin:0 0 6px">Producto <b>${esc(x.p)}</b>. <b>Aumento</b>: esta referencia tiene más piezas reales que el sistema. <b>Disminución</b>: tiene menos. La otra referencia recibe el ajuste contrario. No se toca Cristal (clientes). <b>Aumento</b>: las piezas suman al saldo de Bodega (luego los pedidos automáticos lo van descontando). <b>Disminución</b>: baja el saldo de Bodega; si queda en negativo sale el botón 💡 Sugerido para bajar lo solicitado hasta dejarlo en cero. Lo surtido se mantiene y se registra como error del surtidor elegido.</div>
    <div class="lbl" style="margin-top:12px">Tipo de ajuste en ${esc(x.ref)}</div><select class="f" id="ask_tp"><option value="aum">Aumento (+)</option><option value="dis">Disminución (−)</option></select>
@@ -2230,8 +2238,8 @@ function ajOpen(){const x=cur;if(!x)return;if(!ISADM){toast('Solo un administrad
    <div id="ajres"></div><div id="ajsel" class="msg"></div>
    <div class="lbl" style="margin-top:12px">Error del surtidor</div><select class="f" id="ask_su">${ajSur(x)}</select>
    <div style="display:flex;gap:10px;margin-top:16px"><button class="btn" id="askNo" style="flex:1">Cancelar</button><button class="btn pri" id="askOk" style="flex:1">Aplicar ajuste</button></div>`;
-  askCb=async v=>{const q=parseInt(v.q)||0;if(q<1){toast('Escribe las piezas');return false}if(!AJY){toast('Elige la otra referencia');return false}
-    return await ajApply(x,byProd[AJY],v.tp,q,v.su)};
+  askCb=async v=>{const q=parseInt(v.q)||0;if(q<1){toast('Escribe las piezas');return false}const yp=ajResolve();if(!yp||!byProd[yp]){toast('Elige la otra referencia');return false}AJY=yp;
+    return await ajApply(x,byProd[yp],v.tp,q,v.su)};
   $('mask').classList.remove('hide')}
 $('maskBody').addEventListener('input',e=>{if(e.target.id!=='ajq')return;if(AJY){AJY=null;$('ajsel').innerHTML=''}const q=normH(e.target.value);
   const m=q?DATA.filter(y=>cur&&y.p!==cur.p&&(normH(y.ref).includes(q)||String(y.p).includes(q)||String(y.upc).includes(q)||normH(y.d).includes(q))).slice(0,8):[];

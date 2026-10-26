@@ -894,67 +894,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="horcol-list"></div>
           </div></div>
 
-          <div class="asec"><div class="ashdr" data-ac="ac-turnos"><span>🔀 Turnos de trabajo</span><span class="ach">▾</span></div>
-          <div class="asbdy" id="ac-turnos">
-            <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Crea los turnos que necesites (nombre + horario). Luego, en cada turno, elige el día de la semana y marca qué colaboradores tienen ESE turno ESE día — puedes tener turnos distintos cada día (ej. martes: 4 en Turno 1 y 4 en Turno 2; miércoles: solo Turno 1). Un colaborador solo puede tener un turno por día; si lo asignas aquí, se quita automáticamente de cualquier otro turno que tuviera ese mismo día. El domingo se configura igual, por su propia pestaña.</div>
-            <div class="fg" style="margin-bottom:14px"><label>Turno por defecto para Domingos (respaldo, solo si un colaborador no tiene domingo asignado en ningún turno)</label><select class="fc" id="turno-domingo-default"></select></div>
-            <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:14px">
-              <div style="font-weight:700;font-size:13px;margin-bottom:6px">🏖 Días libres</div>
-              <div style="font-size:11.5px;color:var(--mt);margin-bottom:9px">Para cuando le das a alguien el día libre en una semana puntual (aunque ese día le toque turno). Se refleja en su "Ver mi turno".</div>
-              <div class="fg"><label>Fecha</label><input type="date" class="fc" id="libre-fecha"></div>
-              <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:9px">
-                <div id="libre-user-checks" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto"><div style="color:var(--mt);font-size:12px">Elige una fecha y toca "Cargar".</div></div>
-              </div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px">
-                <button class="btn bg bsm" id="btn-libre-cargar" style="width:auto">🔄 Cargar</button>
-                <button class="btn bp bsm" id="btn-libre-guardar" style="width:auto">💾 Guardar días libres</button>
-                <button class="btn bg bsm" id="btn-libre-ver" style="width:auto">👁 Ver días libres programados</button>
-              </div>
-              <div id="libre-status" style="font-size:12px;color:var(--mt);margin-top:8px"></div>
-            </div>
-            <div id="turnos-semana-bar" style="background:var(--sf);border:1px solid var(--ac);border-radius:var(--rs);padding:10px 12px;margin-bottom:10px">
-              <div style="font-weight:700;font-size:13px;margin-bottom:6px">🗓 Semana que estás programando (lunes → domingo)</div>
-              <div style="display:flex;align-items:center;gap:8px">
-                <button class="btn bg bsm" id="tsem-prev" style="width:auto">‹</button>
-                <div id="tsem-label" style="flex:1;text-align:center;font-size:13px;font-weight:800"></div>
-                <button class="btn bg bsm" id="tsem-next" style="width:auto">›</button>
-              </div>
-              <div id="tsem-estado" style="font-size:11.5px;margin-top:7px"></div>
-              <div id="tsem-libres" style="font-size:11.5px;margin-top:7px"></div>
-              <button class="btn bg bsm" id="tsem-fijar" style="width:auto;font-size:11px;margin-top:8px">✅ Confirmar esta semana tal como está</button>
-            </div>
-            <div id="turnos-list"></div>
-            <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin:10px 0">
-              <div style="font-weight:700;font-size:13px;margin-bottom:8px">👤 Ver el turno de UN colaborador, semana por semana</div>
-              <div class="fg"><label>Colaborador</label>
-                <div style="display:flex;align-items:center;gap:6px">
-                  <button class="btn bg bsm" id="tcol-user-prev" type="button" style="width:auto;flex-shrink:0">‹</button>
-                  <select class="fc" id="tcol-user" style="flex:1"></select>
-                  <button class="btn bg bsm" id="tcol-user-next" type="button" style="width:auto;flex-shrink:0">›</button>
-                </div>
-              </div>
-              <div style="display:flex;align-items:center;gap:8px;margin-top:9px">
-                <button class="btn bg bsm" id="tcol-prev" style="width:auto">‹</button>
-                <div id="tcol-label" style="flex:1;text-align:center;font-size:13px;font-weight:800"></div>
-                <button class="btn bg bsm" id="tcol-next" style="width:auto">›</button>
-              </div>
-              <div id="tcol-body" style="margin-top:9px"></div>
-            </div>
-            <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:10px">
-              <div style="font-weight:700;font-size:13px;margin-bottom:8px">+ Nuevo turno</div>
-              <div class="fg2">
-                <div class="fg"><label>Nombre</label><input class="fc" id="nt-nombre" placeholder="Ej: Turno 5"></div>
-                <div class="fg"><label>Inicio</label><input type="time" class="fc" id="nt-ini"></div>
-                <div class="fg"><label>Fin</label><input type="time" class="fc" id="nt-fin"></div>
-              </div>
-              <div class="fg2">
-                <div class="fg"><label>Almuerzo desde</label><input type="time" class="fc" id="nt-alm-ini" value="12:00"></div>
-                <div class="fg"><label>Duración almuerzo (min)</label><input type="number" min="0" step="5" class="fc" id="nt-alm-dur" value="60"></div>
-              </div>
-              <button class="btn bp bsm" id="btn-crear-turno" style="width:auto;margin-top:8px">➕ Crear turno</button>
-            </div>
-          </div></div>
-
+          
           <div class="asec"><div class="ashdr" data-ac="ac-em"><span>✉ Correo automático (EmailJS)</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-em">
             <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Plan gratuito: 200 correos/mes. <a href="https://www.emailjs.com" target="_blank" style="color:var(--ac)">emailjs.com</a></div>
@@ -1051,7 +991,67 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="fer-list" style="margin-top:9px"></div>
           </div></div>
 
-          <div class="asec"><div class="ashdr" data-ac="ac-ed"><span>🔍 Editar marcaciones</span><span class="ach">▾</span></div>
+          <div class="asec"><div class="ashdr" data-ac="ac-turnos"><span>🔀 Turnos de trabajo</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-turnos">
+            <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Crea los turnos que necesites (nombre + horario). Luego, en cada turno, elige el día de la semana y marca qué colaboradores tienen ESE turno ESE día — puedes tener turnos distintos cada día (ej. martes: 4 en Turno 1 y 4 en Turno 2; miércoles: solo Turno 1). Un colaborador solo puede tener un turno por día; si lo asignas aquí, se quita automáticamente de cualquier otro turno que tuviera ese mismo día. El domingo se configura igual, por su propia pestaña.</div>
+            <div class="fg" style="margin-bottom:14px"><label>Turno por defecto para Domingos (respaldo, solo si un colaborador no tiene domingo asignado en ningún turno)</label><select class="fc" id="turno-domingo-default"></select></div>
+            <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:14px">
+              <div style="font-weight:700;font-size:13px;margin-bottom:6px">🏖 Días libres</div>
+              <div style="font-size:11.5px;color:var(--mt);margin-bottom:9px">Para cuando le das a alguien el día libre en una semana puntual (aunque ese día le toque turno). Se refleja en su "Ver mi turno".</div>
+              <div class="fg"><label>Fecha</label><input type="date" class="fc" id="libre-fecha"></div>
+              <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:9px">
+                <div id="libre-user-checks" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto"><div style="color:var(--mt);font-size:12px">Elige una fecha y toca "Cargar".</div></div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px">
+                <button class="btn bg bsm" id="btn-libre-cargar" style="width:auto">🔄 Cargar</button>
+                <button class="btn bp bsm" id="btn-libre-guardar" style="width:auto">💾 Guardar días libres</button>
+                <button class="btn bg bsm" id="btn-libre-ver" style="width:auto">👁 Ver días libres programados</button>
+              </div>
+              <div id="libre-status" style="font-size:12px;color:var(--mt);margin-top:8px"></div>
+            </div>
+            <div id="turnos-semana-bar" style="background:var(--sf);border:1px solid var(--ac);border-radius:var(--rs);padding:10px 12px;margin-bottom:10px">
+              <div style="font-weight:700;font-size:13px;margin-bottom:6px">🗓 Semana que estás programando (lunes → domingo)</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <button class="btn bg bsm" id="tsem-prev" style="width:auto">‹</button>
+                <div id="tsem-label" style="flex:1;text-align:center;font-size:13px;font-weight:800"></div>
+                <button class="btn bg bsm" id="tsem-next" style="width:auto">›</button>
+              </div>
+              <div id="tsem-estado" style="font-size:11.5px;margin-top:7px"></div>
+              <div id="tsem-libres" style="font-size:11.5px;margin-top:7px"></div>
+              <button class="btn bg bsm" id="tsem-fijar" style="width:auto;font-size:11px;margin-top:8px">✅ Confirmar esta semana tal como está</button>
+            </div>
+            <div id="turnos-list"></div>
+            <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin:10px 0">
+              <div style="font-weight:700;font-size:13px;margin-bottom:8px">👤 Ver el turno de UN colaborador, semana por semana</div>
+              <div class="fg"><label>Colaborador</label>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <button class="btn bg bsm" id="tcol-user-prev" type="button" style="width:auto;flex-shrink:0">‹</button>
+                  <select class="fc" id="tcol-user" style="flex:1"></select>
+                  <button class="btn bg bsm" id="tcol-user-next" type="button" style="width:auto;flex-shrink:0">›</button>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:9px">
+                <button class="btn bg bsm" id="tcol-prev" style="width:auto">‹</button>
+                <div id="tcol-label" style="flex:1;text-align:center;font-size:13px;font-weight:800"></div>
+                <button class="btn bg bsm" id="tcol-next" style="width:auto">›</button>
+              </div>
+              <div id="tcol-body" style="margin-top:9px"></div>
+            </div>
+            <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:10px">
+              <div style="font-weight:700;font-size:13px;margin-bottom:8px">+ Nuevo turno</div>
+              <div class="fg2">
+                <div class="fg"><label>Nombre</label><input class="fc" id="nt-nombre" placeholder="Ej: Turno 5"></div>
+                <div class="fg"><label>Inicio</label><input type="time" class="fc" id="nt-ini"></div>
+                <div class="fg"><label>Fin</label><input type="time" class="fc" id="nt-fin"></div>
+              </div>
+              <div class="fg2">
+                <div class="fg"><label>Almuerzo desde</label><input type="time" class="fc" id="nt-alm-ini" value="12:00"></div>
+                <div class="fg"><label>Duración almuerzo (min)</label><input type="number" min="0" step="5" class="fc" id="nt-alm-dur" value="60"></div>
+              </div>
+              <button class="btn bp bsm" id="btn-crear-turno" style="width:auto;margin-top:8px">➕ Crear turno</button>
+            </div>
+          </div></div>
+<div class="asec"><div class="ashdr" data-ac="ac-ed"><span>🔍 Editar marcaciones</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-ed">
             <style>.ed-row.ed-changed{border-color:var(--ac)!important;background:rgba(0,201,167,.09)!important}</style>
             <div class="fg"><label>Fecha</label><input type="date" class="fc" id="ed-fecha"></div>
