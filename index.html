@@ -1217,6 +1217,13 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 
           <div class="asec"><div class="ashdr" data-ac="ac-hbanco"><span>⏳ Horas adelantadas — banco (semanas anteriores)</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-hbanco">
+            <div id="banco-resumen-wrap" style="background:var(--bg);border:1px solid var(--ac);border-radius:var(--rs);padding:10px;margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+                <div style="font-size:12.5px;font-weight:800;color:var(--ac)">📋 Horas que se les deben</div>
+                <button class="btn bg bsm" id="btn-banco-copiar" type="button" style="width:auto;padding:4px 10px;font-size:11px">📤 Copiar resumen</button>
+              </div>
+              <div id="banco-resumen"></div>
+            </div>
             <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Son las MISMAS horas adelantadas de los sábados, pero de semanas anteriores (ej. se quedaron esperando un contenedor y se les deben). <strong>No modifica sus marcaciones</strong>: se registra la fecha, los minutos y el motivo (queda en bitácora). El saldo <strong>no vence</strong> y pasa de semana en semana hasta que lo apliques a un día con faltante; al aplicarlo se consume y lo que sobre sigue disponible. Nunca paga extra: solo cubre el faltante de ese día.</div>
             <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;margin-bottom:10px">
               <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;font-weight:700;color:var(--tx);text-transform:none;letter-spacing:0;cursor:pointer"><input type="checkbox" id="adel-ocultar" checked style="margin-top:2px"><span>🙈 Ocultar la nota de origen a RRHH y en los listados/correos</span></label>
@@ -7896,6 +7903,7 @@ async function validarCreditoBanco(user,fecha,min,excluirId){
   }catch(e){return{ok:false,max:0,msg:'no se pudieron verificar las marcaciones ('+(e.message||e)+')'};}
 }
 async function renderBancoUser(){
+  renderBancoResumen();
   const user=el('bancoap-user')?.value,sd=el('bancoap-saldo'),det=el('banco-detalle');
   if(!user||!sd)return;
   const b=await getBancoUser(user,true);
@@ -7943,6 +7951,54 @@ el('adel-ocultar')?.addEventListener('change',async()=>{
   }catch(e){c.checked=!c.checked;toast('⛔ No se pudo guardar','err');}
 });
 document.querySelector('[data-ac="ac-hbanco"]')?.addEventListener('click',()=>setTimeout(()=>{renderBancoUser();cargarOcultarNota();},50));
+
+// RESUMEN: colaboradores a los que se les deben horas (saldo > 0), con el día que quedó pendiente cada hora
+let _bancoResumenTxt='';
+async function renderBancoResumen(){
+  const box=el('banco-resumen');if(!box)return;
+  try{
+    const[sn,users]=await Promise.all([get(R(db,BANCO)),getUsers()]);
+    const all=sn.exists()?sn.val():{};
+    const filas=[];
+    Object.entries(all).forEach(([uid,b])=>{
+      const saldo=bancoSaldoMin(b);if(!(saldo>0))return;
+      let aplicado=Object.values((b&&b.consumos)||{}).reduce((a,x)=>a+(+x.min||0),0);
+      const pend=[];
+      Object.values((b&&b.creditos)||{}).map(x=>({fecha:x.fecha||'',min:+x.min||0,motivo:x.motivo||'',por:x.por||''})).sort((a,c)=>a.fecha.localeCompare(c.fecha)).forEach(c=>{
+        const usado=Math.min(aplicado,c.min);aplicado-=usado;const resta=c.min-usado;if(resta>0)pend.push({...c,resta});
+      });
+      const uo=users[uid]||Object.values(users).find(x=>x&&x.user===uid)||{};
+      filas.push({uid,nombre:uo.nombre||uid,saldo,pend});
+    });
+    filas.sort((a,c)=>c.saldo-a.saldo);
+    if(!filas.length){box.innerHTML='<div style="font-size:12px;color:var(--mt)">Nadie tiene horas pendientes por ahora ✅</div>';_bancoResumenTxt='';return;}
+    const total=filas.reduce((a,f)=>a+f.saldo,0);
+    box.innerHTML=`<div style="font-size:12px;font-weight:800;color:#f59e0b;margin-bottom:8px">${filas.length} colaborador(es) · ${fmtMinHM(total)} en total por devolver</div>`
+      +filas.map(f=>`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div style="font-size:13px;font-weight:800;color:var(--tx)">${escHtml(f.nombre)}</div>
+          <div style="font-size:13px;font-weight:800;color:#f59e0b">${fmtMinHM(f.saldo)}</div>
+        </div>
+        ${f.pend.map(c=>`<div style="font-size:11px;color:var(--mt);margin-top:3px;line-height:1.35">🗓 ${escHtml(fmtFechaDM(c.fecha))} — ${c.resta===c.min?c.min+' min':c.resta+' min (de '+c.min+')'}${c.motivo?' — '+escHtml(c.motivo):''}${c.por?' <span style="opacity:.7">('+escHtml(c.por)+')</span>':''}</div>`).join('')}
+        <button type="button" class="btn bg bsm" data-banco-aplicar="${escHtml(f.uid)}" style="width:auto;margin-top:6px;padding:4px 10px;font-size:11px">✅ Aplicar a un día</button>
+      </div>`).join('');
+    _bancoResumenTxt=`HORAS QUE SE LES DEBEN (${filas.length} colaborador(es), ${fmtMinHM(total)} en total)\n`
+      +filas.map(f=>`\n• ${f.nombre}: ${fmtMinHM(f.saldo)}\n`+f.pend.map(c=>`   - ${fmtFechaDM(c.fecha)}: ${c.resta} min${c.motivo?' — '+c.motivo:''}`).join('\n')).join('\n');
+  }catch(e){box.innerHTML='<div style="font-size:12px;color:#ff6b6b">⛔ No se pudo cargar el resumen</div>';}
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest&&e.target.closest('[data-banco-aplicar]');if(!b)return;
+  const sel=el('bancoap-user');if(!sel)return;
+  sel.value=b.dataset.bancoAplicar;
+  await renderBancoUser();
+  sel.scrollIntoView({behavior:'smooth',block:'center'});
+  toast('Elige el día a cubrir y los minutos','ok');
+});
+el('btn-banco-copiar')?.addEventListener('click',async()=>{
+  if(!_bancoResumenTxt){toast('No hay horas pendientes','');return;}
+  try{await navigator.clipboard.writeText(_bancoResumenTxt);toast('📤 Resumen copiado ✓','ok');}
+  catch(e){window.prompt('Copia el resumen:',_bancoResumenTxt);}
+});
 el('btn-banco-todos')?.addEventListener('click',()=>{Array.from(el('banco-users').options).forEach(o=>{o.selected=true;});renderBancoChecks();});
 el('btn-banco-ninguno')?.addEventListener('click',()=>{Array.from(el('banco-users').options).forEach(o=>{o.selected=false;});renderBancoChecks();});
 // Lista de colaboradores con casillas (reemplaza el selector múltiple, que en iPhone mostraba "0 elementos")
