@@ -1593,7 +1593,7 @@ async function imgText(f){LASTPG=1;await loadLib('https://cdn.jsdelivr.net/npm/t
 function parseErp(t){
   if(!/Distribuci[oó]n de Mercanc|Transferencia de Mercanc/i.test(t))return null;
   const num=(t.match(/\*D(\d{5,})\*/)||t.match(/N[úu]mero:?\s*(\d{5,})/i)||t.match(/(\d{5,})\s+N[úu]mero/i)||[])[1];if(!num)return null;
-  const rc=(t.match(/DISTRIBUCION RECIBO\s*(\d{5,})/i)||t.match(/Recibo\s*N[º°o]\.?:?\s*(\d{5,})/i)||t.match(/(\d{5,})\s+Recibo\s*N[º°o]/i)||[])[1]||'',tun=/TUNNEL|T[ÚU]NEL|DISTRIBUCION RECIBO/i.test(t);
+  let rc=(t.match(/DISTRIBUCI[OÓ]N\s+(?:DE\s+)?RECIBO\s*(?:N[º°o]\.?)?\s*[:#]?\s*(\d{5,})/i)||t.match(/Recibo\s*N[º°o]\.?:?\s*(\d{5,})/i)||t.match(/(\d{5,})\s+Recibo\s*N[º°o]/i)||[])[1]||'',tun=/TUNNEL|T[ÚU]NEL|DISTRIBUCI[OÓ]N\s+(?:DE\s+)?RECIBO/i.test(t);
   const dst=(t.match(/SAKS\s*#?\s*\d+/i)||[''])[0];let ts=0;
   for(const m of t.matchAll(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*([ap])\.?\s*m\.?/gi)){let h=+m[4];if(/p/i.test(m[6])&&h<12)h+=12;if(/a/i.test(m[6])&&h===12)h=0;const v=new Date(+m[3],+m[2]-1,+m[1],h,+m[5]).getTime();if(v>ts)ts=v}
   let sur='',bulF=0;
@@ -1602,19 +1602,26 @@ function parseErp(t){
   /* El surtidor que cuenta es quien hizo el PRIMER despacho (aparece como usuario en "Guía de Embarque #"). "provira" es la cuenta con la que se
      despacha después en Visión (despacho formal): no es una persona y nunca se toma como surtidor. */
   {const okU=x=>x&&!/^(guia|fecha|inventario|desde|hasta|nota|vehiculo|solicitado|despachado|estatus|saks|bodega|frangipani|tunnel|referencia|bultos|codigo|precio|rec|desp|solici|cantidad|total|env|sepa|descripcion|numero|inventario|distribucion|recibo)$/i.test(x)?x:'',g1=okU((t.match(/Gu[ií]a de Embarque\s*#:?\s+([A-Za-z][A-Za-z0-9._]{3,19})(?=\s)/)||[])[1]),jh=okU((t.match(/Fecha Despacho:?\s+([A-Za-z][A-Za-z0-9._]{3,19})(?=\s)/)||[])[1]);
-   sur=[g1,jh].find(x=>x&&!/^provira$/i.test(x))||(sur&&!/^provira$/i.test(sur)?sur:'')}
+   const okS=x=>/^[A-Za-z][A-Za-z0-9._]{3,19}$/.test(x||'')&&!/^provira$/i.test(x);sur=[g1,jh].find(okS)||(okS(sur)?sur:'')}
   const tm=t.match(/Total:\s*((?:\d+\s*){1,3})/),tot=tm?Math.max(...tm[1].trim().split(/\s+/).map(Number)):0,est=(t.match(/Estatus:\s*\(\w\)\s*(\w+)/i)||[])[1]||'';
   const REF='(?:[A-Z]{1,3}\\d{4,}[A-Z0-9\\-]*|(?=[A-Z0-9][A-Z0-9\\-\\/\\.]*[A-Z])(?=[A-Z0-9\\-\\/\\.]*\\d)[A-Z0-9][A-Z0-9\\-\\/\\.]{3,})',N='(\\d+(?:\\.\\d+)?)';
-  const re=[
+  const mk=REF=>[
    [new RegExp(`(${REF})\\s(\\d{1,3})\\s(.*?)\\s(?<!\\d)(\\d{7})(?!\\d)\\s-\\s(?:(?!\\s\\d{1,3}\\s(?:${REF})\\s)[^])*?COLOR=\\s+(-?\\d+)\\sPZA\\s(\\d+)\\s${N}\\s(\\d+)`,'g'),m=>({ref:m[1],p:m[4],desp:+m[6],bul:0,pr:+m[7],d:m[3]})],
    [new RegExp(`(${REF})\\s(\\d{1,3})\\s(.*?)\\s(?<!\\d)(\\d{7})(?!\\d)\\s-\\s(\\d+)\\s(\\d+)\\s(?:(?:[^\\s=]+\\s){1,3})?TALLAS=[^]*?COLOR=[^]*?\\s(-?\\d+)\\sPZA\\s(\\d+)\\s${N}\\s(\\d+)`,'g'),m=>({ref:m[1],p:m[4],desp:+m[8],bul:+m[6]>0?+m[6]-+m[5]+1:0,pr:+m[9],d:m[3]})],
    [new RegExp(`(?<!\\d)(\\d{1,3})\\s(\\d+)\\s*-\\s*(\\d+)\\s(${REF})\\s(?<!\\d)(\\d{7})(?!\\d)\\s(.*?)\\sCOLOR=[^]*?TALLAS=[^]*?\\s(-?\\d+)\\sPZA\\s(\\d+)\\s(\\d+)\\s${N}\\s(\\d+)`,'g'),m=>({ref:m[4],p:m[5],desp:+m[9],bul:+m[3]>0?+m[3]-+m[2]+1:0,pr:+m[10],d:m[6]})],
    [new RegExp(`(?<!\\d)(\\d{7})(?!\\d)\\s(\\d+)\\s(\\d+)\\s(.*?)\\s(?:${N}\\sPZA|PZA\\s${N})\\s(\\d{1,3})\\sCOLOR=[^]*?TALLAS=([^]*?)\\s(${REF})\\s(\\d+)(?=\\s\\d{7}\\s|\\sPage|\\sTotal|\\sAUTORIZADO|$)`,'g'),m=>({ref:m[9],p:m[1],desp:+m[3],bul:0,pr:+(m[5]||m[6]),d:m[4]})],
    [new RegExp(`(?<!\\d)(\\d{1,3})\\s(?<!\\d)(\\d{7})(?!\\d)\\s(\\d+)\\s(\\d+)\\s(.*?)\\s(?:PZA\\s${N}|${N}\\sPZA)\\sCOLOR=[^]*?TALLAS=([^]*?)\\s(${REF})\\s(\\d+)(?=\\s\\d{1,3}\\s\\d{7}|\\sPage|\\sTotal|\\sAUTORIZADO|$)`,'g'),m=>({ref:m[8],p:m[2],desp:+m[4],bul:0,pr:+(m[6]||m[7]),d:m[5]})]];
-  let lines=[];for(const [r,f] of re){const c=[...t.matchAll(r)].map(m=>({inv:0,sol:0,res:0,...f(m),d:f(m).d.trim()}));if(c.length>lines.length||(c.length===lines.length&&c.length&&tm&&c.reduce((a,l)=>a+l.desp,0)===tot&&lines.reduce((a,l)=>a+l.desp,0)!==tot))lines=c} // se queda con el formato que lee más líneas (y cuadra con el total)
+  const pick=(re,bp)=>{let lines=[];const sm=L=>L.reduce((a,l)=>a+l.desp,0),sb=L=>L.reduce((a,l)=>a+(l.bul||0),0);for(const [r,f] of re){const c=[...t.matchAll(r)].map(m=>({inv:0,sol:0,res:0,...f(m),d:f(m).d.trim()}));if(c.length>lines.length||(c.length===lines.length&&c.length&&tm&&sm(c)===tot&&sm(lines)!==tot)||(bp&&c.length&&c.length===lines.length&&sm(c)===sm(lines)&&sb(c)>sb(lines)))lines=c}return lines}; // se queda con el formato que lee más líneas (y cuadra con el total)
+  let lines=pick(mk(REF));
+  /* Formatos ERP con referencia SOLO NUMÉRICA (ej. 002273): Transferencia entre Tiendas (TRAN007L) y Distribución de Mercancía (*D…*).
+     Solo se prueba si los patrones de siempre no leyeron nada, así lo que ya funcionaba no cambia. También lee el texto "por filas" (una línea por producto). */
+  if(!lines.length){const RX='(?:'+REF+'|(?<!\\d)\\d{3,8}(?!\\d))';
+    const ROWP=[new RegExp(`(?<!\\d)(\\d{1,3})\\s(?:(\\d+)\\s-\\s(\\d+)\\s)?(${RX})\\s(?<!\\d)(\\d{7})(?!\\d)\\s(.*?)\\s(?:(-?\\d+)\\s)?PZA\\s(\\d+)(?:\\s(\\d+))?\\s(\\d+\\.\\d+)\\s(\\d+)\\sCOLOR=`,'g'),m=>({ref:m[4],p:m[5],desp:+(m[9]||m[8]),bul:+(m[3]||0)>0?+m[3]-+m[2]+1:0,pr:+m[10],d:m[6]})];
+    lines=pick(mk(RX).concat([ROWP]),1)}
+  if(rc&&(/^0/.test(rc)||lines.some(l=>l.p===rc||l.ref===rc)))rc='';
   lines.forEach(l=>{l.sol=l.desp});
   const bul=bulF||lines.reduce((a,l)=>a+l.bul,0);
-  return{tr:num,ts:ts||Date.now(),sur,org:'BODEGA FRANGIPANI',des:dst,nota:tun?('TÚNEL'+(rc?' · Recibo '+rc:'')):((t.match(/PEDIDOS?\s+AUTOM[ÁA]TICOS?[^]{0,50}/i)||['Pedido automático'])[0].trim()),t:guessStore(dst)||guessStore(t.slice(0,1800)),lines,tot,src:tun?'tun':'auto',det:1,rc,bul,est,
+  return{tr:num,ts:ts||Date.now(),sur,org:'BODEGA FRANGIPANI',des:dst,nota:tun?('TÚNEL'+(rc?' · Recibo '+rc:'')):((t.match(/PEDIDOS?\s+AUTOM[ÁA]TICOS?(?:\s+-\s+[A-Z&]{1,6}(?![A-Za-z]))?/i)||['Pedido automático'])[0].trim()),t:guessStore(dst)||guessStore(t.slice(0,1800)),lines,tot,src:tun?'tun':'auto',det:1,rc,bul,est,
     /* La fecha es la de DESPACHO: si el documento aún no está despachado, solo trae la fecha de solicitud y no debe acreditar producción. */
     nodesp:(est&&!/despach/i.test(est))?1:0,tsSrc:'desp'}
 }
