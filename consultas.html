@@ -594,7 +594,7 @@ for(const t of STORES){if(sel[t]&&!sel[t].nw&&t!=='CRISTAL')sel[t].tr=lastTr(t)}
     const trs=[...new Set(entries().filter(e=>e.p===x.p&&e.t===t&&e.tr).map(e=>e.tr))];
     const dis=a===0||pend===0||isD,cl=t==='CRISTAL'&&hasCli(x.p);
     return `<div class="tile ${cls} ${S.on&&!cl?'sel':''}" data-t="${t}"><div class="hd"><b>${L(t)}</b><small>${x.p}</small></div>
-      <div class="bd">${t!=='CRISTAL'&&soOf(x,t)!=null&&soOf(x,t)!==a?`<span style="color:var(--mt)">Solicitado: <b>${fmt(soOf(x,t))}</b></span><br>`:''}Distribuir: <b>${fmt(a)}</b><br>Surtidas: <b>${fmt(s)}</b><br>Pendiente: <b style="color:${pend?'var(--wn)':'var(--ok)'}">${fmt(pend)}</b>${trs.length?`<div class="tr">${t==='CRISTAL'?'Proforma':'Transf'}: ${trs.map(esc).join(', ')}</div>`:''}${t==='CRISTAL'&&cl?'<div class="tr">Por proforma · clientes</div>':''}</div>
+      <div class="bd">${t!=='CRISTAL'&&soOf(x,t)!=null&&soOf(x,t)!==a?`<span style="color:var(--mt)">Solicitado: <b>${fmt(soOf(x,t))}</b></span><br>`:''}Distribuir: <b>${fmt(a)}</b><br>Surtidas: <b>${fmt(s)}</b><br>Pendiente: <b style="color:${pend?'var(--wn)':'var(--ok)'}">${fmt(pend)}</b><div class="bar" style="height:8px;margin:7px 6px 2px"><i style="width:${a?Math.min(100,Math.round(s/a*100)):0}%"></i></div><div class="tr" style="color:var(--mt)">${a&&x.dt?(a/x.dt*100).toFixed(1)+'% del total · ':''}${a?Math.min(100,Math.round(s/a*100)):0}% surtido</div>${trs.length?`<div class="tr">${t==='CRISTAL'?'Proforma':'Transf'}: ${trs.map(esc).join(', ')}</div>`:''}${t==='CRISTAL'&&cl?'<div class="tr">Por proforma · clientes</div>':''}</div>
       ${cl?`<div style="padding:0 6px 8px"><button class="btn pri sm" data-cli="${x.p}" style="width:100%" ${isD?'disabled':''}>👥 Clientes</button></div>`:`<label class="ck"><input type="checkbox" data-ck="${t}" ${S.on?'checked':''} ${dis?'disabled':''}> ${dis?(a===0?'Sin asignar':(isD||isDT)?'Despachado ✓':'Surtido ✓'):(dq>0?'Surtido · desp. '+fmt(dq):'Surtido')}</label>
       <div class="ed"><input type="number" min="1" inputmode="numeric" data-q="${t}" value="${S.q}" placeholder="Cant.">${trBlock(t,S)}</div>`}${t==='CRISTAL'?`<div style="padding:0 6px 8px"><button class="btn sm" data-pz="${x.p}" style="width:100%">🏷 Etiquetas por pieza</button></div>`:''}</div>`}).join('');
   $('phist').innerHTML=histTable(entries().filter(e=>e.p===x.p).concat(ajList(x).map(a=>({aj:a,ts:a.ts,t:'BODEGA',q:a.q}))).sort((a,b)=>b.ts-a.ts),true)+ajHtml();if(AJC)ajPaint();else ajLoad();
@@ -1130,7 +1130,7 @@ function renderDespacho(){
   const ds=Object.entries(DS).sort((a,b)=>(b[1].seq||0)-(a[1].seq||0));
   $('dspList').innerHTML=ds.map(([id,d])=>{const it=dItems(d),tb=it.reduce((a,i)=>a+(i.b||0),0),tp=it.reduce((a,i)=>a+(i.pz||0),0);
     return `<details class="card" data-k="${id}" ${dspOpen.has(id)?'open':''}><summary>📦 ${esc(d.num)} <span class="pill p-aq" style="margin-left:6px">${it.length} transf. · ${fmtB(tb)} bultos</span></summary><div class="msg">${esc(d.n||d.u)} · ${fdt(d.ts)}</div><div class="scroll"><table><tr><th>Tienda</th><th>Transferencia</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${it.map(i=>`<tr><td>${LN(i.t)}</td><td>${esc(i.tr||'—')}</td><td class="n">${fmtB(i.b||0)}</td><td class="n">${fmt(i.pz||0)}</td></tr>`).join('')}<tr><td colspan="2"><b>TOTAL</b></td><td class="n"><b>${fmtB(tb)}</b></td><td class="n"><b>${fmt(tp)}</b></td></tr></table></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-dx="${id}">📥 Excel</button><button class="btn sm" data-dp="${id}">🖨 Imprimir / PDF</button><button class="btn sm" data-dm="${id}">✉ Correo</button>${ISADM?`<button class="btn sm" data-dt="${id}">📅 Fecha</button><button class="btn sm" data-dd="${id}">🗑 Eliminar</button>`:''}</div></details>`}).join('')||'<div class="msg">Aún no hay despachos.</div>'
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-dx="${id}">📥 Excel</button><button class="btn sm" data-dp="${id}">🖨 Imprimir / PDF</button><button class="btn sm" data-dm="${id}">✉ Correo</button>${ISADM?`<button class="btn sm" data-dc="${id}">🛒 Comprador${d.cmp?' ✓':''}</button>${d.cmp?`<button class="btn sm" data-dcx="${id}">⛔ Quitar acceso</button>`:''}`:''}${ISADM?`<button class="btn sm" data-dt="${id}">📅 Fecha</button><button class="btn sm" data-dd="${id}">🗑 Eliminar</button>`:''}</div></details>`}).join('')||'<div class="msg">Aún no hay despachos.</div>'
 }
 $('v-dsp').addEventListener('input',e=>{if(e.target.id==='dspWhen')dspWhen=e.target.value});
 $('v-dsp').addEventListener('change',e=>{const k=e.target.dataset.pk;if(!k)return;e.target.checked?dspSel.add(k):dspSel.delete(k);renderDespacho()});
@@ -1141,6 +1141,8 @@ $('v-dsp').addEventListener('click',async e=>{
   const x=e.target.closest('[data-dx]');if(x){dspExcel(x.dataset.dx);return}
   const p=e.target.closest('[data-dp]');if(p){dspPrint(p.dataset.dp);return}
   const m=e.target.closest('[data-dm]');if(m){dspMail(m.dataset.dm);return}
+  const dc=e.target.closest('[data-dc]');if(dc){dspComprador(dc.dataset.dc);return}
+  const dcx=e.target.closest('[data-dcx]');if(dcx){dspCompradorOff(dcx.dataset.dcx);return}
   const dt=e.target.closest('[data-dt]');if(dt){const id=dt.dataset.dt;ask('Fecha y hora · '+DS[id].num,[{k:'w',label:'Fecha y hora del despacho',type:'datetime-local',value:toLocalIn(DS[id].ts)}],'Aplicar',async v=>{const ts=new Date(v.w).getTime();if(!isFinite(ts)){toast('Fecha inválida');return false}try{await set(R(db,`${DSB}/${id}/ts`),ts);await set(R(db,`${DSB}/${id}/d`),v.w.slice(0,10))}catch(err){toast('Error: '+(err.code||err.message));return false}});return}
   const d=e.target.closest('[data-dd]');if(d){const id=d.dataset.dd;if(!confirm(`¿Eliminar el despacho ${DS[id].num}? Sus transferencias quedan libres para otro despacho.`))return;try{await remove(R(db,`${DSB}/${id}`));toast('Despacho eliminado')}catch(err){toast('Error: '+(err.code||err.message))}}
 });
@@ -1154,6 +1156,29 @@ async function createDsp(){
   try{await set(R(db,`${DSB}/${id}`),{seq,num:'DSP-'+String(seq).padStart(4,'0'),ts:wts,d:wv.slice(0,10),u:USER,n:NAME,items});dspWhen=null;dspSel.clear();dspOpen.add(id);toast(`✅ Despacho DSP-${String(seq).padStart(4,'0')} creado`)}catch(err){toast('Error al crear: '+(err.code||err.message))}
 }
 function dspTotals(d){const it=dItems(d);return{it,tb:it.reduce((a,i)=>a+(i.b||0),0),tp:it.reduce((a,i)=>a+(i.pz||0),0),tr:it.reduce((a,i)=>a+(i.rf||0),0)}}
+// ---------- Enlace del comprador (solo lectura) ----------
+// Publica una foto del despacho en meta_v1/comprador/{token}; comprador.html la lee con ese token. Quitar acceso = borrar ese nodo.
+const CMPB='meta_v1/comprador';
+function cmpSnap(id,d){
+  const keys=new Set(dItems(d).map(i=>i.key)),agg={};
+  for(const g of trfGroups()){if(!keys.has(g.key))continue;
+    const bg=BG[g.key],rng=bg&&bg.n?gbCode(bg.first)+' – '+gbCode(bg.first+bg.n-1):'',bt=(TRB[g.key]&&TRB[g.key].b)||0;
+    for(const e of g.items){const k=e.p+'|'+g.key,x=byProd[e.p]||{};
+      const r=(agg[k]=agg[k]||{e:x.ref||e.r||'',p:String(e.p),d:x.d||'',u:x.upc||'',q:0,pb:x.pb||0,t:L(g.t),tn:NAMES[g.t]||'',tr:g.tr||'',bt,bg:rng,us:{}});
+      r.q+=e.q||0;r.us[e.n||e.u||'']=1}}
+  const rows=Object.values(agg).map(r=>{const us=Object.keys(r.us).filter(Boolean).join(', ');delete r.us;r.s=us;return r});
+  return{v:1,rec:RECIBO,num:d.num,ts:d.ts,pub:Date.now(),by:NAME||USER||'',rows}}
+const cmpUrl=t=>new URL('comprador.html',location.href).href+'#'+t;
+async function dspComprador(id){const d=DS[id];if(!d)return;
+  let tok=d.cmp&&d.cmp.t;if(!tok)tok=Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>'abcdefghijklmnopqrstuvwxyz0123456789'[b%36]).join('');
+  try{const snap=cmpSnap(id,d);if(!snap.rows.length){toast('Este despacho no tiene líneas');return}
+    await set(R(db,`${CMPB}/${tok}`),snap);await set(R(db,`${DSB}/${id}/cmp`),{t:tok,ts:Date.now(),u:USER});
+    const url=cmpUrl(tok);let ok=false;try{await navigator.clipboard.writeText(url);ok=true}catch(e){}
+    if(ok)toast(`✅ Enlace copiado · ${snap.rows.length} líneas publicadas`);else prompt('Enlace para el comprador (cópialo y reenvíalo):',url)
+  }catch(err){toast('Error: '+(err.code||err.message))}}
+async function dspCompradorOff(id){const d=DS[id];if(!d||!d.cmp)return;
+  if(!confirm(`¿Quitar el acceso del comprador a ${d.num}? El enlace deja de funcionar.`))return;
+  try{await remove(R(db,`${CMPB}/${d.cmp.t}`));await remove(R(db,`${DSB}/${id}/cmp`));toast('Acceso del comprador desactivado')}catch(err){toast('Error: '+(err.code||err.message))}}
 function dspExcel(id){const d=DS[id],{it,tb,tp,tr}=dspTotals(d);
   const aoa=[['Lista de empaque',d.num],['Recibo',RECIBO],['Fecha',fdt(d.ts)],['Preparó',d.n||d.u],[],['Tienda','Transferencia','Bultos','Piezas','Referencias'],...it.map(i=>[LN(i.t),i.tr||'',i.b||0,i.pz||0,i.rf||0]),['TOTAL','',tb,tp,tr]];
   const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:16},{wch:18},{wch:10},{wch:10},{wch:12}];XLSX.utils.book_append_sheet(wb,ws,'Lista de empaque');XLSX.writeFile(wb,`lista_empaque_${d.num}.xlsx`)}
