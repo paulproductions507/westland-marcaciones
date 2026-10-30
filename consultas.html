@@ -594,7 +594,7 @@ for(const t of STORES){if(sel[t]&&!sel[t].nw&&t!=='CRISTAL')sel[t].tr=lastTr(t)}
     const trs=[...new Set(entries().filter(e=>e.p===x.p&&e.t===t&&e.tr).map(e=>e.tr))];
     const dis=a===0||pend===0||isD,cl=t==='CRISTAL'&&hasCli(x.p);
     return `<div class="tile ${cls} ${S.on&&!cl?'sel':''}" data-t="${t}"><div class="hd"><b>${L(t)}</b><small>${x.p}</small></div>
-      <div class="bd">${t!=='CRISTAL'&&soOf(x,t)!=null&&soOf(x,t)!==a?`<span style="color:var(--mt)">Solicitado: <b>${fmt(soOf(x,t))}</b></span><br>`:''}Distribuir: <b>${fmt(a)}</b><br>Surtidas: <b>${fmt(s)}</b><br>Pendiente: <b style="color:${pend?'var(--wn)':'var(--ok)'}">${fmt(pend)}</b><div class="bar" style="height:8px;margin:7px 6px 2px"><i style="width:${a?Math.min(100,Math.round(s/a*100)):0}%"></i></div><div class="tr" style="color:var(--mt)">${a&&x.dt?(a/x.dt*100).toFixed(1)+'% del total · ':''}${a?Math.min(100,Math.round(s/a*100)):0}% surtido</div>${trs.length?`<div class="tr">${t==='CRISTAL'?'Proforma':'Transf'}: ${trs.map(esc).join(', ')}</div>`:''}${t==='CRISTAL'&&cl?'<div class="tr">Por proforma · clientes</div>':''}</div>
+      <div class="bd">${t!=='CRISTAL'&&soOf(x,t)!=null&&soOf(x,t)!==a?`<span style="color:var(--mt)">Solicitado: <b>${fmt(soOf(x,t))}</b></span><br>`:''}Distribuir: <b>${fmt(a)}</b><br>Surtidas: <b>${fmt(s)}</b><br>Pendiente: <b style="color:${pend?'var(--wn)':'var(--ok)'}">${fmt(pend)}</b>${trs.length?`<div class="tr">${t==='CRISTAL'?'Proforma':'Transf'}: ${trs.map(esc).join(', ')}</div>`:''}${t==='CRISTAL'&&cl?'<div class="tr">Por proforma · clientes</div>':''}</div>
       ${cl?`<div style="padding:0 6px 8px"><button class="btn pri sm" data-cli="${x.p}" style="width:100%" ${isD?'disabled':''}>👥 Clientes</button></div>`:`<label class="ck"><input type="checkbox" data-ck="${t}" ${S.on?'checked':''} ${dis?'disabled':''}> ${dis?(a===0?'Sin asignar':(isD||isDT)?'Despachado ✓':'Surtido ✓'):(dq>0?'Surtido · desp. '+fmt(dq):'Surtido')}</label>
       <div class="ed"><input type="number" min="1" inputmode="numeric" data-q="${t}" value="${S.q}" placeholder="Cant.">${trBlock(t,S)}</div>`}${t==='CRISTAL'?`<div style="padding:0 6px 8px"><button class="btn sm" data-pz="${x.p}" style="width:100%">🏷 Etiquetas por pieza</button></div>`:''}</div>`}).join('');
   $('phist').innerHTML=histTable(entries().filter(e=>e.p===x.p).concat(ajList(x).map(a=>({aj:a,ts:a.ts,t:'BODEGA',q:a.q}))).sort((a,b)=>b.ts-a.ts),true)+ajHtml();if(AJC)ajPaint();else ajLoad();
@@ -1130,7 +1130,7 @@ function renderDespacho(){
   const ds=Object.entries(DS).sort((a,b)=>(b[1].seq||0)-(a[1].seq||0));
   $('dspList').innerHTML=ds.map(([id,d])=>{const it=dItems(d),tb=it.reduce((a,i)=>a+(i.b||0),0),tp=it.reduce((a,i)=>a+(i.pz||0),0);
     return `<details class="card" data-k="${id}" ${dspOpen.has(id)?'open':''}><summary>📦 ${esc(d.num)} <span class="pill p-aq" style="margin-left:6px">${it.length} transf. · ${fmtB(tb)} bultos</span></summary><div class="msg">${esc(d.n||d.u)} · ${fdt(d.ts)}</div><div class="scroll"><table><tr><th>Tienda</th><th>Transferencia</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${it.map(i=>`<tr><td>${LN(i.t)}</td><td>${esc(i.tr||'—')}</td><td class="n">${fmtB(i.b||0)}</td><td class="n">${fmt(i.pz||0)}</td></tr>`).join('')}<tr><td colspan="2"><b>TOTAL</b></td><td class="n"><b>${fmtB(tb)}</b></td><td class="n"><b>${fmt(tp)}</b></td></tr></table></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-dx="${id}">📥 Excel</button><button class="btn sm" data-dp="${id}">🖨 Imprimir / PDF</button><button class="btn sm" data-dm="${id}">✉ Correo</button>${ISADM?`<button class="btn sm" data-dc="${id}">🛒 Comprador${d.cmp?' ✓':''}</button>${d.cmp?`<button class="btn sm" data-dcx="${id}">⛔ Quitar acceso</button>`:''}`:''}${ISADM?`<button class="btn sm" data-dt="${id}">📅 Fecha</button><button class="btn sm" data-dd="${id}">🗑 Eliminar</button>`:''}</div></details>`}).join('')||'<div class="msg">Aún no hay despachos.</div>'
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-dx="${id}">📥 Excel</button><button class="btn sm" data-dp="${id}">🖨 Imprimir / PDF</button><button class="btn sm" data-dm="${id}">✉ Correo</button>${ISADM?`<button class="btn sm" data-dt="${id}">📅 Fecha</button><button class="btn sm" data-dd="${id}">🗑 Eliminar</button>`:''}</div></details>`}).join('')||'<div class="msg">Aún no hay despachos.</div>'
 }
 $('v-dsp').addEventListener('input',e=>{if(e.target.id==='dspWhen')dspWhen=e.target.value});
 $('v-dsp').addEventListener('change',e=>{const k=e.target.dataset.pk;if(!k)return;e.target.checked?dspSel.add(k):dspSel.delete(k);renderDespacho()});
@@ -1141,8 +1141,6 @@ $('v-dsp').addEventListener('click',async e=>{
   const x=e.target.closest('[data-dx]');if(x){dspExcel(x.dataset.dx);return}
   const p=e.target.closest('[data-dp]');if(p){dspPrint(p.dataset.dp);return}
   const m=e.target.closest('[data-dm]');if(m){dspMail(m.dataset.dm);return}
-  const dc=e.target.closest('[data-dc]');if(dc){dspComprador(dc.dataset.dc);return}
-  const dcx=e.target.closest('[data-dcx]');if(dcx){dspCompradorOff(dcx.dataset.dcx);return}
   const dt=e.target.closest('[data-dt]');if(dt){const id=dt.dataset.dt;ask('Fecha y hora · '+DS[id].num,[{k:'w',label:'Fecha y hora del despacho',type:'datetime-local',value:toLocalIn(DS[id].ts)}],'Aplicar',async v=>{const ts=new Date(v.w).getTime();if(!isFinite(ts)){toast('Fecha inválida');return false}try{await set(R(db,`${DSB}/${id}/ts`),ts);await set(R(db,`${DSB}/${id}/d`),v.w.slice(0,10))}catch(err){toast('Error: '+(err.code||err.message));return false}});return}
   const d=e.target.closest('[data-dd]');if(d){const id=d.dataset.dd;if(!confirm(`¿Eliminar el despacho ${DS[id].num}? Sus transferencias quedan libres para otro despacho.`))return;try{await remove(R(db,`${DSB}/${id}`));toast('Despacho eliminado')}catch(err){toast('Error: '+(err.code||err.message))}}
 });
@@ -1156,29 +1154,6 @@ async function createDsp(){
   try{await set(R(db,`${DSB}/${id}`),{seq,num:'DSP-'+String(seq).padStart(4,'0'),ts:wts,d:wv.slice(0,10),u:USER,n:NAME,items});dspWhen=null;dspSel.clear();dspOpen.add(id);toast(`✅ Despacho DSP-${String(seq).padStart(4,'0')} creado`)}catch(err){toast('Error al crear: '+(err.code||err.message))}
 }
 function dspTotals(d){const it=dItems(d);return{it,tb:it.reduce((a,i)=>a+(i.b||0),0),tp:it.reduce((a,i)=>a+(i.pz||0),0),tr:it.reduce((a,i)=>a+(i.rf||0),0)}}
-// ---------- Enlace del comprador (solo lectura) ----------
-// Publica una foto del despacho en meta_v1/comprador/{token}; comprador.html la lee con ese token. Quitar acceso = borrar ese nodo.
-const CMPB='meta_v1/comprador';
-function cmpSnap(id,d){
-  const keys=new Set(dItems(d).map(i=>i.key)),agg={};
-  for(const g of trfGroups()){if(!keys.has(g.key))continue;
-    const bg=BG[g.key],rng=bg&&bg.n?gbCode(bg.first)+' – '+gbCode(bg.first+bg.n-1):'',bt=(TRB[g.key]&&TRB[g.key].b)||0;
-    for(const e of g.items){const k=e.p+'|'+g.key,x=byProd[e.p]||{};
-      const r=(agg[k]=agg[k]||{e:x.ref||e.r||'',p:String(e.p),d:x.d||'',u:x.upc||'',q:0,pb:x.pb||0,t:L(g.t),tn:NAMES[g.t]||'',tr:g.tr||'',bt,bg:rng,us:{}});
-      r.q+=e.q||0;r.us[e.n||e.u||'']=1}}
-  const rows=Object.values(agg).map(r=>{const us=Object.keys(r.us).filter(Boolean).join(', ');delete r.us;r.s=us;return r});
-  return{v:1,rec:RECIBO,num:d.num,ts:d.ts,pub:Date.now(),by:NAME||USER||'',rows}}
-const cmpUrl=t=>new URL('comprador.html',location.href).href+'#'+t;
-async function dspComprador(id){const d=DS[id];if(!d)return;
-  let tok=d.cmp&&d.cmp.t;if(!tok)tok=Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>'abcdefghijklmnopqrstuvwxyz0123456789'[b%36]).join('');
-  try{const snap=cmpSnap(id,d);if(!snap.rows.length){toast('Este despacho no tiene líneas');return}
-    await set(R(db,`${CMPB}/${tok}`),snap);await set(R(db,`${DSB}/${id}/cmp`),{t:tok,ts:Date.now(),u:USER});
-    const url=cmpUrl(tok);let ok=false;try{await navigator.clipboard.writeText(url);ok=true}catch(e){}
-    if(ok)toast(`✅ Enlace copiado · ${snap.rows.length} líneas publicadas`);else prompt('Enlace para el comprador (cópialo y reenvíalo):',url)
-  }catch(err){toast('Error: '+(err.code||err.message))}}
-async function dspCompradorOff(id){const d=DS[id];if(!d||!d.cmp)return;
-  if(!confirm(`¿Quitar el acceso del comprador a ${d.num}? El enlace deja de funcionar.`))return;
-  try{await remove(R(db,`${CMPB}/${d.cmp.t}`));await remove(R(db,`${DSB}/${id}/cmp`));toast('Acceso del comprador desactivado')}catch(err){toast('Error: '+(err.code||err.message))}}
 function dspExcel(id){const d=DS[id],{it,tb,tp,tr}=dspTotals(d);
   const aoa=[['Lista de empaque',d.num],['Recibo',RECIBO],['Fecha',fdt(d.ts)],['Preparó',d.n||d.u],[],['Tienda','Transferencia','Bultos','Piezas','Referencias'],...it.map(i=>[LN(i.t),i.tr||'',i.b||0,i.pz||0,i.rf||0]),['TOTAL','',tb,tp,tr]];
   const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:16},{wch:18},{wch:10},{wch:10},{wch:12}];XLSX.utils.book_append_sheet(wb,ws,'Lista de empaque');XLSX.writeFile(wb,`lista_empaque_${d.num}.xlsx`)}
@@ -2716,7 +2691,7 @@ function embHTML(e){
   <div style="background:#0b3b5c;color:#fff;padding:18px 22px"><div style="font-size:12px;letter-spacing:1px;text-transform:uppercase;opacity:.8">Aviso de despacho · Logística</div><div style="font-size:22px;font-weight:700;margin-top:4px">${esc(e.num)}</div><div style="font-size:12px;opacity:.85;margin-top:4px">${esc(fdt(e.ts))} · Prepara: ${esc(e.n||e.u||'')}</div></div>
   <table style="width:100%;border-collapse:collapse;margin:14px 0"><tr>${kpi('Camiones',c.cams.length,'#0b3b5c')}${kpi('Palets',c.np,'#1f7ae0')}${kpi('Bultos',c.tb,'#17a589')}${kpi('Piezas',c.tp,'#f39c12')}${kpi('Tiendas',c.st.length,'#8e44ad')}</tr></table>
   <div style="font-size:15px;font-weight:700;margin:16px 0 6px">Distribución por tienda · piezas</div>
-  <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${(()=>{const mx=Math.max(1,...c.st.map(x=>x.pz));return c.st.map(x=>{const w=Math.max(3,Math.round(x.pz/mx*100));return `<tr><td style="padding:5px 8px 5px 0;font-size:13px;width:70px"><b>${esc(L(x.t))}</b></td><td style="padding:5px 0"><table width="100%" cellpadding="0" cellspacing="0" style="background:#e6edf3"><tr><td width="${w}%" bgcolor="#1f7ae0" style="background:#1f7ae0;height:16px;line-height:16px;font-size:1px">&nbsp;</td><td style="font-size:1px">&nbsp;</td></tr></table></td><td style="padding:5px 0 5px 8px;font-size:12px;white-space:nowrap;text-align:right">${fmt(x.pz)} pzas · ${fmt(x.b)} bultos</td></tr>`}).join('')})()}</table>
+  <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${(()=>{const tt=Math.max(1,c.tp);return c.st.map(x=>{const pc=x.pz/tt*100,w=Math.max(1,Math.round(pc));return `<tr><td style="padding:5px 8px 5px 0;font-size:13px;width:70px"><b>${esc(L(x.t))}</b></td><td style="padding:5px 0"><table width="100%" cellpadding="0" cellspacing="0" style="background:#e6edf3"><tr><td width="${w}%" bgcolor="#1f7ae0" style="background:#1f7ae0;height:16px;line-height:16px;font-size:1px">&nbsp;</td><td style="font-size:1px">&nbsp;</td></tr></table></td><td style="padding:5px 0 5px 8px;font-size:12px;white-space:nowrap;text-align:right"><b>${pc.toFixed(1)}%</b> · ${fmt(x.pz)} pzas · ${fmt(x.b)} bultos</td></tr>`}).join('')})()}</table>
   <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Resumen por tienda</div>
   <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Tienda</th><th ${thn}>Transferencias</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.st.map(s=>`<tr><td ${td}><b>${esc(LN(s.t))}</b></td><td ${tdn}>${s.tf}</td><td ${tdn}>${fmt(s.b)}</td><td ${tdn}>${fmt(s.pz)}</td></tr>`).join('')}<tr><td ${td}><b>TOTAL</b></td><td ${tdn}><b>${c.tf.length}</b></td><td ${tdn}><b>${fmt(c.tb)}</b></td><td ${tdn}><b>${fmt(c.tp)}</b></td></tr></table>
   <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Detalle por transferencia</div>
@@ -2734,6 +2709,56 @@ async function embReady(e){const c=embCalc(e);
   for(const [i,x] of c.cams.entries()){if(!x.chofer||!x.placa)return`El camión ${i+1} necesita chofer y placa.`;if(!x.pals.length)return`El camión ${i+1} no tiene palets cargados.`;x.pals.forEach(pl=>Object.assign(all,pl.tfs))}
   const d=await palDeficit(all);if(d.length)return'Hay transferencias con bultos que no están en ningún palet:\n'+await missLines(d.map(x=>x.k));
   return''}
+// ---------- Portal del comprador (solo lectura) ----------
+// Publica cada packing list despachado/recibido en meta_v1/comprador/{token}/idx|pl. El token es único y se reutiliza (meta_v1/comprador_cfg/token).
+const CMPB='meta_v1/comprador',CMPLOG={},cmpBusy=new Set();let CMPTOK=null;
+async function cmpTok(){if(CMPTOK)return CMPTOK;let t=null;try{t=(await get(R(db,'meta_v1/comprador_cfg/token'))).val()}catch(e){}
+  if(!t){t=Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>'abcdefghijklmnopqrstuvwxyz0123456789'[b%36]).join('');await set(R(db,'meta_v1/comprador_cfg/token'),t)}
+  return CMPTOK=t}
+const cmpUrl=t=>new URL('comprador.html',location.href).href+'#'+t;
+async function cmpCopy(msg){const url=cmpUrl(await cmpTok());try{await navigator.clipboard.writeText(url);toast(msg||'✅ Link del comprador copiado')}catch(e){prompt('Link para el comprador (cópialo y reenvíalo):',url)}}
+function cmpRc(e,strict){if(e.rcv)return e.rcv;if(!e.desp)return null;const ps=embCalc(e).cams.flatMap(c=>c.pals);if(!ps.length)return null;let ts=0,by='';
+  for(const pl of ps){const p=PM[pl.id];if(!p)return strict?undefined:null;const r=p.rcv;if(!r)return null;if((r.ts||0)>=ts){ts=r.ts||0;by=r.by||''}}return{ts,by}}
+function cmpSt(e,strict){if(!e||!e.desp)return'';const r=cmpRc(e,strict);return r===undefined?undefined:r?'R':'D'}
+async function cmpLines(rec){const c=CMPLOG[rec];if(c&&Date.now()-c.at<60000)return c;
+  let log={};try{log=(await get(R(db,`meta_v1/consultas/${rec}/log`))).val()||{}}catch(e){}
+  const by={};try{for(const x of dataOf(rec))by[x.p]=x}catch(e){}
+  const g={};for(const v of Object.values(log)){if((v.au&&!v.tr)||v.mir)continue;const k=v.t+'_'+(v.tr||'sin');(g[k]=g[k]||[]).push(v)}
+  return CMPLOG[rec]={at:Date.now(),by,g}}
+async function cmpBuild(eid,e){
+  const c=embCalc(e),rc=cmpRc(e),st=rc?'R':'D',T={};
+  c.cams.forEach((cm,ci)=>cm.pals.forEach(pl=>Object.entries(pl.tfs).forEach(([k,v])=>{const a=T[k]=T[k]||{k,t:v.t||'',tr:v.tr||'',N:v.N||0,b:0,pz:v.pz||0,cn:v.cn||'',cs:new Set(),ps:[]};a.b+=v.c||0;a.cs.add(ci+1);a.ps.push(pl.num)})));
+  const rows=[];
+  for(const a of Object.values(T)){
+    const base={t:L(a.t),tn:NAMES[a.t]||'',tr:a.tr,bt:a.b,N:a.N,pa:a.b<a.N?1:0,pl:[...new Set(a.ps)].join(', '),cm:[...a.cs].join(', ')};
+    const m=a.k.split('__');
+    if(m[0]==='CL'){rows.push({...base,rc:'',e:'',p:'',d:'Packing de cliente'+(a.cn?' · '+a.cn:''),u:'',q:Math.round(a.pz),pb:0,s:''});continue}
+    const rec=m[0],key=m.slice(1).join('__'),Lg=await cmpLines(rec),ents=Lg.g[key]||[];
+    if(!ents.length){rows.push({...base,rc:rec,e:'',p:'',d:'(sin detalle de productos)',u:'',q:Math.round(a.pz),pb:0,s:''});continue}
+    const ag={};for(const x of ents){const o=ag[x.p]=ag[x.p]||{q:0,us:{},r:x.r||''};o.q+=x.q||0;o.us[x.n||x.u||'']=1}
+    for(const [p,o] of Object.entries(ag)){const x=Lg.by[p]||{};rows.push({...base,rc:rec,e:x.ref||o.r||'',p:String(p),d:x.d||'',u:x.upc||'',q:o.q,pb:x.pb||0,s:Object.keys(o.us).filter(Boolean).join(', ')})}}
+  return{num:e.num,ts:(e.desp&&e.desp.ts)||0,st,rts:rc?rc.ts||0:0,rby:rc?rc.by||'':'',prep:e.n||e.u||'',dby:(e.desp&&(e.desp.n||e.desp.u))||'',np:c.np,tb:c.tb,tp:c.tp,tf:Object.keys(T).length,pub:Date.now(),
+    cams:c.cams.map((x,i)=>({n:i+1,chofer:x.chofer||'',placa:x.placa||'',np:x.pals.length,b:x.b||0,pz:x.pz||0,pals:x.pals.map(p=>p.num).join(', ')})),
+    stores:c.st.map(s=>({t:L(s.t),tn:NAMES[s.t]||'',tf:s.tf,b:s.b,pz:s.pz})),rows}}
+async function cmpPublish(eid,quiet){const e=EMB[eid];
+  if(!e||!e.desp){if(!quiet)toast('Solo se publican packing list despachados o recibidos');return false}
+  if(cmpBusy.has(eid))return false;cmpBusy.add(eid);
+  try{const tok=await cmpTok(),pl=await cmpBuild(eid,e);
+    const idx={num:pl.num,ts:pl.ts,st:pl.st,rts:pl.rts,nc:pl.cams.length,np:pl.np,tb:pl.tb,tp:pl.tp,tf:pl.tf,ns:pl.stores.length,pub:pl.pub};
+    await update(R(db,`${CMPB}/${tok}`),{[`idx/${eid}`]:idx,[`pl/${eid}`]:pl});
+    await set(R(db,`${PB}/emb/${eid}/cmp`),{st:pl.st,ts:pl.pub});return true}
+  catch(err){if(!quiet)toast('Error: '+(err.code||err.message));return false}
+  finally{cmpBusy.delete(eid)}}
+async function cmpRemove(eid){const e=EMB[eid];if(!e||!e.cmp)return;
+  if(!confirm(`¿Quitar ${e.num} del portal del comprador?`))return;
+  try{const tok=await cmpTok();await update(R(db,`${CMPB}/${tok}`),{[`idx/${eid}`]:null,[`pl/${eid}`]:null});await remove(R(db,`${PB}/emb/${eid}/cmp`));toast('Quitado del portal del comprador')}catch(err){toast('Error: '+(err.code||err.message))}}
+async function cmpAll(){const L0=Object.entries(EMB).filter(([,e])=>e&&e.desp);if(!L0.length){toast('No hay packing list despachados');return}
+  if(!confirm(`¿Publicar ${L0.length} packing list (despachados y recibidos) en el portal del comprador?`))return;
+  let ok=0;for(const [id] of L0){toast(`Publicando ${ok+1} de ${L0.length}…`);if(await cmpPublish(id,true))ok++}
+  await cmpCopy(`✅ ${ok} de ${L0.length} publicados · link copiado`)}
+function cmpBar(D){if(!ISADM)return'';const n=D.filter(([id,e])=>e.cmp).length;
+  return `<div class="card" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="msg" style="margin:0;flex:1;min-width:150px">🛒 Comprador: <b>${n}</b> de ${D.length} publicados</span><button class="btn sm pri" data-ecmpall="1">Publicar todos</button><button class="btn sm" data-ecmplink="1">🔗 Copiar link</button></div>`}
+function cmpSync(){if(!ISADM)return;for(const [id,e] of Object.entries(EMB)){if(!e||!e.cmp||!e.desp||cmpBusy.has(id))continue;const s=cmpSt(e,true);if(s!==undefined&&e.cmp.st!==s)cmpPublish(id,true)}}
 function embPrint(id){const e=EMB[id],w=window.open('','_blank');if(!w){toast('Permite ventanas emergentes para imprimir');return}
   w.document.write(`<!doctype html><meta charset="utf-8"><title>${esc(e.num)}</title><body style="margin:20px">${embHTML(e)}</body>`);w.document.close();w.focus();setTimeout(()=>w.print(),400)}
 async function embMail(id){
@@ -2820,12 +2845,12 @@ function renderPal(){
   $('embDone').innerHTML=(()=>{if(pklTab==='n')return'';const D=pklTab==='r'?eRc:eD;if(!D.length)return `<div class="msg">${pklTab==='r'?'Aún no hay packing list recibidos.':'Aún no hay packing list despachados.'}</div>`;
     if(!D.some(([id])=>id===pklSel))pklSel=null;
     const grid=`<div class="pgrid">`+D.map(([id,e])=>{const c=embCalc(e),rc=embRc(e);return `<div class="ptl ${rc?'r':'d'}${pklSel===id?' sel':''}" data-pk="${id}"><div class="hd"><b>${esc(e.num)}</b><small>${rc?'📥 '+esc(rc.by||'Recibido'):'🚚 Despachado'}</small></div><div class="bd"><div style="font:800 24px 'Inter',sans-serif">${c.np}</div><div style="opacity:.8">palets</div><div style="margin-top:6px;font-size:11.5px">${c.cams.length} camión(es) · ${fmt(c.tb)} bultos</div><div style="margin-top:4px;font-size:11px;opacity:.85">${fdt(rc&&rc.ts?rc.ts:e.desp.ts)}</div></div></div>`}).join('')+`</div>`;
-    return grid+D.filter(([id])=>id===pklSel).map(([id,e])=>{const c=embCalc(e);
+    return cmpBar(D)+grid+D.filter(([id])=>id===pklSel).map(([id,e])=>{const c=embCalc(e);
       return `<details class="card" data-ek="${id}" ${embOpenSet.has(id)?'open':''}><summary>✅ ${esc(e.num)} <span class="pill p-ok" style="margin-left:6px">${embRc(e)?'Recibido':'Despachado'}</span> <span class="msg" style="margin:0">· ${fdt(e.desp.ts)}</span></summary>
       <div class="msg">Preparó ${esc(e.n||e.u||'')} · Despachó <b>${esc(e.desp.n||e.desp.u||'')}</b> · ${fdt(e.desp.ts)}${e.mail?' · correo enviado a '+esc(e.mail.to||''):''}</div>
       ${c.cams.map((x,i)=>`<div class="crow"><b>Camión ${i+1} · ${esc(x.chofer||'—')} · ${esc(x.placa||'—')}</b> <span class="msg" style="margin:0">${x.pals.length} palets · ${fmt(x.b)} bultos · ${fmt(x.pz)} pzas</span><div class="msg" style="margin:4px 0 0">${x.pals.map(pl=>esc(pl.num)).join(' · ')}</div></div>`).join('')}
       ${c.st.length?`<div class="scroll"><table><tr><th>Tienda</th><th class="n">Transf.</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${c.st.map(s=>`<tr><td>${esc(LN(s.t))}</td><td class="n">${s.tf}</td><td class="n">${fmt(s.b)}</td><td class="n">${fmt(s.pz)}</td></tr>`).join('')}<tr><td><b>TOTAL</b></td><td class="n"><b>${c.tf.length}</b></td><td class="n"><b>${fmt(c.tb)}</b></td><td class="n"><b>${fmt(c.tp)}</b></td></tr></table></div>`:''}
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button><button class="btn sm" data-email="${id}">✉ Reenviar correo</button>${ISADM?`<button class="btn sm" data-eundesp="${id}">↩ Revertir despacho</button>`:''}</div></details>`}).join('')})();
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button><button class="btn sm" data-email="${id}">✉ Reenviar correo</button>${ISADM?`<button class="btn sm" data-ecmp="${id}">🛒 Comprador${e.cmp?' ✓':''}</button>${e.cmp?`<button class="btn sm" data-ecmpx="${id}">⛔ Quitar</button>`:''}`:''}${ISADM?`<button class="btn sm" data-eundesp="${id}">↩ Revertir despacho</button>`:''}</div></details>`}).join('')})();
   $('embList').innerHTML=pklTab!=='n'?'':embSorted.filter(([id,e])=>!e.desp).map(([id,e])=>{const c=embCalc(e),env=e.st==='enviado';
     return `<details class="card" data-ek="${id}" ${embOpenSet.has(id)?'open':''}><summary>🚛 ${esc(e.num)} <span class="pill p-aq" style="margin-left:6px">${c.cams.length} camión(es) · ${c.np} palets · ${c.tb} bultos</span> ${env?'<span class="pill p-ok">Enviado</span>':e.comp?'<span class="pill p-bl">Completado</span>':'<span class="pill p-wn">En armado</span>'}</summary>
     <div class="msg">${esc(e.n||e.u||'')} · ${fdt(e.ts)}</div>
@@ -2835,6 +2860,7 @@ function renderPal(){
       ${x.pals.map(pl=>`<div class="prow" style="justify-content:space-between"><span class="tv">Palet ${pl.pos} (${esc(pl.num)}${pl.g?' · PL GP #'+esc(String(pl.g)):''})</span><span class="msg" style="margin:0">${pStores(pl).map(s=>esc(L(s.t))+' '+s.b).join(' · ')}</span>${(env||e.comp)?'':`<button class="btn sm" data-erm="${id}|${x.cid}|${pl.id}">✕</button>`}</div>`).join('')}</div>`).join('')}
     ${c.st.length?`<div class="scroll"><table><tr><th>Tienda</th><th class="n">Transf.</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${c.st.map(s=>`<tr><td>${esc(LN(s.t))}</td><td class="n">${s.tf}</td><td class="n">${fmt(s.b)}</td><td class="n">${fmt(s.pz)}</td></tr>`).join('')}<tr><td><b>TOTAL</b></td><td class="n"><b>${c.tf.length}</b></td><td class="n"><b>${fmt(c.tb)}</b></td><td class="n"><b>${fmt(c.tp)}</b></td></tr></table></div>`:''}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${(env||e.comp)?'':`<button class="btn sm" data-ecn="${id}">🚛 Camiones: ${c.cams.length}</button><button class="btn pri sm" data-ecomp="${id}">✔ Completar packing list</button>`}${(e.comp&&!env)?`<button class="btn sm" data-eopen="${id}">↩ Reabrir packing list</button>`:''}${e.comp?`<button class="btn pri sm" data-edesp="${id}">🚚 Despachar</button>`:''}<button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button>${(e.comp||env)?`<button class="btn pri sm" data-email="${id}">✉ ${env?'Reenviar':'Enviar'} correo</button>`:''}${ISADM&&!env&&!e.desp?`<button class="btn sm" data-edel="${id}">🗑 Eliminar</button>`:''}</div></details>`}).join('')||`<div class="msg">${embSorted.length?'No hay packing list en curso.':'Aún no hay embarques.'}</div>`;
+  cmpSync();
   if(keepScan){const i=document.querySelector(`[data-escan="${keepScan}"]`);if(i)i.focus();keepScan=null}
 }
 function openPalView(w){$('v-rec').classList.add('hide');$('v-recibo').classList.add('hide');$('btnPal').classList.toggle('hide',w!=='pkl');$('btnPkl').classList.toggle('hide',w!=='pal');$('btnRecBack').classList.toggle('hide',!PALBACK);$('v-pal').classList.toggle('hide',w!=='pal');$('v-pkl').classList.toggle('hide',w!=='pkl');$('btnHome').classList.remove('hide');$('ttl').textContent=w==='pal'?'Palets':'Packing list';window.scrollTo(0,0);startPal();renderPal()}
@@ -2989,6 +3015,10 @@ $('palwrap').addEventListener('click',async e=>{
   const a=e.target.closest('[data-eadd]');if(a){addCam(a.dataset.eadd);return}
   const pr=e.target.closest('[data-eprint]');if(pr){embPrint(pr.dataset.eprint);return}
   const m=e.target.closest('[data-email]');if(m){embMail(m.dataset.email);return}
+  const cp=e.target.closest('[data-ecmp]');if(cp){if(await cmpPublish(cp.dataset.ecmp))await cmpCopy('✅ Publicado · link del comprador copiado');return}
+  const cx=e.target.closest('[data-ecmpx]');if(cx){cmpRemove(cx.dataset.ecmpx);return}
+  const ca=e.target.closest('[data-ecmpall]');if(ca){cmpAll();return}
+  const cl=e.target.closest('[data-ecmplink]');if(cl){cmpCopy();return}
   const rm=e.target.closest('[data-erm]');if(rm){const [eid,cid,pid]=rm.dataset.erm.split('|');if(embLocked(EMB[eid]))return;try{await update(R(db,PB),{[`pm/${pid}/emb`]:null,[`emb/${eid}/cam/${cid}/pal/${pid}`]:null});toast('Palet descargado del camión')}catch(err){toast('Error: '+(err.code||err.message))}return}
   const d=e.target.closest('[data-edel]');if(d){const id=d.dataset.edel;if(!confirm('¿Eliminar este embarque? Sus palets quedan libres.'))return;const up={[`emb/${id}`]:null};Object.entries(PM).forEach(([pid,p])=>{if(p.emb&&p.emb.e===id)up[`pm/${pid}/emb`]=null});try{await update(R(db,PB),up);toast('Embarque eliminado')}catch(err){toast('Error: '+(err.code||err.message))}}
 });
