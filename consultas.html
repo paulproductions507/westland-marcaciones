@@ -2725,20 +2725,29 @@ async function cmpLines(rec){const c=CMPLOG[rec];if(c&&Date.now()-c.at<60000)ret
   const by={};try{for(const x of dataOf(rec))by[x.p]=x}catch(e){}
   const g={};for(const v of Object.values(log)){if((v.au&&!v.tr)||v.mir)continue;const k=v.t+'_'+(v.tr||'sin');(g[k]=g[k]||[]).push(v)}
   return CMPLOG[rec]={at:Date.now(),by,g}}
+const CMPTY={AUTO:'Automático',TUNEL:'Túnel',PROFORMAS:'Proforma'};
+// Proveedor de cada producto: del recibo real que lo contiene (el más reciente). Sirve para automático/túnel/proformas, que no tienen recibo propio.
+async function cmpProvMap(){const real=Object.keys(RECS).filter(id=>!isPs(id));
+  const miss=real.filter(id=>!PROV[id]&&!provTried.has(id));
+  if(miss.length){miss.forEach(id=>provTried.add(id));try{const r=await findProv(miss);for(const [id,n] of Object.entries(r.found))PROV[id]=n}catch(e){}}
+  const pp={};real.sort((a,b)=>b.localeCompare(a,'es',{numeric:true}));
+  for(const id of real){if(!PROV[id])continue;let it=[];try{it=RECS[id].items||[]}catch(e){}for(const x of it){const k=String(x.p);if(!(k in pp))pp[k]=PROV[id]}}
+  return pp}
 async function cmpBuild(eid,e){
-  const c=embCalc(e),rc=cmpRc(e),st=rc?'R':'D',T={};
-  c.cams.forEach((cm,ci)=>cm.pals.forEach(pl=>Object.entries(pl.tfs).forEach(([k,v])=>{const a=T[k]=T[k]||{k,t:v.t||'',tr:v.tr||'',N:v.N||0,b:0,pz:v.pz||0,cn:v.cn||'',cs:new Set(),ps:[]};a.b+=v.c||0;a.cs.add(ci+1);a.ps.push(pl.num)})));
+  const c=embCalc(e),rc=cmpRc(e),st=rc?'R':'D',T={},pp=await cmpProvMap();
+  c.cams.forEach((cm,ci)=>cm.pals.forEach(pl=>Object.entries(pl.tfs).forEach(([k,v])=>{const a=T[k]=T[k]||{k,t:v.t||'',tr:v.tr||'',N:v.N||0,b:0,pz:v.pz||0,cn:v.cn||''};a.b+=v.c||0})));
   const rows=[];
   for(const a of Object.values(T)){
-    const base={t:L(a.t),tn:NAMES[a.t]||'',tr:a.tr,bt:a.b,N:a.N,pa:a.b<a.N?1:0,pl:[...new Set(a.ps)].join(', '),cm:[...a.cs].join(', ')};
+    const base={t:L(a.t),tn:NAMES[a.t]||'',tr:a.tr,bt:a.b,N:a.N,pa:a.b<a.N?1:0};
     const m=a.k.split('__');
-    if(m[0]==='CL'){rows.push({...base,rc:'',e:'',p:'',d:'Packing de cliente'+(a.cn?' · '+a.cn:''),u:'',q:Math.round(a.pz),pb:0,s:''});continue}
-    const rec=m[0],key=m.slice(1).join('__'),Lg=await cmpLines(rec),ents=Lg.g[key]||[];
-    if(!ents.length){rows.push({...base,rc:rec,e:'',p:'',d:'(sin detalle de productos)',u:'',q:Math.round(a.pz),pb:0,s:''});continue}
-    const ag={};for(const x of ents){const o=ag[x.p]=ag[x.p]||{q:0,us:{},r:x.r||''};o.q+=x.q||0;o.us[x.n||x.u||'']=1}
-    for(const [p,o] of Object.entries(ag)){const x=Lg.by[p]||{};rows.push({...base,rc:rec,e:x.ref||o.r||'',p:String(p),d:x.d||'',u:x.upc||'',q:o.q,pb:x.pb||0,s:Object.keys(o.us).filter(Boolean).join(', ')})}}
+    if(m[0]==='CL'){rows.push({...base,ty:'Cliente',rc:'',v:'Cristal clientes',e:'',p:'',d:'Packing de cliente'+(a.cn?' · '+a.cn:''),u:'',q:Math.round(a.pz)});continue}
+    const rec=m[0],key=m.slice(1).join('__'),Lg=await cmpLines(rec),ents=Lg.g[key]||[],ty=CMPTY[rec]||'Recibo',ps=isPs(rec),rcn=ps?'':rec;
+    if(!ents.length){rows.push({...base,ty,rc:rcn,v:ps?'Sin proveedor':(PROV[rec]||'Sin proveedor'),e:'',p:'',d:'(sin detalle de productos)',u:'',q:Math.round(a.pz)});continue}
+    const ag={};for(const x of ents){const o=ag[x.p]=ag[x.p]||{q:0,r:x.r||''};o.q+=x.q||0}
+    for(const [p,o] of Object.entries(ag)){const x=Lg.by[p]||{};
+      rows.push({...base,ty,rc:rcn,v:(ps?pp[String(p)]:(PROV[rec]||pp[String(p)]))||'Sin proveedor',e:x.ref||o.r||'',p:String(p),d:x.d||'',u:x.upc||'',q:o.q})}}
   return{num:e.num,ts:(e.desp&&e.desp.ts)||0,st,rts:rc?rc.ts||0:0,rby:rc?rc.by||'':'',prep:e.n||e.u||'',dby:(e.desp&&(e.desp.n||e.desp.u))||'',np:c.np,tb:c.tb,tp:c.tp,tf:Object.keys(T).length,pub:Date.now(),
-    cams:c.cams.map((x,i)=>({n:i+1,chofer:x.chofer||'',placa:x.placa||'',np:x.pals.length,b:x.b||0,pz:x.pz||0,pals:x.pals.map(p=>p.num).join(', ')})),
+    cams:c.cams.map((x,i)=>({n:i+1,b:x.b||0,pz:x.pz||0})),
     stores:c.st.map(s=>({t:L(s.t),tn:NAMES[s.t]||'',tf:s.tf,b:s.b,pz:s.pz})),rows}}
 async function cmpPublish(eid,quiet){const e=EMB[eid];
   if(!e||!e.desp){if(!quiet)toast('Solo se publican packing list despachados o recibidos');return false}

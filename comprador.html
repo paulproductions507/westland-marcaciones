@@ -5,72 +5,69 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Packing list · Comprador</title>
 <style>
-:root{--teal:#0f9d9a;--teal2:#0b7f7c;--ink:#12302f;--mt:#5f7b7a;--bg:#f1f7f7;--card:#fff;--bd:#d6e6e5;--zb:#f7fbfb;--amb:#e8a317;--ok:#1b9b5a}
+:root{--pet:#0b4a52;--pet2:#073a43;--pet3:#0e6470;--ink:#0f2a2e;--mt:#5b7479;--bg:#eef4f5;--card:#fff;--bd:#d3e2e4;--zb:#f5f9fa;--soft:#e1eeef}
 *{box-sizing:border-box}
 body{margin:0;font:14px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink)}
-header{background:linear-gradient(135deg,var(--teal),var(--teal2));color:#fff;padding:20px 16px 44px}
+header{background:linear-gradient(135deg,var(--pet),var(--pet2));color:#fff;padding:20px 16px 46px}
 .hin{max-width:1280px;margin:0 auto}
 header h1{margin:0;font-size:21px;letter-spacing:.2px}
-header .sub{opacity:.92;font-size:12.5px;margin-top:4px}
-.wrap{max-width:1280px;margin:-30px auto 0;padding:0 12px 24px}
-.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 2px 10px #0f9d9a12}
-.card h2{margin:0 0 10px;font-size:15px;color:var(--teal2);text-transform:uppercase;letter-spacing:.6px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
-.kpi{background:var(--zb);border:1px solid var(--bd);border-top:4px solid var(--teal);border-radius:10px;padding:10px 12px}
-.kpi b{display:block;font-size:22px;color:var(--teal2)}.kpi span{font-size:11px;color:var(--mt);text-transform:uppercase;letter-spacing:.5px}
+header .sub{opacity:.9;font-size:12.5px;margin-top:4px}
+.wrap{max-width:1280px;margin:-32px auto 0;padding:0 12px 24px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 2px 10px #0b4a5214}
+.card h2{margin:0 0 10px;font-size:14px;color:var(--pet);text-transform:uppercase;letter-spacing:.7px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.kpi{background:var(--zb);border:1px solid var(--bd);border-top:4px solid var(--pet);border-radius:10px;padding:10px 12px}
+.kpi b{display:block;font-size:22px;color:var(--pet)}.kpi span{font-size:11px;color:var(--mt);text-transform:uppercase;letter-spacing:.5px}
+.info{font-size:12.5px;color:var(--mt);margin-top:10px}
 .tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .tools input,.tools select{font:inherit;border:1px solid var(--bd);border-radius:9px;padding:8px 10px;background:#fff;color:var(--ink);min-width:0}
 .tools input[type=search]{flex:1 1 220px}.tools select{flex:1 1 140px}.tools input[type=number]{width:105px}
-.btn{font:inherit;font-weight:700;border:0;border-radius:9px;padding:9px 14px;cursor:pointer;background:var(--teal);color:#fff}
-.btn.sec{background:#e3f1f0;color:var(--teal2)}
+.btn{font:inherit;font-weight:700;border:0;border-radius:9px;padding:9px 14px;cursor:pointer;background:var(--pet);color:#fff}
+.btn.sec{background:var(--soft);color:var(--pet)}.btn:disabled{opacity:.6}
 .chip{display:inline-block;border-radius:99px;padding:2px 10px;font-weight:700;font-size:12px;white-space:nowrap}
-.chip.D{background:#fff3d6;color:#8a5a00}.chip.R{background:#dcf5e8;color:#0e6b3c}.chip.T{background:#e3f1f0;color:var(--teal2)}.chip.P{background:#ffe5e2;color:#a3261b}
+.chip.D{background:#fff3d6;color:#8a5a00}.chip.R{background:#dcf5e8;color:#0e6b3c}
+.chip.T{background:var(--soft);color:var(--pet)}.chip.pa{background:#ffe5e2;color:#a3261b;margin-left:6px}
+.ty{background:var(--soft);color:var(--pet)}.ty.A{background:#fff3d6;color:#8a5a00}.ty.U{background:#dfeafc;color:#1c4a8a}.ty.P{background:#efe3fa;color:#5b2a86}.ty.C{background:#fde6ee;color:#8b1f4a}
 .lst{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
 .pl{background:var(--card);border:1px solid var(--bd);border-radius:14px;overflow:hidden;cursor:pointer;transition:.15s}
-.pl:hover{transform:translateY(-2px);box-shadow:0 6px 18px #0f9d9a28}
-.pl .hd{background:linear-gradient(135deg,var(--teal),var(--teal2));color:#fff;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
+.pl:hover{transform:translateY(-2px);box-shadow:0 6px 18px #0b4a5230}
+.pl .hd{background:linear-gradient(135deg,var(--pet),var(--pet2));color:#fff;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
 .pl .hd b{font-size:17px}
 .pl .bd{padding:10px 12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
-.pl .bd b{display:block;font-size:17px;color:var(--teal2)}.pl .bd span{font-size:10.5px;color:var(--mt);text-transform:uppercase}
+.pl .bd b{display:block;font-size:17px;color:var(--pet)}.pl .bd span{font-size:10.5px;color:var(--mt);text-transform:uppercase}
 .pl .ft{padding:0 12px 10px;font-size:12px;color:var(--mt)}
 .back{background:none;border:0;color:#fff;font:inherit;font-weight:700;cursor:pointer;padding:0 0 8px;opacity:.95}
-.tw{overflow:auto;border:1px solid var(--bd);border-radius:12px;max-height:62vh}
-table{border-collapse:separate;border-spacing:0;width:100%}
-th{position:sticky;top:0;background:var(--teal);color:#fff;text-align:left;padding:10px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;cursor:pointer;user-select:none}
+.tw{overflow:auto;border:1px solid var(--bd);border-radius:12px;max-height:64vh}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:980px}
+th{position:sticky;top:0;background:var(--pet);color:#fff;text-align:left;padding:10px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;cursor:pointer;user-select:none}
 th.n,td.n{text-align:right}
 td{padding:8px 10px;border-top:1px solid var(--bd);vertical-align:top}
-tbody tr:nth-child(even) td{background:var(--zb)}tbody tr:hover td{background:#e8f6f5}
-tfoot td{background:#e3f1f0!important;font-weight:800;position:sticky;bottom:0}
+tbody tr:nth-child(even) td{background:var(--zb)}tbody tr:hover td{background:#e3f0f1}
+tfoot td{background:var(--soft)!important;font-weight:800;position:sticky;bottom:0}
 .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
-.sb{display:grid;grid-template-columns:130px 1fr 190px;gap:10px;align-items:center;padding:5px 0}
-.sb .tr{background:#e3efee;border-radius:99px;height:16px;overflow:hidden}.sb .tr i{display:block;height:100%;background:linear-gradient(90deg,#14b8b3,var(--teal2));border-radius:99px}
-.sb .lb{font-weight:700}.sb .vl{font-size:12.5px;text-align:right;color:var(--mt)}.sb .vl b{color:var(--ink)}
+.sp{color:var(--mt);font-style:italic}
+.sb{display:grid;grid-template-columns:150px 1fr 210px;gap:10px;align-items:center;padding:5px 0}
+.sb .tr{background:#dfeced;border-radius:99px;height:15px;overflow:hidden}.sb .tr i{display:block;height:100%;background:linear-gradient(90deg,var(--pet3),var(--pet));border-radius:99px}
+.sb .lb{font-weight:700;overflow:hidden;text-overflow:ellipsis}.sb .vl{font-size:12.5px;text-align:right;color:var(--mt)}.sb .vl b{color:var(--ink)}
 .msg{padding:36px 14px;text-align:center;color:var(--mt)}.err{color:#b3261e}
 .cnt{font-size:12.5px;color:var(--mt);margin:8px 2px}
 footer{color:var(--mt);font-size:11.5px;text-align:center;padding:10px}
 .hide{display:none!important}
-@media(max-width:640px){.sb{grid-template-columns:90px 1fr;}.sb .vl{grid-column:1/-1;text-align:left}}
-@media print{
-  @page{size:landscape;margin:10mm}
-  body{background:#fff}header{padding:10px 12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}.wrap{margin:0;padding:0}
-  .noprint,.back,.tools{display:none!important}
-  .card{box-shadow:none;break-inside:avoid-page}.tw{max-height:none!important;overflow:visible!important;border:0}
-  th{position:static;-webkit-print-color-adjust:exact;print-color-adjust:exact}tfoot td{position:static}
-  .kpi,.sb .tr i,.chip{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  table{font-size:11px}td,th{padding:5px 6px}
-}
+@media(max-width:640px){.sb{grid-template-columns:100px 1fr}.sb .vl{grid-column:1/-1;text-align:left}}
 </style>
 </head>
 <body>
 <header><div class="hin">
-  <button class="back hide noprint" id="bk">← Todos los packing list</button>
+  <button class="back hide" id="bk">← Todos los packing list</button>
   <h1 id="ttl">Packing list a tiendas</h1>
   <div class="sub" id="sub">Cargando…</div>
 </div></header>
 <div class="wrap"><div id="app"><div class="card msg">Cargando…</div></div></div>
-<footer class="noprint">Vista de solo lectura · Westland</footer>
+<footer>Vista de solo lectura · Westland</footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import{getAuth,signInAnonymously}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
@@ -83,32 +80,19 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const fmt=n=>Number(n||0).toLocaleString('en-US');
 const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const fdt=ts=>ts?new Date(ts).toLocaleString('es',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
-const ST={D:'Despachado',R:'Recibido'};
+const ST={D:'Despachado',R:'Recibido'},SP='Sin proveedor';
+const tyCls=t=>({'Automático':'A','Túnel':'U','Proforma':'P','Cliente':'C'}[t]||'');
 
-let db,TOK='',IDX={},PL=null,CUR='',ROWS=[],VIEW=[],SORT={k:'t',d:1};
+let db,TOK='',IDX={},PL=null,ROWS=[],VIEW=[],SORT={k:'t',d:1},BUSY=false;
 
 const COLS=[
- {k:'t',h:'Tienda',f:r=>r.t+(r.tn?' · '+r.tn:'')},
- {k:'tr',h:'Transferencia'},
- {k:'cm',h:'Camión'},
- {k:'pl',h:'Palet'},
- {k:'e',h:'Estilo'},
- {k:'p',h:'Producto',mono:1},
- {k:'d',h:'Descripción'},
- {k:'u',h:'Código barras',mono:1},
- {k:'q',h:'Piezas',n:1},
- {k:'bt',h:'Bultos',n:1,f:r=>r.bt+(r.pa?' de '+r.N:'')},
- {k:'rc',h:'Recibo'},
- {k:'s',h:'Surtidor'}
+ {k:'t',h:'Tienda'},{k:'tr',h:'Transferencia'},{k:'ty',h:'Tipología'},{k:'rc',h:'Recibo'},{k:'v',h:'Proveedor'},
+ {k:'e',h:'Estilo'},{k:'p',h:'Producto',mono:1},{k:'d',h:'Descripción'},{k:'u',h:'Código barras',mono:1},{k:'q',h:'Piezas',n:1}
 ];
+const norm1=r=>({...r,ty:r.ty||'Recibo',v:r.v||SP,rc:r.rc||''});
 
-function route(){
-  const [t,id]=location.hash.slice(1).split('/');
-  if(t!==TOK&&TOK)return;
-  id?openPL(id):showList();
-}
 window.addEventListener('hashchange',()=>{if(TOK)route()});
-
+function route(){const [t,id]=location.hash.slice(1).split('/');if(t!==TOK)return;id?openPL(id):showList()}
 function fail(m){$('bk').classList.add('hide');$('sub').textContent='';$('app').innerHTML=`<div class="card msg err"><b>${esc(m)}</b><br><span style="color:var(--mt)">Pide que te reenvíen el enlace.</span></div>`}
 
 async function init(){
@@ -124,27 +108,25 @@ async function init(){
   }catch(e){fail('No se pudo abrir ('+(e.code||e.message)+')')}
 }
 
-/* ---------- LISTA ---------- */
+/* ---------- LISTA (más reciente arriba) ---------- */
 function showList(){
-  PL=null;CUR='';
-  $('bk').classList.add('hide');$('ttl').textContent='Packing list a tiendas';
+  PL=null;$('bk').classList.add('hide');$('ttl').textContent='Packing list a tiendas';
   const all=Object.entries(IDX).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
-  $('sub').textContent=`${all.length} packing list disponibles · elige uno para ver el detalle`;
-  const tp=all.reduce((a,[,v])=>a+(v.tp||0),0),tb=all.reduce((a,[,v])=>a+(v.tb||0),0);
+  $('sub').textContent=`${all.length} packing list · ordenados por fecha de despacho, el más reciente primero`;
+  const tp=all.reduce((a,[,v])=>a+(v.tp||0),0);
   $('app').innerHTML=`<div class="card"><div class="kpis">
       <div class="kpi"><b>${fmt(all.length)}</b><span>Packing list</span></div>
       <div class="kpi"><b>${fmt(all.filter(([,v])=>v.st==='R').length)}</b><span>Recibidos</span></div>
-      <div class="kpi"><b>${fmt(all.filter(([,v])=>v.st!=='R').length)}</b><span>Despachados (en tránsito)</span></div>
-      <div class="kpi"><b>${fmt(tb)}</b><span>Bultos</span></div>
+      <div class="kpi"><b>${fmt(all.filter(([,v])=>v.st!=='R').length)}</b><span>En tránsito</span></div>
       <div class="kpi"><b>${fmt(tp)}</b><span>Piezas</span></div></div></div>
     <div class="card"><div class="tools"><input type="search" id="lq" placeholder="Buscar packing list…">
       <select id="ls"><option value="">Todos los estados</option><option value="D">Despachado</option><option value="R">Recibido</option></select></div></div>
     <div class="lst" id="lst"></div>`;
   const draw=()=>{const q=norm($('lq').value),s=$('ls').value;
     const r=all.filter(([,v])=>(!s||(v.st==='R'?'R':'D')===s)&&(!q||norm(v.num).includes(q)));
-    $('lst').innerHTML=r.map(([id,v])=>`<div class="pl" data-id="${esc(id)}"><div class="hd"><b>${esc(v.num)}</b><span class="chip ${v.st==='R'?'R':'D'}">${v.st==='R'?'📥 Recibido':'🚚 Despachado'}</span></div>
-      <div class="bd"><div><b>${fmt(v.tb)}</b><span>Bultos</span></div><div><b>${fmt(v.tp)}</b><span>Piezas</span></div><div><b>${fmt(v.ns)}</b><span>Tiendas</span></div></div>
-      <div class="ft">${fmt(v.nc)} camión(es) · ${fmt(v.np)} palets · ${fmt(v.tf)} transf.<br>Despachado ${fdt(v.ts)}${v.st==='R'?'<br>Recibido '+fdt(v.rts):''}</div></div>`).join('')||'<div class="card msg">Sin resultados</div>'};
+    $('lst').innerHTML=r.map(([id,v])=>`<div class="pl" data-id="${esc(id)}"><div class="hd"><b>${esc(v.num)}</b><span class="chip ${v.st==='R'?'R':'D'}">${v.st==='R'?'Recibido':'Despachado'}</span></div>
+      <div class="bd"><div><b>${fmt(v.tp)}</b><span>Piezas</span></div><div><b>${fmt(v.ns)}</b><span>Tiendas</span></div><div><b>${fmt(v.tf)}</b><span>Transf.</span></div></div>
+      <div class="ft">Despachado ${fdt(v.ts)}${v.st==='R'?'<br>Recibido '+fdt(v.rts):''}</div></div>`).join('')||'<div class="card msg">Sin resultados</div>'};
   $('lq').oninput=draw;$('ls').onchange=draw;draw();
   $('lst').onclick=e=>{const c=e.target.closest('.pl');if(c)location.hash=TOK+'/'+c.dataset.id};
 }
@@ -154,69 +136,185 @@ async function openPL(id){
   $('app').innerHTML='<div class="card msg">Cargando packing list…</div>';
   try{const v=(await get(ref(db,`${CMPB}/${TOK}/pl/${id}`))).val();
     if(!v){fail('Ese packing list ya no está disponible');return}
-    PL=v;CUR=id;ROWS=Object.values(v.rows||{});SORT={k:'t',d:1};paintPL()}
+    PL=v;ROWS=Object.values(v.rows||{}).map(norm1);SORT={k:'t',d:1};paintPL()}
   catch(e){fail('No se pudo abrir ('+(e.code||e.message)+')')}
 }
+const grp=(rows,f)=>{const o={};rows.forEach(r=>{const k=f(r),a=o[k]=o[k]||{k,q:0,l:0,rf:new Set()};a.q+=r.q||0;a.l++;if(r.p)a.rf.add(r.p)});return Object.values(o).sort((a,b)=>b.q-a.q)};
 
 function paintPL(){
-  const v=PL,rc=v.st==='R';
+  const v=PL,rc=v.st==='R',tp=Math.max(1,v.tp||0);
   $('bk').classList.remove('hide');$('bk').onclick=()=>{location.hash=TOK};
   $('ttl').textContent=`Packing list ${v.num}`;
   $('sub').textContent=`${ST[v.st]||'Despachado'} · despachado ${fdt(v.ts)}${rc?' · recibido '+fdt(v.rts):''}`;
-  const tp=Math.max(1,v.tp||0),refs=new Set(ROWS.map(r=>r.p).filter(Boolean)).size,parc=ROWS.filter(r=>r.pa).length;
+  const refs=new Set(ROWS.map(r=>r.p).filter(Boolean)).size,parc=new Set(ROWS.filter(r=>r.pa).map(r=>r.t+'|'+r.tr)).size;
   const opt=k=>[...new Set(ROWS.map(r=>r[k]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'es',{numeric:true}));
   const sel=(id,l,a)=>`<select id="${id}"><option value="">${l}</option>${a.map(x=>`<option>${esc(x)}</option>`).join('')}</select>`;
+  const byV=grp(ROWS,r=>r.v),byT=grp(ROWS,r=>r.ty);
   $('app').innerHTML=`
   <div class="card"><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <div><span class="chip ${rc?'R':'D'}">${rc?'📥 Recibido':'🚚 Despachado'}</span> <span style="color:var(--mt);font-size:12.5px;margin-left:6px">Preparó ${esc(v.prep||'—')} · Despachó ${esc(v.dby||'—')}${rc&&v.rby?' · Recibió '+esc(v.rby):''}</span></div>
-    <div class="noprint" style="display:flex;gap:8px"><button class="btn" id="xl">📥 Excel</button><button class="btn sec" id="pdf">🖨 PDF</button></div></div>
-    <div class="kpis">${[['Camiones',v.cams.length],['Palets',v.np],['Bultos',v.tb],['Piezas',v.tp],['Referencias',refs],['Tiendas',v.stores.length],['Transferencias',v.tf]].map(([l,n])=>`<div class="kpi"><b>${fmt(n)}</b><span>${l}</span></div>`).join('')}</div>
-    ${parc?`<div class="cnt" style="color:#a3261b">⚠ ${parc} línea(s) pertenecen a transferencias enviadas parcialmente en este packing list (se marcan “x de N” bultos). Las piezas mostradas son las de la transferencia completa.</div>`:''}</div>
+    <div><span class="chip ${rc?'R':'D'}">${rc?'Recibido':'Despachado'}</span></div>
+    <div style="display:flex;gap:8px"><button class="btn" id="xl">Excel</button><button class="btn sec" id="pdf">PDF</button></div></div>
+    <div class="kpis">${[['Piezas',v.tp],['Referencias',refs],['Tiendas',v.stores.length],['Transferencias',v.tf]].map(([l,n])=>`<div class="kpi"><b>${fmt(n)}</b><span>${l}</span></div>`).join('')}</div>
+    <div class="info">Informativo: ${fmt(v.tb)} bultos · ${fmt((v.cams||[]).length)} camión(es) · Preparó ${esc(v.prep||'—')} · Despachó ${esc(v.dby||'—')}${rc&&v.rby?' · Recibió '+esc(v.rby):''}</div>
+    ${parc?`<div class="info" style="color:#a3261b">${parc} transferencia(s) viajaron parcialmente en este packing list (marcadas “Parcial”); sus piezas son las de la transferencia completa.</div>`:''}</div>
 
-  <div class="card"><h2>Distribución por tienda</h2>${v.stores.map(s=>{const pc=(s.pz||0)/tp*100;return `<div class="sb"><div class="lb">${esc(s.t)}${s.tn?'<br><small style="color:var(--mt);font-weight:400">'+esc(s.tn)+'</small>':''}</div><div class="tr"><i style="width:${Math.max(1,pc).toFixed(1)}%"></i></div><div class="vl"><b>${pc.toFixed(1)}%</b> · ${fmt(s.pz)} pzas · ${fmt(s.b)} bultos · ${fmt(s.tf)} transf.</div></div>`}).join('')}</div>
+  <div class="card"><h2>Distribución por tienda</h2>${v.stores.map(s=>{const pc=(s.pz||0)/tp*100;return `<div class="sb"><div class="lb">${esc(s.t)}${s.tn?'<br><small style="color:var(--mt);font-weight:400">'+esc(s.tn)+'</small>':''}</div><div class="tr"><i style="width:${Math.max(1,pc).toFixed(1)}%"></i></div><div class="vl"><b>${pc.toFixed(1)}%</b> · ${fmt(s.pz)} pzas · ${fmt(s.tf)} transf.</div></div>`}).join('')}</div>
 
-  <div class="card"><h2>Camiones</h2><div class="tw" style="max-height:none"><table><thead><tr><th>Camión</th><th>Chofer</th><th>Placa</th><th>Palets</th><th class="n">Bultos</th><th class="n">Piezas</th></tr></thead><tbody>${v.cams.map(c=>`<tr><td>${c.n}</td><td>${esc(c.chofer||'—')}</td><td>${esc(c.placa||'—')}</td><td>${esc(c.pals||'')}<br><small style="color:var(--mt)">${c.np} palets</small></td><td class="n">${fmt(c.b)}</td><td class="n">${fmt(c.pz)}</td></tr>`).join('')}</tbody></table></div></div>
+  <div class="card"><h2>Por proveedor</h2>${byV.map(g=>{const pc=g.q/tp*100;return `<div class="sb"><div class="lb ${g.k===SP?'sp':''}">${esc(g.k)}</div><div class="tr"><i style="width:${Math.max(1,pc).toFixed(1)}%"></i></div><div class="vl"><b>${pc.toFixed(1)}%</b> · ${fmt(g.q)} pzas · ${fmt(g.rf.size)} ref.</div></div>`}).join('')}
+    <div class="info">Tipología: ${byT.map(g=>`<span class="chip ty ${tyCls(g.k)}">${esc(g.k)} · ${fmt(g.q)} pzas</span>`).join(' ')}</div></div>
 
   <div class="card"><h2>Detalle de productos</h2>
-    <div class="tools noprint"><input type="search" id="q" placeholder="Buscar código, estilo, descripción, transferencia…">${sel('ft','Todas las tiendas',opt('t'))}${sel('fr','Todas las transferencias',opt('tr'))}${sel('fc','Todos los camiones',opt('cm'))}<input type="number" id="fm" min="0" placeholder="Pzas ≥"><button class="btn sec" id="clr">Limpiar</button></div>
+    <div class="tools"><input type="search" id="q" placeholder="Buscar código, estilo, descripción, proveedor…">${sel('ft','Todas las tiendas',opt('t'))}${sel('fr','Todas las transferencias',opt('tr'))}${sel('fy','Toda tipología',opt('ty'))}${sel('fv','Todos los proveedores',opt('v'))}<input type="number" id="fm" min="0" placeholder="Pzas ≥"><button class="btn sec" id="clr">Limpiar</button></div>
     <div class="cnt" id="cnt"></div>
     <div class="tw"><table><thead><tr id="hd"></tr></thead><tbody id="tb"></tbody><tfoot><tr id="tf"></tr></tfoot></table></div></div>`;
   $('hd').innerHTML=COLS.map(c=>`<th data-k="${c.k}" class="${c.n?'n':''}">${c.h}<span id="ar_${c.k}" style="margin-left:4px"></span></th>`).join('');
   $('hd').onclick=e=>{const th=e.target.closest('th');if(!th)return;const k=th.dataset.k;SORT=SORT.k===k?{k,d:-SORT.d}:{k,d:1};render()};
-  ['q','ft','fr','fc','fm'].forEach(id=>$(id).addEventListener(id==='q'||id==='fm'?'input':'change',render));
-  $('clr').onclick=()=>{['q','ft','fr','fc','fm'].forEach(id=>$(id).value='');render()};
-  $('xl').onclick=excel;$('pdf').onclick=()=>{render(true);window.print()};
+  ['q','ft','fr','fy','fv','fm'].forEach(id=>$(id).addEventListener(id==='q'||id==='fm'?'input':'change',render));
+  $('clr').onclick=()=>{['q','ft','fr','fy','fv','fm'].forEach(id=>$(id).value='');render()};
+  $('xl').onclick=excel;$('pdf').onclick=pdf;
   render();
 }
 
-function render(all){
-  const q=norm($('q').value).split(/\s+/).filter(Boolean),ft=$('ft').value,fr=$('fr').value,fc=$('fc').value,fm=+$('fm').value||0;
+function render(){
+  const q=norm($('q').value).split(/\s+/).filter(Boolean),ft=$('ft').value,fr=$('fr').value,fy=$('fy').value,fv=$('fv').value,fm=+$('fm').value||0;
   VIEW=ROWS.filter(r=>{
-    if(ft&&r.t!==ft)return false;if(fr&&r.tr!==fr)return false;if(fc&&!String(r.cm||'').split(', ').includes(fc))return false;if(fm&&(r.q||0)<fm)return false;
-    if(q.length){const h=norm([r.t,r.tn,r.tr,r.cm,r.pl,r.e,r.p,r.d,r.u,r.rc,r.s].join(' '));if(!q.every(w=>h.includes(w)))return false}
+    if(ft&&r.t!==ft)return false;if(fr&&r.tr!==fr)return false;if(fy&&r.ty!==fy)return false;if(fv&&r.v!==fv)return false;if(fm&&(r.q||0)<fm)return false;
+    if(q.length){const h=norm([r.t,r.tn,r.tr,r.ty,r.rc,r.v,r.e,r.p,r.d,r.u].join(' '));if(!q.every(w=>h.includes(w)))return false}
     return true});
   const k=SORT.k,d=SORT.d,num=COLS.find(c=>c.k===k).n;
   VIEW.sort((a,b)=>d*(num?(a[k]||0)-(b[k]||0):String(a[k]||'').localeCompare(String(b[k]||''),'es',{numeric:true})));
   COLS.forEach(c=>{const a=$('ar_'+c.k);if(a)a.textContent=c.k===k?(d>0?'▲':'▼'):''});
   $('cnt').textContent=`${fmt(VIEW.length)} de ${fmt(ROWS.length)} líneas`;
-  $('tb').innerHTML=VIEW.length?VIEW.map(r=>`<tr>${COLS.map(c=>{const v=c.f?c.f(r):r[c.k];
-    const s=c.k==='t'?`<span class="chip T">${esc(v)}</span>`:c.k==='bt'&&r.pa?`<span class="chip P">${esc(v)}</span>`:esc(c.n&&c.k==='q'?fmt(v):v);
+  $('tb').innerHTML=VIEW.length?VIEW.map(r=>`<tr>${COLS.map(c=>{const v=r[c.k];let s;
+    if(c.k==='t')s=`<span class="chip T">${esc(v)}</span>`;
+    else if(c.k==='tr')s=esc(v||'—')+(r.pa?'<span class="chip pa">Parcial</span>':'');
+    else if(c.k==='ty')s=`<span class="chip ty ${tyCls(v)}">${esc(v)}</span>`;
+    else if(c.k==='v')s=v===SP?`<span class="sp">${SP}</span>`:esc(v);
+    else if(c.k==='q')s=fmt(v);else s=esc(v||(c.k==='rc'?'—':''));
     return `<td class="${c.n?'n':''} ${c.mono?'mono':''}">${s}</td>`}).join('')}</tr>`).join(''):`<tr><td colspan="${COLS.length}" class="msg">Sin resultados</td></tr>`;
-  $('tf').innerHTML=`<td colspan="8"><b>TOTAL (${fmt(VIEW.length)} líneas)</b></td><td class="n">${fmt(VIEW.reduce((a,r)=>a+(r.q||0),0))}</td><td colspan="3"></td>`;
+  $('tf').innerHTML=`<td colspan="9"><b>TOTAL (${fmt(VIEW.length)} líneas)</b></td><td class="n">${fmt(VIEW.reduce((a,r)=>a+(r.q||0),0))}</td>`;
 }
 
-function excel(){
-  if(!window.XLSX){alert('No cargó la librería de Excel. Revisa tu conexión.');return}
-  const v=PL,tp=Math.max(1,v.tp||0),wb=XLSX.utils.book_new();
-  const add=(name,aoa,w)=>{const ws=XLSX.utils.aoa_to_sheet(aoa);if(w)ws['!cols']=w.map(x=>({wch:x}));XLSX.utils.book_append_sheet(wb,ws,name)};
-  add('Resumen',[[`Packing list ${v.num}`],['Estado',ST[v.st]||'Despachado'],['Despachado',fdt(v.ts)],['Recibido',v.st==='R'?fdt(v.rts):''],['Preparó',v.prep||''],['Despachó',v.dby||''],[],
-    ['Camiones',v.cams.length],['Palets',v.np],['Bultos',v.tb],['Piezas',v.tp],['Tiendas',v.stores.length],['Transferencias',v.tf]],[18,34]);
-  add('Por tienda',[['Tienda','Nombre','% de piezas','Piezas','Bultos','Transferencias'],...v.stores.map(s=>[s.t,s.tn||'',+((s.pz||0)/tp*100).toFixed(1),s.pz||0,s.b||0,s.tf||0]),['TOTAL','','100',v.tp,v.tb,v.tf]],[14,18,12,10,10,14]);
-  add('Camiones',[['Camión','Chofer','Placa','Palets','Cant. palets','Bultos','Piezas'],...v.cams.map(c=>[c.n,c.chofer||'',c.placa||'',c.pals||'',c.np||0,c.b||0,c.pz||0])],[9,22,12,40,12,10,10]);
-  add('Productos',[['Tienda','Nombre tienda','Transferencia','Camión','Palet','Estilo','Producto','Descripción','Código barras','Piezas','Bultos en este PL','Bultos transf.','Recibo','Surtidor'],
-    ...VIEW.map(r=>[r.t,r.tn||'',r.tr||'',r.cm||'',r.pl||'',r.e||'',r.p||'',r.d||'',r.u||'',r.q||0,r.bt||0,r.N||0,r.rc||'',r.s||'']),
-    ['TOTAL','','','','','','','','',VIEW.reduce((a,r)=>a+(r.q||0),0),'','','','']],[10,18,16,9,16,14,12,46,16,9,12,12,10,22]);
-  XLSX.writeFile(wb,`packing_list_${v.num}.xlsx`);
+/* ---------- EXCEL (ExcelJS: estilos, filtros, formato tabla) ---------- */
+const sortRows=a=>[...a].sort((x,y)=>String(x.t).localeCompare(String(y.t),'es',{numeric:true})||String(x.tr).localeCompare(String(y.tr),'es',{numeric:true})||String(x.p).localeCompare(String(y.p),'es',{numeric:true}));
+async function excel(){
+  if(!window.ExcelJS){alert('No cargó la librería de Excel. Revisa tu conexión.');return}
+  const b=$('xl');b.disabled=true;
+  try{
+    const v=PL,tp=Math.max(1,v.tp||0),wb=new ExcelJS.Workbook();wb.creator='Westland';wb.created=new Date();
+    const NAVY='FF17375E',PET='FF0B4A52',LIGHT='FFEAF1F8',ZEB='FFF5F8FC',W='FFFFFFFF',GR='FF5A6B7A',LN='FFC9D6E4';
+    const side={style:'thin',color:{argb:LN}},bd={top:side,left:side,bottom:side,right:side};
+    const fill=c=>({type:'pattern',pattern:'solid',fgColor:{argb:c}});
+    const band=(ws,r,text,last,color,size)=>{ws.mergeCells(r,1,r,last);const c=ws.getCell(r,1);c.value=text;c.font={name:'Calibri',bold:true,size,color:{argb:W}};c.fill=fill(color);c.alignment={vertical:'middle',horizontal:'left',indent:1};ws.getRow(r).height=size+14};
+    const head=(ws,r,heads)=>{const row=ws.getRow(r);row.height=24;heads.forEach((h,i)=>{const c=row.getCell(i+1);c.value=h;c.font={name:'Calibri',bold:true,size:11,color:{argb:W}};c.fill=fill(NAVY);c.alignment={vertical:'middle',horizontal:'center',wrapText:true};c.border=bd})};
+    const body=(ws,r,vals,fm,i)=>{const row=ws.getRow(r);vals.forEach((x,j)=>{const c=row.getCell(j+1);c.value=x;c.font={name:'Calibri',size:10.5};c.border=bd;if(i%2)c.fill=fill(ZEB);if(fm&&fm[j])c.numFmt=fm[j];c.alignment={vertical:'top',horizontal:typeof x==='number'?'right':'left',wrapText:true}})};
+    const total=(ws,r,vals,fm)=>{const row=ws.getRow(r);vals.forEach((x,j)=>{const c=row.getCell(j+1);c.value=x;c.font={name:'Calibri',bold:true,size:11,color:{argb:W}};c.fill=fill(PET);c.border=bd;if(fm&&fm[j])c.numFmt=fm[j];c.alignment={horizontal:typeof x==='number'||(x&&x.formula)?'right':'left',vertical:'middle'}})};
+    const sub=(ws,r,text,last)=>{ws.mergeCells(r,1,r,last);const c=ws.getCell(r,1);c.value=text;c.font={name:'Calibri',bold:true,size:12,color:{argb:PET}};c.border={bottom:{style:'medium',color:{argb:PET}}};ws.getRow(r).height=22};
+    const rowsAll=sortRows(ROWS),refs=new Set(ROWS.map(r=>r.p).filter(Boolean)).size;
+
+    /* Hoja 1: Resumen */
+    const s1=wb.addWorksheet('Resumen',{views:[{showGridLines:false}]});
+    s1.columns=[{width:30},{width:26},{width:16},{width:14},{width:14},{width:34}];
+    band(s1,1,'REPORTE DE DESPACHO A TIENDAS',6,NAVY,16);
+    band(s1,2,`Packing list ${v.num}  ·  ${ST[v.st]||'Despachado'}`,6,PET,11);
+    const kv=[['Packing list',v.num],['Estado',ST[v.st]||'Despachado'],['Despachado',fdt(v.ts)],['Recibido',v.st==='R'?fdt(v.rts):'—'],['Preparó',v.prep||'—'],['Despachó',v.dby||'—']];
+    kv.forEach(([k,x],i)=>{const r=4+i;const a=s1.getCell(r,1),c=s1.getCell(r,2);a.value=k;a.font={bold:true,color:{argb:GR}};a.fill=fill(LIGHT);a.border=bd;c.value=x;c.border=bd;c.alignment={horizontal:'left'};s1.mergeCells(r,2,r,3)});
+    let r=11;sub(s1,r,'Indicadores',6);r++;
+    head(s1,r,['Indicador','Valor']);r++;
+    [['Piezas',v.tp],['Referencias',refs],['Tiendas',v.stores.length],['Transferencias',v.tf]].forEach((x,i)=>{body(s1,r,x,[null,'#,##0'],i);r++});
+    [['Bultos (informativo)',v.tb],['Camiones (informativo)',(v.cams||[]).length]].forEach(x=>{body(s1,r,x,[null,'#,##0'],0);s1.getCell(r,1).font={italic:true,color:{argb:GR},size:10.5};s1.getCell(r,2).font={italic:true,color:{argb:GR},size:10.5};r++});
+    r+=1;sub(s1,r,'Distribución por tienda',6);r++;
+    head(s1,r,['Tienda','Nombre','Transferencias','Piezas','% del total','Participación']);r++;
+    v.stores.forEach((s,i)=>{const pc=(s.pz||0)/tp;body(s1,r,[s.t,s.tn||'',s.tf||0,s.pz||0,pc,'█'.repeat(Math.max(1,Math.round(pc*30)))],[null,null,'#,##0','#,##0','0.0%',null],i);s1.getCell(r,6).font={color:{argb:PET},size:10};r++});
+    total(s1,r,['TOTAL','',v.tf||0,v.tp||0,1,''],[null,null,'#,##0','#,##0','0.0%',null]);r+=2;
+    sub(s1,r,'Por proveedor',6);r++;
+    head(s1,r,['Proveedor','','Referencias','Piezas','% del total','Participación']);s1.mergeCells(r,1,r,2);r++;
+    grp(ROWS,x=>x.v).forEach((g,i)=>{const pc=g.q/tp;body(s1,r,[g.k,'',g.rf.size,g.q,pc,'█'.repeat(Math.max(1,Math.round(pc*30)))],[null,null,'#,##0','#,##0','0.0%',null],i);s1.mergeCells(r,1,r,2);s1.getCell(r,6).font={color:{argb:PET},size:10};r++});
+    r+=1;sub(s1,r,'Por tipología',6);r++;
+    head(s1,r,['Tipología','','Líneas','Piezas','% del total','']);s1.mergeCells(r,1,r,2);r++;
+    grp(ROWS,x=>x.ty).forEach((g,i)=>{body(s1,r,[g.k,'',g.l,g.q,g.q/tp,''],[null,null,'#,##0','#,##0','0.0%',null],i);s1.mergeCells(r,1,r,2);r++});
+    if(ROWS.some(x=>x.pa)){r+=1;const c=s1.getCell(r,1);s1.mergeCells(r,1,r,6);c.value='Nota: hay transferencias enviadas parcialmente en este packing list; sus piezas corresponden a la transferencia completa.';c.font={italic:true,color:{argb:'FFA3261B'},size:10}}
+    s1.pageSetup={orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,paperSize:9};
+
+    /* Hoja 2: Productos (filtros + congelado) */
+    const s2=wb.addWorksheet('Productos',{views:[{state:'frozen',ySplit:4,showGridLines:false}]});
+    const H=['Tienda','Transferencia','Tipología','Recibo','Proveedor','Estilo','Producto','Descripción','Código barras','Piezas'];
+    s2.columns=[{width:10},{width:16},{width:13},{width:11},{width:26},{width:16},{width:12},{width:48},{width:18},{width:10}];
+    band(s2,1,`Packing list ${v.num} · Detalle de productos`,10,NAVY,14);
+    s2.mergeCells(2,1,2,10);const t2=s2.getCell(2,1);t2.value=`${ST[v.st]||'Despachado'} · despachado ${fdt(v.ts)}${v.st==='R'?' · recibido '+fdt(v.rts):''}  ·  ${fmt(rowsAll.length)} líneas`;t2.font={italic:true,color:{argb:GR},size:10};
+    head(s2,4,H);
+    rowsAll.forEach((x,i)=>body(s2,5+i,[x.t,x.tr||'—',x.ty,x.rc||'—',x.v,x.e||'',String(x.p||''),x.d||'',String(x.u||''),x.q||0],[null,null,null,null,null,null,'@',null,'@','#,##0'],i));
+    const last=4+rowsAll.length;
+    total(s2,last+1,['TOTAL','','','','','','','','',{formula:`SUBTOTAL(109,J5:J${last})`,result:rowsAll.reduce((a,x)=>a+(x.q||0),0)}],[null,null,null,null,null,null,null,null,null,'#,##0']);
+    s2.autoFilter={from:{row:4,column:1},to:{row:Math.max(5,last),column:10}};
+    s2.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,paperSize:9,printTitlesRow:'4:4'};
+
+    const buf=await wb.xlsx.writeBuffer(),url=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),a=document.createElement('a');
+    a.href=url;a.download=`packing_list_${v.num}.xlsx`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1500);
+  }catch(e){alert('No se pudo generar el Excel: '+(e.message||e))}
+  b.disabled=false;
+}
+
+/* ---------- PDF gerencial (jsPDF + autoTable): encabezado, parámetros, resumen, detalle agrupado con subtotales ---------- */
+function pdf(){
+  const J=window.jspdf&&window.jspdf.jsPDF;if(!J){alert('No cargó la librería de PDF. Revisa tu conexión.');return}
+  const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});if(!doc.autoTable){alert('No cargó el complemento de tablas del PDF.');return}
+  const v=PL,tp=Math.max(1,v.tp||0),W=297,M=12,NAVY=[23,55,94],PET=[11,74,82],GR=[90,107,122],LT=[234,241,248],ZB=[245,248,252];
+  const refs=new Set(ROWS.map(r=>r.p).filter(Boolean)).size,pc1=n=>(n*100).toFixed(1)+'%';
+  const base={theme:'grid',styles:{font:'helvetica',fontSize:8.5,cellPadding:1.8,lineColor:[201,214,228],lineWidth:.15,textColor:[30,40,50]},headStyles:{fillColor:NAVY,textColor:255,fontStyle:'bold',halign:'center'},alternateRowStyles:{fillColor:ZB},margin:{top:17,left:M,right:M,bottom:14}};
+  // Banner
+  doc.setFillColor(...NAVY);doc.rect(0,0,W,26,'F');doc.setFillColor(...PET);doc.rect(0,26,W,1.6,'F');
+  doc.setTextColor(255);doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text('Reporte de Despacho a Tiendas',M,12);
+  doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.text(`Packing list ${v.num}   |   ${ST[v.st]||'Despachado'}`,M,20);
+  doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('WESTLAND',W-M,12,{align:'right'});doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text('Logística · Compras',W-M,18,{align:'right'});
+  // Parámetros
+  const lab={fontStyle:'bold',fillColor:LT,textColor:GR,cellWidth:34},val={cellWidth:'auto'};
+  doc.autoTable({...base,startY:33,theme:'grid',head:[],body:[
+    [{content:'Packing list',styles:lab},v.num,{content:'Estado',styles:lab},ST[v.st]||'Despachado',{content:'Preparó',styles:lab},v.prep||'-'],
+    [{content:'Despachado',styles:lab},fdt(v.ts),{content:'Recibido',styles:lab},v.st==='R'?fdt(v.rts):'-',{content:'Despachó',styles:lab},v.dby||'-'],
+    [{content:'Bultos (informativo)',styles:lab},fmt(v.tb),{content:'Camiones (informativo)',styles:lab},fmt((v.cams||[]).length),{content:'Recibió',styles:lab},v.st==='R'?(v.rby||'-'):'-']
+  ],margin:{left:M,right:M}});
+  // KPIs
+  let y=doc.lastAutoTable.finalY+5;const kp=[['Piezas',fmt(v.tp)],['Referencias',fmt(refs)],['Tiendas',fmt(v.stores.length)],['Transferencias',fmt(v.tf)]],kw=(W-2*M-3*5)/4;
+  kp.forEach(([l,n],i)=>{const x=M+i*(kw+5);doc.setFillColor(...LT);doc.setDrawColor(201,214,228);doc.rect(x,y,kw,17,'FD');doc.setFillColor(...PET);doc.rect(x,y,kw,1.4,'F');
+    doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text(n,x+kw/2,y+10,{align:'center'});doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...GR);doc.text(l.toUpperCase(),x+kw/2,y+15,{align:'center'})});
+  y+=22;
+  const parc=new Set(ROWS.filter(r=>r.pa).map(r=>r.t+'|'+r.tr)).size;
+  if(parc){doc.setFontSize(8);doc.setTextColor(163,38,27);doc.text(`Nota: ${parc} transferencia(s) viajaron parcialmente en este packing list; sus piezas son las de la transferencia completa.`,M,y);y+=4}
+  // Distribución por tienda (con barra de % real)
+  doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Distribución por tienda',M,y+3);
+  const pcs=v.stores.map(s=>(s.pz||0)/tp);
+  doc.autoTable({...base,startY:y+5,head:[['Tienda','Nombre','Transf.','Piezas','% del total','Participación']],
+    body:[...v.stores.map((s,i)=>[s.t,s.tn||'',fmt(s.tf),fmt(s.pz),pc1(pcs[i]),'']),[{content:'TOTAL',styles:{fontStyle:'bold',fillColor:LT}},{content:'',styles:{fillColor:LT}},{content:fmt(v.tf),styles:{fontStyle:'bold',fillColor:LT,halign:'right'}},{content:fmt(v.tp),styles:{fontStyle:'bold',fillColor:LT,halign:'right'}},{content:'100.0%',styles:{fontStyle:'bold',fillColor:LT,halign:'right'}},{content:'',styles:{fillColor:LT}}]],
+    columnStyles:{0:{cellWidth:22},1:{cellWidth:50},2:{halign:'right',cellWidth:22},3:{halign:'right',cellWidth:28},4:{halign:'right',cellWidth:26},5:{cellWidth:'auto'}},
+    didDrawCell:d=>{if(d.section==='body'&&d.column.index===5&&d.row.index<pcs.length){const w=(d.cell.width-3)*pcs[d.row.index];doc.setFillColor(...PET);doc.rect(d.cell.x+1.5,d.cell.y+d.cell.height/2-1.6,Math.max(.6,w),3.2,'F')}}});
+  // Proveedor y tipología
+  const byV=grp(ROWS,r=>r.v),byT=grp(ROWS,r=>r.ty);
+  y=doc.lastAutoTable.finalY+7;if(y>165){doc.addPage();y=20}
+  doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Resumen por proveedor',M,y);
+  doc.autoTable({...base,startY:y+2,head:[['Proveedor','Referencias','Piezas','% del total']],body:byV.map(g=>[g.k,fmt(g.rf.size),fmt(g.q),pc1(g.q/tp)]),columnStyles:{1:{halign:'right',cellWidth:30},2:{halign:'right',cellWidth:30},3:{halign:'right',cellWidth:28}},tableWidth:150,margin:{...base.margin,right:W-M-150-M}});
+  const fy=doc.lastAutoTable.finalY;
+  doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(11);
+  // tipología a la derecha, en la misma altura (si cabe)
+  doc.autoTable({...base,startY:y+2,head:[['Tipología','Líneas','Piezas','% del total']],body:byT.map(g=>[g.k,fmt(g.l),fmt(g.q),pc1(g.q/tp)]),columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}},margin:{...base.margin,left:M+150+8},pageBreak:'avoid'});
+  // Detalle agrupado por tienda
+  doc.addPage();
+  const rows=sortRows(ROWS),stores=[...new Set(rows.map(r=>r.t))],body=[];
+  stores.forEach(t=>{const rs=rows.filter(r=>r.t===t),sum=rs.reduce((a,r)=>a+(r.q||0),0),tn=(rs[0]||{}).tn;
+    body.push([{content:`Tienda ${t}${tn?' · '+tn:''}`,colSpan:9,styles:{fillColor:PET,textColor:255,fontStyle:'bold',halign:'left'}}]);
+    rs.forEach(r=>body.push([(r.tr||'-')+(r.pa?' (parcial)':''),r.ty,r.rc||'-',r.v,r.e||'',String(r.p||''),r.d||'',String(r.u||''),{content:fmt(r.q),styles:{halign:'right'}}]));
+    body.push([{content:`Subtotal ${t}  (${fmt(rs.length)} líneas)`,colSpan:8,styles:{halign:'right',fontStyle:'bold',fillColor:LT}},{content:fmt(sum),styles:{halign:'right',fontStyle:'bold',fillColor:LT}}])});
+  body.push([{content:`TOTAL GENERAL  (${fmt(rows.length)} líneas)`,colSpan:8,styles:{halign:'right',fontStyle:'bold',fillColor:NAVY,textColor:255}},{content:fmt(rows.reduce((a,r)=>a+(r.q||0),0)),styles:{halign:'right',fontStyle:'bold',fillColor:NAVY,textColor:255}}]);
+  doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Detalle de productos',M,15);
+  doc.autoTable({...base,startY:18,head:[['Transferencia','Tipología','Recibo','Proveedor','Estilo','Producto','Descripción','Código barras','Piezas']],body,
+    styles:{...base.styles,fontSize:7.6,cellPadding:1.4},alternateRowStyles:{},showHead:'everyPage',rowPageBreak:'avoid',
+    columnStyles:{0:{cellWidth:27},1:{cellWidth:19},2:{cellWidth:16},3:{cellWidth:36},4:{cellWidth:23},5:{cellWidth:18},6:{cellWidth:'auto'},7:{cellWidth:27},8:{cellWidth:15,halign:'right'}}});
+  // Encabezado/pie en todas las páginas
+  const n=doc.getNumberOfPages(),gen=fdt(Date.now());
+  for(let i=1;i<=n;i++){doc.setPage(i);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...GR);
+    if(i>1){doc.text(`Reporte de Despacho a Tiendas  |  Packing list ${v.num}`,M,9);doc.text('WESTLAND',W-M,9,{align:'right'});doc.setDrawColor(...PET);doc.setLineWidth(.5);doc.line(M,11,W-M,11)}
+    doc.setDrawColor(201,214,228);doc.setLineWidth(.2);doc.line(M,201,W-M,201);doc.text(`Generado el ${gen}  |  Documento de solo lectura`,M,205);doc.text(`Página ${i} de ${n}`,W-M,205,{align:'right'})}
+  doc.save(`reporte_despacho_${v.num}.pdf`);
 }
 init();
 </script>
