@@ -81,7 +81,8 @@ const fmt=n=>Number(n||0).toLocaleString('en-US');
 const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const fdt=ts=>ts?new Date(ts).toLocaleString('es',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
 const ST={D:'Despachado',R:'Recibido'},SP='Sin proveedor';
-const tyCls=t=>({'Automático':'A','Túnel':'U','Proforma':'P','Cliente':'C'}[t]||'');
+const AUTO_LBL='Pedido automático (reposición)';
+const tyCls=t=>({[AUTO_LBL]:'A','Túnel manual':'U','Proforma':'P','Cliente':'C'}[t]||'');
 
 let db,TOK='',IDX={},PL=null,ROWS=[],VIEW=[],SORT={k:'t',d:1},BUSY=false;
 
@@ -89,7 +90,25 @@ const COLS=[
  {k:'t',h:'Tienda'},{k:'tr',h:'Transferencia'},{k:'ty',h:'Tipología'},{k:'rc',h:'Recibo'},{k:'v',h:'Proveedor'},
  {k:'e',h:'Estilo'},{k:'p',h:'Producto',mono:1},{k:'d',h:'Descripción'},{k:'u',h:'Código barras',mono:1},{k:'q',h:'Piezas',n:1}
 ];
-const norm1=r=>({...r,ty:r.ty||'Recibo',v:r.v||SP,rc:r.rc||''});
+/* Guía de proveedores por prefijo de la descripción (primera palabra). Solo se usa cuando el sistema no encontró proveedor.
+   Para agregar uno nuevo: PREFIJO:'NOMBRE DEL PROVEEDOR'. */
+const NASA='S.I - NASA ZONA LIBRE PANAMA, S.A.',AMER='AMERICAN PLASTIC TOYS INC.',RODEO='S.I - RODEO IMPORT,S.A.';
+const GUIA_PROV={
+  ORL:'S.I - ORILAT',
+  HD:'S.I - H DAYA INTERNACIONAL/VMD DAYA/YIWU',
+  APT:AMER,ATP:AMER,
+  RD:RODEO,RDO:RODEO,
+  WF:'S.I - WINFUN',
+  RTB:'S.I - RED TOOLBOX LTD',
+  PPT:'S.I - PHI PHI TOYS',
+  HW:NASA,KIP:NASA,BRB:NASA,LLO:NASA,SNC:NASA,JPC:NASA,MNC:NASA,CRB:NASA,FP:NASA,DNY:NASA,CNL:NASA
+};
+const prefOf=d=>String(d||'').trim().split(/\s+/)[0].toUpperCase().replace(/[^A-Z0-9ÁÉÍÓÚÑ]/g,'');
+// Tipología: todo lo que sale de recibo o de túnel (PDF "distribución") es "Túnel de distribución"; Automático, Túnel manual y Proforma se mantienen aparte.
+const tyN=t=>(!t||t==='Recibo'||t==='Túnel'||t==='Tunel')?'Túnel de distribución':(t==='Automático'||t==='Pedido automático')?AUTO_LBL:t;
+const norm1=r=>{let v=String(r.v||SP).replace(/\s+/g,' ').trim();
+  if(v===SP&&r.p){const g=GUIA_PROV[prefOf(r.d)];if(g)v=g}
+  return{...r,ty:tyN(r.ty),v,rc:r.rc||''}};
 
 window.addEventListener('hashchange',()=>{if(TOK)route()});
 function route(){const [t,id]=location.hash.slice(1).split('/');if(t!==TOK)return;id?openPL(id):showList()}
@@ -239,7 +258,7 @@ async function excel(){
     /* Hoja 2: Productos (filtros + congelado) */
     const s2=wb.addWorksheet('Productos',{views:[{state:'frozen',ySplit:4,showGridLines:false}]});
     const H=['Tienda','Transferencia','Tipología','Recibo','Proveedor','Estilo','Producto','Descripción','Código barras','Piezas'];
-    s2.columns=[{width:10},{width:16},{width:13},{width:11},{width:26},{width:16},{width:12},{width:48},{width:18},{width:10}];
+    s2.columns=[{width:10},{width:16},{width:26},{width:11},{width:26},{width:16},{width:12},{width:48},{width:18},{width:10}];
     band(s2,1,`Packing list ${v.num} · Detalle de productos`,10,NAVY,14);
     s2.mergeCells(2,1,2,10);const t2=s2.getCell(2,1);t2.value=`${ST[v.st]||'Despachado'} · despachado ${fdt(v.ts)}${v.st==='R'?' · recibido '+fdt(v.rts):''}  ·  ${fmt(rowsAll.length)} líneas`;t2.font={italic:true,color:{argb:GR},size:10};
     head(s2,4,H);
@@ -308,7 +327,7 @@ function pdf(){
   doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Detalle de productos',M,15);
   doc.autoTable({...base,startY:18,head:[['Transferencia','Tipología','Recibo','Proveedor','Estilo','Producto','Descripción','Código barras','Piezas']],body,
     styles:{...base.styles,fontSize:7.6,cellPadding:1.4},alternateRowStyles:{},showHead:'everyPage',rowPageBreak:'avoid',
-    columnStyles:{0:{cellWidth:27},1:{cellWidth:19},2:{cellWidth:16},3:{cellWidth:36},4:{cellWidth:23},5:{cellWidth:18},6:{cellWidth:'auto'},7:{cellWidth:27},8:{cellWidth:15,halign:'right'}}});
+    columnStyles:{0:{cellWidth:27},1:{cellWidth:28},2:{cellWidth:16},3:{cellWidth:36},4:{cellWidth:23},5:{cellWidth:18},6:{cellWidth:'auto'},7:{cellWidth:27},8:{cellWidth:15,halign:'right'}}});
   // Encabezado/pie en todas las páginas
   const n=doc.getNumberOfPages(),gen=fdt(Date.now());
   for(let i=1;i<=n;i++){doc.setPage(i);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...GR);

@@ -2725,7 +2725,9 @@ async function cmpLines(rec){const c=CMPLOG[rec];if(c&&Date.now()-c.at<60000)ret
   const by={};try{for(const x of dataOf(rec))by[x.p]=x}catch(e){}
   const g={};for(const v of Object.values(log)){if((v.au&&!v.tr)||v.mir)continue;const k=v.t+'_'+(v.tr||'sin');(g[k]=g[k]||[]).push(v)}
   return CMPLOG[rec]={at:Date.now(),by,g}}
-const CMPTY={AUTO:'Automático',TUNEL:'Túnel',PROFORMAS:'Proforma'};
+const CMPTY={AUTO:'Pedido automático (reposición)',PROFORMAS:'Proforma'},cmpTrM={};
+// Túnel manual: la transferencia se armó a mano (sin PDF); queda marcada en meta_v1/consultas_auto/{tr} con file='manual'
+async function cmpTrMeta(tr){if(!tr)return null;if(tr in cmpTrM)return cmpTrM[tr];let m=null;try{m=(await get(R(db,`${AUB}/${tr}`))).val()}catch(e){}return cmpTrM[tr]=m}
 // Proveedor de cada producto: del recibo real que lo contiene (el más reciente). Sirve para automático/túnel/proformas, que no tienen recibo propio.
 async function cmpProvMap(){const real=Object.keys(RECS).filter(id=>!isPs(id));
   const miss=real.filter(id=>!PROV[id]&&!provTried.has(id));
@@ -2741,7 +2743,8 @@ async function cmpBuild(eid,e){
     const base={t:L(a.t),tn:NAMES[a.t]||'',tr:a.tr,bt:a.b,N:a.N,pa:a.b<a.N?1:0};
     const m=a.k.split('__');
     if(m[0]==='CL'){rows.push({...base,ty:'Cliente',rc:'',v:'Cristal clientes',e:'',p:'',d:'Packing de cliente'+(a.cn?' · '+a.cn:''),u:'',q:Math.round(a.pz)});continue}
-    const rec=m[0],key=m.slice(1).join('__'),Lg=await cmpLines(rec),ents=Lg.g[key]||[],ty=CMPTY[rec]||'Recibo',ps=isPs(rec),rcn=ps?'':rec;
+    const rec=m[0],key=m.slice(1).join('__'),Lg=await cmpLines(rec),ents=Lg.g[key]||[],ps=isPs(rec),rcn=ps?'':rec;let ty=CMPTY[rec]||'Túnel de distribución';
+    if(ty==='Túnel de distribución'){const mm=await cmpTrMeta(a.tr);if(mm&&mm.mode==='tun'&&mm.file==='manual')ty='Túnel manual'}
     if(!ents.length){rows.push({...base,ty,rc:rcn,v:ps?'Sin proveedor':(PROV[rec]||'Sin proveedor'),e:'',p:'',d:'(sin detalle de productos)',u:'',q:Math.round(a.pz)});continue}
     const ag={};for(const x of ents){const o=ag[x.p]=ag[x.p]||{q:0,r:x.r||''};o.q+=x.q||0}
     for(const [p,o] of Object.entries(ag)){const x=Lg.by[p]||{};
