@@ -182,7 +182,19 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
 .stopt{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;min-height:50px;padding:10px 12px;border:0;border-bottom:1px solid var(--bd);background:none;color:var(--tx);font:600 16px 'Inter',system-ui,sans-serif;text-align:left;cursor:pointer;white-space:nowrap}.stopt.on{color:var(--ac)}.stopt b{color:var(--ac)}
 .ptl.sel{outline:3px solid #fff;outline-offset:2px}
 @media(max-width:430px){.top{gap:6px;padding-left:10px;padding-right:10px}.top .btn.sm{padding:7px 8px}}
-</style></head>
+.btn.th{padding:7px 10px;font-size:14px;line-height:1}
+html[data-theme=light]{--bg:#eef4f6;--bg2:#ffffff;--sf:#f3f8fa;--sf2:#e2edf1;--bd:#b4cbd3;--ac:#0b7f78;--ac2:#14a99d;--tx:#0d2a30;--mt:#4a6870;--ok:#13894f;--wn:#a86f00;--dn:#d23a3a;color-scheme:light}
+html[data-theme=light],html[data-theme=light] body{background:radial-gradient(1200px 600px at 80% -10%,#cfe7ea 0,transparent 60%),var(--bg)}
+html[data-theme=light] .top{background:linear-gradient(180deg,#ffffffee,#f3f8facc)}
+html[data-theme=light] .bar,html[data-theme=light] .kv div{background:#d6e5ea}
+html[data-theme=light] .sbox,html[data-theme=light] .crow input[type=number],html[data-theme=light] .tile input[type=number],html[data-theme=light] .tile input[type=text],html[data-theme=light] input.f,html[data-theme=light] select.f{background:#fff;color:var(--tx)}
+html[data-theme=light] .sbox input::placeholder{color:#7f9aa1}
+html[data-theme=light] .bottom{background:#ffffffee}
+html[data-theme=light] .tab.on{background:#0b7f781a;border-color:#0b7f7866}
+html[data-theme=light] .btn.pri{color:#fff}
+html[data-theme=light] .modal>div{background:#fff}
+</style>
+<script>try{var _t=localStorage.getItem('conTheme');document.documentElement.dataset.theme=(_t==='light')?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script></head>
 <body>
 <div id="stSheet" class="stsheet hide"><div class="stbox"><div class="sthd"><b>Filtrar por tienda</b><button type="button" id="stSheetX" class="btn sm">✕</button></div><div id="stSheetList"></div></div></div>
 <div id="gate" class="gate"><h2>🔎 Consultas</h2><p id="gmsg" style="color:var(--mt)">Verificando sesión…</p><a class="btn pri" id="glink" href="index.html" style="text-decoration:none;display:none">Ir a Marcaciones</a><div id="gpick" style="margin-top:18px"></div><a id="gtemp" href="#" style="display:none;margin-top:46px;font-size:11px;color:var(--mt);opacity:.55;text-decoration:none">Temporal</a></div>
@@ -191,7 +203,7 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
   <div class="top">
     <button class="btn sm" id="btnBack" title="Atrás" aria-label="Atrás">←</button>
     <div class="ttl"><h1 id="ttl">Consultas</h1><small id="who">—</small></div><span id="incDot" class="hide" style="width:7px;height:7px;border-radius:50%;background:#f5a623;opacity:.55;margin-right:6px;flex:none"></span><span style="font-size:10px;opacity:.7;margin-right:6px;display:none" id="verTag">V25 octubre-C</span>
-    <button class="btn sm hide" id="btnRef" title="Actualizar" aria-label="Actualizar">⟳</button>
+    <button class="btn sm th" id="btnTh" title="Cambiar tema claro/oscuro" aria-label="Tema" onclick="var t=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=t;try{localStorage.setItem('conTheme',t)}catch(e){};this.textContent=t==='light'?'☾':'☀'"></button><script>document.getElementById('btnTh').textContent=document.documentElement.dataset.theme==='light'?'☾':'☀'</script><button class="btn sm hide" id="btnRef" title="Actualizar" aria-label="Actualizar">⟳</button>
     <button class="btn sm hide" id="btnPal">🧱 Palets</button><button class="btn sm hide" id="btnPkl">📋 Packing</button><button class="btn sm hide" id="btnRecBack">↩ Recibo</button><button class="btn sm hide" id="btnHome">Recibos</button>
     <a class="btn sm" id="toMarc" href="index.html" style="text-decoration:none;background:#ff3b30;color:#fff" title="Salir a Marcaciones">⎋ Salir</a>
   </div>
@@ -2771,7 +2783,7 @@ async function cmpAll(){const L0=Object.entries(EMB).filter(([,e])=>e&&e.desp);i
   let ok=0;for(const [id] of L0){toast(`Publicando ${ok+1} de ${L0.length}…`);if(await cmpPublish(id,true))ok++}
   await cmpCopy(`✅ ${ok} de ${L0.length} publicados · link copiado`)}
 function cmpBar(D){if(!ISADM)return'';const n=D.filter(([id,e])=>e.cmp).length;
-  return `<div class="card" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="msg" style="margin:0;flex:1;min-width:150px">🛒 Comprador: <b>${n}</b> de ${D.length} publicados</span><button class="btn sm pri" data-ecmpall="1">Publicar todos</button><button class="btn sm" data-ecmplink="1">🔗 Copiar link</button></div>`}
+  return `<div class="card" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="msg" style="margin:0;flex:1;min-width:150px">🛒 Comprador: <b>${n}</b> de ${D.length} publicados</span><button class="btn sm pri" data-ecmpall="1">Publicar todos</button><button class="btn sm" data-ecmplink="1">🔗 Copiar link</button><button class="btn sm" data-clfix="1">🔧 Piezas Cristal</button></div>`}
 function cmpSync(){if(!ISADM)return;for(const [id,e] of Object.entries(EMB)){if(!e||!e.cmp||!e.desp||cmpBusy.has(id))continue;const s=cmpSt(e,true);if(s!==undefined&&e.cmp.st!==s)cmpPublish(id,true)}}
 function embPrint(id){const e=EMB[id],w=window.open('','_blank');if(!w){toast('Permite ventanas emergentes para imprimir');return}
   w.document.write(`<!doctype html><meta charset="utf-8"><title>${esc(e.num)}</title><body style="margin:20px">${embHTML(e)}</body>`);w.document.close();w.focus();setTimeout(()=>w.print(),400)}
@@ -2863,7 +2875,7 @@ function renderPal(){
       return `<details class="card" data-ek="${id}" ${embOpenSet.has(id)?'open':''}><summary>✅ ${esc(e.num)} <span class="pill p-ok" style="margin-left:6px">${embRc(e)?'Recibido':'Despachado'}</span> <span class="msg" style="margin:0">· ${fdt(e.desp.ts)}</span></summary>
       <div class="msg">Preparó ${esc(e.n||e.u||'')} · Despachó <b>${esc(e.desp.n||e.desp.u||'')}</b> · ${fdt(e.desp.ts)}${e.mail?' · correo enviado a '+esc(e.mail.to||''):''}</div>
       ${c.cams.map((x,i)=>`<div class="crow"><b>Camión ${i+1} · ${esc(x.chofer||'—')} · ${esc(x.placa||'—')}</b> <span class="msg" style="margin:0">${x.pals.length} palets · ${fmt(x.b)} bultos · ${fmt(x.pz)} pzas</span><div class="msg" style="margin:4px 0 0">${x.pals.map(pl=>esc(pl.num)).join(' · ')}</div></div>`).join('')}
-      ${c.st.length?`<div class="scroll"><table><tr><th>Tienda</th><th class="n">Transf.</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${c.st.map(s=>`<tr><td>${esc(LN(s.t))}</td><td class="n">${s.tf}</td><td class="n">${fmt(s.b)}</td><td class="n">${fmt(s.pz)}</td></tr>`).join('')}<tr><td><b>TOTAL</b></td><td class="n"><b>${c.tf.length}</b></td><td class="n"><b>${fmt(c.tb)}</b></td><td class="n"><b>${fmt(c.tp)}</b></td></tr></table></div>`:''}
+      ${c.st.length?`<div class="scroll"><table><tr><th>Tienda</th><th class="n">Docs.</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${c.st.map(s=>`<tr><td>${esc(LN(s.t))}</td><td class="n">${s.tf}</td><td class="n">${fmt(s.b)}</td><td class="n">${fmt(s.pz)}</td></tr>`).join('')}<tr><td><b>TOTAL</b></td><td class="n"><b>${c.tf.length}</b></td><td class="n"><b>${fmt(c.tb)}</b></td><td class="n"><b>${fmt(c.tp)}</b></td></tr></table></div>`:''}
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button><button class="btn sm" data-email="${id}">✉ Reenviar correo</button>${ISADM?`<button class="btn sm" data-ecmp="${id}">🛒 Comprador${e.cmp?' ✓':''}</button>${e.cmp?`<button class="btn sm" data-ecmpx="${id}">⛔ Quitar</button>`:''}`:''}${ISADM?`<button class="btn sm" data-eundesp="${id}">↩ Revertir despacho</button>`:''}</div></details>`}).join('')})();
   $('embList').innerHTML=pklTab!=='n'?'':embSorted.filter(([id,e])=>!e.desp).map(([id,e])=>{const c=embCalc(e),env=e.st==='enviado';
     return `<details class="card" data-ek="${id}" ${embOpenSet.has(id)?'open':''}><summary>🚛 ${esc(e.num)} <span class="pill p-aq" style="margin-left:6px">${c.cams.length} camión(es) · ${c.np} palets · ${c.tb} bultos</span> ${env?'<span class="pill p-ok">Enviado</span>':e.comp?'<span class="pill p-bl">Completado</span>':'<span class="pill p-wn">En armado</span>'}</summary>
@@ -2872,7 +2884,7 @@ function renderPal(){
     ${c.cams.map((x,i)=>`<div class="crow"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>Camión ${i+1}${e.comp?` · ${esc(x.chofer||'chofer pendiente')} · ${esc(x.placa||'—')}`:''}</b><span class="msg" style="margin:0">${x.pals.length} palets · ${fmt(x.b)} bultos · ${fmt(x.pz)} pzas</span></div>
       ${(env||!e.comp)?'':`<button class="btn sm" data-ech="${id}|${x.cid}" style="margin-top:8px">${x.chofer&&x.placa?'✎ Cambiar chofer y placa':'👤 Asignar chofer y placa'}</button>`}${(env||e.comp)?'':`<input class="f" data-escan="${id}|${x.cid}" placeholder="Escanear palet (PAL-0001 o nº de cliente GP)" autocomplete="off" autocapitalize="characters" spellcheck="false" style="margin-top:8px">`}
       ${x.pals.map(pl=>`<div class="prow" style="justify-content:space-between"><span class="tv">Palet ${pl.pos} (${esc(pl.num)}${pl.g?' · PL GP #'+esc(String(pl.g)):''})</span><span class="msg" style="margin:0">${pStores(pl).map(s=>esc(L(s.t))+' '+s.b).join(' · ')}</span>${(env||e.comp)?'':`<button class="btn sm" data-erm="${id}|${x.cid}|${pl.id}">✕</button>`}</div>`).join('')}</div>`).join('')}
-    ${c.st.length?`<div class="scroll"><table><tr><th>Tienda</th><th class="n">Transf.</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${c.st.map(s=>`<tr><td>${esc(LN(s.t))}</td><td class="n">${s.tf}</td><td class="n">${fmt(s.b)}</td><td class="n">${fmt(s.pz)}</td></tr>`).join('')}<tr><td><b>TOTAL</b></td><td class="n"><b>${c.tf.length}</b></td><td class="n"><b>${fmt(c.tb)}</b></td><td class="n"><b>${fmt(c.tp)}</b></td></tr></table></div>`:''}
+    ${c.st.length?`<div class="scroll"><table><tr><th>Tienda</th><th class="n">Docs.</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${c.st.map(s=>`<tr><td>${esc(LN(s.t))}</td><td class="n">${s.tf}</td><td class="n">${fmt(s.b)}</td><td class="n">${fmt(s.pz)}</td></tr>`).join('')}<tr><td><b>TOTAL</b></td><td class="n"><b>${c.tf.length}</b></td><td class="n"><b>${fmt(c.tb)}</b></td><td class="n"><b>${fmt(c.tp)}</b></td></tr></table></div>`:''}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${(env||e.comp)?'':`<button class="btn sm" data-ecn="${id}">🚛 Camiones: ${c.cams.length}</button><button class="btn pri sm" data-ecomp="${id}">✔ Completar packing list</button>`}${(e.comp&&!env)?`<button class="btn sm" data-eopen="${id}">↩ Reabrir packing list</button>`:''}${e.comp?`<button class="btn pri sm" data-edesp="${id}">🚚 Despachar</button>`:''}<button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button>${(e.comp||env)?`<button class="btn pri sm" data-email="${id}">✉ ${env?'Reenviar':'Enviar'} correo</button>`:''}${ISADM&&!env&&!e.desp?`<button class="btn sm" data-edel="${id}">🗑 Eliminar</button>`:''}</div></details>`}).join('')||`<div class="msg">${embSorted.length?'No hay packing list en curso.':'Aún no hay embarques.'}</div>`;
   cmpSync();
   if(keepScan){const i=document.querySelector(`[data-escan="${keepScan}"]`);if(i)i.focus();keepScan=null}
@@ -2920,19 +2932,29 @@ async function clImport(f,intoId,eid){if(/\.eml$/i.test(f.name))return emlImport
   else{let gpl=null;try{gpl=(await get(R(db,`${PB}/cmap/${P.no}`))).val()}catch(e){}
     up[`pm/${id}`]={num,seq:0,ts,u:USER,n:NAME,st:'cerrado',div:false,nb,cl:1,gp:P.no,gpl:gpl||null,tfs};up[`pn/${num}`]=id}
   await update(R(db,PB),up);return`✔ Palet GP ${P.no}: ${nb} bultos${skip?` (${skip} omitidos: ya están en otro palet)`:''}`}
+// Recupera las piezas de Cristal de palets ya cargados (suma las piezas guardadas por bulto) y actualiza los packing list donde ya viajan
+async function clFixPz(){let fx=0,sin=0;const upd={};
+  for(const [id,p] of Object.entries(PM)){if(!p||!p.cl||!p.tfs)continue;
+    const ks=Object.keys(p.tfs).filter(k=>!((p.tfs[k]||{}).pz>0));if(!ks.length)continue;
+    let pu={},pb={};try{pu=(await get(R(db,`${PB}/pu/${id}`))).val()||{};pb=(await get(R(db,`${PB}/pb/${id}`))).val()||{}}catch(e){continue}
+    const sum={};for(const [n,k] of Object.entries(pb))sum[k]=(sum[k]||0)+(((pu[n]||{}).pz)||0);
+    const tfs={...p.tfs};let ch=false;
+    for(const k of ks){if(sum[k]>0){tfs[k]={...p.tfs[k],pz:sum[k]};ch=true;fx++}else sin++}
+    if(ch){upd[`pm/${id}/tfs`]=tfs;const em=p.emb;if(em&&em.e&&em.c)upd[`emb/${em.e}/cam/${em.c}/pal/${id}/tfs`]=tfs}}
+  if(Object.keys(upd).length)await update(R(db,PB),upd);return{fx,sin}}
 async function emlText(f){const raw=new TextDecoder('latin1').decode(await f.arrayBuffer()),i=raw.search(/content-type:\s*text\/html/i);if(i<0)return'';
   const m=raw.slice(i).match(/\r?\n\r?\n/),he=i+m.index,head=raw.slice(i,he),body=raw.slice(he).replace(/^\s+/,'').split(/\r?\n--/)[0],enc=(head.match(/transfer-encoding:\s*(\S+)/i)||[])[1]||'',cs=(head.match(/charset="?([\w-]+)/i)||[])[1]||'utf-8';let by;
   if(/base64/i.test(enc))by=Uint8Array.from(atob(body.replace(/\s/g,'')),c=>c.charCodeAt(0));
   else if(/quoted/i.test(enc))by=Uint8Array.from(body.replace(/=\r?\n/g,'').replace(/=([0-9A-F]{2})/gi,(_,h)=>String.fromCharCode(parseInt(h,16))),c=>c.charCodeAt(0)&255);
   else by=Uint8Array.from(body,c=>c.charCodeAt(0)&255);return new TextDecoder(cs).decode(by)}
 function parseEml(h){const r={no:(h.match(/PACKING\s*LIST\s*#\s*(\d+)/i)||[])[1],mov:(h.match(/Mov\.?\s*Interno:\s*(\d+)/i)||[])[1]||'',pals:[]};let pa=null,bu=null,m;
-  const re=/Palet\s*#\s*(\d+)\s*Total bultos:\s*(\d+)|Bulto\s*N[^:<]{0,8}:\s*(\d+)\s*-\s*(\d+)\s*-\s*([^<]*)|Producto:\s*\d+\s*-[^<]*?QTY:\s*(\d+)/gi;
+  const re=/Palet\s*#\s*(\d+)\s*Total bultos:\s*(\d+)|Bulto\s*N[^:<]{0,8}:\s*(\d+)\s*-\s*(\d+)\s*-\s*([^<]*)|Producto:\s*\d+\s*-[\s\S]{0,300}?QTY(?:\s|&nbsp;|<[^>]*>)*:(?:\s|&nbsp;|<[^>]*>)*(\d+)/gi;
   while((m=re.exec(h))){if(m[1]){pa={no:m[1],tot:+m[2],bl:[]};r.pals.push(pa);bu=null}else if(m[3]&&pa){bu={n:+m[3],p:m[4],c:m[5].replace(/&nbsp;/g,' ').trim(),q:0};pa.bl.push(bu)}else if(m[6]&&bu)bu.q+=+m[6]}return r}
 // Correo "DESPACHO DE PACKING LIST #n" de GP: completa palets/bultos/proforma/cliente/piezas y sirve de doble validación
 function parseRecv(h){const r={no:(h.match(/PACKING\s*LIST\s*#\s*(\d+)/i)||[])[1],by:(h.match(/Completado por:\s*(?:<[^>]*>\s*)*([A-Za-z0-9_]+)/i)||[])[1]||'',ts:Date.now(),pals:[]};
   const d=h.match(/Fecha Completado:\s*([A-Za-z]{3})\w*\s+(\d{1,2})\s+(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)/i);
   if(d){const k=d[1].toLowerCase();let mo='jan feb mar apr may jun jul aug sep oct nov dec'.split(' ').indexOf(k);if(mo<0)mo='ene feb mar abr may jun jul ago sep oct nov dic'.split(' ').indexOf(k);if(mo>=0)r.ts=new Date(+d[3],mo,+d[2],(+d[4]%12)+(/pm/i.test(d[6])?12:0),+d[5]).getTime()}
-  let pa=null,bu=null,m;const re=/Palet\s*#\s*(\d+)\s*\|\|\s*Recibido por:\s*([^|<]*?)\s*\|\|\s*Total bultos Recibidos:\s*(\d+)|Bulto\s*N[^:<]{0,8}:\s*(\d+)\s*\|\|\s*Proforma Madre:\s*(\d+)\s*\|\|\s*Proforma Hija:\s*(\d+)|Producto:\s*\d+\s*-\s*QTY:\s*(\d+)/gi;
+  let pa=null,bu=null,m;const re=/Palet\s*#\s*(\d+)\s*\|\|\s*Recibido por:\s*([^|<]*?)\s*\|\|\s*Total bultos Recibidos:\s*(\d+)|Bulto\s*N[^:<]{0,8}:\s*(\d+)\s*\|\|\s*Proforma Madre:\s*(\d+)\s*\|\|\s*Proforma Hija:\s*(\d+)|Producto:\s*\d+\s*-[\s\S]{0,300}?QTY(?:\s|&nbsp;|<[^>]*>)*:(?:\s|&nbsp;|<[^>]*>)*(\d+)/gi;
   while((m=re.exec(h))){if(m[1]){pa={no:m[1],by:m[2],tot:+m[3],bl:[]};r.pals.push(pa);bu=null}else if(m[4]&&pa){bu={n:+m[4],pm:m[5],p:m[6]||m[5],q:0};pa.bl.push(bu)}else if(m[7]&&bu)bu.q+=+m[7]}return r}
 // Correo "PACKING LIST #n RECIBIDO": marca los palets como recibidos (sin pasar por recepcion.html) y completa/valida bultos
 async function emlRecv(H,eid){const P=parseRecv(H);if(!P.no||!P.pals.length)return'✖ No encontré palets en el correo de recibido';
@@ -2951,6 +2973,7 @@ async function emlRecv(H,eid){const P=parseRecv(H);if(!P.no||!P.pals.length)retu
     if(falt.length)msg.push(`⚠ Palet ${x.no}: ${falt.length} bulto(s) despachados que NO aparecen como recibidos (${falt.slice(0,4).join(', ')})`);
     if(had&&add.length)msg.push(`ℹ Palet ${x.no}: se completaron ${add.length} bultos`)}
   try{const c=(await get(R(db,`${PB}/cpl/${P.no}`))).val();if(c){const pend=Object.keys(c.pals||{}).filter(n=>!got.has(n));if(pend.length)msg.push(`⏳ Palets del packing ${P.no} aún sin recibir: ${pend.join(', ')}`)}}catch(e){}
+  if(!P.pals.reduce((a,x)=>a+x.bl.reduce((q,b)=>q+b.q,0),0))msg.push('⚠ El correo NO trae piezas (QTY) que pueda leer: las piezas de Cristal siguen en 0. Avísame para ajustar el formato.');
   await update(R(db,PB),up);
   return`✔ Recibido packing GP #${P.no}: ${P.pals.length} palets (${nuevos} nuevos) · ${tb} bultos · por ${P.by||'—'}${msg.length?'\n\n'+msg.join('\n'):'\n\n✔ Todo cuadra'}`}
 async function emlImport(f,eid){const H=await emlText(f);if(/RECIBIDO/i.test(H.slice(0,900)))return emlRecv(H,eid);const P=parseEml(H);if(!P.no||!P.pals.length)return`✖ ${f.name}: no encontré palets en el correo`;
@@ -2960,7 +2983,7 @@ async function emlImport(f,eid){const H=await emlText(f);if(/RECIBIDO/i.test(H.s
     const had=!!id;let cur={};if(had)cur=(await get(R(db,`${PB}/pb/${id}`))).val()||{};else{id='p'+(Date.now()+(clSeq++));nuevos++}
     const all={},add=[],ext=Object.keys(cur).filter(n=>!x.bl.some(b=>String(b.n)===n));up[`cmap/${x.no}`]=P.no;
     for(const b of x.bl){const o=(await get(R(db,`${PB}/cb/${b.n}`))).val();if(o&&o!==id){msg.push(`⚠ Palet ${x.no}: el bulto ${b.n} ya está en otro palet`);continue}
-      const k=clK(b.p);all[b.n]=k;if(cur[b.n]!==k){up[`pb/${id}/${b.n}`]=k;up[`cb/${b.n}`]=id;if(!cur[b.n]){up[`pu/${id}/${b.n}`]={u:USER,n:NAME,ts,pz:b.q};add.push(b.n)}}
+      const k=clK(b.p);all[b.n]=k;if(cur[b.n]!==k){up[`pb/${id}/${b.n}`]=k;up[`cb/${b.n}`]=id;if(!cur[b.n]){up[`pu/${id}/${b.n}`]={u:USER,n:NAME,ts,pz:b.q};add.push(b.n)}}else up[`pu/${id}/${b.n}/pz`]=b.q;
       const a=pf[b.p]=pf[b.p]||{c:b.c,b:0,pz:0};a.b++;a.pz+=b.q;tb++;tp+=b.q}
     ext.forEach(n=>all[n]=cur[n]);const tfs={};
     x.bl.forEach(b=>{if(all[b.n]===undefined)return;const k=clK(b.p),t=tfs[k]=tfs[k]||{t:'CRISTAL',tr:b.p,cn:b.c,N:0,pz:0,c:0,cl:1};t.c++;t.N++;t.pz+=b.q});
@@ -2975,6 +2998,7 @@ async function emlImport(f,eid){const H=await emlText(f);if(/RECIBIDO/i.test(H.s
   if(eid&&EMB[eid]){const inE=new Set();Object.values(EMB[eid].cam||{}).forEach(c=>Object.values(c.pal||{}).forEach(v=>inE.add(String(v.n))));
     const fal=P.pals.filter(x=>!inE.has('CL-'+x.no)).map(x=>x.no),sob=[...inE].filter(n=>/^CL-/.test(n)&&!P.pals.some(x=>'CL-'+x.no===n)).map(n=>n.slice(3));
     if(fal.length)msg.push(`⚠ Palets del correo que NO están en tu packing: ${fal.join(', ')}`);if(sob.length)msg.push(`⚠ Palets de cliente en tu packing que NO vienen en el correo: ${sob.join(', ')}`)}
+  if(!tp)msg.push('⚠ El correo NO trae piezas (QTY) que pueda leer: las piezas de Cristal siguen en 0. Avísame para ajustar el formato.');
   await update(R(db,PB),up);
   const pl=Object.entries(pf).map(([p,a])=>`• ${p} ${a.c}: ${a.b} bultos · ${fmt(a.pz)} pzas`).join('\n');
   return`✔ Correo packing GP #${P.no}: ${P.pals.length} palets (${nuevos} nuevos) · ${tb} bultos · ${fmt(tp)} pzas\n${pl}${msg.length?'\n\n'+msg.join('\n'):'\n\n✔ Todo cuadra (palets, bultos y totales)'}`}
@@ -2990,7 +3014,7 @@ async function palScanCl(id,raw){const p=PM[id],s=String(raw).trim().replace(/\D
 async function clRemove(pid,n){const p=PM[pid],k=PBO[n],tf=(p.tfs||{})[k]||{},cnt=Object.values(PBO).filter(y=>y===k).length-1,nb=Object.keys(PBO).length-1;
   try{await update(R(db,PB),{[`pb/${pid}/${n}`]:null,[`pu/${pid}/${n}`]:null,[`cb/${n}`]:null,[`pm/${pid}/nb`]:nb,[`pm/${pid}/tfs/${k}`]:cnt>0?{...tf,N:cnt,c:cnt}:null});delete PBO[n];if(PM[pid])PM[pid].nb=nb;renderPalModal();ptoast(`↩ ${n} quitado del palet`);return true}catch(err){ptoast('Error: '+(err.code||err.message));return false}}
 $('clUp').onclick=()=>$('clPdf').click();
-$('clPdf').onchange=async e=>{const fs=[...e.target.files];e.target.value='';const out=[];for(const f of fs){toast('Leyendo '+f.name+'…');try{out.push(await clImport(f))}catch(err){out.push('✖ '+f.name+': '+(err.code||err.message))}}startPal();alert(out.join('\n'))};
+$('clPdf').onchange=async e=>{const fs=[...e.target.files];e.target.value='';const out=[];for(const f of fs){toast('Leyendo '+f.name+'…');try{out.push(await clImport(f))}catch(err){out.push('✖ '+f.name+': '+(err.code||err.message))}}startPal();let fz={fx:0};try{fz=await clFixPz()}catch(err){}alert(out.join('\n')+(fz.fx?'\n\n🔧 Piezas de Cristal completadas en '+fz.fx+' documento(s) de packing list anteriores':''));setTimeout(()=>{for(const [id,x] of Object.entries(EMB))if(x&&x.cmp&&x.desp)cmpPublish(id,true)},3000)};
 function palNewAsk(){ask('Nuevo palet',[{k:'tp',label:'Tipo de palet',type:'select',value:'t',opts:[['t','Tienda'],['c','Cliente (GP Juguetería)']]},{k:'no',label:'Nº de palet GP (solo cliente)',type:'tel',ph:'ej. 3674'}],'Crear',async w=>{
   if(w.tp==='t'){newPal();return}
   const no=String(w.no||'').replace(/\D/g,'');if(!no){toast('Escribe el número de palet GP');return false}
@@ -3029,6 +3053,7 @@ $('palwrap').addEventListener('click',async e=>{
   const a=e.target.closest('[data-eadd]');if(a){addCam(a.dataset.eadd);return}
   const pr=e.target.closest('[data-eprint]');if(pr){embPrint(pr.dataset.eprint);return}
   const m=e.target.closest('[data-email]');if(m){embMail(m.dataset.email);return}
+  const cf=e.target.closest('[data-clfix]');if(cf){cf.disabled=true;toast('Revisando piezas de Cristal…');try{const r=await clFixPz();alert(r.fx?`✔ Piezas recuperadas en ${r.fx} documento(s) de Cristal.`+(r.sin?`\n⚠ ${r.sin} documento(s) siguen sin piezas: no tienen el dato guardado. Sube sus correos .eml (despacho o recibido); puedes elegir todos a la vez y se aplican solos a cada packing list.`:''):(r.sin?`⚠ ${r.sin} documento(s) de Cristal no tienen piezas guardadas. Sube sus correos .eml (despacho o recibido), todos a la vez; se aplican solos a cada packing list.`:'✔ Todo Cristal ya tiene piezas.'));setTimeout(()=>{for(const [id,x] of Object.entries(EMB))if(x&&x.cmp&&x.desp)cmpPublish(id,true)},2500)}catch(err){toast('Error: '+(err.code||err.message))}cf.disabled=false;return}
   const cp=e.target.closest('[data-ecmp]');if(cp){if(await cmpPublish(cp.dataset.ecmp))await cmpCopy('✅ Publicado · link del comprador copiado');return}
   const cx=e.target.closest('[data-ecmpx]');if(cx){cmpRemove(cx.dataset.ecmpx);return}
   const ca=e.target.closest('[data-ecmpall]');if(ca){cmpAll();return}
