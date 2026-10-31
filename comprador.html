@@ -28,14 +28,25 @@ header .sub{opacity:.9;font-size:12.5px;margin-top:4px}
 .chip.D{background:#fff3d6;color:#8a5a00}.chip.R{background:#dcf5e8;color:#0e6b3c}
 .chip.T{background:var(--soft);color:var(--pet)}.chip.pa{background:#ffe5e2;color:#a3261b;margin-left:6px}
 .ty{background:var(--soft);color:var(--pet)}.ty.A{background:#fff3d6;color:#8a5a00}.ty.U{background:#dfeafc;color:#1c4a8a}.ty.P{background:#efe3fa;color:#5b2a86}.ty.C{background:#fde6ee;color:#8b1f4a}
-.lst{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
-.pl{background:var(--card);border:1px solid var(--bd);border-radius:14px;overflow:hidden;cursor:pointer;transition:.15s}
-.pl:hover{transform:translateY(-2px);box-shadow:0 6px 18px #0b4a5230}
-.pl .hd{background:linear-gradient(135deg,var(--pet),var(--pet2));color:#fff;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
-.pl .hd b{font-size:17px}
-.pl .bd{padding:10px 12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
-.pl .bd b{display:block;font-size:17px;color:var(--pet)}.pl .bd span{font-size:10.5px;color:var(--mt);text-transform:uppercase}
-.pl .ft{padding:0 12px 10px;font-size:12px;color:var(--mt)}
+.sum{display:flex;flex-wrap:wrap;background:var(--card);border:1px solid var(--bd);border-radius:14px;margin-bottom:12px;overflow:hidden}
+.sum div{flex:1 1 25%;padding:10px 6px;border-right:1px solid var(--bd);text-align:center}.sum div:last-child{border-right:0}
+.sum b{display:block;font-size:19px;color:var(--pet)}.sum span{font-size:10.5px;color:var(--mt);text-transform:uppercase;letter-spacing:.5px}
+.tl{background:var(--card);border:1px solid var(--bd);border-radius:14px;overflow:hidden}
+.tl .th{display:none}
+.tl .rw{display:grid;grid-template-columns:1fr auto;grid-template-areas:"n e" "d d" "r r" "m m" "s s";gap:3px 10px;padding:13px 14px;border-top:1px solid var(--bd);cursor:pointer;font-size:13px}
+.tl .rw:first-of-type{border-top:0}.tl .rw:hover{background:#eef6f7}
+.c-n{grid-area:n;font-weight:800;font-size:17px;color:var(--pet)}.c-e{grid-area:e;text-align:right}
+.c-d{grid-area:d;color:var(--mt)}.c-r{grid-area:r;color:var(--mt)}
+.c-m{grid-area:m;display:flex;gap:16px;margin-top:2px}.c-m b{color:var(--ink);font-size:15px}
+.c-s{grid-area:s;display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:5px}
+.lb{color:var(--mt);font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-right:4px}
+.sc{background:var(--soft);color:var(--pet);border-radius:6px;padding:1px 8px;font-weight:700;font-size:12px}
+@media(min-width:900px){
+  .tl .th,.tl .rw{grid-template-columns:130px 120px 175px 175px 110px 90px 1fr;grid-template-areas:"n e d r p t s";align-items:center;gap:0 14px;padding:11px 16px}
+  .tl .th{display:grid;background:var(--pet);color:#fff;font-size:12px;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+  .c-m{display:contents}.c-p{grid-area:p}.c-t{grid-area:t}.c-p,.c-t,.th .n{text-align:right}.c-e{text-align:left}
+  .c-m .lb,.c-d .lb,.c-r .lb,.c-s .lb{display:none}.c-s{margin-top:0}
+}
 .back{background:none;border:0;color:#fff;font:inherit;font-weight:700;cursor:pointer;padding:0 0 8px;opacity:.95}
 .tw{overflow:auto;border:1px solid var(--bd);border-radius:12px;max-height:64vh}
 table{border-collapse:separate;border-spacing:0;width:100%;min-width:980px}
@@ -133,21 +144,26 @@ function showList(){
   const all=Object.entries(IDX).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
   $('sub').textContent=`${all.length} packing list · ordenados por fecha de despacho, el más reciente primero`;
   const tp=all.reduce((a,[,v])=>a+(v.tp||0),0);
-  $('app').innerHTML=`<div class="card"><div class="kpis">
-      <div class="kpi"><b>${fmt(all.length)}</b><span>Packing list</span></div>
-      <div class="kpi"><b>${fmt(all.filter(([,v])=>v.st==='R').length)}</b><span>Recibidos</span></div>
-      <div class="kpi"><b>${fmt(all.filter(([,v])=>v.st!=='R').length)}</b><span>En tránsito</span></div>
-      <div class="kpi"><b>${fmt(tp)}</b><span>Piezas</span></div></div></div>
-    <div class="card"><div class="tools"><input type="search" id="lq" placeholder="Buscar packing list…">
-      <select id="ls"><option value="">Todos los estados</option><option value="D">Despachado</option><option value="R">Recibido</option></select></div></div>
-    <div class="lst" id="lst"></div>`;
+  $('app').innerHTML=`<div class="sum">
+      <div><b>${fmt(all.length)}</b><span>Packing list</span></div>
+      <div><b>${fmt(all.filter(([,v])=>v.st==='R').length)}</b><span>Recibidos</span></div>
+      <div><b>${fmt(all.filter(([,v])=>v.st!=='R').length)}</b><span>En tránsito</span></div>
+      <div><b>${fmt(tp)}</b><span>Piezas</span></div></div>
+    <div class="tools" style="margin-bottom:12px"><input type="search" id="lq" placeholder="Buscar packing list o tienda (ej. EMB-0009, S4)…">
+      <select id="ls" style="flex:0 1 200px"><option value="">Todos los estados</option><option value="D">Despachado</option><option value="R">Recibido</option></select></div>
+    <div class="tl"><div class="th rw" style="cursor:default"><div class="c-n" style="font-size:12px;color:#fff">Packing list</div><div class="c-e">Estado</div><div class="c-d">Despachado</div><div class="c-r">Recibido</div><div class="c-p n">Piezas</div><div class="c-t n">Transf.</div><div class="c-s">Tiendas</div></div><div id="lst"></div></div>`;
   const draw=()=>{const q=norm($('lq').value),s=$('ls').value;
-    const r=all.filter(([,v])=>(!s||(v.st==='R'?'R':'D')===s)&&(!q||norm(v.num).includes(q)));
-    $('lst').innerHTML=r.map(([id,v])=>`<div class="pl" data-id="${esc(id)}"><div class="hd"><b>${esc(v.num)}</b><span class="chip ${v.st==='R'?'R':'D'}">${v.st==='R'?'Recibido':'Despachado'}</span></div>
-      <div class="bd"><div><b>${fmt(v.tp)}</b><span>Piezas</span></div><div><b>${fmt(v.ns)}</b><span>Tiendas</span></div><div><b>${fmt(v.tf)}</b><span>Transf.</span></div></div>
-      <div class="ft">Despachado ${fdt(v.ts)}${v.st==='R'?'<br>Recibido '+fdt(v.rts):''}</div></div>`).join('')||'<div class="card msg">Sin resultados</div>'};
+    const r=all.filter(([,v])=>(!s||(v.st==='R'?'R':'D')===s)&&(!q||norm(v.num+' '+(v.sl||'')).includes(q)));
+    $('lst').innerHTML=r.map(([id,v])=>{
+      const ch=v.sl?String(v.sl).split(',').filter(Boolean).map(x=>`<span class="sc">${esc(x)}</span>`).join(''):`<span style="color:var(--mt)">${fmt(v.ns)} tienda(s)</span>`;
+      return `<div class="rw" data-id="${esc(id)}"><div class="c-n">${esc(v.num)}</div>
+        <div class="c-e"><span class="chip ${v.st==='R'?'R':'D'}">${v.st==='R'?'Recibido':'Despachado'}</span></div>
+        <div class="c-d"><span class="lb">Despachado</span>${fdt(v.ts)}</div>
+        <div class="c-r"><span class="lb">Recibido</span>${v.st==='R'?fdt(v.rts):'En tránsito'}</div>
+        <div class="c-m"><div class="c-p">${v.tp?`<b>${fmt(v.tp)}</b> pzas`:'<span style="color:var(--mt)">— pzas</span>'}</div><div class="c-t"><b>${fmt(v.tf)}</b> transf.</div></div>
+        <div class="c-s"><span class="lb">Tiendas</span>${ch}</div></div>`}).join('')||'<div class="msg">Sin resultados</div>'};
   $('lq').oninput=draw;$('ls').onchange=draw;draw();
-  $('lst').onclick=e=>{const c=e.target.closest('.pl');if(c)location.hash=TOK+'/'+c.dataset.id};
+  $('lst').onclick=e=>{const c=e.target.closest('.rw');if(c&&c.dataset.id)location.hash=TOK+'/'+c.dataset.id};
 }
 
 /* ---------- DETALLE ---------- */

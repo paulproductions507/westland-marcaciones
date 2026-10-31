@@ -2756,7 +2756,7 @@ async function cmpPublish(eid,quiet){const e=EMB[eid];
   if(!e||!e.desp){if(!quiet)toast('Solo se publican packing list despachados o recibidos');return false}
   if(cmpBusy.has(eid))return false;cmpBusy.add(eid);
   try{const tok=await cmpTok(),pl=await cmpBuild(eid,e);
-    const idx={num:pl.num,ts:pl.ts,st:pl.st,rts:pl.rts,nc:pl.cams.length,np:pl.np,tb:pl.tb,tp:pl.tp,tf:pl.tf,ns:pl.stores.length,pub:pl.pub};
+    const idx={num:pl.num,ts:pl.ts,st:pl.st,rts:pl.rts,nc:pl.cams.length,np:pl.np,tb:pl.tb,tp:pl.tp,tf:pl.tf,ns:pl.stores.length,sl:pl.stores.map(s=>s.t).sort((a,b)=>(/^S\d/.test(a)?0:1)-(/^S\d/.test(b)?0:1)||a.localeCompare(b,'es',{numeric:true})).join(','),pub:pl.pub};
     await update(R(db,`${CMPB}/${tok}`),{[`idx/${eid}`]:idx,[`pl/${eid}`]:pl});
     await set(R(db,`${PB}/emb/${eid}/cmp`),{st:pl.st,ts:pl.pub});return true}
   catch(err){if(!quiet)toast('Error: '+(err.code||err.message));return false}
