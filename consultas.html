@@ -193,6 +193,21 @@ html[data-theme=light] .bottom{background:#ffffffee}
 html[data-theme=light] .tab.on{background:#0b7f781a;border-color:#0b7f7866}
 html[data-theme=light] .btn.pri{color:#fff}
 html[data-theme=light] .modal>div{background:#fff}
+/* ===== Tema claro: más contraste (bordes/sombras oscuras, letra oscura sobre fondo claro) ===== */
+html[data-theme=light]{--bd:#1f3b44;--mt:#35545c}
+html[data-theme=light] .card,html[data-theme=light] .kpi,html[data-theme=light] .crow,html[data-theme=light] .row,html[data-theme=light] .tile,html[data-theme=light] .mpanel,html[data-theme=light] .sbox,html[data-theme=light] .modal>div,html[data-theme=light] details.card{border:1.5px solid #14292f;box-shadow:0 2px 0 #14292f40,0 8px 18px #0d2a3033}
+html[data-theme=light] .btn,html[data-theme=light] .tab,html[data-theme=light] input.f,html[data-theme=light] select.f{border:1.5px solid #14292f;color:var(--tx);box-shadow:0 2px 0 #14292f45}
+html[data-theme=light] .btn.pri{background:linear-gradient(135deg,#0b7f78,#0a6a72);color:#fff;border:1.5px solid #0a2a30}
+html[data-theme=light] .btn.pri:disabled,html[data-theme=light] .btn:disabled{opacity:1;background:#d5e3e7;color:#14292f;border:1.5px solid #14292f;box-shadow:none;cursor:not-allowed}
+html[data-theme=light] .tab.on{color:#07524e;border-color:#0b7f78}
+html[data-theme=light] .tile .hd{background:linear-gradient(135deg,#0b7f78,#0a5560)}
+html[data-theme=light] .tile .hd,html[data-theme=light] .tile .hd *{color:#fff}
+html[data-theme=light] .tile.pdr{background:linear-gradient(180deg,#0e4c5a,#082f38);border:2px solid #14292f}
+html[data-theme=light] .tile.pdr,html[data-theme=light] .tile.pdr *{color:#fff}
+html[data-theme=light] .lbl,html[data-theme=light] .msg,html[data-theme=light] .bottom .sum{color:#2c4a52}
+html[data-theme=light] .p-bl{background:#d9ecfb;color:#0b4f8a}html[data-theme=light] .p-aq{background:#d3efeb;color:#06504b}
+html[data-theme=light] .dspbtn{color:#fff;border:1.5px solid #0a2a30}
+html[data-theme=light] table th{color:#0d2a30}html[data-theme=light] .bar{border:1px solid #14292f66}
 </style>
 <script>try{var _t=localStorage.getItem('conTheme');document.documentElement.dataset.theme=(_t==='light')?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script></head>
 <body>
@@ -2940,8 +2955,24 @@ async function clFixPz(){let fx=0,sin=0;const upd={};
     const sum={};for(const [n,k] of Object.entries(pb))sum[k]=(sum[k]||0)+(((pu[n]||{}).pz)||0);
     const tfs={...p.tfs};let ch=false;
     for(const k of ks){if(sum[k]>0){tfs[k]={...p.tfs[k],pz:sum[k]};ch=true;fx++}else sin++}
-    if(ch){upd[`pm/${id}/tfs`]=tfs;const em=p.emb;if(em&&em.e&&em.c)upd[`emb/${em.e}/cam/${em.c}/pal/${id}/tfs`]=tfs}}
+    if(ch){upd[`pm/${id}/tfs`]=tfs;const em=p.emb;embPalPaths(id).forEach(b0=>{upd[b0+'/tfs']=tfs})}}
   if(Object.keys(upd).length)await update(R(db,PB),upd);return{fx,sin}}
+// ---- Lectura tolerante de los correos de GP: se convierte el HTML a texto y se usa el parseo que encuentre MÁS piezas ----
+function emlTxt(h){return String(h).replace(/<\s*br\s*\/?>|<\/(?:p|div|tr|li|h\d|table)>/gi,'\n').replace(/<[^>]+>/g,' ').replace(/&nbsp;|&#160;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/[ \t\r]+/g,' ')}
+const palsQ=ps=>(ps||[]).reduce((a,x)=>a+x.bl.reduce((q,b)=>q+(b.q||0),0),0);
+const _parseEml0=parseEml,_parseRecv0=parseRecv;
+parseEml=function(h){const a=_parseEml0(h),t=emlTxt(h),pals=[];let pa=null,bu=null,m;
+  const re=/Palet\s*#\s*(\d+)\s*Total bultos:\s*(\d+)|Bulto\s*N[^:\n]{0,8}:\s*(\d+)\s*-\s*(\d+)\s*-\s*((?:(?!Producto:)[^\n])*)|Producto:\s*\d+[\s\S]{0,300}?(?:QTY|Cantidad)\s*:\s*(\d+)/gi;
+  while((m=re.exec(t))){if(m[1]){pa={no:m[1],tot:+m[2],bl:[]};pals.push(pa);bu=null}else if(m[3]&&pa){bu={n:+m[3],p:m[4],c:m[5].trim(),q:0};pa.bl.push(bu)}else if(m[6]&&bu)bu.q+=+m[6]}
+  if(!a.no)a.no=(t.match(/PACKING\s*LIST\s*#\s*(\d+)/i)||[])[1];
+  if(pals.length&&(!a.pals.length||(pals.length>=a.pals.length&&palsQ(pals)>palsQ(a.pals))))a.pals=pals;return a};
+parseRecv=function(h){const a=_parseRecv0(h),t=emlTxt(h),pals=[];let pa=null,bu=null,m;
+  const re=/Palet\s*#\s*(\d+)\s*\|\|\s*Recibido por:\s*([^|\n]*?)\s*\|\|\s*Total bultos Recibidos:\s*(\d+)|Bulto\s*N[^:\n]{0,8}:\s*(\d+)\s*\|\|\s*Proforma Madre:\s*(\d+)\s*\|\|\s*Proforma Hija:\s*(\d+)|Producto:\s*\d+[\s\S]{0,300}?(?:QTY|Cantidad)\s*:\s*(\d+)/gi;
+  while((m=re.exec(t))){if(m[1]){pa={no:m[1],by:m[2],tot:+m[3],bl:[]};pals.push(pa);bu=null}else if(m[4]&&pa){bu={n:+m[4],pm:m[5],p:m[6]||m[5],q:0};pa.bl.push(bu)}else if(m[7]&&bu)bu.q+=+m[7]}
+  if(!a.no)a.no=(t.match(/PACKING\s*LIST\s*#\s*(\d+)/i)||[])[1];
+  if(pals.length&&(!a.pals.length||(pals.length>=a.pals.length&&palsQ(pals)>palsQ(a.pals))))a.pals=pals;return a};
+// Rutas de TODOS los embarques/camiones donde está cargado un palet (copia de sus transferencias)
+function embPalPaths(id){const o=[];for(const [eid,e] of Object.entries(EMB||{}))for(const [cid,c] of Object.entries((e&&e.cam)||{}))if(c&&c.pal&&c.pal[id])o.push(`emb/${eid}/cam/${cid}/pal/${id}`);return o}
 async function emlText(f){const raw=new TextDecoder('latin1').decode(await f.arrayBuffer()),i=raw.search(/content-type:\s*text\/html/i);if(i<0)return'';
   const m=raw.slice(i).match(/\r?\n\r?\n/),he=i+m.index,head=raw.slice(i,he),body=raw.slice(he).replace(/^\s+/,'').split(/\r?\n--/)[0],enc=(head.match(/transfer-encoding:\s*(\S+)/i)||[])[1]||'',cs=(head.match(/charset="?([\w-]+)/i)||[])[1]||'utf-8';let by;
   if(/base64/i.test(enc))by=Uint8Array.from(atob(body.replace(/\s/g,'')),c=>c.charCodeAt(0));
@@ -2958,24 +2989,37 @@ function parseRecv(h){const r={no:(h.match(/PACKING\s*LIST\s*#\s*(\d+)/i)||[])[1
   while((m=re.exec(h))){if(m[1]){pa={no:m[1],by:m[2],tot:+m[3],bl:[]};r.pals.push(pa);bu=null}else if(m[4]&&pa){bu={n:+m[4],pm:m[5],p:m[6]||m[5],q:0};pa.bl.push(bu)}else if(m[7]&&bu)bu.q+=+m[7]}return r}
 // Correo "PACKING LIST #n RECIBIDO": marca los palets como recibidos (sin pasar por recepcion.html) y completa/valida bultos
 async function emlRecv(H,eid){const P=parseRecv(H);if(!P.no||!P.pals.length)return'✖ No encontré palets en el correo de recibido';
-  const up={},msg=[],got=new Set();let nuevos=0,tb=0;
+  const up={},msg=[],got=new Set(),pf={};let nuevos=0,tb=0,reas=0;
+  // Nombre del cliente por proforma, tomado de lo que ya está cargado en otros palets (el correo de recibido no lo trae)
+  const cnMap={};Object.values(PM).forEach(q=>Object.values((q&&q.tfs)||{}).forEach(v=>{if(v&&v.cn&&v.tr)cnMap[String(v.tr)]=v.cn}));
   for(const x of P.pals){const num='CL-'+x.no;got.add(x.no);let id=(Object.entries(PM).find(([,q])=>q.num===num)||[])[0];if(!id){try{id=(await get(R(db,`${PB}/pn/${num}`))).val()}catch(e){}}
-    const had=!!id;let cur={};if(had)cur=(await get(R(db,`${PB}/pb/${id}`))).val()||{};else{id='p'+(Date.now()+(clSeq++));nuevos++}
-    const all={...cur},old=(PM[id]&&PM[id].tfs)||{},pzA={},pzX={},add=[];up[`cmap/${x.no}`]=P.no;
+    const had=!!id;let cur={},pu={};if(had){cur=(await get(R(db,`${PB}/pb/${id}`))).val()||{};try{pu=(await get(R(db,`${PB}/pu/${id}`))).val()||{}}catch(e){}}else{id='p'+(Date.now()+(clSeq++));nuevos++}
+    const all={...cur},pzB={},add=[];up[`cmap/${x.no}`]=P.no;
     for(const b of x.bl){tb++;const o=(await get(R(db,`${PB}/cb/${b.n}`))).val();if(o&&o!==id){msg.push(`⚠ Palet ${x.no}: el bulto ${b.n} ya está en otro palet`);continue}
-      if(cur[b.n]!==undefined){const k0=cur[b.n];pzX[k0]=(pzX[k0]||0)+b.q;up[`pu/${id}/${b.n}/pz`]=b.q;continue}const k=clK(b.p);all[b.n]=k;pzA[k]=(pzA[k]||0)+b.q;up[`pb/${id}/${b.n}`]=k;up[`cb/${b.n}`]=id;up[`pu/${id}/${b.n}`]={u:USER,n:NAME,ts:Date.now(),pz:b.q};add.push(b.n)}
-    const falt=Object.keys(cur).filter(n=>!x.bl.some(b=>String(b.n)===n)),cnt={};Object.values(all).forEach(k=>cnt[k]=(cnt[k]||0)+1);
-    const tfs={};Object.entries(cnt).forEach(([k,c])=>{const o=old[k]||{t:'CRISTAL',tr:k==='CL__SP'?'S/P':k.slice(4),pz:0,cl:1};tfs[k]={...o,N:c,c,pz:Math.max(o.pz||0,pzX[k]||0)+(pzA[k]||0)}});
+      const k=clK(b.p),prev=cur[b.n];
+      // el bulto ya cargado (por escaneo o correo de despacho) se RE-ASIGNA a su proforma y se le pone la cantidad de piezas
+      if(prev===undefined){up[`pu/${id}/${b.n}`]={u:USER,n:NAME,ts:Date.now(),pz:b.q};add.push(b.n)}else up[`pu/${id}/${b.n}/pz`]=b.q;
+      if(prev!==k){up[`pb/${id}/${b.n}`]=k;if(prev!==undefined)reas++}
+      up[`cb/${b.n}`]=id;all[b.n]=k;pzB[b.n]=b.q;
+      const a=pf[b.p]=pf[b.p]||{b:0,pz:0};a.b++;a.pz+=b.q}
+    // los documentos (proformas) se reconstruyen desde los bultos: bultos y piezas exactos por proforma
+    const old=(PM[id]&&PM[id].tfs)||{},tfs={};
+    Object.entries(all).forEach(([n,k])=>{const t=tfs[k]=tfs[k]||{...(old[k]||{}),t:'CRISTAL',tr:k==='CL__SP'?'S/P':k.slice(4),cl:1,N:0,c:0,pz:0};
+      if(!t.cn&&cnMap[k.slice(4)])t.cn=cnMap[k.slice(4)];t.c++;t.N++;t.pz+=(pzB[n]!==undefined?pzB[n]:((pu[n]||{}).pz||0))});
+    const falt=Object.keys(cur).filter(n=>!x.bl.some(b=>String(b.n)===n));
     const nb=Object.keys(all).length,rc={by:x.by||P.by,ts:P.ts,src:'correo',pl:P.no};
     if(had){up[`pm/${id}/tfs`]=tfs;up[`pm/${id}/nb`]=nb;up[`pm/${id}/gpl`]=P.no;up[`pm/${id}/rcv`]=rc;up[`pm/${id}/tot`]=x.tot;const em=PM[id]&&PM[id].emb;if(em){const b0=`emb/${em.e}/cam/${em.c}/pal/${id}`;up[b0+'/b']=nb;up[b0+'/tfs']=tfs;up[b0+'/g']=P.no}}
     else{up[`pm/${id}`]={num,seq:0,ts:P.ts,u:USER,n:NAME,st:'cerrado',div:false,nb,cl:1,gp:x.no,gpl:P.no,tot:x.tot,tfs,rcv:rc};up[`pn/${num}`]=id}
+    if(had)embPalPaths(id).forEach(b0=>{up[b0+'/tfs']=tfs;up[b0+'/b']=nb});
     if(x.tot!==x.bl.length)msg.push(`⚠ Palet ${x.no}: dice ${x.tot} bultos recibidos pero detalla ${x.bl.length}`);
     if(falt.length)msg.push(`⚠ Palet ${x.no}: ${falt.length} bulto(s) despachados que NO aparecen como recibidos (${falt.slice(0,4).join(', ')})`);
     if(had&&add.length)msg.push(`ℹ Palet ${x.no}: se completaron ${add.length} bultos`)}
+  if(reas)msg.push(`ℹ ${reas} bulto(s) se reasignaron a su proforma real (antes estaban sin proforma o con otra)`);
   try{const c=(await get(R(db,`${PB}/cpl/${P.no}`))).val();if(c){const pend=Object.keys(c.pals||{}).filter(n=>!got.has(n));if(pend.length)msg.push(`⏳ Palets del packing ${P.no} aún sin recibir: ${pend.join(', ')}`)}}catch(e){}
   if(!P.pals.reduce((a,x)=>a+x.bl.reduce((q,b)=>q+b.q,0),0))msg.push('⚠ El correo NO trae piezas (QTY) que pueda leer: las piezas de Cristal siguen en 0. Avísame para ajustar el formato.');
   await update(R(db,PB),up);
-  return`✔ Recibido packing GP #${P.no}: ${P.pals.length} palets (${nuevos} nuevos) · ${tb} bultos · por ${P.by||'—'}${msg.length?'\n\n'+msg.join('\n'):'\n\n✔ Todo cuadra'}`}
+  const pl=Object.entries(pf).map(([p,a])=>`• Proforma ${p}: ${a.b} bultos · ${fmt(a.pz)} pzas`).join('\n');
+  return`✔ Recibido packing GP #${P.no}: ${P.pals.length} palets (${nuevos} nuevos) · ${tb} bultos · ${fmt(palsQ(P.pals))} pzas · por ${P.by||'—'}\n${pl}${msg.length?'\n\n'+msg.join('\n'):'\n\n✔ Todo cuadra'}`}
 async function emlImport(f,eid){const H=await emlText(f);if(/RECIBIDO/i.test(H.slice(0,900)))return emlRecv(H,eid);const P=parseEml(H);if(!P.no||!P.pals.length)return`✖ ${f.name}: no encontré palets en el correo`;
   const up={},msg=[],ts=Date.now(),pf={};let nuevos=0,tb=0,tp=0;
   up[`cpl/${P.no}`]={ts,u:USER,n:NAME,mov:P.mov,pals:Object.fromEntries(P.pals.map(x=>[x.no,1]))};if(eid)up[`emb/${eid}/gpl/${P.no}`]=ts;
@@ -2992,6 +3036,7 @@ async function emlImport(f,eid){const H=await emlText(f);if(/RECIBIDO/i.test(H.s
     if(had){up[`pm/${id}/tfs`]=tfs;up[`pm/${id}/nb`]=nb;up[`pm/${id}/gpl`]=P.no;up[`pm/${id}/tot`]=x.tot;const em=PM[id]&&PM[id].emb;
       if(em){const b0=`emb/${em.e}/cam/${em.c}/pal/${id}`;up[b0+'/b']=nb;up[b0+'/tfs']=tfs;up[b0+'/g']=P.no}}
     else{up[`pm/${id}`]={num,seq:0,ts,u:USER,n:NAME,st:'cerrado',div:false,nb,cl:1,gp:x.no,gpl:P.no,tot:x.tot,tfs};up[`pn/${num}`]=id}
+    if(had)embPalPaths(id).forEach(b0=>{up[b0+'/tfs']=tfs;up[b0+'/b']=nb});
     if(x.tot!==x.bl.length)msg.push(`⚠ Palet ${x.no}: el correo dice ${x.tot} bultos pero detalla ${x.bl.length}`);
     if(ext.length)msg.push(`⚠ Palet ${x.no}: ${ext.length} bulto(s) en la app que no vienen en el correo (${ext.slice(0,4).join(', ')})`);
     if(had&&add.length)msg.push(`ℹ Palet ${x.no}: se completaron ${add.length} bultos`)}
