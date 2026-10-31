@@ -2713,7 +2713,7 @@ function embCalc(e){
   return{cams,tf:Object.values(tf).sort((a,b)=>a.t.localeCompare(b.t)),st:Object.values(st).sort((a,b)=>a.t.localeCompare(b.t)),tb,tp,np:cams.reduce((a,c)=>a+c.pals.length,0)}
 }
 // Tipología del documento: Pro forma (Cristal/clientes) · Transferencia (tiendas) · Movimiento interno (bodega a bodega, no va a tiendas)
-const docTipo=x=>(x&&(x.mi||x.t==='BODEGA'||x.t==='MI'))?'Movimiento interno':(x&&(x.t==='CRISTAL'||x.cl))?'Pro forma':'Transferencia';
+const docTipo=x=>(x&&(x.mi||x.t==='BODEGA'||x.t==='MI'))?'Movimiento interno':(x&&(x.t==='CRISTAL'||x.cl))?'Proforma':'Transferencia';
 function embHTML(e){
   const c=embCalc(e),th='style="background:#0b3b5c;color:#fff;padding:8px 10px;text-align:left;font-size:12px"',thn='style="background:#0b3b5c;color:#fff;padding:8px 10px;text-align:right;font-size:12px"',td='style="padding:7px 10px;border-bottom:1px solid #d9e1e8;font-size:13px"',tdn='style="padding:7px 10px;border-bottom:1px solid #d9e1e8;font-size:13px;text-align:right"';
   const kpi=(l,v,col)=>`<td style="background:#f4f8fb;border:1px solid #d9e1e8;border-top:4px solid ${col};padding:14px 6px;text-align:center;width:20%"><div style="font:800 26px Arial,sans-serif;color:#0b3b5c">${fmt(v)}</div><div style="font:11px Arial,sans-serif;color:#5a6b7a;text-transform:uppercase;letter-spacing:.5px">${l}</div></td>`;
@@ -2765,14 +2765,29 @@ async function cmpProvMap(){const real=Object.keys(RECS).filter(id=>!isPs(id));
   const pp={};real.sort((a,b)=>b.localeCompare(a,'es',{numeric:true}));
   for(const id of real){if(!PROV[id])continue;let it=[];try{it=RECS[id].items||[]}catch(e){}for(const x of it){const k=String(x.p);if(!(k in pp))pp[k]=PROV[id]}}
   return pp}
+// Productos de cada bulto del correo de DESPACHO: {bulto:[{p,d,q}]} (para el desglose por proforma del comprador)
+function emlProds(h){const t=emlTxt(h),M={};let bu=null,m;const re=/Bulto\s*N[^:\n]{0,8}:\s*(\d+)\s*-\s*\d+|Producto:\s*(\d+)\s*-\s*([^\n]*?)\s*-\s*QTY\s*:\s*(\d+)/gi;
+  while((m=re.exec(t))){if(m[1]){bu=m[1];M[bu]=M[bu]||[]}else if(bu)M[bu].push({p:m[2],d:(m[3]||'').trim(),q:+m[4]})}return M}
+// Índice de productos desde los recibos reales (más reciente primero): proveedor, recibo, estilo, descripción, UPC
+async function cmpProdIdx(){await cmpProvMap();const real=Object.keys(RECS).filter(id=>!isPs(id)).sort((a,b)=>b.localeCompare(a,'es',{numeric:true})),ix={};
+  for(const id of real){let it=[];try{it=RECS[id].items||[]}catch(e){}for(const x of it){const k=String(x.p);if(!(k in ix))ix[k]={rec:id,v:PROV[id]||'',e:x.ref||'',d:x.d||'',u:x.upc||''}}}return ix}
+// Productos por proforma (clientes de Cristal) de los palets de este packing list
+async function cmpCliProds(c){const agg={},seen=new Set();let dsc={};
+  for(const cm of c.cams)for(const pl of cm.pals){if(seen.has(pl.id))continue;seen.add(pl.id);if(!Object.keys(pl.tfs||{}).some(k=>k.startsWith('CL__')))continue;
+    let pb={},pp={};try{pb=(await get(R(db,`${PB}/pb/${pl.id}`))).val()||{};pp=(await get(R(db,`${PB}/pp/${pl.id}`))).val()||{}}catch(x){continue}
+    for(const [n,k] of Object.entries(pb)){const pr=pp[n];if(!pr)continue;const a=agg[k]=agg[k]||{};for(const [p,q] of Object.entries(pr))a[p]=(a[p]||0)+q}}
+  try{dsc=(await get(R(db,`${PB}/pdsc`))).val()||{}}catch(x){}
+  return{agg,dsc}}
 async function cmpBuild(eid,e){
-  const c=embCalc(e),rc=cmpRc(e),st=rc?'R':'D',T={},pp=await cmpProvMap();
+  const c=embCalc(e),rc=cmpRc(e),st=rc?'R':'D',T={},pp=await cmpProvMap(),ix=await cmpProdIdx(),cp=await cmpCliProds(c);
   c.cams.forEach((cm,ci)=>cm.pals.forEach(pl=>Object.entries(pl.tfs).forEach(([k,v])=>{const a=T[k]=T[k]||{k,t:v.t||'',tr:v.tr||'',N:0,b:0,pz:0,sh:0,cn:v.cn||'',cl:v.cl||0};a.N=v.cl?(a.N+(v.N||0)):(v.N||0);a.pz=v.cl?a.pz+(v.pz||0):(v.pz||0);a.sh+=(v.pz||0)/(v.N||1)*(v.c||0);if(!a.cn&&v.cn)a.cn=v.cn;a.b+=v.c||0})));
   const rows=[];
   for(const a of Object.values(T)){
-    const base={t:L(a.t),tn:NAMES[a.t]||'',tr:a.tr,td:docTipo(a),bt:a.b,N:a.N,pa:a.b<a.N?1:0};
+    const base={t:L(a.t),tn:NAMES[a.t]||'',tr:String(a.tr||'').replace(/\s+/g,''),td:docTipo(a),bt:a.b,N:a.N,pa:a.b<a.N?1:0,cn:a.cn||''};
     const m=a.k.split('__');
-    if(m[0]==='CL'){rows.push({...base,ty:'Cliente',rc:'',v:'Cristal clientes',e:'',p:'',d:'Packing de cliente'+(a.cn?' · '+a.cn:''),u:'',q:Math.round(a.sh)});continue}
+    if(m[0]==='CL'){const pr=cp.agg[a.k];
+      if(pr&&Object.keys(pr).length){for(const [p,q] of Object.entries(pr)){const x=ix[p]||{};rows.push({...base,ty:'Cliente',rc:x.rec||'',v:x.v||'',e:x.e||'',p:String(p),d:x.d||cp.dsc[p]||'',u:x.u||'',q})}continue}
+      rows.push({...base,ty:'Cliente',rc:'',v:'',e:'',p:'',d:'(sin detalle de productos: sube el correo de despacho de este packing)',u:'',q:Math.round(a.sh)});continue}
     const rec=m[0],key=m.slice(1).join('__'),Lg=await cmpLines(rec),ents=Lg.g[key]||[],ps=isPs(rec),rcn=ps?'':rec;let ty=CMPTY[rec]||'Túnel de distribución';
     if(ty==='Túnel de distribución'){const mm=await cmpTrMeta(a.tr);if(mm&&mm.mode==='tun'&&mm.file==='manual')ty='Túnel manual'}
     if(!ents.length){rows.push({...base,ty,rc:rcn,v:ps?'Sin proveedor':(PROV[rec]||'Sin proveedor'),e:'',p:'',d:'(sin detalle de productos)',u:'',q:Math.round(a.pz)});continue}
@@ -3013,13 +3028,13 @@ async function emlRecv(H,eid){await embLoad();const P=parseRecv(H);if(!P.no||!P.
   await update(R(db,PB),up);{const rp=await cmpRepub(up);if(rp)msg.push(rp)}
   return`✔ Recibido packing GP #${P.no}: ${ok} de ${P.pals.length} palets marcados como recibidos por ${P.by||'—'}\nLas piezas, proformas y clientes salen del correo de despacho.${msg.length?'\n\n'+msg.join('\n'):''}`}
 async function emlImport(f,eid){const H=await emlText(f);await embLoad();if(/RECIBIDO/i.test(H.slice(0,900)))return emlRecv(H,eid);const P=parseEml(H);if(!P.no||!P.pals.length)return`✖ ${f.name}: no encontré palets en el correo`;
-  const up={},msg=[],ts=Date.now(),pf={};let nuevos=0,tb=0,tp=0;
+  const up={},msg=[],ts=Date.now(),pf={},PRD=emlProds(H);let nuevos=0,tb=0,tp=0;
   up[`cpl/${P.no}`]={ts,u:USER,n:NAME,mov:P.mov,pals:Object.fromEntries(P.pals.map(x=>[x.no,1]))};if(eid)up[`emb/${eid}/gpl/${P.no}`]=ts;
   for(const x of P.pals){const num='CL-'+x.no;let id=(Object.entries(PM).find(([,q])=>q.num===num)||[])[0];if(!id){try{id=(await get(R(db,`${PB}/pn/${num}`))).val()}catch(e){}}
     const had=!!id;let cur={};if(had)cur=(await get(R(db,`${PB}/pb/${id}`))).val()||{};else{id='p'+(Date.now()+(clSeq++));nuevos++}
     const all={},add=[],ext=Object.keys(cur).filter(n=>!x.bl.some(b=>String(b.n)===n));up[`cmap/${x.no}`]=P.no;
     for(const b of x.bl){const o=(await get(R(db,`${PB}/cb/${b.n}`))).val();if(o&&o!==id){msg.push(`⚠ Palet ${x.no}: el bulto ${b.n} ya está en otro palet`);continue}
-      const k=clK(b.p);all[b.n]=k;if(cur[b.n]!==k){up[`pb/${id}/${b.n}`]=k;up[`cb/${b.n}`]=id;if(!cur[b.n]){up[`pu/${id}/${b.n}`]={u:USER,n:NAME,ts,pz:b.q};add.push(b.n)}else up[`pu/${id}/${b.n}/pz`]=b.q}else up[`pu/${id}/${b.n}/pz`]=b.q;
+      const k=clK(b.p);all[b.n]=k;if(PRD[b.n]&&PRD[b.n].length){const o={};PRD[b.n].forEach(y=>{o[y.p]=(o[y.p]||0)+y.q;if(y.d)up[`pdsc/${y.p}`]=y.d});up[`pp/${id}/${b.n}`]=o}if(cur[b.n]!==k){up[`pb/${id}/${b.n}`]=k;up[`cb/${b.n}`]=id;if(!cur[b.n]){up[`pu/${id}/${b.n}`]={u:USER,n:NAME,ts,pz:b.q};add.push(b.n)}else up[`pu/${id}/${b.n}/pz`]=b.q}else up[`pu/${id}/${b.n}/pz`]=b.q;
       const a=pf[b.p]=pf[b.p]||{c:b.c,b:0,pz:0};a.b++;a.pz+=b.q;tb++;tp+=b.q}
     ext.forEach(n=>all[n]=cur[n]);const tfs={};
     x.bl.forEach(b=>{if(all[b.n]===undefined)return;const k=clK(b.p),t=tfs[k]=tfs[k]||{t:'CRISTAL',tr:b.p,cn:b.c,N:0,pz:0,c:0,cl:1};t.c++;t.N++;t.pz+=b.q});

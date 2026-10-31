@@ -116,7 +116,7 @@ $('tg').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'li
 let db,TOK='',IDX={},PL=null,ROWS=[],VIEW=[],SORT={k:'t',d:1},BUSY=false;
 
 const COLS=[
- {k:'t',h:'Tienda'},{k:'td',h:'Tipo de documento'},{k:'tr',h:'N.º de documento'},{k:'ty',h:'Tipología'},{k:'rc',h:'Recibo'},{k:'v',h:'Proveedor'},
+ {k:'t',h:'Tienda'},{k:'td',h:'Tipo de documento'},{k:'tr',h:'N.º de documento'},{k:'cn',h:'Cliente'},{k:'ty',h:'Tipología'},{k:'rc',h:'Recibo'},{k:'v',h:'Proveedor'},
  {k:'e',h:'Estilo'},{k:'p',h:'Producto',mono:1},{k:'d',h:'Descripción'},{k:'u',h:'Código barras',mono:1},{k:'q',h:'Piezas',n:1}
 ];
 /* Guía de proveedores por prefijo de la descripción (primera palabra). Solo se usa cuando el sistema no encontró proveedor.
@@ -137,7 +137,7 @@ const prefOf=d=>String(d||'').trim().split(/\s+/)[0].toUpperCase().replace(/[^A-
 const tyN=t=>(!t||t==='Recibo'||t==='Túnel'||t==='Tunel')?'Túnel de distribución':(t==='Automático'||t==='Pedido automático')?AUTO_LBL:t;
 const norm1=r=>{let v=String(r.v||SP).replace(/\s+/g,' ').trim();
   if(v===SP&&r.p){const g=GUIA_PROV[prefOf(r.d)];if(g)v=g}
-  return{...r,ty:tyN(r.ty),v,rc:r.rc||'',td:r.td||(r.t==='Cristal'?'Pro forma':'Transferencia')}};
+  return{...r,ty:tyN(r.ty),v,rc:r.rc||'',cn:r.cn||'',tr:String(r.tr||'').replace(/\s+/g,''),td:String(r.td||(r.t==='Cristal'?'Proforma':'Transferencia')).replace(/^Pro\s+forma$/i,'Proforma')}};
 
 window.addEventListener('hashchange',()=>{if(TOK)route()});
 function route(){const [t,id]=location.hash.slice(1).split('/');if(t!==TOK)return;id?openPL(id):showList()}
@@ -232,7 +232,7 @@ function render(){
   const q=norm($('q').value).split(/\s+/).filter(Boolean),ft=$('ft').value,fr=$('fr').value,fy=$('fy').value,fd=$('fd').value,fv=$('fv').value,fm=+$('fm').value||0;
   VIEW=ROWS.filter(r=>{
     if(ft&&r.t!==ft)return false;if(fr&&r.tr!==fr)return false;if(fy&&r.ty!==fy)return false;if(fd&&r.td!==fd)return false;if(fv&&r.v!==fv)return false;if(fm&&(r.q||0)<fm)return false;
-    if(q.length){const h=norm([r.t,r.tn,r.tr,r.td,r.ty,r.rc,r.v,r.e,r.p,r.d,r.u].join(' '));if(!q.every(w=>h.includes(w)))return false}
+    if(q.length){const h=norm([r.t,r.tn,r.tr,r.cn,r.td,r.ty,r.rc,r.v,r.e,r.p,r.d,r.u].join(' '));if(!q.every(w=>h.includes(w)))return false}
     return true});
   const k=SORT.k,d=SORT.d,num=COLS.find(c=>c.k===k).n;
   VIEW.sort((a,b)=>d*(num?(a[k]||0)-(b[k]||0):String(a[k]||'').localeCompare(String(b[k]||''),'es',{numeric:true})));
@@ -246,7 +246,7 @@ function render(){
     else if(c.k==='v')s=v===SP?`<span class="sp">${SP}</span>`:esc(v);
     else if(c.k==='q')s=fmt(v);else s=esc(v||(c.k==='rc'?'—':''));
     return `<td class="${c.n?'n':''} ${c.mono?'mono':''}">${s}</td>`}).join('')}</tr>`).join(''):`<tr><td colspan="${COLS.length}" class="msg">Sin resultados</td></tr>`;
-  $('tf').innerHTML=`<td colspan="10"><b>TOTAL (${fmt(VIEW.length)} líneas)</b></td><td class="n">${fmt(VIEW.reduce((a,r)=>a+(r.q||0),0))}</td>`;
+  $('tf').innerHTML=`<td colspan="${COLS.length-1}"><b>TOTAL (${fmt(VIEW.length)} líneas)</b></td><td class="n">${fmt(VIEW.reduce((a,r)=>a+(r.q||0),0))}</td>`;
 }
 
 /* ---------- EXCEL (ExcelJS: estilos, filtros, formato tabla) ---------- */
@@ -260,7 +260,7 @@ async function excel(){
     const side={style:'thin',color:{argb:LN}},bd={top:side,left:side,bottom:side,right:side};
     const fill=c=>({type:'pattern',pattern:'solid',fgColor:{argb:c}});
     const band=(ws,r,text,last,color,size)=>{ws.mergeCells(r,1,r,last);const c=ws.getCell(r,1);c.value=text;c.font={name:'Calibri',bold:true,size,color:{argb:W}};c.fill=fill(color);c.alignment={vertical:'middle',horizontal:'left',indent:1};ws.getRow(r).height=size+14};
-    const head=(ws,r,heads)=>{const row=ws.getRow(r);row.height=24;heads.forEach((h,i)=>{const c=row.getCell(i+1);c.value=h;c.font={name:'Calibri',bold:true,size:11,color:{argb:W}};c.fill=fill(NAVY);c.alignment={vertical:'middle',horizontal:'center',wrapText:true};c.border=bd})};
+    const head=(ws,r,heads,al)=>{const row=ws.getRow(r);row.height=24;heads.forEach((h,i)=>{const c=row.getCell(i+1);c.value=h;c.font={name:'Calibri',bold:true,size:11,color:{argb:W}};c.fill=fill(NAVY);c.alignment={vertical:'middle',horizontal:al?(h==='Piezas'?'right':'left'):'center',wrapText:!al,indent:al?1:0};c.border=bd})};
     const body=(ws,r,vals,fm,i)=>{const row=ws.getRow(r);vals.forEach((x,j)=>{const c=row.getCell(j+1);c.value=x;c.font={name:'Calibri',size:10.5};c.border=bd;if(i%2)c.fill=fill(ZEB);if(fm&&fm[j])c.numFmt=fm[j];c.alignment={vertical:'top',horizontal:typeof x==='number'?'right':'left',wrapText:true}})};
     const total=(ws,r,vals,fm)=>{const row=ws.getRow(r);vals.forEach((x,j)=>{const c=row.getCell(j+1);c.value=x;c.font={name:'Calibri',bold:true,size:11,color:{argb:W}};c.fill=fill(PET);c.border=bd;if(fm&&fm[j])c.numFmt=fm[j];c.alignment={horizontal:typeof x==='number'||(x&&x.formula)?'right':'left',vertical:'middle'}})};
     const sub=(ws,r,text,last)=>{ws.mergeCells(r,1,r,last);const c=ws.getCell(r,1);c.value=text;c.font={name:'Calibri',bold:true,size:12,color:{argb:PET}};c.border={bottom:{style:'medium',color:{argb:PET}}};ws.getRow(r).height=22};
@@ -292,15 +292,15 @@ async function excel(){
 
     /* Hoja 2: Productos (filtros + congelado) */
     const s2=wb.addWorksheet('Productos',{views:[{state:'frozen',ySplit:4,showGridLines:false}]});
-    const H=['Tienda','Tipo de documento','N.º de documento','Tipología','Recibo','Proveedor','Estilo','Producto','Descripción','Código barras','Piezas'];
-    s2.columns=[{width:10},{width:20},{width:18},{width:26},{width:11},{width:26},{width:16},{width:12},{width:48},{width:18},{width:10}];
-    band(s2,1,`Packing list ${v.num} · Detalle de productos`,11,NAVY,14);
-    s2.mergeCells(2,1,2,11);const t2=s2.getCell(2,1);t2.value=`${ST[v.st]||'Despachado'} · despachado ${fdt(v.ts)}${v.st==='R'?' · recibido '+fdt(v.rts):''}  ·  ${fmt(rowsAll.length)} líneas`;t2.font={italic:true,color:{argb:GR},size:10};
-    head(s2,4,H);
-    rowsAll.forEach((x,i)=>body(s2,5+i,[x.t,x.td||'—',x.tr||'—',x.ty,x.rc||'—',x.v,x.e||'',String(x.p||''),x.d||'',String(x.u||''),x.q||0],[null,null,null,null,null,null,null,'@',null,'@','#,##0'],i));
+    const H=['Tienda','Tipo de documento','N.º de documento','Cliente','Tipología','Recibo','Proveedor','Estilo','Producto','Descripción','Código barras','Piezas'];
+    s2.columns=[{width:11},{width:21},{width:24},{width:32},{width:14},{width:12},{width:34},{width:16},{width:13},{width:52},{width:18},{width:11}];
+    band(s2,1,`Packing list ${v.num} · Detalle de productos`,12,NAVY,14);
+    s2.mergeCells(2,1,2,12);const t2=s2.getCell(2,1);t2.value=`${ST[v.st]||'Despachado'} · despachado ${fdt(v.ts)}${v.st==='R'?' · recibido '+fdt(v.rts):''}  ·  ${fmt(rowsAll.length)} líneas`;t2.font={italic:true,color:{argb:GR},size:10};
+    head(s2,4,H,'left');
+    rowsAll.forEach((x,i)=>body(s2,5+i,[x.t,x.td||'—',String(x.tr||'—'),x.cn||'',x.ty,x.rc||'—',x.v,x.e||'',String(x.p||''),x.d||'',String(x.u||''),x.q||0],[null,null,'@',null,null,null,null,null,'@',null,'@','#,##0'],i));
     const last=4+rowsAll.length;
-    total(s2,last+1,['TOTAL','','','','','','','','','',{formula:`SUBTOTAL(109,K5:K${last})`,result:rowsAll.reduce((a,x)=>a+(x.q||0),0)}],[null,null,null,null,null,null,null,null,null,null,'#,##0']);
-    s2.autoFilter={from:{row:4,column:1},to:{row:Math.max(5,last),column:11}};
+    total(s2,last+1,['TOTAL','','','','','','','','','','',{formula:`SUBTOTAL(109,L5:L${last})`,result:rowsAll.reduce((a,x)=>a+(x.q||0),0)}],[null,null,null,null,null,null,null,null,null,null,null,'#,##0']);
+    s2.autoFilter={from:{row:4,column:1},to:{row:Math.max(5,last),column:12}};
     s2.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,paperSize:9,printTitlesRow:'4:4'};
 
     const buf=await wb.xlsx.writeBuffer(),url=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),a=document.createElement('a');
@@ -355,14 +355,14 @@ function pdf(){
   doc.addPage();
   const rows=sortRows(ROWS),stores=[...new Set(rows.map(r=>r.t))],body=[];
   stores.forEach(t=>{const rs=rows.filter(r=>r.t===t),sum=rs.reduce((a,r)=>a+(r.q||0),0),tn=(rs[0]||{}).tn;
-    body.push([{content:`Tienda ${t}${tn?' · '+tn:''}`,colSpan:10,styles:{fillColor:PET,textColor:255,fontStyle:'bold',halign:'left'}}]);
-    rs.forEach(r=>body.push([r.td||'-',(r.tr||'-')+(r.pa?' (parcial)':''),r.ty,r.rc||'-',r.v,r.e||'',String(r.p||''),r.d||'',String(r.u||''),{content:fmt(r.q),styles:{halign:'right'}}]));
-    body.push([{content:`Subtotal ${t}  (${fmt(rs.length)} líneas)`,colSpan:9,styles:{halign:'right',fontStyle:'bold',fillColor:LT}},{content:fmt(sum),styles:{halign:'right',fontStyle:'bold',fillColor:LT}}])});
-  body.push([{content:`TOTAL GENERAL  (${fmt(rows.length)} líneas)`,colSpan:9,styles:{halign:'right',fontStyle:'bold',fillColor:NAVY,textColor:255}},{content:fmt(rows.reduce((a,r)=>a+(r.q||0),0)),styles:{halign:'right',fontStyle:'bold',fillColor:NAVY,textColor:255}}]);
+    body.push([{content:`Tienda ${t}${tn?' · '+tn:''}`,colSpan:11,styles:{fillColor:PET,textColor:255,fontStyle:'bold',halign:'left'}}]);
+    rs.forEach(r=>body.push([r.td||'-',(r.tr||'-')+(r.pa?' (parcial)':''),r.cn||'',r.ty,r.rc||'-',r.v,r.e||'',String(r.p||''),r.d||'',String(r.u||''),{content:fmt(r.q),styles:{halign:'right'}}]));
+    body.push([{content:`Subtotal ${t}  (${fmt(rs.length)} líneas)`,colSpan:10,styles:{halign:'right',fontStyle:'bold',fillColor:LT}},{content:fmt(sum),styles:{halign:'right',fontStyle:'bold',fillColor:LT}}])});
+  body.push([{content:`TOTAL GENERAL  (${fmt(rows.length)} líneas)`,colSpan:10,styles:{halign:'right',fontStyle:'bold',fillColor:NAVY,textColor:255}},{content:fmt(rows.reduce((a,r)=>a+(r.q||0),0)),styles:{halign:'right',fontStyle:'bold',fillColor:NAVY,textColor:255}}]);
   doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Detalle de productos',M,15);
-  doc.autoTable({...base,startY:18,head:[['Tipo de documento','N.º de documento','Tipología','Recibo','Proveedor','Estilo','Producto','Descripción','Código barras','Piezas']],body,
+  doc.autoTable({...base,startY:18,head:[['Tipo de documento','N.º de documento','Cliente','Tipología','Recibo','Proveedor','Estilo','Producto','Descripción','Código barras','Piezas']],body,
     styles:{...base.styles,fontSize:7.6,cellPadding:1.4},alternateRowStyles:{},showHead:'everyPage',rowPageBreak:'avoid',
-    columnStyles:{0:{cellWidth:22},1:{cellWidth:25},2:{cellWidth:26},3:{cellWidth:15},4:{cellWidth:32},5:{cellWidth:21},6:{cellWidth:17},7:{cellWidth:'auto'},8:{cellWidth:25},9:{cellWidth:14,halign:'right'}}});
+    columnStyles:{0:{cellWidth:20},1:{cellWidth:22},2:{cellWidth:28},3:{cellWidth:20},4:{cellWidth:14},5:{cellWidth:28},6:{cellWidth:19},7:{cellWidth:16},8:{cellWidth:'auto'},9:{cellWidth:23},10:{cellWidth:13,halign:'right'}}});
   // Encabezado/pie en todas las páginas
   const n=doc.getNumberOfPages(),gen=fdt(Date.now());
   for(let i=1;i<=n;i++){doc.setPage(i);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...GR);
