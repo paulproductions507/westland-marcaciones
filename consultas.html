@@ -2680,10 +2680,12 @@ function embCalc(e){
   const cams=Object.entries(e.cam||{}).map(([cid,c])=>({cid,chofer:c.chofer,placa:c.placa,pals:Object.entries(c.pal||{}).map(([id,v])=>({id,num:v.n,nb:v.b||0,tfs:v.tfs||{},o:v.o||0,g:v.g||''})).sort((a,b)=>(a.o-b.o)||(parseInt(String(a.num).replace(/\D/g,''),10)-parseInt(String(b.num).replace(/\D/g,''),10))).map((pl,i)=>({...pl,pos:i+1}))}));
   const tf={},st={};let tb=0,tp=0;
   cams.forEach(c=>{c.b=0;c.pz=0;c.pals.forEach(pl=>{pl.pz=0;Object.entries(pl.tfs).forEach(([k,v])=>{pl.pz+=(v.pz||0)/(v.N||1)*(v.c||0)});pl.pz=Math.round(pl.pz)});c.pals.forEach(pl=>Object.entries(pl.tfs).forEach(([k,v])=>{const n=v.c||0,sh=(v.pz||0)/(v.N||1)*n;
-    const a=tf[k]=tf[k]||{t:v.t,tr:v.tr,N:v.N,b:0,sh:0};a.b+=n;a.sh+=sh;c.b+=n;c.pz+=sh}));c.pz=Math.round(c.pz)});
+    const a=tf[k]=tf[k]||{t:v.t,tr:v.tr,N:v.N,b:0,sh:0,cl:v.cl,cn:v.cn,mi:v.mi};if(a.seen&&v.cl)a.N=(a.N||0)+(v.N||0);a.seen=1;if(!a.cn&&v.cn)a.cn=v.cn;a.b+=n;a.sh+=sh;c.b+=n;c.pz+=sh}));c.pz=Math.round(c.pz)});
   Object.values(tf).forEach(a=>{a.pz=Math.round(a.sh);const s=st[a.t]=st[a.t]||{t:a.t,tf:0,b:0,pz:0};s.tf++;s.b+=a.b;s.pz+=a.pz;tb+=a.b;tp+=a.pz});
   return{cams,tf:Object.values(tf).sort((a,b)=>a.t.localeCompare(b.t)),st:Object.values(st).sort((a,b)=>a.t.localeCompare(b.t)),tb,tp,np:cams.reduce((a,c)=>a+c.pals.length,0)}
 }
+// Tipología del documento: Pro forma (Cristal/clientes) · Transferencia (tiendas) · Movimiento interno (bodega a bodega, no va a tiendas)
+const docTipo=x=>(x&&(x.mi||x.t==='BODEGA'||x.t==='MI'))?'Movimiento interno':(x&&(x.t==='CRISTAL'||x.cl))?'Pro forma':'Transferencia';
 function embHTML(e){
   const c=embCalc(e),th='style="background:#0b3b5c;color:#fff;padding:8px 10px;text-align:left;font-size:12px"',thn='style="background:#0b3b5c;color:#fff;padding:8px 10px;text-align:right;font-size:12px"',td='style="padding:7px 10px;border-bottom:1px solid #d9e1e8;font-size:13px"',tdn='style="padding:7px 10px;border-bottom:1px solid #d9e1e8;font-size:13px;text-align:right"';
   const kpi=(l,v,col)=>`<td style="background:#f4f8fb;border:1px solid #d9e1e8;border-top:4px solid ${col};padding:14px 6px;text-align:center;width:20%"><div style="font:800 26px Arial,sans-serif;color:#0b3b5c">${fmt(v)}</div><div style="font:11px Arial,sans-serif;color:#5a6b7a;text-transform:uppercase;letter-spacing:.5px">${l}</div></td>`;
@@ -2693,9 +2695,9 @@ function embHTML(e){
   <div style="font-size:15px;font-weight:700;margin:16px 0 6px">Distribución por tienda · piezas</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${(()=>{const tt=Math.max(1,c.tp);return c.st.map(x=>{const pc=x.pz/tt*100,w=Math.max(1,Math.round(pc));return `<tr><td style="padding:5px 8px 5px 0;font-size:13px;width:70px"><b>${esc(L(x.t))}</b></td><td style="padding:5px 0"><table width="100%" cellpadding="0" cellspacing="0" style="background:#e6edf3"><tr><td width="${w}%" bgcolor="#1f7ae0" style="background:#1f7ae0;height:16px;line-height:16px;font-size:1px">&nbsp;</td><td style="font-size:1px">&nbsp;</td></tr></table></td><td style="padding:5px 0 5px 8px;font-size:12px;white-space:nowrap;text-align:right"><b>${pc.toFixed(1)}%</b> · ${fmt(x.pz)} pzas · ${fmt(x.b)} bultos</td></tr>`}).join('')})()}</table>
   <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Resumen por tienda</div>
-  <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Tienda</th><th ${thn}>Transferencias</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.st.map(s=>`<tr><td ${td}><b>${esc(LN(s.t))}</b></td><td ${tdn}>${s.tf}</td><td ${tdn}>${fmt(s.b)}</td><td ${tdn}>${fmt(s.pz)}</td></tr>`).join('')}<tr><td ${td}><b>TOTAL</b></td><td ${tdn}><b>${c.tf.length}</b></td><td ${tdn}><b>${fmt(c.tb)}</b></td><td ${tdn}><b>${fmt(c.tp)}</b></td></tr></table>
-  <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Detalle por transferencia</div>
-  <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Tienda</th><th ${th}>Transferencia</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.tf.map(a=>`<tr><td ${td}>${esc(L(a.t))}</td><td ${td}>${esc(a.tr||'—')}</td><td ${tdn}>${a.b}${a.b<a.N?' de '+a.N:''}</td><td ${tdn}>${fmt(a.pz)}</td></tr>`).join('')}</table>
+  <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Tienda</th><th ${thn}>Documentos</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.st.map(s=>`<tr><td ${td}><b>${esc(LN(s.t))}</b></td><td ${tdn}>${s.tf}</td><td ${tdn}>${fmt(s.b)}</td><td ${tdn}>${fmt(s.pz)}</td></tr>`).join('')}<tr><td ${td}><b>TOTAL</b></td><td ${tdn}><b>${c.tf.length}</b></td><td ${tdn}><b>${fmt(c.tb)}</b></td><td ${tdn}><b>${fmt(c.tp)}</b></td></tr></table>
+  <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Detalle por documento</div>
+  <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Tienda</th><th ${th}>Tipología</th><th ${th}>N.º de documento</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.tf.map(a=>`<tr><td ${td}>${esc(L(a.t))}</td><td ${td}>${esc(docTipo(a))}</td><td ${td}>${esc(a.tr||'—')}${a.cn?` <span style="color:#5a6b7a">· ${esc(a.cn)}</span>`:''}</td><td ${tdn}>${a.b}${a.b<a.N?' de '+a.N:''}</td><td ${tdn}>${fmt(a.pz)}</td></tr>`).join('')}</table>
   <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Camiones</div>
   <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Camión</th><th ${th}>Chofer</th><th ${th}>Placa</th><th ${th}>Palets</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.cams.map((x,i)=>`<tr><td ${td}>${i+1}</td><td ${td}>${esc(x.chofer||'')}</td><td ${td}>${esc(x.placa||'')}</td><td ${td}><span style="white-space:nowrap">${x.pals.length>1?`Palet ${x.pals[0].pos} hasta Palet ${x.pals[x.pals.length-1].pos}`:x.pals.length?`Palet ${x.pals[0].pos}`:'—'}</span></td><td ${tdn}>${fmt(x.b)}</td><td ${tdn}>${fmt(x.pz)}</td></tr><tr><td colspan="6" ${td}><span style="font-size:13px;line-height:1.5;-webkit-text-size-adjust:none">Nota: ${x.pals.map(pl=>esc(pl.num)).reduce((r,v,i)=>(i%5?r[r.length-1].push(v):r.push([v]),r),[]).map(g=>g.join(', ')).join('<br>')||'—'}</span></td></tr>`).join('')}</table>
   ${c.cams.map((x,i)=>`<div style="font-size:15px;font-weight:700;margin:20px 0 6px">Desglose · Camión ${i+1}</div>
@@ -2737,12 +2739,12 @@ async function cmpProvMap(){const real=Object.keys(RECS).filter(id=>!isPs(id));
   return pp}
 async function cmpBuild(eid,e){
   const c=embCalc(e),rc=cmpRc(e),st=rc?'R':'D',T={},pp=await cmpProvMap();
-  c.cams.forEach((cm,ci)=>cm.pals.forEach(pl=>Object.entries(pl.tfs).forEach(([k,v])=>{const a=T[k]=T[k]||{k,t:v.t||'',tr:v.tr||'',N:v.N||0,b:0,pz:v.pz||0,cn:v.cn||''};a.b+=v.c||0})));
+  c.cams.forEach((cm,ci)=>cm.pals.forEach(pl=>Object.entries(pl.tfs).forEach(([k,v])=>{const a=T[k]=T[k]||{k,t:v.t||'',tr:v.tr||'',N:0,b:0,pz:0,sh:0,cn:v.cn||'',cl:v.cl||0};a.N=v.cl?(a.N+(v.N||0)):(v.N||0);a.pz=v.cl?a.pz+(v.pz||0):(v.pz||0);a.sh+=(v.pz||0)/(v.N||1)*(v.c||0);if(!a.cn&&v.cn)a.cn=v.cn;a.b+=v.c||0})));
   const rows=[];
   for(const a of Object.values(T)){
-    const base={t:L(a.t),tn:NAMES[a.t]||'',tr:a.tr,bt:a.b,N:a.N,pa:a.b<a.N?1:0};
+    const base={t:L(a.t),tn:NAMES[a.t]||'',tr:a.tr,td:docTipo(a),bt:a.b,N:a.N,pa:a.b<a.N?1:0};
     const m=a.k.split('__');
-    if(m[0]==='CL'){rows.push({...base,ty:'Cliente',rc:'',v:'Cristal clientes',e:'',p:'',d:'Packing de cliente'+(a.cn?' · '+a.cn:''),u:'',q:Math.round(a.pz)});continue}
+    if(m[0]==='CL'){rows.push({...base,ty:'Cliente',rc:'',v:'Cristal clientes',e:'',p:'',d:'Packing de cliente'+(a.cn?' · '+a.cn:''),u:'',q:Math.round(a.sh)});continue}
     const rec=m[0],key=m.slice(1).join('__'),Lg=await cmpLines(rec),ents=Lg.g[key]||[],ps=isPs(rec),rcn=ps?'':rec;let ty=CMPTY[rec]||'Túnel de distribución';
     if(ty==='Túnel de distribución'){const mm=await cmpTrMeta(a.tr);if(mm&&mm.mode==='tun'&&mm.file==='manual')ty='Túnel manual'}
     if(!ents.length){rows.push({...base,ty,rc:rcn,v:ps?'Sin proveedor':(PROV[rec]||'Sin proveedor'),e:'',p:'',d:'(sin detalle de productos)',u:'',q:Math.round(a.pz)});continue}
@@ -2795,7 +2797,7 @@ async function embMail(id){
       return false}})
 }
 function embMailManual(e,to,cc){const c=embCalc(e);
-  const txt=[`Aviso de despacho ${e.num}`,`${fdt(e.ts)} · Prepara: ${e.n||e.u||''}`,'',`Camiones: ${c.cams.length} · Palets: ${c.np} · Bultos: ${fmt(c.tb)} · Piezas: ${fmt(c.tp)} · Tiendas: ${c.st.length}`,'','RESUMEN POR TIENDA',...c.st.map(s=>`${LN(s.t)} · ${s.tf} transf. · ${fmt(s.b)} bultos · ${fmt(s.pz)} pzas`),'','DETALLE POR TRANSFERENCIA',...c.tf.map(a=>`${L(a.t)} · ${a.tr||'—'} · ${a.b}${a.b<a.N?' de '+a.N:''} bultos · ${fmt(a.pz)} pzas`)].join('\n');
+  const txt=[`Aviso de despacho ${e.num}`,`${fdt(e.ts)} · Prepara: ${e.n||e.u||''}`,'',`Camiones: ${c.cams.length} · Palets: ${c.np} · Bultos: ${fmt(c.tb)} · Piezas: ${fmt(c.tp)} · Tiendas: ${c.st.length}`,'','RESUMEN POR TIENDA',...c.st.map(s=>`${LN(s.t)} · ${s.tf} doc. · ${fmt(s.b)} bultos · ${fmt(s.pz)} pzas`),'','DETALLE POR DOCUMENTO',...c.tf.map(a=>`${L(a.t)} · ${docTipo(a)} · ${a.tr||'—'} · ${a.b}${a.b<a.N?' de '+a.N:''} bultos · ${fmt(a.pz)} pzas`)].join('\n');
   const addr=s=>String(s||'').split(/[;,]\s*/).map(x=>x.trim()).filter(Boolean).map(encodeURIComponent).join(',');
   location.href='mailto:'+addr(to)+'?'+(cc?'cc='+addr(cc)+'&':'')+'subject='+encodeURIComponent(`Despacho ${e.num} · ${c.cams.length} camión(es) · ${c.tb} bultos · ${c.tp} piezas`)+'&body='+encodeURIComponent(txt)}
 async function addCam(eid){try{await set(R(db,`${PB}/emb/${eid}/cam/c${Date.now()}`),{chofer:'',placa:'',ts:Date.now()})}catch(err){toast('Error: '+(err.code||err.message))}}
@@ -2937,11 +2939,11 @@ async function emlRecv(H,eid){const P=parseRecv(H);if(!P.no||!P.pals.length)retu
   const up={},msg=[],got=new Set();let nuevos=0,tb=0;
   for(const x of P.pals){const num='CL-'+x.no;got.add(x.no);let id=(Object.entries(PM).find(([,q])=>q.num===num)||[])[0];if(!id){try{id=(await get(R(db,`${PB}/pn/${num}`))).val()}catch(e){}}
     const had=!!id;let cur={};if(had)cur=(await get(R(db,`${PB}/pb/${id}`))).val()||{};else{id='p'+(Date.now()+(clSeq++));nuevos++}
-    const all={...cur},old=(PM[id]&&PM[id].tfs)||{},pzA={},add=[];up[`cmap/${x.no}`]=P.no;
+    const all={...cur},old=(PM[id]&&PM[id].tfs)||{},pzA={},pzX={},add=[];up[`cmap/${x.no}`]=P.no;
     for(const b of x.bl){tb++;const o=(await get(R(db,`${PB}/cb/${b.n}`))).val();if(o&&o!==id){msg.push(`⚠ Palet ${x.no}: el bulto ${b.n} ya está en otro palet`);continue}
-      if(cur[b.n]!==undefined)continue;const k=clK(b.p);all[b.n]=k;pzA[k]=(pzA[k]||0)+b.q;up[`pb/${id}/${b.n}`]=k;up[`cb/${b.n}`]=id;up[`pu/${id}/${b.n}`]={u:USER,n:NAME,ts:Date.now(),pz:b.q};add.push(b.n)}
+      if(cur[b.n]!==undefined){const k0=cur[b.n];pzX[k0]=(pzX[k0]||0)+b.q;up[`pu/${id}/${b.n}/pz`]=b.q;continue}const k=clK(b.p);all[b.n]=k;pzA[k]=(pzA[k]||0)+b.q;up[`pb/${id}/${b.n}`]=k;up[`cb/${b.n}`]=id;up[`pu/${id}/${b.n}`]={u:USER,n:NAME,ts:Date.now(),pz:b.q};add.push(b.n)}
     const falt=Object.keys(cur).filter(n=>!x.bl.some(b=>String(b.n)===n)),cnt={};Object.values(all).forEach(k=>cnt[k]=(cnt[k]||0)+1);
-    const tfs={};Object.entries(cnt).forEach(([k,c])=>{const o=old[k]||{t:'CRISTAL',tr:k==='CL__SP'?'S/P':k.slice(4),pz:0,cl:1};tfs[k]={...o,N:c,c,pz:(o.pz||0)+(pzA[k]||0)}});
+    const tfs={};Object.entries(cnt).forEach(([k,c])=>{const o=old[k]||{t:'CRISTAL',tr:k==='CL__SP'?'S/P':k.slice(4),pz:0,cl:1};tfs[k]={...o,N:c,c,pz:Math.max(o.pz||0,pzX[k]||0)+(pzA[k]||0)}});
     const nb=Object.keys(all).length,rc={by:x.by||P.by,ts:P.ts,src:'correo',pl:P.no};
     if(had){up[`pm/${id}/tfs`]=tfs;up[`pm/${id}/nb`]=nb;up[`pm/${id}/gpl`]=P.no;up[`pm/${id}/rcv`]=rc;up[`pm/${id}/tot`]=x.tot;const em=PM[id]&&PM[id].emb;if(em){const b0=`emb/${em.e}/cam/${em.c}/pal/${id}`;up[b0+'/b']=nb;up[b0+'/tfs']=tfs;up[b0+'/g']=P.no}}
     else{up[`pm/${id}`]={num,seq:0,ts:P.ts,u:USER,n:NAME,st:'cerrado',div:false,nb,cl:1,gp:x.no,gpl:P.no,tot:x.tot,tfs,rcv:rc};up[`pn/${num}`]=id}
