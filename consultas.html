@@ -174,7 +174,7 @@ td.n,th.n,.tile input[type=number],.crow input[type=number],.trow .tv,.prow .tv,
 .ptl .hd{padding:10px 8px;text-align:center;background:linear-gradient(135deg,var(--ac2),#0b6f7d);color:#fff;text-shadow:0 1px 2px #000}.ptl .hd b{display:block;font-size:17px}.ptl .hd small{font-size:11px;opacity:.95}
 .ptl .bd{padding:9px 10px;font-size:12.5px;text-align:center;color:#d6f3f1}.ptl .bd b{color:#fff}
 .ptl.d{border-color:#ff9a1f;background:linear-gradient(180deg,#3d2409,#2a1604);box-shadow:0 0 14px #ff9a1f40}.ptl.d .hd{background:linear-gradient(135deg,#ffb347,#d36a00);color:#2b1400;text-shadow:none}.ptl.d .bd{color:#f3dcc0}
-.ptl.r{border-color:#34e08a;background:linear-gradient(180deg,#0d4a2e,#06301d);box-shadow:0 0 14px #34e08a40}.ptl.r .hd{background:linear-gradient(135deg,#34e08a,#0f9d58);color:#03281a;text-shadow:none}.ptl.r .bd{color:#d3f7e3}
+.ptl.r{border-color:#2a9d68;background:linear-gradient(180deg,#0d4a2e,#06301d);box-shadow:0 2px 8px #00000040}.ptl.r .hd{background:linear-gradient(135deg,#1f8a5b,#0d6b45);color:#fff;text-shadow:0 1px 2px #0008}.ptl.r .bd{color:#d3f7e3}
 .stbtn{width:100%;height:46px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;cursor:pointer}.stbtn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.stbtn i{font-style:normal;opacity:.7}
 .stsheet{position:fixed;inset:0;z-index:200;background:#000a;display:flex;align-items:flex-end;justify-content:center}.stsheet.hide{display:none}
 .stbox{width:100%;max-width:520px;max-height:78vh;overflow:auto;background:var(--bg2);border:1px solid var(--bd);border-radius:20px 20px 0 0;padding:6px 10px calc(env(safe-area-inset-bottom) + 14px)}
@@ -193,21 +193,22 @@ html[data-theme=light] .bottom{background:#ffffffee}
 html[data-theme=light] .tab.on{background:#0b7f781a;border-color:#0b7f7866}
 html[data-theme=light] .btn.pri{color:#fff}
 html[data-theme=light] .modal>div{background:#fff}
-/* ===== Tema claro: más contraste (bordes/sombras oscuras, letra oscura sobre fondo claro) ===== */
-html[data-theme=light]{--bd:#1f3b44;--mt:#35545c}
-html[data-theme=light] .card,html[data-theme=light] .kpi,html[data-theme=light] .crow,html[data-theme=light] .row,html[data-theme=light] .tile,html[data-theme=light] .mpanel,html[data-theme=light] .sbox,html[data-theme=light] .modal>div,html[data-theme=light] details.card{border:1.5px solid #14292f;box-shadow:0 2px 0 #14292f40,0 8px 18px #0d2a3033}
-html[data-theme=light] .btn,html[data-theme=light] .tab,html[data-theme=light] input.f,html[data-theme=light] select.f{border:1.5px solid #14292f;color:var(--tx);box-shadow:0 2px 0 #14292f45}
-html[data-theme=light] .btn.pri{background:linear-gradient(135deg,#0b7f78,#0a6a72);color:#fff;border:1.5px solid #0a2a30}
-html[data-theme=light] .btn.pri:disabled,html[data-theme=light] .btn:disabled{opacity:1;background:#d5e3e7;color:#14292f;border:1.5px solid #14292f;box-shadow:none;cursor:not-allowed}
-html[data-theme=light] .tab.on{color:#07524e;border-color:#0b7f78}
+/* ===== Tema claro estilo SAP Fiori: bordes finos, sombra suave, letra oscura sobre fondo claro ===== */
+html[data-theme=light]{--bd:#a9bcc4;--mt:#3d5b63}
+html[data-theme=light] .card,html[data-theme=light] .kpi,html[data-theme=light] .crow,html[data-theme=light] .row,html[data-theme=light] .tile,html[data-theme=light] .mpanel,html[data-theme=light] .modal>div,html[data-theme=light] details.card{border:1px solid #b7c8cf;box-shadow:0 0 0 1px #0d2a3010,0 2px 6px #0d2a3018,0 8px 20px #0d2a3010}
+html[data-theme=light] .sbox,html[data-theme=light] input.f,html[data-theme=light] select.f{border:1px solid #8aa2ab;color:var(--tx);box-shadow:inset 0 1px 2px #0d2a3014}
+html[data-theme=light] .btn,html[data-theme=light] .tab{border:1px solid #8aa2ab;color:var(--tx);background:linear-gradient(#ffffff,#eaf1f4);box-shadow:0 1px 2px #0d2a3022}
+html[data-theme=light] .btn.pri{background:linear-gradient(135deg,#0b7f78,#0a6a72);color:#fff;border:1px solid #075a5a;box-shadow:0 1px 3px #0b7f7855}
+html[data-theme=light] .btn.pri:disabled,html[data-theme=light] .btn:disabled{opacity:1;background:#e3ecef;color:#1b3840;border:1px solid #a9bcc4;box-shadow:none;cursor:not-allowed}
+html[data-theme=light] .tab.on{color:#07524e;border-color:#0b7f78;background:#dff2f0}
 html[data-theme=light] .tile .hd{background:linear-gradient(135deg,#0b7f78,#0a5560)}
 html[data-theme=light] .tile .hd,html[data-theme=light] .tile .hd *{color:#fff}
-html[data-theme=light] .tile.pdr{background:linear-gradient(180deg,#0e4c5a,#082f38);border:2px solid #14292f}
+html[data-theme=light] .tile.pdr{background:linear-gradient(180deg,#0e4c5a,#082f38);border:1px solid #0a3a44}
 html[data-theme=light] .tile.pdr,html[data-theme=light] .tile.pdr *{color:#fff}
 html[data-theme=light] .lbl,html[data-theme=light] .msg,html[data-theme=light] .bottom .sum{color:#2c4a52}
 html[data-theme=light] .p-bl{background:#d9ecfb;color:#0b4f8a}html[data-theme=light] .p-aq{background:#d3efeb;color:#06504b}
-html[data-theme=light] .dspbtn{color:#fff;border:1.5px solid #0a2a30}
-html[data-theme=light] table th{color:#0d2a30}html[data-theme=light] .bar{border:1px solid #14292f66}
+html[data-theme=light] .dspbtn{color:#fff;border:1px solid #075a5a}
+html[data-theme=light] table th{color:#0d2a30}html[data-theme=light] .bar{border:1px solid #b7c8cf}
 </style>
 <script>try{var _t=localStorage.getItem('conTheme');document.documentElement.dataset.theme=(_t==='light')?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script></head>
 <body>
@@ -2704,7 +2705,7 @@ function renderPalModal(){
   const fr=$('palDyn').querySelector('.palrow-in');if(fr)fr.scrollIntoView({block:'nearest',behavior:'smooth'})
 }
 function embCalc(e){
-  const cams=Object.entries(e.cam||{}).map(([cid,c])=>({cid,chofer:c.chofer,placa:c.placa,pals:Object.entries(c.pal||{}).map(([id,v])=>({id,num:v.n,nb:v.b||0,tfs:v.tfs||{},o:v.o||0,g:v.g||''})).sort((a,b)=>(a.o-b.o)||(parseInt(String(a.num).replace(/\D/g,''),10)-parseInt(String(b.num).replace(/\D/g,''),10))).map((pl,i)=>({...pl,pos:i+1}))}));
+  const cams=Object.entries(e.cam||{}).map(([cid,c])=>({cid,chofer:c.chofer,placa:c.placa,pals:Object.entries(c.pal||{}).map(([id,v])=>({id,num:v.n,nb:v.b||0,tfs:((PM[id]&&PM[id].cl&&PM[id].tfs&&Object.keys(PM[id].tfs).length)?PM[id].tfs:v.tfs)||{},o:v.o||0,g:v.g||''})).sort((a,b)=>(a.o-b.o)||(parseInt(String(a.num).replace(/\D/g,''),10)-parseInt(String(b.num).replace(/\D/g,''),10))).map((pl,i)=>({...pl,pos:i+1}))}));
   const tf={},st={};let tb=0,tp=0;
   cams.forEach(c=>{c.b=0;c.pz=0;c.pals.forEach(pl=>{pl.pz=0;Object.entries(pl.tfs).forEach(([k,v])=>{pl.pz+=(v.pz||0)/(v.N||1)*(v.c||0)});pl.pz=Math.round(pl.pz)});c.pals.forEach(pl=>Object.entries(pl.tfs).forEach(([k,v])=>{const n=v.c||0,sh=(v.pz||0)/(v.N||1)*n;
     const a=tf[k]=tf[k]||{t:v.t,tr:v.tr,N:v.N,b:0,sh:0,cl:v.cl,cn:v.cn,mi:v.mi};if(a.seen&&v.cl)a.N=(a.N||0)+(v.N||0);a.seen=1;if(!a.cn&&v.cn)a.cn=v.cn;a.b+=n;a.sh+=sh;c.b+=n;c.pz+=sh}));c.pz=Math.round(c.pz)});
@@ -2873,7 +2874,7 @@ function renderPal(){
     return `<div class="pgrid">`+A.map(([id,p])=>{const cl=p.rcv?'r':p.emb?'d':'',em=p.emb&&EMB[p.emb.e]?EMB[p.emb.e].num:'',ss=pStores(p),
       sub=p.rcv?'📥 '+esc(p.rcv.by||'Recibido'):p.emb?'🚚 '+esc(em||'Despachado'):(p.st==='cerrado'?'Cerrado':'Abierto'),
       ft=p.rcv?fdt(p.rcv.ts):'';
-      return `<div class="ptl ${cl}" data-po="${id}"><div class="hd"><b>${esc(p.num)}</b><small>${p.cl?'👤 Cliente · ':''}${sub}</small></div><div class="bd"><div style="font:800 24px 'Inter',sans-serif">${pBul(p)}</div><div style="opacity:.8">bultos</div><div style="margin-top:6px;font-size:11.5px">${ss.slice(0,3).map(x=>esc(L(x.t))+' '+x.b).join(' · ')||(p.cl?'sin detalle · falta PDF/correo':'vacío')}${ss.length>3?' +'+(ss.length-3):''}</div>${p.cl?`<div style="font-size:11px;margin-top:3px"><b>PL GP ${p.gpl?'#'+esc(String(p.gpl)):'—'}</b></div>`:ss.length>1?'<div style="font-size:11px;margin-top:3px"><b>división</b></div>':''}${ft?`<div style="font-size:11px;margin-top:4px;opacity:.85">${esc(ft)}</div>`:''}</div></div>`}).join('')+`</div>`})();
+      return `<div class="ptl ${cl}" data-po="${id}"><div class="hd"><b>${esc(p.num)}</b><small>${p.cl?'👤 Cliente · ':''}${sub}</small></div><div class="bd"><div style="font:800 24px 'Inter',sans-serif">${pBul(p)}</div><div style="opacity:.8">bultos</div><div style="margin-top:6px;font-size:11.5px">${ss.slice(0,3).map(x=>esc(L(x.t))+' '+x.b).join(' · ')||(p.cl?'sin detalle · falta PDF/correo':'vacío')}${ss.length>3?' +'+(ss.length-3):''}</div>${p.cl?`<div style="font-size:11px;margin-top:3px"><b>PL GP ${p.gpl?'#'+esc(String(p.gpl)):'—'}</b></div>${Object.values(p.tfs||{}).slice(0,2).map(v=>`<div style="font-size:11px;margin-top:2px">${esc(v.tr&&v.tr!=='S/P'?v.tr:'S/P')}${v.cn?' · '+esc(v.cn):''}${v.pz?' · '+fmt(v.pz)+' pzas':''}</div>`).join('')}`:ss.length>1?'<div style="font-size:11px;margin-top:3px"><b>división</b></div>':''}${ft?`<div style="font-size:11px;margin-top:4px;opacity:.85">${esc(ft)}</div>`:''}</div></div>`}).join('')+`</div>`})();
   {const T=Object.values(PM),tb=T.reduce((t,p)=>t+pBul(p),0),cam=T.filter(p=>p.emb).reduce((t,p)=>t+pBul(p),0),sto={};
     T.forEach(p=>pStores(p).forEach(x=>sto[x.t]=(sto[x.t]||0)+x.b));
     const big=(n,l)=>`<div><b class="sora" style="font-size:26px">${n}</b><div class="msg" style="margin:0">${l}</div></div>`;
@@ -2959,7 +2960,7 @@ async function clFixPz(){let fx=0,sin=0;const upd={};
   if(Object.keys(upd).length)await update(R(db,PB),upd);return{fx,sin}}
 // ---- Lectura tolerante de los correos de GP: se convierte el HTML a texto y se usa el parseo que encuentre MÁS piezas ----
 function emlTxt(h){return String(h).replace(/<\s*br\s*\/?>|<\/(?:p|div|tr|li|h\d|table)>/gi,'\n').replace(/<[^>]+>/g,' ').replace(/&nbsp;|&#160;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/[ \t\r]+/g,' ')}
-const palsQ=ps=>(ps||[]).reduce((a,x)=>a+x.bl.reduce((q,b)=>q+(b.q||0),0),0);
+const palsQ=ps=>(ps||[]).reduce((a,x)=>a+(x.bl&&x.bl.length?x.bl.reduce((q,b)=>q+(b.q||0),0):(x.pq||0)),0);
 const _parseEml0=parseEml,_parseRecv0=parseRecv;
 parseEml=function(h){const a=_parseEml0(h),t=emlTxt(h),pals=[];let pa=null,bu=null,m;
   const re=/Palet\s*#\s*(\d+)\s*Total bultos:\s*(\d+)|Bulto\s*N[^:\n]{0,8}:\s*(\d+)\s*-\s*(\d+)\s*-\s*((?:(?!Producto:)[^\n])*)|Producto:\s*\d+[\s\S]{0,300}?(?:QTY|Cantidad)\s*:\s*(\d+)/gi;
@@ -2972,7 +2973,17 @@ parseRecv=function(h){const a=_parseRecv0(h),t=emlTxt(h),pals=[];let pa=null,bu=
   if(!a.no)a.no=(t.match(/PACKING\s*LIST\s*#\s*(\d+)/i)||[])[1];
   if(pals.length&&(!a.pals.length||(pals.length>=a.pals.length&&palsQ(pals)>palsQ(a.pals))))a.pals=pals;return a};
 // Rutas de TODOS los embarques/camiones donde está cargado un palet (copia de sus transferencias)
-function embPalPaths(id){const o=[];for(const [eid,e] of Object.entries(EMB||{}))for(const [cid,c] of Object.entries((e&&e.cam)||{}))if(c&&c.pal&&c.pal[id])o.push(`emb/${eid}/cam/${cid}/pal/${id}`);return o}
+let EMBX=null;async function embLoad(){try{EMBX=(await get(R(db,`${PB}/emb`))).val()||{}}catch(e){EMBX=null}}
+function embPalPaths(id){const o=[];for(const [eid,e] of Object.entries(Object.assign({},EMBX||{},EMB||{})))for(const [cid,c] of Object.entries((e&&e.cam)||{}))if(c&&c.pal&&c.pal[id])o.push(`emb/${eid}/cam/${cid}/pal/${id}`);return o}
+// Formato de correo "RECIBIDO" sin número de bulto (ej. #585): cada <ul> interno = un bulto con sus productos y QTY
+function recvGroups(h,no){const m=new RegExp('Palet\\s*#\\s*'+no+'\\b').exec(h);if(!m)return[];let seg=h.slice(m.index+m[0].length);const nx=seg.search(/<li>\s*Palet\s*#/i);if(nx>=0)seg=seg.slice(0,nx);
+  const g=[],re=/<ul>((?:(?!<\/?ul>)[\s\S])*)<\/ul>/gi;let r;while((r=re.exec(seg))){if(!/Producto:/i.test(r[1]))continue;let q=0,mm;const rq=/QTY(?:\s|&nbsp;|<[^>]*>)*:(?:\s|&nbsp;|<[^>]*>)*(\d+)/gi;while((mm=rq.exec(r[1])))q+=+mm[1];g.push(q)}return g}
+const _parseRecv1=parseRecv;parseRecv=function(h){const r=_parseRecv1(h);r.pals.forEach(x=>{if(x.bl&&x.bl.length)return;x.grp=recvGroups(h,x.no);x.pq=x.grp.reduce((a,b)=>a+b,0)});return r};
+// Vuelve a publicar en el portal del comprador los packing list ya publicados cuyos palets cambiaron (el portal es una copia publicada)
+async function cmpRepub(up){const ids=new Set(Object.keys(up).map(k=>(k.match(/^emb\/([^/]+)\/cam\/[^/]+\/pal\//)||[])[1]).filter(Boolean));if(!ids.size)return'';
+  await new Promise(r=>setTimeout(r,1800));const ok=[],no=[];
+  for(const eid of ids){const e=EMB[eid];if(!e||!e.desp){no.push(eid);continue}if(cmpSt(e,true)===undefined){no.push(eid);continue}try{if(await cmpPublish(eid,true))ok.push(e.num);else no.push(eid)}catch(x){no.push(eid)}}
+  return(ok.length?`✔ Portal del comprador actualizado: ${ok.join(', ')}`:'')+(no.length?`${ok.length?'\n':''}ℹ Pulsa “Publicar todos” para refrescar el portal del comprador de: ${no.map(x=>(EMB[x]&&EMB[x].num)||x).join(', ')}`:'')}
 async function emlText(f){const raw=new TextDecoder('latin1').decode(await f.arrayBuffer()),i=raw.search(/content-type:\s*text\/html/i);if(i<0)return'';
   const m=raw.slice(i).match(/\r?\n\r?\n/),he=i+m.index,head=raw.slice(i,he),body=raw.slice(he).replace(/^\s+/,'').split(/\r?\n--/)[0],enc=(head.match(/transfer-encoding:\s*(\S+)/i)||[])[1]||'',cs=(head.match(/charset="?([\w-]+)/i)||[])[1]||'utf-8';let by;
   if(/base64/i.test(enc))by=Uint8Array.from(atob(body.replace(/\s/g,'')),c=>c.charCodeAt(0));
@@ -2988,46 +2999,27 @@ function parseRecv(h){const r={no:(h.match(/PACKING\s*LIST\s*#\s*(\d+)/i)||[])[1
   let pa=null,bu=null,m;const re=/Palet\s*#\s*(\d+)\s*\|\|\s*Recibido por:\s*([^|<]*?)\s*\|\|\s*Total bultos Recibidos:\s*(\d+)|Bulto\s*N[^:<]{0,8}:\s*(\d+)\s*\|\|\s*Proforma Madre:\s*(\d+)\s*\|\|\s*Proforma Hija:\s*(\d+)|Producto:\s*\d+\s*-[\s\S]{0,300}?QTY(?:\s|&nbsp;|<[^>]*>)*:(?:\s|&nbsp;|<[^>]*>)*(\d+)/gi;
   while((m=re.exec(h))){if(m[1]){pa={no:m[1],by:m[2],tot:+m[3],bl:[]};r.pals.push(pa);bu=null}else if(m[4]&&pa){bu={n:+m[4],pm:m[5],p:m[6]||m[5],q:0};pa.bl.push(bu)}else if(m[7]&&bu)bu.q+=+m[7]}return r}
 // Correo "PACKING LIST #n RECIBIDO": marca los palets como recibidos (sin pasar por recepcion.html) y completa/valida bultos
-async function emlRecv(H,eid){const P=parseRecv(H);if(!P.no||!P.pals.length)return'✖ No encontré palets en el correo de recibido';
-  const up={},msg=[],got=new Set(),pf={};let nuevos=0,tb=0,reas=0;
-  // Nombre del cliente por proforma, tomado de lo que ya está cargado en otros palets (el correo de recibido no lo trae)
-  const cnMap={};Object.values(PM).forEach(q=>Object.values((q&&q.tfs)||{}).forEach(v=>{if(v&&v.cn&&v.tr)cnMap[String(v.tr)]=v.cn}));
+async function emlRecv(H,eid){await embLoad();const P=parseRecv(H);if(!P.no||!P.pals.length)return'✖ No encontré palets en el correo de recibido';
+  // El correo de RECIBIDO es solo para recepción: marca los palets como recibidos. Bultos, proformas, clientes y piezas vienen del correo de DESPACHO.
+  const up={},msg=[],sin=[],got=new Set();let ok=0;
   for(const x of P.pals){const num='CL-'+x.no;got.add(x.no);let id=(Object.entries(PM).find(([,q])=>q.num===num)||[])[0];if(!id){try{id=(await get(R(db,`${PB}/pn/${num}`))).val()}catch(e){}}
-    const had=!!id;let cur={},pu={};if(had){cur=(await get(R(db,`${PB}/pb/${id}`))).val()||{};try{pu=(await get(R(db,`${PB}/pu/${id}`))).val()||{}}catch(e){}}else{id='p'+(Date.now()+(clSeq++));nuevos++}
-    const all={...cur},pzB={},add=[];up[`cmap/${x.no}`]=P.no;
-    for(const b of x.bl){tb++;const o=(await get(R(db,`${PB}/cb/${b.n}`))).val();if(o&&o!==id){msg.push(`⚠ Palet ${x.no}: el bulto ${b.n} ya está en otro palet`);continue}
-      const k=clK(b.p),prev=cur[b.n];
-      // el bulto ya cargado (por escaneo o correo de despacho) se RE-ASIGNA a su proforma y se le pone la cantidad de piezas
-      if(prev===undefined){up[`pu/${id}/${b.n}`]={u:USER,n:NAME,ts:Date.now(),pz:b.q};add.push(b.n)}else up[`pu/${id}/${b.n}/pz`]=b.q;
-      if(prev!==k){up[`pb/${id}/${b.n}`]=k;if(prev!==undefined)reas++}
-      up[`cb/${b.n}`]=id;all[b.n]=k;pzB[b.n]=b.q;
-      const a=pf[b.p]=pf[b.p]||{b:0,pz:0};a.b++;a.pz+=b.q}
-    // los documentos (proformas) se reconstruyen desde los bultos: bultos y piezas exactos por proforma
-    const old=(PM[id]&&PM[id].tfs)||{},tfs={};
-    Object.entries(all).forEach(([n,k])=>{const t=tfs[k]=tfs[k]||{...(old[k]||{}),t:'CRISTAL',tr:k==='CL__SP'?'S/P':k.slice(4),cl:1,N:0,c:0,pz:0};
-      if(!t.cn&&cnMap[k.slice(4)])t.cn=cnMap[k.slice(4)];t.c++;t.N++;t.pz+=(pzB[n]!==undefined?pzB[n]:((pu[n]||{}).pz||0))});
-    const falt=Object.keys(cur).filter(n=>!x.bl.some(b=>String(b.n)===n));
-    const nb=Object.keys(all).length,rc={by:x.by||P.by,ts:P.ts,src:'correo',pl:P.no};
-    if(had){up[`pm/${id}/tfs`]=tfs;up[`pm/${id}/nb`]=nb;up[`pm/${id}/gpl`]=P.no;up[`pm/${id}/rcv`]=rc;up[`pm/${id}/tot`]=x.tot;const em=PM[id]&&PM[id].emb;if(em){const b0=`emb/${em.e}/cam/${em.c}/pal/${id}`;up[b0+'/b']=nb;up[b0+'/tfs']=tfs;up[b0+'/g']=P.no}}
-    else{up[`pm/${id}`]={num,seq:0,ts:P.ts,u:USER,n:NAME,st:'cerrado',div:false,nb,cl:1,gp:x.no,gpl:P.no,tot:x.tot,tfs,rcv:rc};up[`pn/${num}`]=id}
-    if(had)embPalPaths(id).forEach(b0=>{up[b0+'/tfs']=tfs;up[b0+'/b']=nb});
-    if(x.tot!==x.bl.length)msg.push(`⚠ Palet ${x.no}: dice ${x.tot} bultos recibidos pero detalla ${x.bl.length}`);
-    if(falt.length)msg.push(`⚠ Palet ${x.no}: ${falt.length} bulto(s) despachados que NO aparecen como recibidos (${falt.slice(0,4).join(', ')})`);
-    if(had&&add.length)msg.push(`ℹ Palet ${x.no}: se completaron ${add.length} bultos`)}
-  if(reas)msg.push(`ℹ ${reas} bulto(s) se reasignaron a su proforma real (antes estaban sin proforma o con otra)`);
+    if(!id){sin.push(x.no);continue}
+    up[`cmap/${x.no}`]=P.no;up[`pm/${id}/gpl`]=P.no;up[`pm/${id}/rcv`]={by:x.by||P.by,ts:P.ts,src:'correo',pl:P.no};ok++;
+    embPalPaths(id).forEach(b0=>{up[b0+'/g']=P.no});
+    try{const cur=(await get(R(db,`${PB}/pb/${id}`))).val()||{},n=Object.keys(cur).length;if(x.tot&&n!==x.tot)msg.push(`⚠ Palet ${x.no}: el correo dice ${x.tot} bultos recibidos y la app tiene ${n}`)}catch(e){}}
+  if(sin.length)msg.push(`⚠ Palets que no están cargados en la app (cárgalos primero con el correo de DESPACHO): ${sin.join(', ')}`);
   try{const c=(await get(R(db,`${PB}/cpl/${P.no}`))).val();if(c){const pend=Object.keys(c.pals||{}).filter(n=>!got.has(n));if(pend.length)msg.push(`⏳ Palets del packing ${P.no} aún sin recibir: ${pend.join(', ')}`)}}catch(e){}
-  if(!P.pals.reduce((a,x)=>a+x.bl.reduce((q,b)=>q+b.q,0),0))msg.push('⚠ El correo NO trae piezas (QTY) que pueda leer: las piezas de Cristal siguen en 0. Avísame para ajustar el formato.');
-  await update(R(db,PB),up);
-  const pl=Object.entries(pf).map(([p,a])=>`• Proforma ${p}: ${a.b} bultos · ${fmt(a.pz)} pzas`).join('\n');
-  return`✔ Recibido packing GP #${P.no}: ${P.pals.length} palets (${nuevos} nuevos) · ${tb} bultos · ${fmt(palsQ(P.pals))} pzas · por ${P.by||'—'}\n${pl}${msg.length?'\n\n'+msg.join('\n'):'\n\n✔ Todo cuadra'}`}
-async function emlImport(f,eid){const H=await emlText(f);if(/RECIBIDO/i.test(H.slice(0,900)))return emlRecv(H,eid);const P=parseEml(H);if(!P.no||!P.pals.length)return`✖ ${f.name}: no encontré palets en el correo`;
+  if(!ok)return`✖ Packing GP #${P.no}: ningún palet del correo está cargado. Sube primero el correo de DESPACHO.`;
+  await update(R(db,PB),up);{const rp=await cmpRepub(up);if(rp)msg.push(rp)}
+  return`✔ Recibido packing GP #${P.no}: ${ok} de ${P.pals.length} palets marcados como recibidos por ${P.by||'—'}\nLas piezas, proformas y clientes salen del correo de despacho.${msg.length?'\n\n'+msg.join('\n'):''}`}
+async function emlImport(f,eid){const H=await emlText(f);await embLoad();if(/RECIBIDO/i.test(H.slice(0,900)))return emlRecv(H,eid);const P=parseEml(H);if(!P.no||!P.pals.length)return`✖ ${f.name}: no encontré palets en el correo`;
   const up={},msg=[],ts=Date.now(),pf={};let nuevos=0,tb=0,tp=0;
   up[`cpl/${P.no}`]={ts,u:USER,n:NAME,mov:P.mov,pals:Object.fromEntries(P.pals.map(x=>[x.no,1]))};if(eid)up[`emb/${eid}/gpl/${P.no}`]=ts;
   for(const x of P.pals){const num='CL-'+x.no;let id=(Object.entries(PM).find(([,q])=>q.num===num)||[])[0];if(!id){try{id=(await get(R(db,`${PB}/pn/${num}`))).val()}catch(e){}}
     const had=!!id;let cur={};if(had)cur=(await get(R(db,`${PB}/pb/${id}`))).val()||{};else{id='p'+(Date.now()+(clSeq++));nuevos++}
     const all={},add=[],ext=Object.keys(cur).filter(n=>!x.bl.some(b=>String(b.n)===n));up[`cmap/${x.no}`]=P.no;
     for(const b of x.bl){const o=(await get(R(db,`${PB}/cb/${b.n}`))).val();if(o&&o!==id){msg.push(`⚠ Palet ${x.no}: el bulto ${b.n} ya está en otro palet`);continue}
-      const k=clK(b.p);all[b.n]=k;if(cur[b.n]!==k){up[`pb/${id}/${b.n}`]=k;up[`cb/${b.n}`]=id;if(!cur[b.n]){up[`pu/${id}/${b.n}`]={u:USER,n:NAME,ts,pz:b.q};add.push(b.n)}}else up[`pu/${id}/${b.n}/pz`]=b.q;
+      const k=clK(b.p);all[b.n]=k;if(cur[b.n]!==k){up[`pb/${id}/${b.n}`]=k;up[`cb/${b.n}`]=id;if(!cur[b.n]){up[`pu/${id}/${b.n}`]={u:USER,n:NAME,ts,pz:b.q};add.push(b.n)}else up[`pu/${id}/${b.n}/pz`]=b.q}else up[`pu/${id}/${b.n}/pz`]=b.q;
       const a=pf[b.p]=pf[b.p]||{c:b.c,b:0,pz:0};a.b++;a.pz+=b.q;tb++;tp+=b.q}
     ext.forEach(n=>all[n]=cur[n]);const tfs={};
     x.bl.forEach(b=>{if(all[b.n]===undefined)return;const k=clK(b.p),t=tfs[k]=tfs[k]||{t:'CRISTAL',tr:b.p,cn:b.c,N:0,pz:0,c:0,cl:1};t.c++;t.N++;t.pz+=b.q});
@@ -3044,7 +3036,8 @@ async function emlImport(f,eid){const H=await emlText(f);if(/RECIBIDO/i.test(H.s
     const fal=P.pals.filter(x=>!inE.has('CL-'+x.no)).map(x=>x.no),sob=[...inE].filter(n=>/^CL-/.test(n)&&!P.pals.some(x=>'CL-'+x.no===n)).map(n=>n.slice(3));
     if(fal.length)msg.push(`⚠ Palets del correo que NO están en tu packing: ${fal.join(', ')}`);if(sob.length)msg.push(`⚠ Palets de cliente en tu packing que NO vienen en el correo: ${sob.join(', ')}`)}
   if(!tp)msg.push('⚠ El correo NO trae piezas (QTY) que pueda leer: las piezas de Cristal siguen en 0. Avísame para ajustar el formato.');
-  await update(R(db,PB),up);
+  {const nE=new Set(Object.keys(up).map(k=>(k.match(/^emb\/([^/]+)\/cam\/[^/]+\/pal\//)||[])[1]).filter(Boolean));msg.push(nE.size?`✔ Packing list actualizados con sus piezas: ${[...nE].map(e=>(EMBX&&EMBX[e]&&EMBX[e].num)||(EMB[e]&&EMB[e].num)||e).join(', ')}`:'⚠ Estos palets no están cargados en ningún packing list (se guardaron los palets; al cargarlos al packing tomarán las piezas)')}
+  await update(R(db,PB),up);{const rp=await cmpRepub(up);if(rp)msg.push(rp)}
   const pl=Object.entries(pf).map(([p,a])=>`• ${p} ${a.c}: ${a.b} bultos · ${fmt(a.pz)} pzas`).join('\n');
   return`✔ Correo packing GP #${P.no}: ${P.pals.length} palets (${nuevos} nuevos) · ${tb} bultos · ${fmt(tp)} pzas\n${pl}${msg.length?'\n\n'+msg.join('\n'):'\n\n✔ Todo cuadra (palets, bultos y totales)'}`}
 async function palScanCl(id,raw){const p=PM[id],s=String(raw).trim().replace(/\D/g,''),num=parseInt(s,10);
