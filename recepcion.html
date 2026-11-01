@@ -1,5 +1,9 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="theme-color" content="#041f26"><title>Recepción · Frangipani</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>(function(){var d=document.documentElement,ua=navigator.userAgent||'',tc=(navigator.maxTouchPoints||0)>1;
+var mob=/iPhone|iPod|Android.+Mobile|Windows Phone|Mobile/i.test(ua),tab=!mob&&(/iPad|Tablet|Android/i.test(ua)||(/Macintosh/.test(ua)&&tc));
+d.dataset.device=mob?'mobile':tab?'tablet':'desktop';try{d.dataset.fx=localStorage.getItem('conFx')||'arc'}catch(e){d.dataset.fx='arc'}
+function z(){var w=window.innerWidth;d.dataset.size=w<640?'s':w<1000?'m':'l'}z();window.addEventListener('resize',z)})();</script>
 <style>
 :root{--bg:#041f26;--bg2:#06303a;--sf:#0a3d49;--sf2:#0e4c5a;--bd:#17697a;--ac:#2de2c9;--ac2:#0fb5a8;--tx:#e9fbf8;--mt:#8fc3c6;--ok:#34e08a;--wn:#ffc857;--dn:#ff6b6b;--r:16px;--f:'Inter',system-ui,sans-serif}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -43,6 +47,69 @@ h1,h2,h3{margin:0}
 @keyframes in{from{transform:scale(.6);opacity:0}}@keyframes shake{20%,60%{transform:translateX(-9px)}40%,80%{transform:translateX(9px)}}
 @keyframes dr{to{stroke-dashoffset:0}}@keyframes cf{to{transform:translate(var(--x),var(--y)) rotate(540deg);opacity:0}}
 @keyframes pop{40%{transform:scale(1.14)}}@keyframes gl{50%{box-shadow:0 0 0 8px #2de2c933}}
+
+body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+/* ===== Menú de inicio (mismo diseño que Consultas) ===== */
+.hm-hero{padding:4px 4px 6px;animation:hmIn .6s cubic-bezier(.2,.9,.25,1) backwards}
+.hm-hi{font:800 30px/1.1 var(--f);letter-spacing:-.02em}.hm-hi b{color:var(--ac)}
+.hm-sub{color:var(--mt);margin-top:6px;font-size:14px}
+.hm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 10px;justify-items:center;margin-top:24px}
+@media(min-width:620px){.hm-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(min-width:960px){.hm-grid{grid-template-columns:repeat(auto-fill,200px);justify-content:start;gap:34px 30px}}
+.hm-it{--d:108px;appearance:none;border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0;display:flex;flex-direction:column;align-items:center;width:100%;max-width:210px;position:relative}
+html[data-device=desktop] .hm-it,html[data-size=l] .hm-it{--d:132px}
+.hm-ring{position:relative;width:var(--d);height:var(--d);border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 30% 22%,#10606f 0,#08404c 55%,#052c35 100%);box-shadow:0 12px 28px #00000055,inset 0 0 0 1px #17697a;transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s}
+.hm-orb{position:absolute;inset:-5px;width:calc(100% + 10px);height:calc(100% + 10px);animation:hmSpin 22s linear infinite;pointer-events:none}
+.hm-orb .o1{fill:none;stroke:var(--ac);stroke-width:1.6;stroke-dasharray:230 110;stroke-linecap:round;opacity:.9}
+.hm-orb .o2{fill:none;stroke:var(--ac);stroke-width:1;opacity:.28}
+.hm-orb .dt{fill:#06303a;stroke:var(--ac);stroke-width:1.6}
+.hm-ic{width:42%;height:42%;color:#f1fffc;filter:drop-shadow(0 2px 6px #0006);transition:transform .25s}
+.hm-ic svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.hm-lb{position:relative;margin-top:calc(var(--d)*-.17);padding:8px 14px;border-radius:99px;background:#f4fffd;color:#06303a;font:800 13px/1.15 var(--f);box-shadow:0 6px 16px #0000004d;max-width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-sm{display:block;margin-top:8px;color:var(--mt);font-size:11.5px;line-height:1.3;text-align:center;max-width:170px}
+.hm-bd{position:absolute;top:-2px;right:calc(50% - var(--d)/2 - 2px);min-width:26px;height:26px;padding:0 7px;border-radius:99px;background:var(--wn);color:#2b1b00;font:800 12px/26px var(--f);text-align:center;box-shadow:0 4px 10px #0006;z-index:2}
+.hm-it:hover .hm-ring,.hm-it:focus-visible .hm-ring{transform:translateY(-5px);box-shadow:0 18px 36px #00000066,0 0 0 1px var(--ac),0 0 28px #2de2c933}
+.hm-it:hover .hm-ic{transform:scale(1.08)}.hm-it:active .hm-ring{transform:scale(.96)}.hm-it:focus-visible{outline:none}
+html:not([data-fx]) .hm-it,html[data-fx=arc] .hm-it{animation:hmArcX 1.9s cubic-bezier(.25,.6,.3,1) backwards,hmArcY 1.9s linear backwards,hmFade .35s ease backwards;animation-delay:calc(var(--i)*90ms + 250ms)}
+html:not([data-fx]) .hm-it .hm-lb,html[data-fx=arc] .hm-it .hm-lb{animation:hmPop .45s cubic-bezier(.2,1.4,.4,1) backwards;animation-delay:calc(var(--i)*90ms + 2000ms)}
+html:not([data-fx]) .hm-it .hm-sm,html[data-fx=arc] .hm-it .hm-sm{animation:hmFade .5s ease backwards;animation-delay:calc(var(--i)*90ms + 2150ms)}
+html[data-fx=slide] .hm-it{animation:hmSlide 1.1s cubic-bezier(.2,.9,.25,1) backwards;animation-delay:calc(var(--i)*300ms + 250ms)}
+html[data-fx=roll] .hm-it{animation:hmFly 1.1s cubic-bezier(.22,1.15,.36,1) backwards;animation-delay:calc(var(--i)*300ms + 250ms)}
+html[data-fx=roll] .hm-it .hm-lb{animation:hmPop .45s cubic-bezier(.2,1.4,.4,1) backwards;animation-delay:calc(var(--i)*300ms + 1050ms)}
+html[data-fx=drop] .hm-it{animation:hmDrop 1.25s ease-in backwards;animation-delay:calc(var(--i)*170ms + 200ms)}
+html[data-fx=zoom] .hm-it{animation:hmZoom .75s cubic-bezier(.2,1.3,.4,1) backwards;animation-delay:calc(var(--i)*150ms + 200ms)}
+html[data-fx=flip] .hm-it{animation:hmFlip .95s cubic-bezier(.2,.9,.25,1) backwards;animation-delay:calc(var(--i)*180ms + 200ms)}
+html[data-fx=fan] .hm-it{transform-origin:0 100%;animation:hmFan 1s cubic-bezier(.2,.9,.25,1.1) backwards;animation-delay:calc(var(--i)*170ms + 200ms)}
+html[data-fx=none] .hm-it,html[data-fx=none] .hm-hero,html[data-fx=none] .hm-orb{animation:none}
+@keyframes hmArcX{from{translate:-115vw 0}to{translate:0 0}}
+@keyframes hmArcY{0%{transform:translateY(150px);animation-timing-function:cubic-bezier(.1,.5,.4,1)}45%{transform:translateY(-190px);animation-timing-function:cubic-bezier(.6,0,.9,.7)}100%{transform:translateY(0)}}
+@keyframes hmSlide{from{opacity:0;transform:translateX(-170px) scale(.9)}to{opacity:1;transform:none}}
+@keyframes hmFly{0%{opacity:0;transform:translateX(-115vw) rotate(-540deg)}12%{opacity:1}100%{opacity:1;transform:none}}
+@keyframes hmPop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+@keyframes hmFade{from{opacity:0}to{opacity:1}}
+@keyframes hmIn{from{opacity:0;transform:translateX(-84px) scale(.92)}to{opacity:1;transform:none}}
+@keyframes hmSpin{to{transform:rotate(360deg)}}
+@keyframes hmDrop{0%{opacity:0;transform:translateY(-120vh)}55%{opacity:1;transform:translateY(0)}70%{transform:translateY(-34px)}84%{transform:translateY(0)}92%{transform:translateY(-10px)}100%{transform:none}}
+@keyframes hmZoom{0%{opacity:0;transform:scale(0)}100%{opacity:1;transform:scale(1)}}
+@keyframes hmFlip{from{opacity:0;transform:perspective(700px) rotateY(-110deg) translateX(-40px)}to{opacity:1;transform:perspective(700px) rotateY(0)}}
+@keyframes hmFan{from{opacity:0;transform:translateX(-70vw) rotate(-70deg)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important}}
+/* ===== Inicio de sesión ===== */
+.lg{min-height:100vh;display:grid;place-items:center;padding:24px 18px}
+.lg-box{width:100%;max-width:360px;text-align:center}
+.lg-orb{--d:104px;position:relative;width:var(--d);height:var(--d);margin:0 auto 18px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 30% 22%,#10606f 0,#08404c 55%,#052c35 100%);box-shadow:0 14px 34px #00000066,inset 0 0 0 1px #17697a;animation:hmZoom .8s cubic-bezier(.2,1.3,.4,1) backwards}
+.lg-orb .hm-ic{width:44%;height:44%}
+.lg h1{font:800 28px/1.1 var(--f);letter-spacing:-.02em}.lg h1 b{color:var(--ac)}
+.lg .sub{color:var(--mt);font-size:13.5px;margin:8px 0 22px}
+.lg-card{background:linear-gradient(160deg,var(--sf),var(--bg2));border:1px solid var(--bd);border-radius:28px;padding:22px 18px 18px;box-shadow:0 18px 40px #00000055;text-align:left;animation:hmFade .7s .15s ease backwards}
+.lg .fld{border-radius:18px;padding:15px 18px;margin-bottom:12px}
+.lg .btn.pri{border-radius:99px;padding:15px;font-size:15px;margin-top:4px}
+.lg .msg{margin:0 4px 14px;text-align:center;line-height:1.45}
+.rsel{background:rgba(45,226,201,.18)!important;box-shadow:inset 4px 0 0 var(--ac)}
+.cres .row{cursor:default}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}.tbl th{text-align:left;color:var(--mt);font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:8px 6px;border-bottom:1px solid var(--bd)}.tbl td{padding:8px 6px;border-bottom:1px solid #17697a55}.tbl .n{text-align:right}.tbl tr.rsel td{background:rgba(45,226,201,.18)}
+.chp{display:inline-block;margin:2px;padding:3px 9px;border-radius:99px;background:#2de2c91f;color:var(--ac);font:700 11.5px var(--f)}
+
 </style></head><body><div id="a"></div><div id="ov"></div>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js"></script>
 <script type="module">
@@ -74,7 +141,7 @@ function ask(html,yes,lbl){const m=document.createElement('div');m.className='mo
 const save=()=>{try{localStorage.setItem(PK+cur,JSON.stringify({chk,extra,t0:t0||(t0=Date.now()),nt:window._nt||''}))}catch(e){}};
 const prog=id=>{try{return JSON.parse(localStorage.getItem(PK+id)||'null')}catch(e){return null}};
 
-function login(msg){signOut(auth).catch(()=>{});$('a').innerHTML=top('📥 Recepción de despachos','Centro de distribución Frangipani')+`<div class="wrap"><div class="card"><div class="msg" style="margin:0 0 12px">${msg||'Entra con tu usuario y contraseña. Los usuarios de recepción duran 1 hora o hasta terminar de recibir; los administradores entran con su usuario y contraseña de siempre.'}</div><input class="fld" id="lu" placeholder="Usuario" autocomplete="off" autocapitalize="none"><input class="fld" id="lp" type="password" placeholder="Contraseña"><button class="btn pri" id="go" style="width:100%;padding:14px">Entrar</button></div></div>`;$('out').style.display='none';
+function login(msg){signOut(auth).catch(()=>{});$('a').innerHTML=`<div class="lg"><div class="lg-box"><div class="lg-orb">${hmOrb}<span class="hm-ic"><svg viewBox="0 0 24 24">${HIC.inbox}</svg></span></div><h1>Recepción de <b>despachos</b></h1><div class="sub">Centro de distribución Frangipani</div><div class="lg-card"><div class="msg">${msg||'Entra con tu usuario y contraseña.'}</div><input class="fld" id="lu" placeholder="Usuario" autocomplete="off" autocapitalize="none"><input class="fld" id="lp" type="password" placeholder="Contraseña"><button class="btn pri" id="go" style="width:100%">Entrar</button></div></div></div>`;
   const go=async()=>{const u=$('lu').value.trim().toLowerCase(),p=$('lp').value;if(!u||!p)return;$('go').disabled=true;$('go').textContent='Verificando…';
     try{await signInWithEmailAndPassword(auth,u2e(u),p);
       if(ADMINS.includes(u)){let name=u;try{const s=(await get(R(db,'users_v1'))).val(),m=s&&Object.values(s).find(z=>z&&z.user===u);if(m&&m.nombre)name=m.nombre}catch(e){}ses={user:u,name,adm:1,exp:Date.now()+12*HORA}}
@@ -83,28 +150,90 @@ function login(msg){signOut(auth).catch(()=>{});$('a').innerHTML=top('📥 Recep
         if(x.usado)throw{m:'Este usuario ya fue usado para una recepción.'};
         if(x.vence<Date.now())throw{m:'Este usuario venció. Pide uno nuevo.'};
         ses={user:u,name:x.nombre,exp:Math.min(Date.now()+HORA,x.vence)}}
-      localStorage.setItem(KEY,JSON.stringify(ses));tab='p';list()}
+      localStorage.setItem(KEY,JSON.stringify(ses));tab='p';home()}
     catch(e){await signOut(auth).catch(()=>{});const bad=['auth/invalid-credential','auth/wrong-password','auth/user-not-found','auth/invalid-email'].includes(e.code);login(e.m||(bad?'Usuario o contraseña incorrectos.':'No se pudo entrar: '+(e.code||e.message)))}};
   $('go').onclick=go;$('lp').onkeydown=e=>{if(e.key==='Enter')go()}}
 
+/* ---------- Menú de inicio · Recepción ---------- */
+const NAMES={S4:"Los Pueblos",S5:"San Miguelito",S6:"Los Andes",S7:"Albrook Mall",S8:"El Dorado",S9:"Westland",S11:"Santiago",S12:"Vía España",S13:"Soho Mall",S14:"Santa María"};
+const HIC={
+ inbox:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z"/>',
+ hist:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+ find:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/><path d="M8.5 11h5M11 8.5v5"/>',
+ gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+ sync:'<path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/>',
+ out:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>'};
+const hmOrb='<svg class="hm-orb" viewBox="0 0 120 120" aria-hidden="true"><circle class="o2" cx="60" cy="60" r="50"/><circle class="o1" cx="60" cy="60" r="57"/><circle class="dt" cx="60" cy="3" r="4"/><circle class="dt" cx="19.7" cy="100.3" r="3"/></svg>';
+const FXS=[['arc','Media luna','Los iconos salen juntos, suben en arco y caen en su lugar'],['slide','Deslizar','Uno por uno desde la izquierda'],['roll','Rodar','Uno por uno, rodando como rueda'],['drop','Caída con rebote','Caen desde arriba y rebotan'],['zoom','Zoom','Crecen desde el centro, en cascada'],['flip','Giro 3D','Giran como una puerta'],['fan','Abanico','Se abren en abanico'],['none','Sin animación','Entra directo; ideal para equipos lentos']];
+let EMQ=null,CTOK=null;
+async function loadEM(days){EM=(await get(query(R(db,PB+'/emb'),orderByKey(),startAt('e'+(Date.now()-(days||45)*864e5))))).val()||{};return EM}
+const rcvd=()=>Object.values(EM).filter(e=>e.rec).length,pend=()=>Object.values(EM).filter(e=>e.desp&&!e.rec&&calc(e).np>0).length;
+function hmTiles(){return [
+  {k:'p',n:'Por recibir',ic:'inbox',sub:'Despachos pendientes',bd:pend()},
+  {k:'r',n:'Historial',ic:'hist',sub:'Despachos recibidos'},
+  {k:'q',n:'Consulta',ic:'find',sub:'Buscar por transferencia'},
+  {k:'cfg',n:'Configuración',ic:'gear',sub:'Efectos del menú'},
+  {k:'ref',n:'Actualizar',ic:'sync',sub:'Sincronizar datos'},
+  {k:'out',n:'Salir',ic:'out',sub:'Cerrar sesión'}]}
+function home(){ses=sess();if(!ses)return login('La sesión venció. Entra otra vez.');
+  const first=String(ses.name||'').trim().split(/\s+/)[0]||'';
+  $('a').innerHTML=top('📥 Recepción',who(),0)+`<div class="wrap"><div class="hm-hero"><div class="hm-hi">Bienvenido${first?' <b>'+esc(first)+'</b>':''}</div><div class="hm-sub">¿Qué quieres hacer hoy?</div></div><div class="hm-grid" id="hmg">${hmTiles().map((x,i)=>`<button type="button" class="hm-it" style="--i:${i}" data-hm="${x.k}">${x.bd?`<span class="hm-bd" id="bd_${x.k}">${x.bd}</span>`:`<span class="hm-bd" id="bd_${x.k}" style="display:none"></span>`}<span class="hm-ring">${hmOrb}<span class="hm-ic"><svg viewBox="0 0 24 24">${HIC[x.ic]}</svg></span></span><span class="hm-lb">${esc(x.n)}</span><small class="hm-sm">${esc(x.sub)}</small></button>`).join('')}</div></div>`;
+  $('out').onclick=salir;
+  $('a').onclick=async ev=>{const b=ev.target.closest('[data-hm]');if(!b)return;const k=b.dataset.hm;
+    if(k==='p'||k==='r'){tab=k;list();return}
+    if(k==='q'){consulta();return}
+    if(k==='cfg'){cfg();return}
+    if(k==='out'){salir();return}
+    if(k==='ref'){flash('ok','Actualizando…',' ');try{await loadEM();EMQ=null;home();flash('ok','Datos al día','Se actualizó la información')}catch(e){flash('er','No se pudo actualizar',e.code||e.message)}}};
+  // contador de pendientes (se actualiza cuando llegan los datos)
+  loadEM().then(()=>{const e=$('bd_p');if(e){const n=pend();e.textContent=n;e.style.display=n?'':'none'}}).catch(()=>{})}
+function cfg(){const cur=document.documentElement.dataset.fx||'arc';
+  ask(`<h3>Configuración</h3><div class="lbl" style="margin:8px 0">Efecto de entrada del menú</div><div id="fxl" style="display:flex;flex-direction:column;gap:8px">${FXS.map(([k,n,d])=>`<button type="button" class="btn ${cur===k?'pri':''}" data-fx="${k}" style="text-align:left;border-radius:14px;padding:12px 14px">${n}<div style="font-weight:500;font-size:12px;opacity:.85;margin-top:2px">${d}</div></button>`).join('')}</div><div class="msg">Se guarda en este equipo.</div>`);
+  const m=[...document.querySelectorAll('.modal')].pop();m.addEventListener('click',e=>{const b=e.target.closest('[data-fx]');if(!b)return;document.documentElement.dataset.fx=b.dataset.fx;try{localStorage.setItem('conFx',b.dataset.fx)}catch(x){}m.remove();if(!$('hmg'))return;home()})}
+/* ---------- Consulta por transferencia ---------- */
+async function consulta(){ses=sess();if(!ses)return login('La sesión venció. Entra otra vez.');
+  $('a').onclick=null;
+  $('a').innerHTML=top('Consulta',who(),1)+`<div class="wrap"><div class="card"><div class="slbl">Número de transferencia</div><div class="search"><div class="sbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8fc3c6" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="cq" inputmode="numeric" placeholder="Ej. 10339763" autocomplete="off"></div><button class="btn pri" id="cb" style="height:48px">Buscar</button></div><div class="msg" id="cm">Busca en los despachos de los últimos 120 días. Puedes escribir solo una parte del número.</div></div><div id="cres" class="cres"></div></div>`;
+  $('out').onclick=salir;$('bk').onclick=home;
+  const run=async()=>{const q=dg($('cq').value);if(q.length<3){$('cm').textContent='Escribe al menos 3 dígitos.';return}
+    $('cm').textContent='Buscando…';
+    try{if(!EMQ)EMQ=await get(query(R(db,PB+'/emb'),orderByKey(),startAt('e'+(Date.now()-120*864e5)))).then(x=>x.val()||{})}catch(e){$('cm').textContent='No se pudo cargar: '+(e.code||e.message);return}
+    const out=[];for(const [id,e] of Object.entries(EMQ)){if(!e.desp)continue;const m={};
+      for(const c of Object.values(e.cam||{}))for(const pv of Object.values(c.pal||{}))for(const [k,v] of Object.entries(pv.tfs||{})){const tr=String(v.tr||'').replace(/\s+/g,'');if(!tr||!tr.includes(q))continue;const o=m[k]=m[k]||{tr,t:v.t||'',N:v.N||0,b:0,pz:v.pz||0,cn:v.cn||'',pals:[]};o.b+=v.c||0;o.pals.push(pv.n)}
+      if(Object.keys(m).length)out.push({id,e,items:Object.values(m)})}
+    out.sort((a,b)=>(b.e.seq||0)-(a.e.seq||0));
+    $('cm').textContent=out.length?`${out.length} despacho(s) con esa transferencia.`:'No se encontró esa transferencia en los últimos 120 días.';
+    $('cres').innerHTML=out.map(({id,e,items})=>`<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:16px">Despacho ${esc(e.num)}</b><span class="pill ${e.rec?'p-ok':'p-wn'}">${e.rec?'Recibido':'Por recibir'}</span></div><div class="msg" style="margin:2px 0 8px">Despachado ${fdt(e.desp.ts)}${e.rec?' · recibido '+fdt(e.rec.ts)+' por '+esc(e.rec.by):''}</div>${items.map(o=>`<div class="row" style="cursor:default;display:block"><div class="st">${esc(o.t)}${NAMES[o.t]?' · '+esc(NAMES[o.t]):''} · Transf. ${esc(o.tr)}${o.cn?` <span class="ds" style="display:inline">· ${esc(o.cn)}</span>`:''}</div><div class="ds">${o.b}${o.N&&o.b<o.N?' de '+o.N:''} bulto(s) en este despacho · ${fmt0(o.pz)} pzas</div><div style="margin-top:6px">${[...new Set(o.pals)].map(n=>`<span class="chp">${esc(n)}</span>`).join('')}</div><button class="btn sm" style="margin-top:8px" data-pr="${esc(id)}|${esc(o.tr)}">Ver productos</button></div>`).join('')}</div>`).join('')};
+  $('cb').onclick=run;$('cq').onkeydown=ev=>{if(ev.key==='Enter')run()};$('cq').focus();
+  $('a').onclick=async ev=>{const b=ev.target.closest('[data-pr]');if(!b)return;const [id,tr]=b.dataset.pr.split('|');b.disabled=true;b.textContent='Cargando…';
+    try{if(!CTOK)CTOK=(await get(R(db,'meta_v1/comprador_cfg/token'))).val();if(!CTOK)throw 0;
+      const rows=Object.values((await get(R(db,`meta_v1/comprador/${CTOK}/pl/${id}/rows`))).val()||{}).filter(r=>String(r.tr||'').replace(/\s+/g,'')===tr);
+      b.disabled=false;b.textContent='Ver productos';
+      if(!rows.length){ask('<h3>Productos</h3><div class="msg">Este despacho aún no tiene el detalle de productos publicado.</div>');return}
+      const tot=rows.reduce((t,r)=>t+(r.q||0),0);
+      ask(`<h3>Transferencia ${esc(tr)}</h3><div class="msg">${rows.length} línea(s) · ${fmt0(tot)} piezas</div><div style="overflow:auto;margin-top:8px"><table class="tbl"><tr><th>Estilo</th><th>Producto</th><th>Descripción</th><th class="n">Pzas</th></tr>${rows.map(r=>`<tr><td>${esc(r.e||'')}</td><td>${esc(r.p||'')}</td><td>${esc(r.d||'')}</td><td class="n"><b>${fmt0(r.q)}</b></td></tr>`).join('')}<tr><td colspan="3"><b>TOTAL</b></td><td class="n"><b>${fmt0(tot)}</b></td></tr></table></div>`)}
+    catch(e){b.disabled=false;b.textContent='Ver productos';ask('<h3>Productos</h3><div class="msg">No se pudo cargar el detalle de productos de este despacho. Puede que aún no esté publicado.</div>')}}}
+const fmt0=n=>Number(n||0).toLocaleString('en-US');
+document.addEventListener('click',e=>{const tr=e.target.closest('.tbl tr');if(!tr||tr.querySelector('th'))return;const was=tr.classList.contains('rsel');tr.closest('table').querySelectorAll('tr.rsel').forEach(x=>x.classList.remove('rsel'));if(!was)tr.classList.add('rsel')});
+
 async function list(){ses=sess();if(!ses)return login('La sesión venció. Entra otra vez.');
-  $('a').onclick=null;$('a').innerHTML=top('📥 Recepción de despachos',who(),0,'<button class="btn sm" id="rf">↻</button>')+'<div class="wrap"><div class="card msg" style="margin:0">Cargando despachos…</div></div>';$('out').onclick=salir;$('rf').onclick=list;
-  try{EM=(await get(query(R(db,PB+'/emb'),orderByKey(),startAt('e'+(Date.now()-21*864e5))))).val()||{}}catch(e){$('a').innerHTML+=`<div class="wrap"><div class="card msg err">No se pudo cargar: ${esc(e.code||e.message)}</div></div>`;return}
+  $('a').onclick=null;$('a').innerHTML=top(tab==='r'?'Historial':'Por recibir',who(),1,'<button class="btn sm" id="rf">↻</button>')+'<div class="wrap"><div class="card msg" style="margin:0">Cargando despachos…</div></div>';$('out').onclick=salir;$('rf').onclick=list;$('bk').onclick=home;
+  try{EM=(await get(query(R(db,PB+'/emb'),orderByKey(),startAt('e'+(Date.now()-45*864e5))))).val()||{}}catch(e){$('a').innerHTML+=`<div class="wrap"><div class="card msg err">No se pudo cargar: ${esc(e.code||e.message)}</div></div>`;return}
   const A=Object.entries(EM),P=A.filter(([,e])=>e.desp&&!e.rec&&calc(e).np>0).sort((a,b)=>(b[1].seq||0)-(a[1].seq||0)),Rc=A.filter(([,e])=>e.rec).sort((a,b)=>(b[1].rec.ts||0)-(a[1].rec.ts||0));
-  if(tab==='r'&&!ses.adm)tab='p';const tt=P.reduce((t,[,e])=>{const c=calc(e);t.p+=c.np;t.b+=c.nb;return t},{p:0,b:0});
+  const tt=P.reduce((t,[,e])=>{const c=calc(e);t.p+=c.np;t.b+=c.nb;return t},{p:0,b:0});
   const stat=(n,l)=>`<div><div class="big">${n}</div><div class="lbl">${l}</div></div>`;
   const rowP=([id,e])=>{const c=calc(e),pr=prog(id),m=pr?Object.values(pr.chk||{}).filter(Boolean).length:0;return`<div class="row" data-o="${id}"><div><div class="st">Despacho ${esc(e.num)}</div><div class="ds">${fdt((e.desp&&e.desp.ts)||e.ts)} · ${c.cams.length} camión(es) · ${esc(c.cams.map(k=>k.chofer).filter(Boolean).join(', '))}</div></div><div style="text-align:right"><span class="pill ${m?'p-wn':'p-no'}">${m?`En curso ${m}/${c.np}`:`${c.np} palets`}</span><div class="ds" style="margin-top:4px">${c.nb} bultos</div></div></div>`};
   const rowR=([id,e])=>{const r=e.rec,nf=(r.falt||[]).length;return`<div class="row" data-r="${id}"><div><div class="st">Despacho ${esc(e.num)}</div><div class="ds">${esc(r.by)} · ${fdt(r.ts)}</div></div><div style="text-align:right"><span class="pill ${nf?'p-er':'p-ok'}">${nf?nf+' faltante(s)':'Completa'}</span><div class="ds" style="margin-top:4px">${r.mail==='ok'?'✉️ correo enviado':'✉️ sin enviar'}</div></div></div>`};
-  $('a').innerHTML=top('📥 Recepción de despachos',who(),0,'<button class="btn sm" id="rf">↻</button>')+`<div class="wrap"><div class="card hero">${stat(P.length,'Despachos por recibir')}${stat(tt.p,'Palets')}${stat(tt.b,'Bultos')}</div>
-  <div class="tabs"><button class="tab ${tab==='p'?'on':''}" data-t="p">📥 Por recibir (${P.length})</button>${ses.adm?`<button class="tab ${tab==='r'?'on':''}" data-t="r">✅ Recibidos (${Rc.length})</button>`:''}</div>
+  $('a').innerHTML=top(tab==='r'?'Historial':'Por recibir',who(),1,'<button class="btn sm" id="rf">↻</button>')+`<div class="wrap"><div class="card hero">${stat(P.length,'Despachos por recibir')}${stat(tt.p,'Palets')}${stat(tt.b,'Bultos')}</div>
+  <div class="tabs"><button class="tab ${tab==='p'?'on':''}" data-t="p">📥 Por recibir (${P.length})</button><button class="tab ${tab==='r'?'on':''}" data-t="r">✅ Recibidos (${Rc.length})</button></div>
   ${tab==='p'?(P.length?P.map(rowP).join(''):'<div class="card msg">No hay despachos pendientes por recibir.</div>'):(Rc.length?Rc.map(rowR).join(''):'<div class="card msg">Aún no hay recepciones registradas.</div>')}</div>`;
-  $('out').onclick=salir;$('rf').onclick=list;
+  $('out').onclick=salir;$('rf').onclick=list;$('bk').onclick=home;
   $('a').onclick=ev=>{const t=ev.target.closest('[data-t]');if(t){tab=t.dataset.t;list();return}const d=ev.target.closest('[data-o]');if(d)return open(d.dataset.o);const r=ev.target.closest('[data-r]');if(r)recDet(r.dataset.r)}}
 
 function recDet(id){const e=EM[id],r=e.rec,c=calc(e),got=Object.keys(r.pals||{}).length,fl=c.all.filter(p=>!(r.pals&&r.pals[p.id])),d=r.t0?Math.max(1,Math.round((r.ts-r.t0)/6e4)):0;
   ask(`<h3>Despacho ${esc(e.num)}</h3><div class="msg">Recibió ${esc(r.by)} · ${fdt(r.ts)}${d?' · '+d+' min':''}</div><div class="card" style="margin-top:10px"><b>${got}</b> de ${c.np} palets recibidos · ${c.nb} bultos esperados</div>
   ${fl.length?`<div class="msg err">Faltantes: ${fl.map(p=>esc(p.n)+' ('+p.b+' b.)').join(', ')}</div>`:'<div class="msg" style="color:var(--ok)">Sin diferencias</div>'}${(r.extra||[]).length?`<div class="msg err">Escaneados que no pertenecen: ${r.extra.map(esc).join(', ')}</div>`:''}${r.nota?`<div class="msg">Observaciones: ${esc(r.nota)}</div>`:''}<div class="msg">Correo: ${r.mail==='ok'?'enviado':'no se pudo enviar'}</div>`,
-  async()=>{try{await correo(e,c,r);await update(R(db,PB),{[`emb/${id}/rec/mail`]:'ok'});r.mail='ok';flash('ok','Correo reenviado',' ')}catch(x){flash('er','No se pudo enviar','Revisa la configuración de correo')}},'✉️ Reenviar correo')}
+  !ses.adm?null:async()=>{try{await correo(e,c,r);await update(R(db,PB),{[`emb/${id}/rec/mail`]:'ok'});r.mail='ok';flash('ok','Correo reenviado',' ')}catch(x){flash('er','No se pudo enviar','Revisa la configuración de correo')}},'✉️ Reenviar correo')}
 
 function open(id){cur=id;chk={};extra=[];t0=0;window._nt='';const p=prog(id);if(p){chk=p.chk||{};extra=p.extra||[];t0=p.t0||0;window._nt=p.nt||''}draw()}
 function draw(){ses=sess();if(!ses)return login('La sesión venció. Entra otra vez.');const e=EM[cur],c=calc(e);
@@ -141,7 +270,7 @@ async function done(e,c,got,falt,nota){busy=true;const ts=Date.now(),rec={by:ses
   const adm=ses.adm,nm=ses.name;if(!adm){try{await update(R(db,'meta_v1/recepcion_users/'+ses.user),{usado:ts,despacho:e.num})}catch(x){}localStorage.removeItem(KEY);signOut(auth).catch(()=>{})}
   try{localStorage.removeItem(PK+cur)}catch(x){}window._nt='';busy=false;
   $('a').innerHTML=`<div class="wrap" style="padding-top:40px"><div class="card ${falt.length?'dup':'ok'}" style="text-align:center">${ic(falt.length?'dup':'ok')}<h2>Recepción registrada</h2><div class="msg">Despacho <b>${esc(e.num)}</b> · ${got.length} de ${c.np} palets recibidos</div>${falt.length?`<div class="msg err">${falt.length} faltante(s): ${falt.map(p=>esc(p.n)).join(', ')}</div>`:'<div class="msg" style="color:var(--ok)">Sin diferencias</div>'}<div class="msg">Recibió: ${esc(nm)} · ${fdt(ts)}</div><div class="msg">${mail==='ok'?'✉️ Correo de recepción enviado automáticamente.':'⚠️ El correo no se pudo enviar; la recepción sí quedó guardada.'}</div><button class="btn pri" id="nx" style="width:100%;margin-top:14px;padding:14px">${adm?'Volver a la lista':'Terminar'}</button></div></div>`;
-  $('nx').onclick=()=>adm?list():login()}
+  $('nx').onclick=()=>adm?home():login()}
 
 async function correo(e,c,r){const cfg=(await get(R(db,'meta_v1/email_cfg'))).val(),mm=e.mail||(await get(R(db,PB+'/cfg'))).val()||{};
   if(!cfg||!cfg.serviceId||!cfg.templateId||!cfg.publicKey||!mm.to)throw 0;emailjs.init(cfg.publicKey);
@@ -153,6 +282,6 @@ async function correo(e,c,r){const cfg=(await get(R(db,'meta_v1/email_cfg'))).va
   await emailjs.send('service_gqk1da3',cfg.templateId,{to_email:mm.to,cc_email:mm.cc||'',subject:`RE: Despacho ${e.num} · Recepción ${falt.length?'con faltantes':'completa'}`,html_content:html,message:`Recepción del despacho ${e.num} por ${r.by}: ${got.length}/${c.np} palets.`,saludo:'',periodo:e.num,timestamp:new Date().toLocaleString('es')})}
 
 (async()=>{try{await auth.authStateReady()}catch(e){}
-  const s=sess();setInterval(()=>{if(!sess()&&$('go')===null&&!busy&&localStorage.getItem(KEY))list()},60000);
-  if(s&&auth.currentUser&&auth.currentUser.email===u2e(s.user))list();else login()})();
+  const s=sess();setInterval(()=>{if(!sess()&&$('go')===null&&!busy&&localStorage.getItem(KEY))home()},60000);
+  if(s&&auth.currentUser&&auth.currentUser.email===u2e(s.user))home();else login()})();
 </script></body></html>
