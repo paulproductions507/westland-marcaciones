@@ -223,10 +223,20 @@ body[data-home] #btnBack{display:none}
 .hm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 10px;justify-items:center}
 @media(min-width:620px){.hm-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(min-width:960px){.hm-grid{grid-template-columns:repeat(auto-fill,200px);justify-content:start;justify-items:center;gap:34px 30px}}
-.hm-it{--d:108px;appearance:none;border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0;display:flex;flex-direction:column;align-items:center;width:100%;max-width:210px;position:relative;
-  animation:hmFly 1.1s cubic-bezier(.22,1.15,.36,1) backwards;animation-delay:calc(var(--i)*300ms + 250ms)}
-.hm-it .hm-lb{animation:hmPop .45s cubic-bezier(.2,1.4,.4,1) backwards;animation-delay:calc(var(--i)*300ms + 1050ms)}
-.hm-it .hm-sm{animation:hmFade .5s ease backwards;animation-delay:calc(var(--i)*300ms + 1150ms)}
+.hm-it{--d:108px;appearance:none;border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0;display:flex;flex-direction:column;align-items:center;width:100%;max-width:210px;position:relative;}
+/* Efecto 1 · Media luna: los cuatro salen juntos desde la izquierda, suben en arco y caen formando la cuadrícula */
+html:not([data-fx]) .hm-it,html[data-fx=arc] .hm-it{animation:hmArcX 1.9s cubic-bezier(.25,.6,.3,1) backwards,hmArcY 1.9s linear backwards,hmFade .35s ease backwards;animation-delay:calc(var(--i)*90ms + 250ms)}
+html:not([data-fx]) .hm-it .hm-lb,html[data-fx=arc] .hm-it .hm-lb{animation:hmPop .45s cubic-bezier(.2,1.4,.4,1) backwards;animation-delay:calc(var(--i)*90ms + 2000ms)}
+html:not([data-fx]) .hm-it .hm-sm,html[data-fx=arc] .hm-it .hm-sm{animation:hmFade .5s ease backwards;animation-delay:calc(var(--i)*90ms + 2150ms)}
+/* Efecto 2 · Deslizar: uno por uno desde la izquierda, más lento */
+html[data-fx=slide] .hm-it{animation:hmSlide 1.1s cubic-bezier(.2,.9,.25,1) backwards;animation-delay:calc(var(--i)*300ms + 250ms)}
+/* Efecto 3 · Rodar: uno por uno, rodando como rueda */
+html[data-fx=roll] .hm-it{animation:hmFly 1.1s cubic-bezier(.22,1.15,.36,1) backwards;animation-delay:calc(var(--i)*300ms + 250ms)}
+html[data-fx=roll] .hm-it .hm-lb{animation:hmPop .45s cubic-bezier(.2,1.4,.4,1) backwards;animation-delay:calc(var(--i)*300ms + 1050ms)}
+.cfg-fx{display:flex;flex-direction:column;gap:8px;margin:0 6px}
+.cfg-fx button{display:block;text-align:left;font:700 14px var(--ff);padding:12px 14px;border-radius:14px;border:1px solid var(--bd);background:var(--sf);color:var(--tx);cursor:pointer}
+.cfg-fx button small{display:block;font-weight:500;color:var(--mt);margin-top:3px;font-size:12px}
+.cfg-fx button.on{background:var(--ac);color:#02343a;border-color:var(--ac)}.cfg-fx button.on small{color:#04403f}
 html[data-device=desktop] .hm-it,html[data-size=l] .hm-it{--d:132px}
 .hm-ring{position:relative;width:var(--d);height:var(--d);border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 30% 22%,#10606f 0,#08404c 55%,#052c35 100%);box-shadow:0 12px 28px #00000055,inset 0 0 0 1px #17697a;transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s}
 .hm-orb{position:absolute;inset:-5px;width:calc(100% + 10px);height:calc(100% + 10px);animation:hmSpin 22s linear infinite;pointer-events:none}
@@ -241,6 +251,9 @@ html[data-device=desktop] .hm-it,html[data-size=l] .hm-it{--d:132px}
 .hm-it:active .hm-ring{transform:scale(.96)}
 .hm-it:focus-visible{outline:none}
 html .hm-sm{display:block;margin-top:8px;color:var(--mt);font-size:11.5px;line-height:1.3;text-align:center;max-width:170px}
+@keyframes hmArcX{from{translate:-115vw 0}to{translate:0 0}}
+@keyframes hmArcY{0%{transform:translateY(150px);animation-timing-function:cubic-bezier(.1,.5,.4,1)}45%{transform:translateY(-190px);animation-timing-function:cubic-bezier(.6,0,.9,.7)}100%{transform:translateY(0)}}
+@keyframes hmSlide{from{opacity:0;transform:translateX(-170px) scale(.9)}to{opacity:1;transform:none}}
 @keyframes hmFly{0%{opacity:0;transform:translateX(-115vw) rotate(-540deg)}12%{opacity:1}100%{opacity:1;transform:none}}
 @keyframes hmPop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
 @keyframes hmFade{from{opacity:0}to{opacity:1}}
@@ -259,17 +272,20 @@ html[data-device=desktop] .hm-lb,html[data-size=l] .hm-lb{font-size:14.5px;paddi
 <script>/* Modo de entrada automático: detecta móvil / tableta / escritorio y el ancho disponible */
 (function(){var d=document.documentElement,ua=navigator.userAgent||'',tc=(navigator.maxTouchPoints||0)>1;
 var mob=/iPhone|iPod|Android.+Mobile|Windows Phone|Mobile/i.test(ua),tab=!mob&&(/iPad|Tablet|Android/i.test(ua)||(/Macintosh/.test(ua)&&tc));
-d.dataset.device=mob?'mobile':tab?'tablet':'desktop';
+d.dataset.device=mob?'mobile':tab?'tablet':'desktop';try{d.dataset.fx=localStorage.getItem('conFx')||'arc'}catch(e){d.dataset.fx='arc'}
 function z(){var w=window.innerWidth;d.dataset.size=w<640?'s':w<1000?'m':'l'}z();window.addEventListener('resize',z)})();</script></head>
 <body>
 <div id="stSheet" class="stsheet hide"><div class="stbox"><div class="sthd"><b>Filtrar por tienda</b><button type="button" id="stSheetX" class="btn sm">✕</button></div><div id="stSheetList"></div></div></div>
+<div id="cfgSheet" class="stsheet hide"><div class="stbox"><div class="sthd"><b>Configuración</b><button type="button" id="cfgX" class="btn sm">✕</button></div>
+  <div class="lbl" style="margin:6px 6px 8px">Efecto de entrada del menú</div><div id="cfgFx" class="cfg-fx"></div>
+  <div class="msg" style="margin:10px 6px 4px">Se guarda en este equipo. Al elegir uno se ve de inmediato en el menú.</div></div></div>
 <div id="gate" class="gate"><h2>🔎 Consultas</h2><p id="gmsg" style="color:var(--mt)">Verificando sesión…</p><a class="btn pri" id="glink" href="index.html" style="text-decoration:none;display:none">Ir a Marcaciones</a><div id="gpick" style="margin-top:18px"></div><a id="gtemp" href="#" style="display:none;margin-top:46px;font-size:11px;color:var(--mt);opacity:.55;text-decoration:none">Temporal</a></div>
 
 <div id="app" class="hide">
   <div class="top">
     <button class="btn sm" id="btnBack" title="Atrás" aria-label="Atrás">←</button>
     <div class="ttl"><h1 id="ttl">Consultas</h1><small id="who">—</small></div><span id="incDot" class="hide" style="width:7px;height:7px;border-radius:50%;background:#f5a623;opacity:.55;margin-right:6px;flex:none"></span><span style="font-size:10px;opacity:.7;margin-right:6px;display:none" id="verTag">V25 octubre-C</span>
-    <button class="btn sm th" id="btnTh" title="Cambiar tema claro/oscuro" aria-label="Tema" onclick="var t=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=t;try{localStorage.setItem('conTheme',t)}catch(e){};this.textContent=t==='light'?'☾':'☀'"></button><script>document.getElementById('btnTh').textContent=document.documentElement.dataset.theme==='light'?'☾':'☀'</script><button class="btn sm hide" id="btnRef" title="Actualizar" aria-label="Actualizar">⟳</button>
+    <button class="btn sm" id="btnCfg" title="Configuración" aria-label="Configuración">⚙</button><button class="btn sm th" id="btnTh" title="Cambiar tema claro/oscuro" aria-label="Tema" onclick="var t=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=t;try{localStorage.setItem('conTheme',t)}catch(e){};this.textContent=t==='light'?'☾':'☀'"></button><script>document.getElementById('btnTh').textContent=document.documentElement.dataset.theme==='light'?'☾':'☀'</script><button class="btn sm hide" id="btnRef" title="Actualizar" aria-label="Actualizar">⟳</button>
     <button class="btn sm hide" id="btnPal">🧱 Palets</button><button class="btn sm hide" id="btnPkl">📋 Packing</button><button class="btn sm hide" id="btnRecBack">↩ Recibo</button><button class="btn sm hide" id="btnHome">Recibos</button>
     <a class="btn sm" id="toMarc" href="index.html" style="text-decoration:none;background:#ff3b30;color:#fff" title="Salir a Marcaciones">⎋ Salir</a>
   </div>
@@ -3357,6 +3373,12 @@ function showHome(path){
   ['v-rec','v-recibo','v-stat','v-auto','v-pro','v-pdn','v-pal','v-pkl'].forEach(id=>{const e=$(id);if(e)e.classList.add('hide')});
   ['btnHome','btnPal','btnPkl','btnRecBack','bar'].forEach(id=>{const e=$(id);if(e)e.classList.add('hide')});
   buildHome();$('v-home').classList.remove('hide');window.scrollTo(0,0)}
+const FXS=[['arc','Media luna','Los cuatro salen juntos, suben en arco y caen en su lugar'],['slide','Deslizar','Uno por uno desde la izquierda'],['roll','Rodar','Uno por uno, rodando como rueda']];
+function cfgPaint(){const cur=document.documentElement.dataset.fx||'arc';$('cfgFx').innerHTML=FXS.map(([k,n,d])=>`<button type="button" data-fx="${k}" class="${cur===k?'on':''}">${n}<small>${d}</small></button>`).join('')}
+$('btnCfg').onclick=()=>{cfgPaint();$('cfgSheet').classList.remove('hide')};
+$('cfgSheet').addEventListener('click',e=>{if(e.target.id==='cfgSheet'||e.target.id==='cfgX'){$('cfgSheet').classList.add('hide');return}
+  const b=e.target.closest('[data-fx]');if(!b)return;document.documentElement.dataset.fx=b.dataset.fx;try{localStorage.setItem('conFx',b.dataset.fx)}catch(x){}cfgPaint();
+  if(!$('v-home').classList.contains('hide')){$('cfgSheet').classList.add('hide');buildHome()}});
 $('hmSecs').addEventListener('click',e=>{const b=e.target.closest('[data-hm]');if(!b)return;const k=b.dataset.hm,r=hmNode(HMPATH),def=r.list.find(x=>x.k===k);if(!def)return;
   if(def.ch){HMPATH.push(k);buildHome();window.scrollTo(0,0);return}
   if(def.modal){$(def.b).click();return} // ventanas emergentes: el menú queda detrás
