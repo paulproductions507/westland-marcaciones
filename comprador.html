@@ -163,6 +163,16 @@ html[data-fx=none] #app>.card,html[data-fx=none] #app>.sum,html[data-fx=none] #a
 .cfg-chk input{width:22px;height:22px;flex:none;margin-top:2px;accent-color:var(--pet3)}
 .cfg-chk b{display:block;font:700 14px 'Inter',sans-serif}
 .cfg-chk small{display:block;color:var(--mt);font-size:12px;margin-top:3px;font-weight:500;line-height:1.35}
+
+/* refinamiento visual: filtros tipo botón, encabezado y filas con más altura */
+.tools{gap:12px}
+.tools input,.tools select{height:44px;border-radius:12px!important;padding:0 14px!important;font-weight:600;border:1.5px solid var(--tbd)!important}
+.tools input[type=search]{flex:0 1 420px!important;min-width:240px!important}
+.tools select{flex:0 0 210px!important;width:210px;cursor:pointer}
+.tools #fx{transition:none}.tools #fx.lock{visibility:hidden;pointer-events:none}
+.tools .btn{height:44px;border-radius:12px;padding:0 20px}
+th{padding:16px 12px!important;font-size:12.5px!important}
+td{padding:13px 12px!important}
 </style>
 <script>try{var t=localStorage.getItem("cmpTheme")||"dark";document.documentElement.dataset.theme=t}catch(e){}
 (function(){var d=document.documentElement,ua=navigator.userAgent||"",tc=(navigator.maxTouchPoints||0)>1,m=/iPhone|iPod|Android.+Mobile|Windows Phone|Mobile/i.test(ua),tb=!m&&(/iPad|Tablet|Android/i.test(ua)||(/Macintosh/.test(ua)&&tc));d.dataset.device=m?"mobile":tb?"tablet":"desktop";function z(){var w=innerWidth;d.dataset.size=w<640?"s":w<1000?"m":"l"}z();addEventListener("resize",z)})();</script>
@@ -314,13 +324,13 @@ function paintPL(){
     ${parc?`<div class="info warn">${parc} transferencia(s) viajaron parcialmente en este lista de empaque (marcadas “Parcial”); sus piezas son las de la transferencia completa.</div>`:''}</div>
 
   <div class="card" data-sec="det"><h2>Detalle de productos</h2>
-    <div class="tools"><input type="search" id="q" placeholder="Buscar código, estilo, descripción, proveedor…" style="flex:1 1 340px;min-width:240px"><select id="fk"><option value="">Filtrar por: todo</option><option value="t">Tienda</option><option value="td">Tipo de documento</option><option value="tr">N.º de documento</option><option value="ty">Tipología</option><option value="v">Proveedor</option><option value="q">Piezas mínimas</option></select><select id="fx" class="hide"></select><input type="number" id="fm" min="0" placeholder="Pzas ≥" class="hide" style="max-width:110px"><button class="btn sec" id="clr">Limpiar</button></div>
+    <div class="tools"><input type="search" id="q" placeholder="Buscar código, estilo, descripción, proveedor…" style="flex:1 1 340px;min-width:240px"><select id="fk"><option value="">Filtrar por: todo</option><option value="t">Tienda</option><option value="td">Tipo de documento</option><option value="tr">N.º de documento</option><option value="ty">Tipología</option><option value="v">Proveedor</option><option value="q">Piezas mínimas</option></select><select id="fx" class="lock"><option value=""></option></select><input type="number" id="fm" min="0" placeholder="Pzas ≥" class="hide" style="max-width:110px"><button class="btn sec" id="clr">Limpiar</button></div>
     <div class="cnt" id="cnt"></div>
     <div class="tw"><table><thead><tr id="hd"></tr></thead><tbody id="tb"></tbody><tfoot><tr id="tf"></tr></tfoot></table></div></div>`;
   $('hd').innerHTML=COLS.map(c=>`<th data-k="${c.k}" class="${c.n?'n':''}"${c.w?` style="min-width:${c.w}px"`:''}>${c.h}<span id="ar_${c.k}" style="margin-left:4px"></span></th>`).join('');
   $('hd').onclick=e=>{const th=e.target.closest('th');if(!th)return;const k=th.dataset.k;SORT=SORT.k===k?{k,d:-SORT.d}:{k,d:1};render()};
   const FL={t:'Todas las tiendas',td:'Todos los tipos de documento',tr:'Todos los documentos',ty:'Toda tipología',v:'Todos los proveedores'};
-  const fkSync=()=>{const k=$('fk').value,x=$('fx'),m=$('fm');x.classList.add('hide');m.classList.add('hide');x.innerHTML='';m.value='';
+  const fkSync=()=>{const k=$('fk').value,x=$('fx'),m=$('fm');x.classList.add('hide');x.classList.remove('lock');m.classList.add('hide');x.innerHTML='';m.value='';if(!k){x.innerHTML='<option value=""></option>';x.classList.remove('hide');x.classList.add('lock')}
     if(k==='q')m.classList.remove('hide');else if(k){x.innerHTML=`<option value="">${FL[k]}</option>`+opt(k).map(o=>`<option>${esc(o)}</option>`).join('');x.classList.remove('hide')}};
   $('fk').addEventListener('change',()=>{fkSync();render()});
   ['q','fm'].forEach(id=>$(id).addEventListener('input',render));$('fx').addEventListener('change',render);
@@ -362,7 +372,7 @@ async function excel(){
     const side={style:'thin',color:{argb:LN}},bd={top:side,left:side,bottom:side,right:side};
     const fill=c=>({type:'pattern',pattern:'solid',fgColor:{argb:c}});
     const band=(ws,r,text,last,color,size)=>{ws.mergeCells(r,1,r,last);const c=ws.getCell(r,1);c.value=text;c.font={name:'Calibri',bold:true,size,color:{argb:W}};c.fill=fill(color);c.alignment={vertical:'middle',horizontal:'left',indent:1};ws.getRow(r).height=size+14};
-    const head=(ws,r,heads,al)=>{const row=ws.getRow(r);row.height=24;heads.forEach((h,i)=>{const c=row.getCell(i+1);c.value=h;c.font={name:'Calibri',bold:true,size:11,color:{argb:W}};c.fill=fill(NAVY);c.alignment={vertical:'middle',horizontal:al?(h==='Piezas'?'right':'left'):'center',wrapText:!al,indent:al?1:0};c.border=bd})};
+    const head=(ws,r,heads,al)=>{const row=ws.getRow(r);row.height=34;heads.forEach((h,i)=>{const c=row.getCell(i+1);c.value=h;c.font={name:'Calibri',bold:true,size:11,color:{argb:W}};c.fill=fill(NAVY);c.alignment={vertical:'middle',horizontal:al?(h==='Piezas'?'right':'left'):'center',wrapText:!al,indent:al?1:0};c.border=bd})};
     const body=(ws,r,vals,fm,i)=>{const row=ws.getRow(r);vals.forEach((x,j)=>{const c=row.getCell(j+1);c.value=x;c.font={name:'Calibri',size:10.5};c.border=bd;if(i%2)c.fill=fill(ZEB);if(fm&&fm[j])c.numFmt=fm[j];c.alignment={vertical:'top',horizontal:typeof x==='number'?'right':'left',wrapText:true}})};
     const total=(ws,r,vals,fm)=>{const row=ws.getRow(r);vals.forEach((x,j)=>{const c=row.getCell(j+1);c.value=x;c.font={name:'Calibri',bold:true,size:11,color:{argb:W}};c.fill=fill(PET);c.border=bd;if(fm&&fm[j])c.numFmt=fm[j];c.alignment={horizontal:typeof x==='number'||(x&&x.formula)?'right':'left',vertical:'middle'}})};
     const sub=(ws,r,text,last)=>{ws.mergeCells(r,1,r,last);const c=ws.getCell(r,1);c.value=text;c.font={name:'Calibri',bold:true,size:12,color:{argb:PET}};c.border={bottom:{style:'medium',color:{argb:PET}}};ws.getRow(r).height=22};
@@ -395,7 +405,7 @@ async function excel(){
     /* Hoja 2: Productos (filtros + congelado) */
     const s2=wb.addWorksheet('Productos',{views:[{state:'frozen',ySplit:4,showGridLines:false}]});
     const H=['Tienda','N.º de documento','Proveedor','Estilo','Producto','Descripción','Piezas','Tipo de documento','Cliente','Tipología','Recibo'];
-    s2.columns=[{width:11},{width:24},{width:34},{width:16},{width:13},{width:60},{width:10},{width:21},{width:32},{width:14},{width:12}];
+    s2.columns=[{width:14},{width:30},{width:40},{width:20},{width:16},{width:70},{width:13},{width:24},{width:38},{width:18},{width:16}];
     band(s2,1,`Lista de empaque ${v.num} · Detalle de productos`,11,NAVY,14);
     s2.mergeCells(2,1,2,11);const t2=s2.getCell(2,1);t2.value=`${ST[v.st]||'Despachado'} · despachado ${fdt(v.ts)}${v.st==='R'?' · recibido '+fdt(v.rts):''}  ·  ${fmt(rowsAll.length)} líneas`;t2.font={italic:true,color:{argb:GR},size:10};
     head(s2,4,H,'left');
