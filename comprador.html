@@ -150,7 +150,7 @@ html[data-fx=none] #app>.card,html[data-fx=none] #app>.sum,html[data-fx=none] #a
 #hmHome .hm-st:first-child{margin-top:4px}
 .dtn{color:var(--mt);font-size:12px}
 /* configuración */
-.dpr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;margin:8px 0;border:1px solid var(--cbd);border-radius:14px;cursor:pointer}.dpr:active{opacity:.7}.dpr b{display:block;font-size:16px}.dpr small{display:block;color:var(--mt);font-size:12px;margin-top:2px}.dpq{text-align:right}.dpq b{color:var(--acc)}
+.dpr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;margin:8px 0;border:1px solid var(--cbd);border-radius:14px;cursor:pointer}.dpr:active{opacity:.7}.dpr b{display:block;font-size:16px}.dpr small{display:block;color:var(--mt);font-size:12px;margin-top:2px}.dpq{text-align:right}.dps{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.dps .sc{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--soft);border:1px solid var(--cbd);color:var(--ink)}.dpq b{color:var(--acc)}
 .stsheet{position:fixed;inset:0;z-index:200;background:#000a;display:flex;align-items:flex-end;justify-content:center}
 .stbox{width:100%;max-width:520px;max-height:82vh;overflow:auto;background:var(--card);color:var(--ink);border:1px solid var(--cbd);border-radius:20px 20px 0 0;padding:8px 12px calc(env(safe-area-inset-bottom) + 16px)}
 .sthd{display:flex;justify-content:space-between;align-items:center;padding:8px 4px 10px}.sthd b{font-size:17px}
@@ -212,8 +212,8 @@ $('tg').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'li
 let SN={},db,TOK='',IDX={},PL=null,ROWS=[],VIEW=[],SORT={k:'t',d:1},BUSY=false;
 
 const COLS=[
- {k:'t',h:'Tienda'},{k:'td',h:'Tipo de documento'},{k:'tr',h:'N.º de documento'},{k:'cn',h:'Cliente'},{k:'ty',h:'Tipología'},{k:'rc',h:'Recibo'},{k:'v',h:'Proveedor'},
- {k:'e',h:'Estilo'},{k:'p',h:'Producto',mono:1},{k:'d',h:'Descripción'},{k:'u',h:'Código barras',mono:1},{k:'q',h:'Piezas',n:1}
+ {k:'t',h:'Tienda'},{k:'tr',h:'N.º de documento'},{k:'v',h:'Proveedor'},{k:'e',h:'Estilo'},{k:'p',h:'Producto',mono:1},{k:'d',h:'Descripción',w:380},{k:'q',h:'Piezas',n:1},
+ {k:'td',h:'Tipo de documento'},{k:'cn',h:'Cliente'},{k:'ty',h:'Tipología'},{k:'rc',h:'Recibo'}
 ];
 /* Guía de proveedores por prefijo de la descripción (primera palabra). Solo se usa cuando el sistema no encontró proveedor.
    Para agregar uno nuevo: PREFIJO:'NOMBRE DEL PROVEEDOR'. */
@@ -298,29 +298,29 @@ function paintPL(){
   const opt=k=>[...new Set(ROWS.map(r=>r[k]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'es',{numeric:true}));
   const sel=(id,l,a)=>`<select id="${id}"><option value="">${l}</option>${a.map(x=>`<option>${esc(x)}</option>`).join('')}</select>`;
   const byV=grp(ROWS,r=>r.v),byT=grp(ROWS,r=>r.ty);
+  const tieH=`<div class="rsb"><h2>Distribución por tienda</h2>${v.stores.map(s=>{const pc=(s.pz||0)/tp*100;return `<div class="sb"><div class="lb">${esc(s.t)}${s.tn?'<br><small style="color:var(--mt);font-weight:400">'+esc(s.tn)+'</small>':''}</div><div class="tr"><i style="width:${Math.max(1,pc).toFixed(1)}%"></i></div><div class="vl"><b>${pc.toFixed(1)}%</b> · ${fmt(s.pz)} pzas · ${fmt(s.tf)} doc.</div></div>`}).join('')}</div>`;
+  const proH=`<div class="rsb"><h2>Distribución por proveedor</h2>${byV.map(g=>{const pc=g.q/tp*100;return `<div class="sb"><div class="lb ${g.k===SP?'sp':''}">${esc(g.k)}</div><div class="tr"><i style="width:${Math.max(1,pc).toFixed(1)}%"></i></div><div class="vl"><b>${pc.toFixed(1)}%</b> · ${fmt(g.q)} pzas · ${fmt(g.rf.size)} ref.</div></div>`}).join('')}
+    <div class="info">Tipología: ${byT.map(g=>`<span class="chip ty ${tyCls(g.k)}">${esc(g.k)} · ${fmt(g.q)} pzas</span>`).join(' ')}</div></div>`;
+  const RSV={all:tieH+proH,tie:tieH,pro:proH};
   $('app').innerHTML=`
   <div class="card" data-sec="res"><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-bottom:12px">
     <div><span class="chip ${rc?'R':'D'}">${rc?'Recibido':'Despachado'}</span></div>
     <div style="display:flex;gap:8px"><button class="btn" id="xl">Excel</button><button class="btn sec" id="pdf">PDF</button></div></div>
     <div class="kpis">${[['Piezas',v.tp],['Referencias',refs],['Tiendas',v.stores.length],['Documentos',v.tf]].map(([l,n])=>`<div class="kpi"><b>${fmt(n)}</b><span>${l}</span></div>`).join('')}</div>
     <div class="info">Informativo: ${fmt(v.tb)} bultos · ${fmt((v.cams||[]).length)} camión(es) · Preparó ${esc(v.prep||'—')} · Despachó ${esc(v.dby||'—')}${rc&&v.rby?' · Recibió '+esc(v.rby):''}</div>
+    <div class="tools" style="margin:14px 0 4px"><label style="font-weight:700;font-size:13px">Ver resumen:</label><select id="rsv"><option value="all">Todos</option><option value="tie">Por tienda</option><option value="pro">Por proveedor</option></select></div>
+    <div id="rsBody">${RSV.all}</div>
     ${parc?`<div class="info warn">${parc} transferencia(s) viajaron parcialmente en este packing list (marcadas “Parcial”); sus piezas son las de la transferencia completa.</div>`:''}</div>
-
-  <div class="two">
-  <div class="card" data-sec="tie"><h2>Distribución por tienda</h2>${v.stores.map(s=>{const pc=(s.pz||0)/tp*100;return `<div class="sb"><div class="lb">${esc(s.t)}${s.tn?'<br><small style="color:var(--mt);font-weight:400">'+esc(s.tn)+'</small>':''}</div><div class="tr"><i style="width:${Math.max(1,pc).toFixed(1)}%"></i></div><div class="vl"><b>${pc.toFixed(1)}%</b> · ${fmt(s.pz)} pzas · ${fmt(s.tf)} doc.</div></div>`}).join('')}</div>
-
-  <div class="card" data-sec="pro"><h2>Por proveedor</h2>${byV.map(g=>{const pc=g.q/tp*100;return `<div class="sb"><div class="lb ${g.k===SP?'sp':''}">${esc(g.k)}</div><div class="tr"><i style="width:${Math.max(1,pc).toFixed(1)}%"></i></div><div class="vl"><b>${pc.toFixed(1)}%</b> · ${fmt(g.q)} pzas · ${fmt(g.rf.size)} ref.</div></div>`}).join('')}
-    <div class="info">Tipología: ${byT.map(g=>`<span class="chip ty ${tyCls(g.k)}">${esc(g.k)} · ${fmt(g.q)} pzas</span>`).join(' ')}</div></div>
-  </div>
 
   <div class="card" data-sec="det"><h2>Detalle de productos</h2>
     <div class="tools"><input type="search" id="q" placeholder="Buscar código, estilo, descripción, proveedor…">${sel('ft','Todas las tiendas',opt('t'))}${sel('fd','Todo tipo de documento',opt('td'))}${sel('fr','Todos los documentos',opt('tr'))}${sel('fy','Toda tipología',opt('ty'))}${sel('fv','Todos los proveedores',opt('v'))}<input type="number" id="fm" min="0" placeholder="Pzas ≥"><button class="btn sec" id="clr">Limpiar</button></div>
     <div class="cnt" id="cnt"></div>
     <div class="tw"><table><thead><tr id="hd"></tr></thead><tbody id="tb"></tbody><tfoot><tr id="tf"></tr></tfoot></table></div></div>`;
-  $('hd').innerHTML=COLS.map(c=>`<th data-k="${c.k}" class="${c.n?'n':''}">${c.h}<span id="ar_${c.k}" style="margin-left:4px"></span></th>`).join('');
+  $('hd').innerHTML=COLS.map(c=>`<th data-k="${c.k}" class="${c.n?'n':''}"${c.w?` style="min-width:${c.w}px"`:''}>${c.h}<span id="ar_${c.k}" style="margin-left:4px"></span></th>`).join('');
   $('hd').onclick=e=>{const th=e.target.closest('th');if(!th)return;const k=th.dataset.k;SORT=SORT.k===k?{k,d:-SORT.d}:{k,d:1};render()};
   ['q','ft','fd','fr','fy','fv','fm'].forEach(id=>$(id).addEventListener(id==='q'||id==='fm'?'input':'change',render));
   $('clr').onclick=()=>{['q','ft','fd','fr','fy','fv','fm'].forEach(id=>$(id).value='');render()};
+  $('rsv').onchange=()=>{$('rsBody').innerHTML=RSV[$('rsv').value]};
   $('xl').onclick=excel;$('pdf').onclick=pdf;
   render();hmInit();
 }
@@ -342,8 +342,8 @@ function render(){
     else if(c.k==='ty')s=`<span class="chip ty ${tyCls(v)}">${esc(v)}</span>`;
     else if(c.k==='v')s=v===SP?`<span class="sp">${SP}</span>`:esc(v);
     else if(c.k==='q')s=fmt(v);else s=esc(v||(c.k==='rc'?'—':''));
-    return `<td class="${c.n?'n':''} ${c.mono?'mono':''}">${s}</td>`}).join('')}</tr>`).join(''):`<tr><td colspan="${COLS.length}" class="msg">Sin resultados</td></tr>`;
-  $('tf').innerHTML=`<td colspan="${COLS.length-1}"><b>TOTAL (${fmt(VIEW.length)} líneas)</b></td><td class="n">${fmt(VIEW.reduce((a,r)=>a+(r.q||0),0))}</td>`;
+    return `<td class="${c.n?'n':''} ${c.mono?'mono':''}"${c.w?` style="min-width:${c.w}px;white-space:normal"`:''}>${s}</td>`}).join('')}</tr>`).join(''):`<tr><td colspan="${COLS.length}" class="msg">Sin resultados</td></tr>`;
+  const tq=VIEW.reduce((a,r)=>a+(r.q||0),0);$('tf').innerHTML=COLS.map((c,i)=>c.k==='q'?`<td class="n">${fmt(tq)}</td>`:i===0?`<td><b>TOTAL (${fmt(VIEW.length)} líneas)</b></td>`:'<td></td>').join('');
 }
 
 /* ---------- EXCEL (ExcelJS: estilos, filtros, formato tabla) ---------- */
@@ -477,9 +477,8 @@ const HM_ICO={
   xl:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/>',
   pdf:'<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>'};
 const HM_LIST=[
-  {s:'Resumen',it:[['res','Resumen','Piezas, referencias y datos']]},
+  {s:'Resumen',it:[['res','Resumen','Totales, tiendas y proveedores']]},
   {s:'Detalle',it:[['det','Productos','Todas las líneas, con filtros']]},
-  {s:'Distribución',it:[['tie','Por tienda','Piezas por destino'],['pro','Por proveedor','Piezas y tipología']]},
   {s:'Exportar',it:[['xl','Excel','Descargar .xlsx'],['pdf','PDF','Descargar .pdf']]}];
 let SEC=null;
 function hmDraw(){const hm=$('hm');if(!hm||!PL)return;let n=0;
@@ -525,7 +524,7 @@ $('app').addEventListener('click',e=>{const b=e.target.closest('[data-home]');if
 function openDsp(){$('dspQ').value='';dspDraw();$('dspSheet').classList.remove('hide')}
 function dspDraw(){const q=norm($('dspQ').value),all=Object.entries(IDX).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
   const r=all.filter(([,v])=>!q||norm(v.num+' '+(v.sl||'')).includes(q));
-  $('dspL').innerHTML=r.map(([id,v])=>{const rc=v.st==='R';return `<div class="dpr" data-id="${esc(id)}"><div><b>${esc(v.num)}</b><small>${rc?'Recibido':'En tránsito'} · ${fdt(v.ts)}</small></div><div class="dpq"><b>${v.tp?fmt(v.tp):'—'}</b><small>piezas</small></div></div>`}).join('')||'<div class="msg">Sin resultados</div>'}
+  $('dspL').innerHTML=r.map(([id,v])=>{const rc=v.st==='R';return `<div class="dpr" data-id="${esc(id)}"><div><b>${esc(v.num)}</b><small>${rc?'Recibido':'En tránsito'} · ${fdt(v.ts)}</small><div class="dps">${String(v.sl||'').split(',').map(x=>x.trim()).filter(x=>x&&!/^cristal$/i.test(x)).map(x=>`<span class="sc">${esc(x)}</span>`).join('')}</div></div><div class="dpq"><b>${v.tp?fmt(v.tp):'—'}</b><small>piezas</small></div></div>`}).join('')||'<div class="msg">Sin resultados</div>'}
 $('dspQ').addEventListener('input',dspDraw);
 $('dspSheet').addEventListener('click',e=>{if(e.target.id==='dspSheet'||e.target.id==='dspX'){$('dspSheet').classList.add('hide');return}
   const c=e.target.closest('.dpr');if(c&&c.dataset.id){$('dspSheet').classList.add('hide');location.hash=TOK+'/'+c.dataset.id}});
