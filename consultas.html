@@ -224,7 +224,9 @@ body[data-home] #btnBack{display:none}
 @media(min-width:620px){.hm-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(min-width:960px){.hm-grid{grid-template-columns:repeat(auto-fill,200px);justify-content:start;justify-items:center;gap:34px 30px}}
 .hm-it{--d:108px;appearance:none;border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0;display:flex;flex-direction:column;align-items:center;width:100%;max-width:210px;position:relative;
-  animation:hmIn .75s cubic-bezier(.2,.9,.25,1) backwards;animation-delay:calc(var(--i)*70ms + 140ms)}
+  animation:hmFly 1.1s cubic-bezier(.22,1.15,.36,1) backwards;animation-delay:calc(var(--i)*300ms + 250ms)}
+.hm-it .hm-lb{animation:hmPop .45s cubic-bezier(.2,1.4,.4,1) backwards;animation-delay:calc(var(--i)*300ms + 1050ms)}
+.hm-it .hm-sm{animation:hmFade .5s ease backwards;animation-delay:calc(var(--i)*300ms + 1150ms)}
 html[data-device=desktop] .hm-it,html[data-size=l] .hm-it{--d:132px}
 .hm-ring{position:relative;width:var(--d);height:var(--d);border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 30% 22%,#10606f 0,#08404c 55%,#052c35 100%);box-shadow:0 12px 28px #00000055,inset 0 0 0 1px #17697a;transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s}
 .hm-orb{position:absolute;inset:-5px;width:calc(100% + 10px);height:calc(100% + 10px);animation:hmSpin 22s linear infinite;pointer-events:none}
@@ -239,6 +241,9 @@ html[data-device=desktop] .hm-it,html[data-size=l] .hm-it{--d:132px}
 .hm-it:active .hm-ring{transform:scale(.96)}
 .hm-it:focus-visible{outline:none}
 html .hm-sm{display:block;margin-top:8px;color:var(--mt);font-size:11.5px;line-height:1.3;text-align:center;max-width:170px}
+@keyframes hmFly{0%{opacity:0;transform:translateX(-115vw) rotate(-540deg)}12%{opacity:1}100%{opacity:1;transform:none}}
+@keyframes hmPop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+@keyframes hmFade{from{opacity:0}to{opacity:1}}
 @keyframes hmIn{from{opacity:0;transform:translateX(-84px) scale(.92)}to{opacity:1;transform:none}}
 @keyframes hmSpin{to{transform:rotate(360deg)}}
 html[data-theme=light] .hm-ring{background:radial-gradient(circle at 30% 22%,#1b8a97 0,#0e4c5a 60%,#082f38 100%)}
