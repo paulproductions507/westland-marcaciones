@@ -1271,6 +1271,33 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="banco-detalle" style="margin-top:10px"></div>
           </div></div>
 
+          <div class="asec"><div class="ashdr" data-ac="ac-deuda"><span>⏱ Horas por reponer (horas que ellos deben)</span><span class="ach">▾</span></div>
+          <div class="asbdy" id="ac-deuda">
+            <div id="deuda-resumen-wrap" style="background:var(--bg);border:1px solid var(--ac);border-radius:var(--rs);padding:10px;margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
+                <div style="font-size:12px;font-weight:800;color:var(--tx)">⏱ Lo que deben y lo que ya repusieron</div>
+                <button class="btn bg bsm" id="btn-deuda-copiar" type="button" style="width:auto;padding:4px 10px;font-size:11px">📤 Copiar resumen</button>
+              </div>
+              <div id="deuda-resumen"></div>
+            </div>
+            <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Es lo <strong>contrario a las horas adelantadas</strong>: el colaborador trabajó menos de su jornada (ej. un domingo de 11 a 5) y <strong>debe esas horas a la empresa</strong>. Eliges el día, el sistema lee sus marcaciones y calcula cuánto deben para completar las 8 horas. Si ese día llevaba <strong>almuerzo incluido</strong>, se les acredita el almuerzo. Desde la fecha de inicio que elijas, cada minuto que se queden <strong>después de su hora de salida</strong> va pagando la deuda (de la más antigua a la más reciente) y <strong>no genera pago extra</strong>. El saldo se calcula en vivo con sus marcaciones reales.</div>
+            <div style="font-size:11.5px;font-weight:800;color:var(--ac);margin:4px 0">Registrar horas que deben</div>
+            <div class="fg"><label>Día en que quedaron debiendo</label><input type="date" class="fc" id="deuda-fecha"></div>
+            <label style="display:flex;align-items:center;gap:10px;padding:6px 2px;font-size:14px;text-transform:none;letter-spacing:0;color:var(--tx);cursor:pointer"><input type="checkbox" id="deuda-almincl" style="width:auto;accent-color:var(--ac)"> 🍽 Almuerzo incluido (se les acredita)</label>
+            <div class="fg"><label>Minutos de almuerzo (si marcaron su almuerzo, se usa el real)</label><input type="number" class="fc" id="deuda-alm" min="0" value="60"></div>
+            <div class="fg"><label>Colaboradores</label><select class="fc" id="deuda-users" multiple size="6" style="display:none"></select>
+              <div id="deuda-users-checks" style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:6px 10px;max-height:260px;overflow:auto"></div>
+              <div id="deuda-users-info" style="font-size:12px;font-weight:700;margin-top:6px;color:var(--mt)">Ninguno seleccionado</div></div>
+            <button class="btn bg bsm" id="btn-deuda-todos" type="button" style="width:auto;margin-top:4px">Seleccionar todos</button>
+            <button class="btn bg bsm" id="btn-deuda-ninguno" type="button" style="width:auto;margin-top:4px">Ninguno</button>
+            <button class="btn bp bsm" id="btn-deuda-calc" type="button" style="width:auto;margin-top:4px">🔄 Calcular lo que deben</button>
+            <div id="deuda-calc" style="margin-top:10px"></div>
+            <div class="fg"><label>Empiezan a reponer desde (día)</label><input type="date" class="fc" id="deuda-inicio"></div>
+            <div class="fg"><label>Motivo / comentario</label><input type="text" class="fc" id="deuda-motivo" placeholder="ej. Domingo trabajaron de 11 a 5"></div>
+            <button class="btn bp bsm" id="btn-deuda-add" type="button" style="width:auto;margin-top:4px">💾 Registrar horas por reponer</button>
+            <div id="deuda-status" style="font-size:11px;color:var(--mt);margin-top:7px;white-space:pre-line"></div>
+          </div></div>
+
           <div class="asec"><div class="ashdr" data-ac="ac-emerg"><span>🚨 Evento de emergencia (sismo / evacuación)</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-emerg">
             <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Marca un día con emergencia (ej. el sismo del viernes 9 de octubre). <strong>No cambia ningún monto</strong>: agrega un aviso de "tema pendiente / posible descuento" en Vista RRHH, correo a RRHH, Vista Semanal (y su correo) y en "Mis marcaciones" del colaborador. Cuando RRHH responda, cambia la decisión aquí. Si resulta descuento, aplícalo con <strong>🔒 Descuento manual confirmado</strong>. Para otro día (ej. la evacuación del sábado), elige esa fecha y guárdala aparte.</div>
@@ -4357,7 +4384,7 @@ function fillSelects(obj){
   { const _cl={};Object.entries(obj||{}).forEach(([k,v])=>{if(v&&v.user&&v.nombre)_cl[k]=v;});obj=_cl; } // ignora registros dañados (sin usuario/nombre) que salían como "undefined (undefined)"
   const users=Object.values(obj||{});
   const withAll=['gen-user','bor-user','rpt-users'];
-  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user','tcol-user','descman-user','emerg-sr-user','banco-users','bancoap-user'].forEach(id=>{
+  ['gen-user','bor-user','rpt-users','man-user','ed-user','foto-adm-user','facial-adm-user','extrap-user','rsync-user','tcol-user','descman-user','emerg-sr-user','banco-users','bancoap-user','deuda-users'].forEach(id=>{
     const s=el(id);if(!s)return;
     s.innerHTML=withAll.includes(id)?'<option value="__ALL__">— Todos —</option>':'';
     users.filter(u=>!GERENTES.includes(u.user)).forEach(u=>s.innerHTML+=`<option value="${u.user}">${u.nombre} (${u.user})</option>`);
@@ -8102,6 +8129,195 @@ el('btn-bancoap')?.addEventListener('click',async()=>{
     if(st)st.textContent=`✅ Aplicado. Saldo restante: ${fmtMinHM(saldo-min)}. Se refleja en Vista Semanal.`;
     toast('⏳ Aplicado ✓','ok');el('bancoap-min').value='';renderBancoUser();
   }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo aplicar','err');}
+  btn.disabled=false;
+});
+// ── HORAS POR REPONER (horas que el colaborador DEBE a la empresa) ───────────────────────────────
+// Lo contrario a las horas adelantadas: el colaborador trabajó menos de su jornada (ej. domingo de
+// 11 a 5) y debe esas horas. El admin elige el día; el sistema lee las marcaciones y calcula lo que
+// falta para las 8h (igual que el faltante de la Vista Semanal). Si ese día llevaba almuerzo
+// incluido, se acredita el almuerzo. Desde la fecha de inicio elegida, los minutos que el colaborador
+// se queda DESPUÉS de su salida programada pagan la deuda (la más antigua primero) y NO generan pago
+// extra. El abono se calcula en vivo con las marcaciones reales (no se guarda), así que si se corrige
+// una marcación el saldo se corrige solo. No modifica montos de la planilla.
+// Firebase: meta_v1/deuda_horas/{user}/{fecha} = {fecha,minBruto,almIncl,almMin,min,inicio,motivo,por,ts}
+const DEUDA=`${META}/deuda_horas`;
+function sumaDiasISO(f,n){const d=new Date(f+'T00:00:00');d.setDate(d.getDate()+n);return isoD(d);}
+function hmDeDate(d){return fmtHoraEmerg(`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`);}
+function diaCortoDM(f){return `${DIA_LARGO[new Date(f+'T00:00:00').getDay()].toLowerCase().slice(0,3)} ${fmtFechaDM(f)}`;}
+// Cuánto debe un colaborador por un día: lo que falta para completar 8h según sus marcaciones reales
+async function calcularDeudaDia(user,fecha,almIncl,almCampo,almGlobal){
+  const marks=((await getHist(fecha))||[]).filter(m=>m.user===user);
+  if(!marks.length)return{ok:false,msg:'no tiene marcaciones ese día (no vino)'};
+  const by={};marks.forEach(m=>{if(m&&m.tipo)by[m.tipo]=new Date(m.stamp);});
+  if(!by['Entrada']||!by['Salida Final'])return{ok:false,msg:'le falta la Entrada o la Salida Final ese día'};
+  const dow=new Date(fecha+'T00:00:00').getDay();
+  const hrs=computeHrs(marks,almCfgForDia(almGlobal,dow));
+  const raw=Math.max(0,Math.round((8-hrs)*60));
+  const real=(by['Salida Alm.']&&by['Regreso Alm.'])?Math.round((by['Regreso Alm.']-by['Salida Alm.'])/60000):null;
+  const credito=almIncl?(real!=null?real:Math.max(0,almCampo)):0;
+  return{ok:true,entrada:by['Entrada'],salida:by['Salida Final'],hrs,raw,credito,almFuente:real!=null?'real':'campo',debe:Math.max(0,raw-credito)};
+}
+// Minutos que se quedó de más un día (después de su salida programada), sin contar los que ya son
+// horas adelantadas (sábado habilitado) ni los ya registrados en el banco de horas adelantadas
+async function extraDiaReponer(user,fecha,histMap,almGlobal,banco){
+  if(!histMap.has(fecha))histMap.set(fecha,(await getHist(fecha))||[]);
+  const marks=histMap.get(fecha).filter(m=>m.user===user);
+  if(!marks.length)return{min:0,nota:'sin marcaciones'};
+  const by={};marks.forEach(m=>{if(m&&m.tipo)by[m.tipo]=new Date(m.stamp);});
+  if(!by['Entrada']||!by['Salida Final'])return{min:0,nota:'sin salida marcada'};
+  try{const ac=await getAdelantoCfg(fecha);if(ac&&ac.hasta)return{min:0,nota:'día de horas adelantadas'};}catch(e){}
+  try{
+    const base=await getHorarioBaseDe(user,fecha);
+    const[fh,fm]=String(base.fin||'17:00').split(':').map(Number);
+    const finProg=(fh||0)*60+(fm||0);
+    const salidaReal=by['Salida Final'].getHours()*60+by['Salida Final'].getMinutes();
+    const dow=new Date(fecha+'T00:00:00').getDay();
+    const exc=Math.round(computeHrsExcedente(marks,almCfgForDia(almGlobal,dow))*60);
+    let extra=Math.max(0,Math.min(salidaReal-finProg,exc));
+    const yaBanco=Object.values((banco&&banco.creditos)||{}).filter(x=>x.fecha===fecha).reduce((a,x)=>a+(+x.min||0),0);
+    extra=Math.max(0,extra-yaBanco);
+    return{min:extra,nota:extra>0?'':'salió a su hora'};
+  }catch(e){return{min:0,nota:'no se pudo leer su horario'};}
+}
+// Reparte lo que se quedó de más cada día entre las deudas (la más antigua primero) desde su fecha de inicio
+async function calcularRepago(user,deudas,banco,histMap,almGlobal){
+  const lista=Object.values(deudas||{}).filter(x=>x&&x.fecha&&(+x.min||0)>0).map(x=>({...x,min:+x.min,pagado:0,abonos:[]})).sort((a,c)=>a.fecha.localeCompare(c.fecha));
+  if(!lista.length)return lista;
+  const hoy=isoD(new Date());
+  const desde=lista.reduce((m,x)=>{const i=x.inicio||sumaDiasISO(x.fecha,1);return i<m?i:m;},'9999-12-31');
+  const tope=sumaDiasISO(desde,60),hasta=hoy<tope?hoy:tope;
+  for(let f=desde;f<=hasta;f=sumaDiasISO(f,1)){
+    const pend=lista.filter(x=>(x.inicio||sumaDiasISO(x.fecha,1))<=f&&x.pagado<x.min);
+    if(!pend.length)continue;
+    const ex=await extraDiaReponer(user,f,histMap,almGlobal,banco);
+    let disp=ex.min;
+    for(const x of pend){const t=Math.min(disp,x.min-x.pagado);if(t>0){x.pagado+=t;x.abonos.push({fecha:f,min:t});disp-=t;}}
+  }
+  return lista;
+}
+let _deudaResumenTxt='',_deudaCalc=null;
+async function renderDeudaResumen(){
+  const box=el('deuda-resumen');if(!box)return;
+  box.innerHTML='<div style="font-size:12px;color:var(--mt)">Calculando…</div>';
+  try{
+    const[sn,users,almGlobal]=await Promise.all([get(R(db,DEUDA)),getUsers(),loadAlmuerzoGlobal()]);
+    const all=sn.exists()?sn.val():{};
+    const histMap=new Map(),filas=[],alDia=[];
+    for(const [uid,deudas] of Object.entries(all)){
+      const banco=await getBancoUser(uid);
+      const lista=await calcularRepago(uid,deudas,banco,histMap,almGlobal);
+      if(!lista.length)continue;
+      const uo=users[uid]||Object.values(users).find(x=>x&&x.user===uid)||{};
+      const resta=lista.reduce((a,x)=>a+(x.min-x.pagado),0);
+      const nombre=uo.nombre||uid;
+      if(resta>0)filas.push({uid,nombre,lista,resta});else alDia.push(nombre);
+    }
+    filas.sort((a,c)=>c.resta-a.resta);
+    if(!filas.length){
+      box.innerHTML='<div style="font-size:12px;color:var(--mt)">Nadie debe horas por ahora ✅'+(alDia.length?`<br><span style="font-size:11px">Ya repusieron todo: ${escHtml(alDia.join(', '))}</span>`:'')+'</div>';
+      _deudaResumenTxt='';return;
+    }
+    const total=filas.reduce((a,f)=>a+f.resta,0);
+    box.innerHTML=`<div style="font-size:12px;font-weight:800;color:#f59e0b;margin-bottom:8px">${filas.length} colaborador(es) · ${fmtMinHM(total)} por reponer en total</div>`
+      +filas.map(f=>`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div style="font-size:13px;font-weight:800;color:var(--tx)">${escHtml(f.nombre)}</div>
+          <div style="font-size:13px;font-weight:800;color:#f59e0b">${fmtMinHM(f.resta)}</div>
+        </div>
+        ${f.lista.map(x=>{
+          const r=x.min-x.pagado;
+          return `<div style="font-size:11px;color:var(--mt);margin-top:4px;line-height:1.4">
+            <div style="display:flex;justify-content:space-between;gap:6px;align-items:flex-start"><span>🗓 ${escHtml(diaCortoDM(x.fecha))} — debía ${x.min} min${x.almIncl?` <span style="opacity:.8">(almuerzo ${x.almMin} min incluido)</span>`:''} · empieza a reponer ${escHtml(fmtFechaDM(x.inicio||sumaDiasISO(x.fecha,1)))}${x.motivo?' — '+escHtml(x.motivo):''}</span>
+            <button type="button" class="btn bg bsm" data-deuda-del="${escHtml(f.uid)}|${escHtml(x.fecha)}" style="width:auto;padding:2px 7px;font-size:10px;flex:none">🗑</button></div>
+            ${x.abonos.map(a=>`<div style="color:#00c9a7;font-size:10.5px">   ➖ ${escHtml(diaCortoDM(a.fecha))}: repuso ${a.min} min</div>`).join('')}
+            <div style="font-weight:700;color:${r>0?'#f59e0b':'#00c9a7'}">${r>0?`Resta ${r} min (${fmtMinHM(r)})`:'✅ Repuesta'}</div></div>`;
+        }).join('')}
+      </div>`).join('')
+      +(alDia.length?`<div style="font-size:11px;color:var(--mt);margin-top:4px">✅ Ya repusieron todo: ${escHtml(alDia.join(', '))}</div>`:'');
+    _deudaResumenTxt=`HORAS POR REPONER (${filas.length} colaborador(es), ${fmtMinHM(total)} en total)\n`
+      +filas.map(f=>`\n• ${f.nombre}: resta ${fmtMinHM(f.resta)}\n`+f.lista.map(x=>{const r=x.min-x.pagado;return `   - ${diaCortoDM(x.fecha)}: debía ${x.min} min${x.almIncl?` (almuerzo ${x.almMin} min incluido)`:''}; repuso ${x.pagado} min${x.abonos.length?' ('+x.abonos.map(a=>diaCortoDM(a.fecha)+' '+a.min+' min').join(', ')+')':''}; ${r>0?'resta '+r+' min':'repuesta ✅'}`;}).join('\n')).join('\n');
+  }catch(e){box.innerHTML='<div style="font-size:12px;color:#ff6b6b">⛔ No se pudo cargar el resumen</div>';console.warn('renderDeudaResumen',e);}
+}
+document.querySelector('[data-ac="ac-deuda"]')?.addEventListener('click',()=>setTimeout(renderDeudaResumen,50));
+el('btn-deuda-copiar')?.addEventListener('click',async()=>{
+  if(!_deudaResumenTxt){toast('No hay horas por reponer','');return;}
+  try{await navigator.clipboard.writeText(_deudaResumenTxt);toast('📤 Resumen copiado ✓','ok');}
+  catch(e){window.prompt('Copia el resumen:',_deudaResumenTxt);}
+});
+document.addEventListener('click',async e=>{
+  const b=e.target.closest&&e.target.closest('[data-deuda-del]');if(!b)return;
+  const[user,fecha]=String(b.dataset.deudaDel||'').split('|');if(!user||!fecha)return;
+  if(!confirm(`¿Quitar las horas por reponer de ${user} del ${fecha}?`))return;
+  try{
+    await set(R(db,`${DEUDA}/${user}/${fecha}`),null);
+    await addLog(`⏱ Horas por reponer QUITADAS: ${user} — ${fecha} (por ${CU})`);
+    toast('Quitado ✓','ok');renderDeudaResumen();
+  }catch(err){toast('⛔ No se pudo quitar','err');}
+});
+// Lista de colaboradores con casillas (igual que en el banco de horas adelantadas)
+function renderDeudaChecks(){
+  const sel=el('deuda-users'),box=el('deuda-users-checks'),info=el('deuda-users-info');
+  if(!sel||!box)return;
+  const opts=Array.from(sel.options);
+  const updInfo=()=>{
+    const names=opts.filter(o=>o.selected).map(o=>o.textContent.replace(/\s*\([^)]*\)\s*$/,''));
+    if(info){info.textContent=names.length?`✅ Seleccionaste ${names.length}: ${names.join(', ')}`:'Ninguno seleccionado';info.style.color=names.length?'var(--ac)':'var(--mt)';}
+  };
+  box.innerHTML='';
+  opts.forEach(o=>{
+    const row=document.createElement('label');
+    row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 2px;font-size:14px;text-transform:none;letter-spacing:0;color:var(--tx);cursor:pointer';
+    const cb=document.createElement('input');cb.type='checkbox';cb.checked=o.selected;cb.style.cssText='width:auto;accent-color:var(--ac)';
+    cb.addEventListener('change',()=>{o.selected=cb.checked;updInfo();});
+    row.appendChild(cb);row.appendChild(document.createTextNode(o.textContent));box.appendChild(row);
+  });
+  updInfo();
+}
+try{const _ds=el('deuda-users');if(_ds){new MutationObserver(()=>renderDeudaChecks()).observe(_ds,{childList:true});renderDeudaChecks();}}catch(e){}
+el('btn-deuda-todos')?.addEventListener('click',()=>{Array.from(el('deuda-users').options).forEach(o=>{o.selected=true;});renderDeudaChecks();});
+el('btn-deuda-ninguno')?.addEventListener('click',()=>{Array.from(el('deuda-users').options).forEach(o=>{o.selected=false;});renderDeudaChecks();});
+el('btn-deuda-calc')?.addEventListener('click',async()=>{
+  const fecha=el('deuda-fecha').value,almIncl=el('deuda-almincl').checked,almCampo=parseInt(el('deuda-alm').value,10)||0;
+  const sel=Array.from(el('deuda-users').selectedOptions).map(o=>({user:o.value,nombre:o.textContent.replace(/\s*\([^)]*\)\s*$/,'')}));
+  const box=el('deuda-calc'),st=el('deuda-status');
+  if(!fecha||!sel.length){toast('Elige el día y al menos un colaborador','err');return;}
+  const btn=el('btn-deuda-calc');btn.disabled=true;box.innerHTML='<div style="font-size:12px;color:var(--mt)">Leyendo marcaciones…</div>';
+  try{
+    const almGlobal=await loadAlmuerzoGlobal();
+    const rows=[];
+    for(const u of sel)rows.push({...u,...(await calcularDeudaDia(u.user,fecha,almIncl,almCampo,almGlobal))});
+    _deudaCalc={fecha,almIncl,rows};
+    box.innerHTML=`<div style="font-size:11.5px;font-weight:800;color:var(--ac);margin-bottom:6px">${escHtml(diaCortoDM(fecha))} — lo que deben${almIncl?' (con almuerzo incluido)':''}</div>`
+      +rows.map(r=>r.ok?`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;margin-bottom:6px;font-size:11.5px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><strong style="font-size:13px">${escHtml(r.nombre)}</strong>
+          <span style="white-space:nowrap">Debe: <input type="number" class="fc" min="0" data-deuda-min="${escHtml(r.user)}" value="${r.debe}" style="width:72px;display:inline-block;padding:4px 6px"> min</span></div>
+        <div style="color:var(--mt);margin-top:4px;line-height:1.4">🕐 ${hmDeDate(r.entrada)} → ${hmDeDate(r.salida)} · trabajó ${fmtMinHM(Math.round(r.hrs*60))} · le faltan ${r.raw} min para las 8h${almIncl?`<br>🍽 almuerzo acreditado: −${r.credito} min (${r.almFuente==='real'?'el que marcó':'el del campo'}) → debe ${r.debe} min`:''}</div></div>`
+        :`<div style="font-size:11.5px;color:#ff6b6b;margin-bottom:6px">⛔ ${escHtml(r.nombre)}: ${escHtml(r.msg)}</div>`).join('');
+    if(st)st.textContent='';
+  }catch(e){box.innerHTML='<div style="font-size:12px;color:#ff6b6b">⛔ No se pudo calcular: '+escHtml(e.message||e)+'</div>';}
+  btn.disabled=false;
+});
+el('btn-deuda-add')?.addEventListener('click',async()=>{
+  const fecha=el('deuda-fecha').value,inicio=el('deuda-inicio').value,motivo=(el('deuda-motivo').value||'').trim(),st=el('deuda-status');
+  if(!_deudaCalc||_deudaCalc.fecha!==fecha){toast('Primero pulsa “Calcular lo que deben” para ese día','err');return;}
+  if(!inicio||!motivo){toast('Completa el día de inicio y el motivo','err');return;}
+  if(inicio<=fecha){toast('El inicio de la reposición debe ser después del día en que quedaron debiendo','err');return;}
+  const btn=el('btn-deuda-add');btn.disabled=true;
+  try{
+    const okRows=[],omitidos=[];
+    for(const r of _deudaCalc.rows){
+      if(!r.ok){omitidos.push(`${r.nombre}: ${r.msg}`);continue;}
+      const inp=document.querySelector(`[data-deuda-min="${CSS.escape(r.user)}"]`);
+      const min=parseInt(inp?inp.value:r.debe,10);
+      if(!(min>0)){omitidos.push(`${r.nombre}: no debe horas`);continue;}
+      await set(R(db,`${DEUDA}/${r.user}/${fecha}`),{fecha,minBruto:r.raw,almIncl:!!_deudaCalc.almIncl,almMin:_deudaCalc.almIncl?r.credito:0,min,inicio,motivo,por:CU,ts:Date.now()});
+      okRows.push({user:r.user,nombre:r.nombre,min});
+    }
+    if(okRows.length)await addLog(`⏱ Horas por reponer registradas (${fecha}, empiezan ${inicio}${_deudaCalc.almIncl?', almuerzo incluido':''}): ${okRows.map(r=>`${r.user} ${r.min} min`).join(', ')} — "${motivo}" (por ${CU})`);
+    if(st)st.textContent=(okRows.length?`✅ Registrado: ${okRows.map(r=>`${r.nombre} ${r.min} min`).join(', ')}. Empiezan a reponer el ${fmtFechaDM(inicio)}.`:'')+(omitidos.length?`${okRows.length?'\n':''}⚠ No registrado:\n• ${omitidos.join('\n• ')}`:'');
+    if(okRows.length){toast('⏱ Registrado ✓','ok');el('deuda-motivo').value='';el('deuda-calc').innerHTML='';_deudaCalc=null;renderDeudaResumen();}
+    else toast('⚠ No se registró a nadie','err');
+  }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo registrar','err');}
   btn.disabled=false;
 });
 // HORAS ADELANTADAS
