@@ -1280,7 +1280,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               </div>
               <div id="deuda-resumen"></div>
             </div>
-            <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Es lo <strong>contrario a las horas adelantadas</strong>: el colaborador trabajó menos de su jornada (ej. un domingo de 11 a 5) y <strong>debe esas horas a la empresa</strong>. Eliges el día, el sistema lee sus marcaciones y calcula cuánto deben para completar las 8 horas. Si ese día llevaba <strong>almuerzo incluido</strong>, se les acredita el almuerzo. Desde la fecha de inicio que elijas, cada minuto que se queden <strong>después de su hora de salida</strong> va pagando la deuda (de la más antigua a la más reciente) y <strong>no genera pago extra</strong>. El saldo se calcula en vivo con sus marcaciones reales.</div>
+            <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Es lo <strong>contrario a las horas adelantadas</strong>: el colaborador trabajó menos de su jornada (ej. un domingo de 11 a 5) y <strong>debe esas horas a la empresa</strong>. Eliges el día, el sistema lee sus marcaciones y calcula cuánto deben para completar las 8 horas. Si ese día llevaba <strong>almuerzo incluido</strong>, se les acredita el almuerzo. Desde la fecha de inicio que elijas, cada minuto que se queden <strong>después de su hora de salida</strong> va pagando la deuda (de la más antigua a la más reciente) y <strong>no genera pago extra</strong>. El saldo se calcula en vivo con sus marcaciones reales. <strong>Ese día NO se descuenta</strong> (Vista RRHH, correos y reportes lo pagan como jornada completa; solo tú lo ves marcado en Vista Semanal). Lo que reponen después no genera pago extra, así que queda en cero y todo queda registrado para auditoría.</div>
             <div style="font-size:11.5px;font-weight:800;color:var(--ac);margin:4px 0">Registrar horas que deben</div>
             <div class="fg"><label>Día en que quedaron debiendo</label><input type="date" class="fc" id="deuda-fecha"></div>
             <label style="display:flex;align-items:center;gap:10px;padding:6px 2px;font-size:14px;text-transform:none;letter-spacing:0;color:var(--tx);cursor:pointer"><input type="checkbox" id="deuda-almincl" style="width:auto;accent-color:var(--ac)"> 🍽 Almuerzo incluido (se les acredita)</label>
@@ -7071,6 +7071,8 @@ async function renderVistaSemanal(refDate,hastaDate){
   const almGlobal=await loadAlmuerzoGlobal();
   // OCULTAR columnas donde NINGÚN colaborador tiene marcación ni pago fijo ese día
   const descManRango=await loadDescuentoManualRango(isoList[0],isoList[isoList.length-1]);
+  const deudasMapSem=await loadDeudasTodos();
+  const histMapDeuda=new Map();
   const diasVisibles=isoList.map((k,i)=>({k,i,d:dias[i],etq:etiquetas[i]}))
     .filter(({k,d})=>userList.some(u=>(histByDay[k]||[]).some(m=>m.user===u.user)
       ||(u.pagoFijo?.activo&&u.pagoFijo.dias?.includes(d.getDay()))));
@@ -7106,6 +7108,8 @@ async function renderVistaSemanal(refDate,hastaDate){
   for(const u of userList){
     const uObj=users[u.user]||{};
     let totalUsuario=0,totalDescUsuario=0,totalAcumUsrMin=0,totalDpUsuario=0;
+    const deudaResU=await resumenDeudaUsuario(u.user,deudasMapSem,almGlobal,histMapDeuda,uObj,feriados);
+    const deudaNotaHtml=deudaResU.items.length?`<div style="margin-top:4px;padding-top:3px;border-top:1px dashed var(--bd);font-size:10px;line-height:1.4"><div style="color:#f59e0b;font-weight:800">⏱ Deuda de horas${deudaResU.totalPendMin>0?` pendiente: ${fmtMinHM(deudaResU.totalPendMin)} · $${deudaResU.totalPendMonto.toFixed(2)}`:' saldada ✅'}</div>${deudaResU.items.map(x=>`<div style="color:var(--mt)">${escHtml(diaCortoDM(x.fecha))}: adelanto ${x.min} min · repuesto ${x.pagado} · pendiente ${x.pend} min</div>`).join('')}</div>`:'';
     const notasUsr=[];
     // Pre-pasada SOLO para armar el pool de minutos de sobra de esta semana/rango (Entrada +
     // Almuerzo únicamente) — no pinta nada todavía, solo clasifica cada día.
@@ -7182,14 +7186,16 @@ async function renderVistaSemanal(refDate,hastaDate){
         // aparte del automático, nunca lo absorbe el acumulado semanal.
         const descManInfo=(descManRango[k]||{})[u.user]||null;
         const descManualMin=descManInfo?.min||0;
-        const descManualMonto=descManualMin>0?+Math.min(montoAuto,(descManualMin/(8*60))*tar).toFixed(2):0;
-        const monto=+(montoAuto-descManualMonto).toFixed(2);
+        const cdAd=condonadoDeudaDia(deudasMapSem,u.user,k,tar,montoAuto);
+        const montoBase=+(montoAuto+cdAd.monto).toFixed(2);
+        const descManualMonto=descManualMin>0?+Math.min(montoBase,(descManualMin/(8*60))*tar).toFixed(2):0;
+        const monto=+(montoBase-descManualMonto).toFixed(2);
         totalPorDia[vi].colab++;totalPorDia[vi].monto+=monto;totalSemana+=monto;totalUsuario+=monto;
         // Descuento prorrateado por hora (tarifa del día ÷ 8) sobre las horas que faltaron para
         // completar la jornada de 8h. No es un cálculo aparte: es exactamente la diferencia entre
         // la tarifa completa y lo que ya se está pagando arriba (monto) — así nunca queda
         // descoordinado con lo que ya se le paga al colaborador ese día.
-        const descAuto=(k>=DESCUENTO_DESDE)?+(tar-montoAuto).toFixed(2):0;
+        const descAuto=(k>=DESCUENTO_DESDE)?+(tar-montoBase).toFixed(2):0;
         const descuento=+(descAuto+descManualMonto).toFixed(2);
         const _dp=descPosibleEmerg(emerg,k,u.user,tar,monto);let dpHtml='';
         if(_dp){if(_dp.pend){dpHtml=dpCeldaHtml({dpPend:true},false);}else{totalPorDia[vi].dpos=+(totalPorDia[vi].dpos+_dp.monto).toFixed(2);totalDpSemana+=_dp.monto;totalDpUsuario+=_dp.monto;dpHtml=dpCeldaHtml({dpMin:_dp.min,dpMonto:_dp.monto,dpDup:_dp.sr&&descuento>0},false);}}
@@ -7198,6 +7204,7 @@ async function renderVistaSemanal(refDate,hastaDate){
         const badge=completo?`<div style="color:#00c9a7;font-size:10px;font-weight:700;margin-top:2px">✅ $${monto.toFixed(2)}</div>${datosSospechosos?`<div style="color:#ffb020;font-size:9px;font-weight:700;margin-top:1px">⚠ Revisar esta marca (dato inconsistente)</div>`:''}`:`<div style="color:var(--wn);font-size:10px;margin-top:2px">⏳ ${cnt}/4 · $${monto.toFixed(2)}</div>`;
         const descHtml=descAuto>0?`<div style="color:#ff6b6b;font-size:9.5px;font-weight:700;margin-top:2px">💸 Desc: -$${descAuto.toFixed(2)}</div>`:'';
         const descManHtml=descManualMonto>0?`<div style="color:#c084fc;font-size:9px;font-weight:700;margin-top:1px">🔒 Confirmado: -$${descManualMonto.toFixed(2)} (${escHtml(descManInfo.motivo||'sin motivo')}) · por ${escHtml(descManInfo.por||'?')}</div>`:'';
+        const adelDeudaHtml=cdAd.monto>0?`<div style="color:#f59e0b;font-size:9px;font-weight:700;margin-top:1px">⏱ ADELANTO de horas: ${cdAd.deuda} min · pagado completo, sin descuento (+$${cdAd.monto.toFixed(2)}) · queda como deuda por reponer</div>`:'';
         const acumReg=acumAplicado-adelAplic-bancoAplic;
         const acumHtml=(acumReg>0.0001?`<div style="color:#00c9a7;font-size:9px;font-weight:700;margin-top:1px">💧 +${Math.round(acumReg*60)} min cubiertos con sobrante de la semana</div>`:'')
           +((adelAplic+bancoAplic)>0?`<div style="color:#38bdf8;font-size:9px;font-weight:700;margin-top:1px">⏩ Trabajó ${hrs.toFixed(2)}h + ${Math.round((adelAplic+bancoAplic)*60)} min adelantados</div><div style="color:var(--mt);font-size:9px;line-height:1.3">Origen: ${escHtml(trazaAdel(k,acumResult,bancoOrigU))}</div>`:'')
@@ -7227,12 +7234,13 @@ async function renderVistaSemanal(refDate,hastaDate){
           +`<button type="button" class="btn-avisar-hueco" data-user="${u.user}" data-dia="${k}" data-falta="${hueco.join('|')}" style="margin-top:2px;font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid #ff6b6b;background:transparent;color:#ff6b6b;cursor:pointer">🔔 Avisar</button>`
           +(huecoAlmGenerable?` <button type="button" class="btn-generar-hueco" data-user="${u.user}" data-dia="${k}" data-falta="${hueco[0]}" style="margin-top:2px;font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid #ffb020;background:transparent;color:#ffb020;cursor:pointer">🤖 Generar</button>`:'')
           +`</div>`:'';
-        html+=`<td style="padding:5px 6px;border:1px solid var(--bd);background:${bgBase};vertical-align:top">${mLines}${badge}${descHtml}${descManHtml}${acumHtml}${emergSRDia(emerg,k,u.user)}${dpHtml}${huecoHtml}</td>`;
+        html+=`<td style="padding:5px 6px;border:1px solid var(--bd);background:${bgBase};vertical-align:top">${mLines}${badge}${descHtml}${descManHtml}${adelDeudaHtml}${acumHtml}${emergSRDia(emerg,k,u.user)}${dpHtml}${huecoHtml}</td>`;
       }
     });
     html+=`<td style="padding:6px 8px;border:1px solid var(--bd);background:rgba(0,201,167,.08);text-align:center;vertical-align:middle"><strong style="color:var(--ac);font-size:13px">$${totalUsuario.toFixed(2)}</strong>${totalDescUsuario>0?`<div style="color:#ff6b6b;font-size:10px;font-weight:700;margin-top:2px">💸 -$${totalDescUsuario.toFixed(2)}</div>`:''}${totalAcumUsrMin>0?`<div style="color:#00c9a7;font-size:9.5px;font-weight:700;margin-top:2px">💧 ${totalAcumUsrMin} min de la semana usados para cubrir faltantes</div>`:''}${totalDpUsuario>0?`<div style="color:#ffb020;font-size:10px;font-weight:700;margin-top:3px">🚨 Posible desc.: -$${totalDpUsuario.toFixed(2)}</div><div style="font-size:9.5px;color:var(--mt)">Si se aplica: $${(totalUsuario-totalDpUsuario).toFixed(2)}</div>`:''}</td>`;
     html+=`<td style="padding:5px 7px;border:1px solid var(--bd);background:var(--bg);vertical-align:top;text-align:left">`
       +(notasUsr.length?notasUsr.map(({d,nts})=>`<div style="font-size:10px;line-height:1.4;margin-bottom:3px"><span style="color:var(--ac);font-weight:700">${DIA_LARGO[d.getDay()].slice(0,3)} ${d.getDate()}:</span> <span style="color:var(--tx)">${escHtml(nts.join(' · '))}</span></div>`).join(''):`<span style="color:var(--mt);font-size:10px">—</span>`)
+      +deudaNotaHtml
       +`</td>`;
     html+=`</tr>`;
   }
@@ -7279,6 +7287,7 @@ async function buildRRHHData(desde,hasta){
   const almGlobal=await loadAlmuerzoGlobal();
   const histByDay={};
   const descManRango=await loadDescuentoManualRango(isoList[0],isoList[isoList.length-1]);
+  const deudasMapRR=await loadDeudasTodos();
   const emergRango=await loadEmergenciasRango(isoList[0],isoList[isoList.length-1]);
   for(const k of isoList){histByDay[k]=await getHist(k);}
   const userList0=todosColab.filter(u=>isoList.some(k=>(histByDay[k]||[]).some(m=>m.user===u.user))
@@ -7330,12 +7339,15 @@ async function buildRRHHData(desde,hasta){
       // Mismo descuento manual confirmado que Vista Semanal — aquí SIN ninguna etiqueta visible,
       // RRHH solo ve el monto ya reducido, como si siempre hubiera sido ese.
       const descManualMin=((descManRango[k]||{})[u.user]||{}).min||0;
-      const descManualMonto=descManualMin>0?+Math.min(montoAuto,(descManualMin/(8*60))*tar).toFixed(2):0;
-      const monto=+(montoAuto-descManualMonto).toFixed(2);
-      const descuento=((k>=DESCUENTO_DESDE&&!datosSospechosos)?+(tar-montoAuto).toFixed(2):0)+descManualMonto;
-      const horas=datosSospechosos?8:+Math.min(hrsParcial,8).toFixed(2);
+      // Adelanto de horas (deuda registrada ese día): se paga jornada completa, sin descuento ni etiqueta.
+      const cdAd=condonadoDeudaDia(deudasMapRR,u.user,k,tar,montoAuto);
+      const montoBase=+(montoAuto+cdAd.monto).toFixed(2);
+      const descManualMonto=descManualMin>0?+Math.min(montoBase,(descManualMin/(8*60))*tar).toFixed(2):0;
+      const monto=+(montoBase-descManualMonto).toFixed(2);
+      const descuento=((k>=DESCUENTO_DESDE&&!datosSospechosos)?+(tar-montoBase).toFixed(2):0)+descManualMonto;
+      const horas=datosSospechosos?8:+Math.min(hrsParcial+cdAd.min/60,8).toFixed(2);
       totalUsuario+=monto;descUsuario+=descuento;
-      return{tipo:completo?'completo':'parcial',tar,cnt,monto,descuento,horas,datosSospechosos,acumAplicadoMin:acumAplicado>0?Math.round(acumAplicado*60):0,adelNota:verNotaAdel&&(((acumRes.mapAdel||{})[k]||0)+((acumRes.mapBanco||{})[k]||0))>0?`+${Math.round((((acumRes.mapAdel||{})[k]||0)+((acumRes.mapBanco||{})[k]||0))*60)} min adelantados (${trazaAdel(k,acumRes,bancoOrigU)})`:''};
+      return{tipo:completo?'completo':'parcial',tar,cnt,monto,descuento,horas,datosSospechosos,adelMin:cdAd.min,adelMonto:cdAd.monto,acumAplicadoMin:acumAplicado>0?Math.round(acumAplicado*60):0,adelNota:verNotaAdel&&(((acumRes.mapAdel||{})[k]||0)+((acumRes.mapBanco||{})[k]||0))>0?`+${Math.round((((acumRes.mapAdel||{})[k]||0)+((acumRes.mapBanco||{})[k]||0))*60)} min adelantados (${trazaAdel(k,acumRes,bancoOrigU)})`:''};
     });
     filas.push({user:u.user,nombre:u.nombre,cedula:uObj.cedula||'',dias:diasArr,totalUsuario:+totalUsuario.toFixed(2),descUsuario:+descUsuario.toFixed(2),acumUsrMin});
   }
@@ -7402,6 +7414,7 @@ async function buildRRHHDataMerged(desde,hasta,modo){
   const fechasConDatos=Object.keys(wkMap);
   if(!fechasConDatos.length)return base;
   const users=await getUsers();
+  const deudasMapM=await loadDeudasTodos();
   const ETQ_DOW=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   fechasConDatos.forEach(fecha=>{
     if(!base.diasVis.some(v=>v.k===fecha)){
@@ -7430,8 +7443,10 @@ async function buildRRHHDataMerged(desde,hasta,modo){
       const horas=+Math.min(horasEntreHM(reg.desde,reg.hasta),8).toFixed(2);
       const dowNum=dv.d.getDay();
       const tar=dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20);
-      const monto=+((horas/8)*tar).toFixed(2);
-      f.dias[vi]={tipo:'manual',tar,horas,monto,desde:reg.desde,hasta:reg.hasta};
+      const monto0=+((horas/8)*tar).toFixed(2);
+      const cdM=condonadoDeudaDia(deudasMapM,f.user,dv.k,tar,monto0);
+      const monto=+(monto0+cdM.monto).toFixed(2);
+      f.dias[vi]={tipo:'manual',adelMin:cdM.min,adelMonto:cdM.monto,tar,horas:+Math.min(horas+cdM.min/60,8).toFixed(2),monto,desde:reg.desde,hasta:reg.hasta};
     });
     f.totalUsuario=+f.dias.reduce((a,d)=>a+(d.monto||0),0).toFixed(2);
   });
@@ -8195,6 +8210,41 @@ async function calcularRepago(user,deudas,banco,histMap,almGlobal){
   }
   return lista;
 }
+// ── ADELANTO DE HORAS = DEUDA NO DESCONTADA ─────────────────────────────────────────────────────
+// El día en que el colaborador quedó debiendo horas (registrado en "Horas por reponer") se paga como
+// jornada COMPLETA: el faltante ya no se descuenta ni en Vista Semanal, ni en Vista RRHH/correo, ni en
+// el reporte individual. El saldo se repone con lo que se quede de más en días posteriores (que nunca
+// genera pago extra), así que negativo + positivo = 0. La deuda queda registrada en
+// meta_v1/deuda_horas (+ log de auditoría). Solo la Vista Semanal (admin) muestra la marca.
+async function loadDeudasTodos(){try{const sn=await get(R(db,DEUDA));return sn.exists()?(sn.val()||{}):{};}catch(e){console.warn('loadDeudasTodos',e);return{};}}
+function condonadoDeudaDia(deudasMap,user,k,tar,montoAuto){
+  const x=((deudasMap||{})[user]||{})[k];
+  if(!x)return{monto:0,min:0,deuda:0};
+  const condMin=(+x.min||0)+(+x.almMin||0);
+  if(!(condMin>0)||!(tar>0))return{monto:0,min:0,deuda:+x.min||0};
+  const falta=+(tar-montoAuto).toFixed(2);
+  if(!(falta>0))return{monto:0,min:0,deuda:+x.min||0};
+  const monto=+Math.min(falta,(condMin/(8*60))*tar).toFixed(2);
+  return{monto,min:Math.round(monto/tar*8*60),deuda:+x.min||0};
+}
+// Saldo de la deuda (traza permanente): por cada día con adelanto, cuánto debía, cuánto ya repuso y
+// cuánto queda pendiente (en minutos y en dinero a la tarifa de ese día). Se calcula en vivo.
+async function resumenDeudaUsuario(user,deudasMap,almGlobal,histMap,uObj,feriados){
+  const vacio={items:[],totalPendMin:0,totalPendMonto:0};
+  try{
+    const deudas=(deudasMap||{})[user];
+    if(!deudas||!Object.keys(deudas).length)return vacio;
+    const banco=await getBancoUser(user);
+    const lista=await calcularRepago(user,deudas,banco,histMap,almGlobal);
+    const items=lista.map(x=>{
+      const pend=Math.max(0,x.min-x.pagado);
+      const dow=new Date(x.fecha+'T00:00:00').getDay(),fer=(feriados||[]).includes(x.fecha),t=(uObj&&uObj.tarifa)||{};
+      const tar=fer?(t.feriado||t.regular||20):(dow===0?(t.domingo||t.regular||20):(t.regular||20));
+      return{fecha:x.fecha,min:x.min,pagado:x.pagado,pend,monto:+((pend/(8*60))*tar).toFixed(2)};
+    });
+    return{items,totalPendMin:items.reduce((a,x)=>a+x.pend,0),totalPendMonto:+items.reduce((a,x)=>a+x.monto,0).toFixed(2)};
+  }catch(e){console.warn('resumenDeudaUsuario',e);return vacio;}
+}
 let _deudaResumenTxt='',_deudaCalc=null;
 async function renderDeudaResumen(){
   const box=el('deuda-resumen');if(!box)return;
@@ -8910,6 +8960,7 @@ async function buildSummary(desde,hasta,applyDisc){
   if(applyDisc){
     const keysDesc=keys.filter(k=>k>=DESCUENTO_DESDE);
     const descManRango=keysDesc.length?await loadDescuentoManualRango(keysDesc[0],keysDesc[keysDesc.length-1]):{};
+    const deudasMapRep=await loadDeudasTodos();
     for(const u of Object.keys(summ)){
       const uObj=allM[u]||{};
       let horcolUserCache=null;try{const hc=await get(R(db,`${HORCOL}/${u}`));horcolUserCache=hc.exists()?hc.val():{};}catch(e){horcolUserCache={};}
@@ -8938,8 +8989,10 @@ async function buildSummary(desde,hasta,applyDisc){
         const montoAuto=+((Math.min(hrsAjustada,8)/8)*tar).toFixed(2);
         const descManInfo=(descManRango[k]||{})[u]||null;
         const descManualMin=descManInfo?.min||0;
-        const descManualMonto=descManualMin>0?+Math.min(montoAuto,(descManualMin/(8*60))*tar).toFixed(2):0;
-        dd.descDia=+Math.max(0,(tar-montoAuto)+descManualMonto).toFixed(2);
+        const cdAd=condonadoDeudaDia(deudasMapRep,u,k,tar,montoAuto);
+        const montoBase=+(montoAuto+cdAd.monto).toFixed(2);
+        const descManualMonto=descManualMin>0?+Math.min(montoBase,(descManualMin/(8*60))*tar).toFixed(2):0;
+        dd.descDia=+Math.max(0,(tar-montoBase)+descManualMonto).toFixed(2);
       });
     }
   }
@@ -9165,8 +9218,9 @@ function buildDetalladoHTML(usersArr,desde,hasta,rowsByUser,summs){
 function emailPersonalDe(u){
   return(u&&((u.perfil&&u.perfil.email)||u.emailPersonal)||'').trim();
 }
-function buildResumenIndividualHTML(u,desde,hasta,s,fila,diasVis,emerg){
+function buildResumenIndividualHTML(u,desde,hasta,s,fila,diasVis,emerg,deudaRes){
   emerg=emerg||{};
+  deudaRes=deudaRes||{items:[],totalPendMin:0,totalPendMonto:0};
   // FUENTE ÚNICA: el monto de cada día y el total salen de buildRRHHData (el mismo cálculo del correo
   // de RRHH y de la Vista Semanal), ya con acumulado y descuentos aplicados. Si se quita o se agrega
   // un descuento, cambia igual en los tres lados. El colaborador ve el monto ya neto, sin etiqueta.
@@ -9174,6 +9228,8 @@ function buildResumenIndividualHTML(u,desde,hasta,s,fila,diasVis,emerg){
   if(fila&&diasVis){diasVis.forEach((dv,i)=>{const dd=fila.dias[i];if(dd&&dd.tipo!=='ausente'&&dd.tipo!=='libre'&&dd.monto!=null)montoDia[dv.k]=dd.monto;});}
   const dpDia={};
   if(fila&&diasVis){diasVis.forEach((dv,i)=>{const dd=fila.dias[i];if(dd&&(dd.dpMin>0||dd.dpPend))dpDia[dv.k]=dd;});}
+  const adelDia={};
+  if(fila&&diasVis){diasVis.forEach((dv,i)=>{const dd=fila.dias[i];if(dd&&dd.adelMin>0)adelDia[dv.k]=dd;});}
   const dias=[...new Set([...Object.keys(s.det||{}),...Object.keys(montoDia)])].sort();
   const TH='background:#00313C;color:#fff;padding:10px 8px;border:1px solid #00313C';
   const TD='padding:9px 10px;border:1px solid #ccc;vertical-align:top';
@@ -9185,7 +9241,9 @@ function buildResumenIndividualHTML(u,desde,hasta,s,fila,diasVis,emerg){
     const _ORD={'Entrada':0,'Salida Alm.':1,'Regreso Alm.':2,'Salida Final':3};
     const mks=sinMarcas?'—':[...(dd.marcaciones||[])].sort((a,b)=>(_ORD[a.tipo]??9)-(_ORD[b.tipo]??9)).map(m=>`${m.tipo}: <strong>${fmtHoraAP(m)}</strong>`).join('<br>');
     const _nts=sinMarcas?[]:notasDeMarcas(dd.marcaciones);
-    const notaHtml=_nts.length?_nts.map(n=>`📝 ${escHtml(n)}`).join('<br>'):'—';
+    const _notaBase=_nts.length?_nts.map(n=>`📝 ${escHtml(n)}`).join('<br>'):'';
+    const _adelN=adelDia[d]?`<span style="color:#9a5b00;font-weight:700">⏱ Adelanto de horas: ${adelDia[d].adelMin} min — se te pagó la jornada completa; esas horas quedan por reponer.</span>`:'';
+    const notaHtml=[_notaBase,_adelN].filter(Boolean).join('<br>')||'—';
     const monto=montoDia[d]!=null?montoDia[d]:Number(dd.saldoParcial||dd.bruto||0);
     filas+=`<tr><td style="${TD}">📅 ${fmtDiaLargo(d)}${emerg[d]?'<br><span style="font-size:11px;color:#9a5b00;font-weight:700">🚨 '+emergTipoCorto(emerg,d)+'</span>':''}${emergSRDia(emerg,d,u.user)}</td><td style="${TD};font-size:12.5px;line-height:1.6">${mks}</td><td style="${TD}">${estado}</td><td style="${TD};text-align:right;font-weight:700;white-space:nowrap">$${moneyRRHH(monto)}${dpDia[d]?dpCeldaHtml(dpDia[d],true):''}</td><td style="${TD};font-size:12.5px;color:#555;line-height:1.5">${notaHtml}</td></tr>`;
   });
@@ -9201,6 +9259,13 @@ function buildResumenIndividualHTML(u,desde,hasta,s,fila,diasVis,emerg){
       ${filas||'<tr><td colspan="5" style="padding:10px;border:1px solid #ccc;color:#888">Sin marcaciones registradas en este período.</td></tr>'}
       <tr style="font-weight:800;background:#f0f4f5"><td colspan="3" style="padding:10px;border:1px solid #ccc">TOTAL SOLICITADO</td><td style="padding:10px;border:1px solid #ccc;text-align:right;white-space:nowrap">$${moneyRRHH(totalSol)}${fila?dpUsuarioHtml(fila,true):''}</td><td style="padding:10px;border:1px solid #ccc"></td></tr>
     </table>
+    ${(()=>{
+      const hayAdel=Object.keys(adelDia).length>0,hayDeuda=deudaRes.items.length>0;
+      if(!hayAdel&&!hayDeuda)return '';
+      const filasD=deudaRes.items.map(x=>`<tr><td style="padding:6px 8px;border:1px solid #f0d9a8">${fmtDiaLargo(x.fecha)}</td><td style="padding:6px 8px;border:1px solid #f0d9a8;text-align:right">${fmtMinHM(x.min)}</td><td style="padding:6px 8px;border:1px solid #f0d9a8;text-align:right">${fmtMinHM(x.pagado)}</td><td style="padding:6px 8px;border:1px solid #f0d9a8;text-align:right;font-weight:700">${fmtMinHM(x.pend)}</td></tr>`).join('');
+      const resumen=deudaRes.totalPendMin>0?`Deuda pendiente: <strong>${fmtMinHM(deudaRes.totalPendMin)}</strong> · equivale a <strong>$${moneyRRHH(deudaRes.totalPendMonto)}</strong>.`:'Tu deuda de horas está <strong>saldada</strong>. ✅';
+      return `<div style="margin-top:16px;padding:12px 14px;background:#fff8e6;border:1px solid #f0d9a8;border-radius:8px;font-size:13px;line-height:1.5;color:#5a3d00"><div style="font-weight:800;margin-bottom:4px">⏱ Adelanto de horas</div>${hayAdel?'Esta semana se te aplicó un adelanto de horas (ver la nota del día en la tabla): se te pagó la jornada completa y esas horas quedan por reponer.<br>':''}${resumen}${filasD?`<table style="border-collapse:collapse;width:100%;margin-top:8px;font-size:12px"><tr style="background:#fdeccb"><th style="padding:6px 8px;border:1px solid #f0d9a8;text-align:left">Día del adelanto</th><th style="padding:6px 8px;border:1px solid #f0d9a8;text-align:right">Adelantado</th><th style="padding:6px 8px;border:1px solid #f0d9a8;text-align:right">Repuesto</th><th style="padding:6px 8px;border:1px solid #f0d9a8;text-align:right">Pendiente</th></tr>${filasD}</table>`:''}<div style="margin-top:6px;font-size:12px">Se repone con el tiempo que te quedes después de tu hora de salida; no genera pago extra.</div></div>`;
+    })()}
     <p style="font-size:12px;color:#888;margin-top:14px">Días trabajados: <strong>${s.dias||0}</strong> · Horas: <strong>${s.horas||0}</strong></p>
     <p style="font-size:12px;color:#888">Si algo no coincide con lo que registraste, avísale a tu supervisor antes del cierre de planilla.</p>
     <footer style="margin-top:20px;border-top:2px solid #00313C;padding-top:10px;color:#00313C;font-weight:700;font-size:13px">Juguetería Westland · Nivel 300</footer>
@@ -9219,6 +9284,8 @@ async function distribuirMarcacionesIndividual(desde,hasta){
     const rrhhPorUser={};rrhhBase.filas.forEach(f=>{rrhhPorUser[f.user]=f;});
     const emergInd=await loadEmergenciasRango(desde,hasta);
     const users=await getUsers();
+    const deudasMapD=await loadDeudasTodos(),almGlobalD=await loadAlmuerzoGlobal(),histMapD=new Map();
+    let feriadosD=[];try{const fsD=await get(R(db,FER));feriadosD=fsD.exists()?Object.values(fsD.val()).map(f=>f.fecha):[];}catch(e){}
     let colab=Object.values(users).filter(u=>!GERENTES.includes(u.user));
     // Respeta el filtro de "Usuarios a mostrar esta semana" guardado en el selector — si hay
     // una selección específica, solo se distribuye a esos usuarios (ej. reenviar solo a los
@@ -9231,7 +9298,8 @@ async function distribuirMarcacionesIndividual(desde,hasta){
       if(!s||!s.dias)continue; // sin marcaciones ese período, no le mandamos nada
       const correo=emailPersonalDe(u);
       if(!correo){sinCorreo.push(u.nombre||u.user);continue;}
-      const html=buildResumenIndividualHTML(u,desde,hasta,s,rrhhPorUser[u.user],rrhhBase.diasVis,emergInd);
+      const deudaRes=await resumenDeudaUsuario(u.user,deudasMapD,almGlobalD,histMapD,users[u.user]||{},feriadosD);
+      const html=buildResumenIndividualHTML(u,desde,hasta,s,rrhhPorUser[u.user],rrhhBase.diasVis,emergInd,deudaRes);
       const subject=`Solicitud de pago — ${fmtRangoLargo(desde,hasta)} — Juguetería Westland`;
       const tParams={to_email:correo,cc_email:'',subject,html_content:html,message:html,saludo:'Hola',periodo:desde+' al '+hasta,timestamp:new Date().toLocaleString('es')};
       let sent=false;
