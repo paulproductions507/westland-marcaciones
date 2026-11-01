@@ -80,19 +80,109 @@ footer{color:var(--mt);font-size:11.5px;text-align:center;padding:10px}
 .two{display:block}
 @media(min-width:1000px){.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.two .card{margin-bottom:12px}header h1{font-size:25px}.wrap{padding:0 24px 28px}header{padding:24px 24px 52px}}
 @media(max-width:640px){.sb{grid-template-columns:100px 1fr}.sb .vl{grid-column:1/-1;text-align:left}}
+/* ===== Menú sectorizado (mismo launcher de Consultas) ===== */
+header .sub{padding-right:130px}
+#hm,#hmHome{--ff:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;--ac:#0e6470;padding:18px 14px 26px}
+[data-theme=dark] #hm,[data-theme=dark] #hmHome{--ac:#2de2c9}
+.hm-hero{padding:2px 4px 4px;animation:hmIn .6s cubic-bezier(.2,.9,.25,1) backwards}
+.hm-hi{font:800 26px/1.1 var(--ff);letter-spacing:-.02em;color:var(--ink)}.hm-hi b{color:var(--pet3)}
+[data-theme=dark] .hm-hi b{color:var(--acc)}
+.hm-sub{color:var(--mt);margin-top:6px;font-size:13.5px}
+.hm-st{display:flex;align-items:center;gap:10px;font:700 11px var(--ff);letter-spacing:.14em;text-transform:uppercase;color:var(--mt);margin:24px 4px 16px;animation:hmIn .6s cubic-bezier(.2,.9,.25,1) backwards;animation-delay:calc(var(--i)*70ms + 60ms)}
+.hm-st::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--cbd),transparent)}
+.hm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 10px;justify-items:center}
+@media(min-width:620px){.hm-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(min-width:960px){.hm-grid{grid-template-columns:repeat(auto-fill,200px);justify-content:start;gap:34px 30px}}
+.hm-it{--d:108px;appearance:none;border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0;display:flex;flex-direction:column;align-items:center;width:100%;max-width:210px;position:relative}
+html[data-device=desktop] .hm-it,html[data-size=l] .hm-it{--d:128px}
+.hm-it.busy{opacity:.55;pointer-events:none}
+.hm-ring{position:relative;width:var(--d);height:var(--d);border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 30% 22%,#10606f 0,#08404c 55%,#052c35 100%);box-shadow:0 12px 28px #00000055,inset 0 0 0 1px #17697a;transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s}
+.hm-orb{position:absolute;inset:-5px;width:calc(100% + 10px);height:calc(100% + 10px);animation:hmSpin 22s linear infinite;pointer-events:none}
+.hm-orb .o1{fill:none;stroke:var(--ac);stroke-width:1.6;stroke-dasharray:230 110;stroke-linecap:round;opacity:.9}
+.hm-orb .o2{fill:none;stroke:var(--ac);stroke-width:1;opacity:.28}
+.hm-orb .dt{fill:var(--card);stroke:var(--ac);stroke-width:1.6}
+.hm-ic{width:42%;height:42%;color:#f1fffc;filter:drop-shadow(0 2px 6px #0006);transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.hm-ic svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.hm-lb{position:relative;margin-top:calc(var(--d)*-.17);padding:8px 14px;border-radius:99px;background:#fff;border:1px solid var(--cbd);color:#06303a;font:800 13px/1.15 var(--ff);letter-spacing:-.005em;box-shadow:0 6px 16px #0000004d;max-width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-theme=dark] .hm-lb{background:#f4fffd;border-color:transparent}
+.hm-sm{display:block;margin-top:8px;color:var(--mt);font-size:11.5px;line-height:1.3;text-align:center;max-width:170px}
+.hm-it:hover .hm-ring,.hm-it:focus-visible .hm-ring{transform:translateY(-5px);box-shadow:0 18px 36px #00000066,0 0 0 1px var(--ac),0 0 28px #2de2c933}
+.hm-it:hover .hm-ic{transform:scale(1.08)}.hm-it:active .hm-ring{transform:scale(.96)}.hm-it:focus-visible{outline:none}
+#app.sec-one .two{display:block}
+/* efectos de entrada */
+html:not([data-fx]) .hm-it,html[data-fx=arc] .hm-it{animation:hmArcX 1.9s cubic-bezier(.25,.6,.3,1) backwards,hmArcY 1.9s linear backwards,hmFade .35s ease backwards;animation-delay:calc(var(--i)*90ms + 250ms)}
+html:not([data-fx]) .hm-it .hm-lb,html[data-fx=arc] .hm-it .hm-lb{animation:hmPop .45s cubic-bezier(.2,1.4,.4,1) backwards;animation-delay:calc(var(--i)*90ms + 2000ms)}
+html:not([data-fx]) .hm-it .hm-sm,html[data-fx=arc] .hm-it .hm-sm{animation:hmFade .5s ease backwards;animation-delay:calc(var(--i)*90ms + 2150ms)}
+html[data-fx=slide] .hm-it{animation:hmSlide 1.1s cubic-bezier(.2,.9,.25,1) backwards;animation-delay:calc(var(--i)*300ms + 250ms)}
+html[data-fx=roll] .hm-it{animation:hmFly 1.1s cubic-bezier(.22,1.15,.36,1) backwards;animation-delay:calc(var(--i)*300ms + 250ms)}
+html[data-fx=roll] .hm-it .hm-lb{animation:hmPop .45s cubic-bezier(.2,1.4,.4,1) backwards;animation-delay:calc(var(--i)*300ms + 1050ms)}
+html[data-fx=drop] .hm-it{animation:hmDrop 1.25s ease-in backwards;animation-delay:calc(var(--i)*170ms + 200ms)}
+html[data-fx=zoom] .hm-it{animation:hmZoom .75s cubic-bezier(.2,1.3,.4,1) backwards;animation-delay:calc(var(--i)*150ms + 200ms)}
+html[data-fx=flip] .hm-it{animation:hmFlip .95s cubic-bezier(.2,.9,.25,1) backwards;animation-delay:calc(var(--i)*180ms + 200ms)}
+html[data-fx=fan] .hm-it{transform-origin:0 100%;animation:hmFan 1s cubic-bezier(.2,.9,.25,1.1) backwards;animation-delay:calc(var(--i)*170ms + 200ms)}
+@keyframes hmIn{from{opacity:0;transform:translateX(-84px) scale(.92)}to{opacity:1;transform:none}}
+@keyframes hmSpin{to{transform:rotate(360deg)}}
+@keyframes hmArcX{from{translate:-115vw 0}to{translate:0 0}}
+@keyframes hmArcY{0%{transform:translateY(150px);animation-timing-function:cubic-bezier(.1,.5,.4,1)}45%{transform:translateY(-190px);animation-timing-function:cubic-bezier(.6,0,.9,.7)}100%{transform:translateY(0)}}
+@keyframes hmSlide{from{opacity:0;transform:translateX(-170px) scale(.9)}to{opacity:1;transform:none}}
+@keyframes hmFly{0%{opacity:0;transform:translateX(-115vw) rotate(-540deg)}12%{opacity:1}100%{opacity:1;transform:none}}
+@keyframes hmPop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+@keyframes hmFade{from{opacity:0}to{opacity:1}}
+@keyframes hmDrop{0%{opacity:0;transform:translateY(-120vh)}55%{opacity:1;transform:translateY(0)}70%{transform:translateY(-34px)}84%{transform:translateY(0)}92%{transform:translateY(-10px)}100%{transform:none}}
+@keyframes hmZoom{0%{opacity:0;transform:scale(0)}100%{opacity:1;transform:scale(1)}}
+@keyframes hmFlip{from{opacity:0;transform:perspective(700px) rotateY(-110deg) translateX(-40px)}to{opacity:1;transform:perspective(700px) rotateY(0)}}
+@keyframes hmFan{from{opacity:0;transform:translateX(-70vw) rotate(-70deg)}to{opacity:1;transform:none}}
+/* transiciones al cambiar de pantalla */
+@keyframes vwIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes vwFade{from{opacity:0}to{opacity:1}}
+@keyframes hmFadeOnly{from{opacity:0}to{opacity:1}}
+#app>.card:not(#hm),#app>.sum,#app>.tools,#app>.tiles,#app>.two{animation:vwIn .32s cubic-bezier(.2,.8,.2,1) both}
+/* Transición suave / Sin movimiento: solo desvanecer */
+html[data-fx=fade] .hm-it,html[data-nomove] .hm-it{animation:hmFadeOnly .5s ease backwards;animation-delay:calc(var(--i)*80ms + 60ms)}
+html[data-fx=fade] .hm-it .hm-lb,html[data-fx=fade] .hm-it .hm-sm,html[data-nomove] .hm-it .hm-lb,html[data-nomove] .hm-it .hm-sm{animation:none}
+html[data-fx=fade] .hm-hero,html[data-fx=fade] .hm-st,html[data-nomove] .hm-hero,html[data-nomove] .hm-st{animation:hmFadeOnly .45s ease backwards}
+html[data-fx=fade] .hm-orb,html[data-nomove] .hm-orb{animation:none}
+html[data-fx=fade] #app>.card:not(#hm),html[data-fx=fade] #app>.sum,html[data-fx=fade] #app>.tools,html[data-fx=fade] #app>.tiles,html[data-fx=fade] #app>.two,
+html[data-nomove] #app>.card:not(#hm),html[data-nomove] #app>.sum,html[data-nomove] #app>.tools,html[data-nomove] #app>.tiles,html[data-nomove] #app>.two{animation:vwFade .3s ease both}
+html[data-nomove] .hm-it:hover .hm-ring,html[data-nomove] .hm-it:active .hm-ring,html[data-nomove] .hm-it:hover .hm-ic,html[data-nomove] .tile:hover{transform:none}
+html[data-fx=none] .hm-it,html[data-fx=none] .hm-hero,html[data-fx=none] .hm-st,html[data-fx=none] .hm-orb,html[data-nomove][data-fx=none] .hm-it{animation:none}
+html[data-fx=none] #app>.card,html[data-fx=none] #app>.sum,html[data-fx=none] #app>.tools,html[data-fx=none] #app>.tiles,html[data-fx=none] #app>.two{animation:none!important}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation-duration:.01ms!important}}
+#hmHome{padding:30px 6px 30px}
+#hmHome .hm-st:first-child{margin-top:4px}
+.dtn{color:var(--mt);font-size:12px}
+/* configuración */
+.stsheet{position:fixed;inset:0;z-index:200;background:#000a;display:flex;align-items:flex-end;justify-content:center}
+.stbox{width:100%;max-width:520px;max-height:82vh;overflow:auto;background:var(--card);color:var(--ink);border:1px solid var(--cbd);border-radius:20px 20px 0 0;padding:8px 12px calc(env(safe-area-inset-bottom) + 16px)}
+.sthd{display:flex;justify-content:space-between;align-items:center;padding:8px 4px 10px}.sthd b{font-size:17px}
+.cfg-lbl{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mt);margin:6px 6px 8px}
+.cfg-fx{display:flex;flex-direction:column;gap:8px;margin:0 6px}
+.cfg-fx button{display:block;text-align:left;font:700 14px 'Inter',sans-serif;padding:12px 14px;border-radius:14px;border:1px solid var(--bd);background:var(--zb);color:var(--ink);cursor:pointer}
+.cfg-fx button small{display:block;font-weight:500;color:var(--mt);margin-top:3px;font-size:12px}
+.cfg-fx button.on{background:var(--pet);color:#fff;border-color:var(--pet)}.cfg-fx button.on small{color:#d6f3ef}
+.cfg-chk{display:flex;gap:12px;align-items:flex-start;margin:14px 6px 6px;padding:12px 14px;border:1px solid var(--bd);border-radius:14px;background:var(--zb);cursor:pointer}
+.cfg-chk input{width:22px;height:22px;flex:none;margin-top:2px;accent-color:var(--pet3)}
+.cfg-chk b{display:block;font:700 14px 'Inter',sans-serif}
+.cfg-chk small{display:block;color:var(--mt);font-size:12px;margin-top:3px;font-weight:500;line-height:1.35}
 </style>
-<script>try{var t=localStorage.getItem("cmpTheme")||"light";document.documentElement.dataset.theme=t}catch(e){}
+<script>try{var t=localStorage.getItem("cmpTheme")||"dark";document.documentElement.dataset.theme=t}catch(e){}
 (function(){var d=document.documentElement,ua=navigator.userAgent||"",tc=(navigator.maxTouchPoints||0)>1,m=/iPhone|iPod|Android.+Mobile|Windows Phone|Mobile/i.test(ua),tb=!m&&(/iPad|Tablet|Android/i.test(ua)||(/Macintosh/.test(ua)&&tc));d.dataset.device=m?"mobile":tb?"tablet":"desktop";function z(){var w=innerWidth;d.dataset.size=w<640?"s":w<1000?"m":"l"}z();addEventListener("resize",z)})();</script>
+<script>(function(){var d=document.documentElement;try{d.dataset.fx=localStorage.getItem("cmpFx")||"arc";if(localStorage.getItem("cmpNoMove")==="1")d.dataset.nomove="1"}catch(e){d.dataset.fx="arc"}})();</script>
 </head>
 <body>
 <header><div class="hin">
   <button class="tg" id="tg" type="button">☾ Oscuro</button>
+  <button class="tg" id="cfgB" type="button" style="right:96px;padding:5px 11px;font-size:15px;line-height:1.1" aria-label="Configuración de animaciones" title="Animaciones">⚙</button>
   <button class="back hide" id="bk">← Todos los packing list</button>
   <h1 id="ttl">Packing list a tiendas</h1>
   <div class="sub" id="sub">Cargando…</div>
 </div></header>
 <div class="wrap"><div id="app"><div class="card msg">Cargando…</div></div></div>
 <footer>Vista de solo lectura · Westland</footer>
+<div id="cfgSheet" class="stsheet hide"><div class="stbox"><div class="sthd"><b>Configuración</b><button type="button" id="cfgX" class="btn sec">✕</button></div>
+  <div class="cfg-lbl">Efecto de entrada del menú</div><div id="cfgFx" class="cfg-fx"></div>
+  <label class="cfg-chk"><input type="checkbox" id="cfgNoMove"><span><b>Sin movimiento</b><small>Las transiciones se ven solo como desvanecimiento: nada se desplaza, gira ni rebota. Funciona con cualquier efecto.</small></span></label>
+  <div style="margin:10px 6px 4px;font-size:12.5px;color:var(--mt)">Se guarda en este equipo. Al elegir uno se ve de inmediato en el menú.</div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -115,7 +205,7 @@ const tyCls=t=>({[AUTO_LBL]:'A','Túnel manual':'U','Proforma':'P','Cliente':'C'
 
 const TK='cmpTheme';
 const setTheme=t=>{document.documentElement.dataset.theme=t;$('tg').textContent=t==='dark'?'☀ Claro':'☾ Oscuro';try{localStorage.setItem(TK,t)}catch(e){}};
-setTheme(document.documentElement.dataset.theme==='dark'?'dark':'light');
+setTheme(document.documentElement.dataset.theme==='light'?'light':'dark');
 $('tg').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
 let SN={},db,TOK='',IDX={},PL=null,ROWS=[],VIEW=[],SORT={k:'t',d:1},BUSY=false;
 
@@ -144,7 +234,8 @@ const norm1=r=>{let v=String(r.v||SP).replace(/\s+/g,' ').trim();
   return{...r,ty:tyN(r.ty),v,rc:r.rc||'',cn:r.cn||String(SN[r.t]||'').toUpperCase(),tr:String(r.tr||'').replace(/\s+/g,''),td:String(r.td||(r.t==='Cristal'?'Proforma':'Transferencia')).replace(/^Pro\s+forma$/i,'Proforma')}};
 
 window.addEventListener('hashchange',()=>{if(TOK)route()});
-function route(){const [t,id]=location.hash.slice(1).split('/');if(t!==TOK)return;id?openPL(id):showList()}
+function route(){const [t,id]=location.hash.slice(1).split('/');if(t!==TOK)return;
+  if(!id)return showHome();if(id==='_list')return showList();if(id==='_docs')return showDocs();if(id==='_prods')return showProds();if(id==='_kpi')return showKpi();openPL(id)}
 function fail(m){$('bk').classList.add('hide');$('sub').textContent='';$('app').innerHTML=`<div class="card msg err"><b>${esc(m)}</b><br><span style="color:var(--mt)">Pide que te reenvíen el enlace.</span></div>`}
 
 async function init(){
@@ -162,7 +253,7 @@ async function init(){
 
 /* ---------- LISTA (más reciente arriba) ---------- */
 function showList(){
-  PL=null;$('bk').classList.add('hide');$('ttl').textContent='Packing list a tiendas';
+  PL=null;SEC=null;$('app').classList.remove('sec-one');$('bk').classList.remove('hide');$('bk').textContent='← Menú';$('bk').onclick=()=>{location.hash=TOK};$('ttl').textContent='Despacho · elige el packing list';
   const all=Object.entries(IDX).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
   $('sub').textContent=`${all.length} packing list · ordenados por fecha de despacho, el más reciente primero`;
   const tp=all.reduce((a,[,v])=>a+(v.tp||0),0);
@@ -206,7 +297,7 @@ function paintPL(){
   const sel=(id,l,a)=>`<select id="${id}"><option value="">${l}</option>${a.map(x=>`<option>${esc(x)}</option>`).join('')}</select>`;
   const byV=grp(ROWS,r=>r.v),byT=grp(ROWS,r=>r.ty);
   $('app').innerHTML=`
-  <div class="card"><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-bottom:12px">
+  <div class="card" data-sec="res"><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-bottom:12px">
     <div><span class="chip ${rc?'R':'D'}">${rc?'Recibido':'Despachado'}</span></div>
     <div style="display:flex;gap:8px"><button class="btn" id="xl">Excel</button><button class="btn sec" id="pdf">PDF</button></div></div>
     <div class="kpis">${[['Piezas',v.tp],['Referencias',refs],['Tiendas',v.stores.length],['Documentos',v.tf]].map(([l,n])=>`<div class="kpi"><b>${fmt(n)}</b><span>${l}</span></div>`).join('')}</div>
@@ -214,13 +305,13 @@ function paintPL(){
     ${parc?`<div class="info warn">${parc} transferencia(s) viajaron parcialmente en este packing list (marcadas “Parcial”); sus piezas son las de la transferencia completa.</div>`:''}</div>
 
   <div class="two">
-  <div class="card"><h2>Distribución por tienda</h2>${v.stores.map(s=>{const pc=(s.pz||0)/tp*100;return `<div class="sb"><div class="lb">${esc(s.t)}${s.tn?'<br><small style="color:var(--mt);font-weight:400">'+esc(s.tn)+'</small>':''}</div><div class="tr"><i style="width:${Math.max(1,pc).toFixed(1)}%"></i></div><div class="vl"><b>${pc.toFixed(1)}%</b> · ${fmt(s.pz)} pzas · ${fmt(s.tf)} doc.</div></div>`}).join('')}</div>
+  <div class="card" data-sec="tie"><h2>Distribución por tienda</h2>${v.stores.map(s=>{const pc=(s.pz||0)/tp*100;return `<div class="sb"><div class="lb">${esc(s.t)}${s.tn?'<br><small style="color:var(--mt);font-weight:400">'+esc(s.tn)+'</small>':''}</div><div class="tr"><i style="width:${Math.max(1,pc).toFixed(1)}%"></i></div><div class="vl"><b>${pc.toFixed(1)}%</b> · ${fmt(s.pz)} pzas · ${fmt(s.tf)} doc.</div></div>`}).join('')}</div>
 
-  <div class="card"><h2>Por proveedor</h2>${byV.map(g=>{const pc=g.q/tp*100;return `<div class="sb"><div class="lb ${g.k===SP?'sp':''}">${esc(g.k)}</div><div class="tr"><i style="width:${Math.max(1,pc).toFixed(1)}%"></i></div><div class="vl"><b>${pc.toFixed(1)}%</b> · ${fmt(g.q)} pzas · ${fmt(g.rf.size)} ref.</div></div>`}).join('')}
+  <div class="card" data-sec="pro"><h2>Por proveedor</h2>${byV.map(g=>{const pc=g.q/tp*100;return `<div class="sb"><div class="lb ${g.k===SP?'sp':''}">${esc(g.k)}</div><div class="tr"><i style="width:${Math.max(1,pc).toFixed(1)}%"></i></div><div class="vl"><b>${pc.toFixed(1)}%</b> · ${fmt(g.q)} pzas · ${fmt(g.rf.size)} ref.</div></div>`}).join('')}
     <div class="info">Tipología: ${byT.map(g=>`<span class="chip ty ${tyCls(g.k)}">${esc(g.k)} · ${fmt(g.q)} pzas</span>`).join(' ')}</div></div>
   </div>
 
-  <div class="card"><h2>Detalle de productos</h2>
+  <div class="card" data-sec="det"><h2>Detalle de productos</h2>
     <div class="tools"><input type="search" id="q" placeholder="Buscar código, estilo, descripción, proveedor…">${sel('ft','Todas las tiendas',opt('t'))}${sel('fd','Todo tipo de documento',opt('td'))}${sel('fr','Todos los documentos',opt('tr'))}${sel('fy','Toda tipología',opt('ty'))}${sel('fv','Todos los proveedores',opt('v'))}<input type="number" id="fm" min="0" placeholder="Pzas ≥"><button class="btn sec" id="clr">Limpiar</button></div>
     <div class="cnt" id="cnt"></div>
     <div class="tw"><table><thead><tr id="hd"></tr></thead><tbody id="tb"></tbody><tfoot><tr id="tf"></tr></tfoot></table></div></div>`;
@@ -229,7 +320,7 @@ function paintPL(){
   ['q','ft','fd','fr','fy','fv','fm'].forEach(id=>$(id).addEventListener(id==='q'||id==='fm'?'input':'change',render));
   $('clr').onclick=()=>{['q','ft','fd','fr','fy','fv','fm'].forEach(id=>$(id).value='');render()};
   $('xl').onclick=excel;$('pdf').onclick=pdf;
-  render();
+  render();hmInit();
 }
 
 function render(){
@@ -374,6 +465,121 @@ function pdf(){
     doc.setDrawColor(201,214,228);doc.setLineWidth(.2);doc.line(M,201,W-M,201);doc.text(`Generado el ${gen}  |  Documento de solo lectura`,M,205);doc.text(`Página ${i} de ${n}`,W-M,205,{align:'right'})}
   doc.save(`reporte_despacho_${v.num}.pdf`);
 }
+/* ---------- MENÚ SECTORIZADO + CONFIGURACIÓN DE ANIMACIONES ---------- */
+const HM_ORB='<svg class="hm-orb" viewBox="0 0 120 120" aria-hidden="true"><circle class="o2" cx="60" cy="60" r="50"/><circle class="o1" cx="60" cy="60" r="57"/><circle class="dt" cx="60" cy="3" r="4"/><circle class="dt" cx="19.7" cy="100.3" r="3"/></svg>';
+const HM_ICO={
+  res:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+  tie:'<path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M3 9a3 3 0 006 0 3 3 0 006 0 3 3 0 006 0"/><path d="M10 20v-5h4v5"/>',
+  pro:'<path d="M2 6h11v10H2z"/><path d="M13 9h5l3 3v4h-8"/><circle cx="6.5" cy="18" r="2"/><circle cx="17.5" cy="18" r="2"/>',
+  det:'<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+  xl:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/>',
+  pdf:'<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>'};
+const HM_LIST=[
+  {s:'Resumen',it:[['res','Resumen','Piezas, referencias y datos']]},
+  {s:'Distribución',it:[['tie','Por tienda','Piezas por destino'],['pro','Por proveedor','Piezas y tipología']]},
+  {s:'Detalle',it:[['det','Productos','Todas las líneas, con filtros']]},
+  {s:'Exportar',it:[['xl','Excel','Descargar .xlsx'],['pdf','PDF','Descargar .pdf']]}];
+let SEC=null;
+function hmDraw(){const hm=$('hm');if(!hm||!PL)return;let n=0;
+  hm.innerHTML=`<div class="hm-hero"><div class="hm-hi">Menú</div><div class="hm-sub">Packing list <b>${esc(PL.num)}</b> · elige qué quieres ver</div></div>`+
+    HM_LIST.map((g,gi)=>`<div class="hm-st" style="--i:${gi}">${g.s}</div><div class="hm-grid">${g.it.map(([k,t,sm])=>`<button type="button" class="hm-it" style="--i:${n++}" data-hm="${k}"><span class="hm-ring">${HM_ORB}<span class="hm-ic"><svg viewBox="0 0 24 24">${HM_ICO[k]}</svg></span></span><span class="hm-lb">${t}</span><small class="hm-sm">${sm}</small></button>`).join('')}</div>`).join('')}
+function hmSecs(k){document.querySelectorAll('#app [data-sec]').forEach(e=>e.classList.toggle('hide',e.dataset.sec!==k))}
+function hmInit(){SEC=null;
+  $('app').insertAdjacentHTML('afterbegin','<div class="card" id="hm"></div>');
+  hmSecs(null);$('app').classList.remove('sec-one');hmDraw();
+  $('bk').textContent='← Despachos';
+  $('bk').onclick=()=>{if(SEC)hmBack();else location.hash=TOK+'/_list'}}
+function hmBack(){SEC=null;hmSecs(null);$('app').classList.remove('sec-one');$('hm').classList.remove('hide');$('bk').textContent='← Despachos';scrollTo(0,0)}
+function hmGo(k,btn){
+  if(k==='xl'||k==='pdf'){if(btn){btn.classList.add('busy');setTimeout(()=>btn.classList.remove('busy'),2500)}$(k).click();return}
+  SEC=k;$('hm').classList.add('hide');hmSecs(k);$('app').classList.add('sec-one');$('bk').textContent='← Menú';scrollTo(0,0)}
+$('app').addEventListener('click',e=>{const b=e.target.closest('[data-hm]');if(b)hmGo(b.dataset.hm,b)});
+const FXS=[['arc','Media luna','Salen juntos, suben en arco y caen en su lugar'],['slide','Deslizar','Uno por uno desde la izquierda'],['roll','Rodar','Uno por uno, rodando como rueda'],['drop','Caída con rebote','Caen desde arriba y rebotan al llegar'],['zoom','Zoom','Crecen desde el centro, en cascada'],['flip','Giro 3D','Giran como una puerta y se abren'],['fan','Abanico','Se abren en abanico desde la esquina izquierda'],['fade','Transición suave','Aparece con desvanecimiento, sin movimiento'],['none','Sin animación','Entra directo; ideal para equipos lentos']];
+const cfgPaint=()=>{const cur=document.documentElement.dataset.fx||'arc';$('cfgFx').innerHTML=FXS.map(([k,n,d])=>`<button type="button" data-fxk="${k}" class="${cur===k?'on':''}">${n}<small>${d}</small></button>`).join('')};
+const hmReplay=()=>{const hm=$('hm');if(hm&&!hm.classList.contains('hide'))hmDraw()};
+$('cfgB').onclick=()=>{cfgPaint();$('cfgNoMove').checked=document.documentElement.dataset.nomove==='1';$('cfgSheet').classList.remove('hide')};
+$('cfgSheet').addEventListener('click',e=>{
+  if(e.target.id==='cfgSheet'||e.target.id==='cfgX'){$('cfgSheet').classList.add('hide');return}
+  const b=e.target.closest('[data-fxk]');if(!b)return;
+  document.documentElement.dataset.fx=b.dataset.fxk;try{localStorage.setItem('cmpFx',b.dataset.fxk)}catch(x){}cfgPaint();
+  const hm=$('hm');if(hm&&!hm.classList.contains('hide')){$('cfgSheet').classList.add('hide');hmDraw()}});
+$('cfgNoMove').addEventListener('change',e=>{const d=document.documentElement;if(e.target.checked)d.dataset.nomove='1';else delete d.dataset.nomove;try{localStorage.setItem('cmpNoMove',e.target.checked?'1':'0')}catch(x){}hmReplay()});
+/* ---------- INICIO (launcher), CONSULTAS Y KPIs ---------- */
+const HM_ICO2={
+  desp:'<path d="M1 6h13v10H1z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="5.5" cy="18" r="2"/><circle cx="17.5" cy="18" r="2"/>',
+  docs:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>',
+  prods:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
+  kpi:'<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/><circle cx="12" cy="18" r="1.2"/><path d="M6.3 11.3l1 1M12 7.5v1.4M17.7 11.3l-1 1"/>'};
+const HOME_LIST=[
+  {s:'Despacho',it:[['desp','Despacho','Elige el despacho (packing list)']]},
+  {s:'Consulta',it:[['docs','Documentos','Transferencias y proformas'],['prods','Productos','Busca un código o estilo']]},
+  {s:'Indicadores',it:[['kpi','KPIs','Gráficos y totales']]}];
+function resetView(){PL=null;SEC=null;$('app').classList.remove('sec-one')}
+function showHome(){resetView();$('bk').classList.add('hide');$('ttl').textContent='Bienvenido';$('sub').textContent='¿Qué quieres consultar hoy?';
+  let n=0;
+  $('app').innerHTML='<div id="hmHome">'+HOME_LIST.map((g,gi)=>`<div class="hm-st" style="--i:${gi}">${g.s}</div><div class="hm-grid">${g.it.map(([k,t,sm])=>`<button type="button" class="hm-it" style="--i:${n++}" data-home="${k}"><span class="hm-ring">${HM_ORB}<span class="hm-ic"><svg viewBox="0 0 24 24">${HM_ICO2[k]}</svg></span></span><span class="hm-lb">${t}</span><small class="hm-sm">${sm}</small></button>`).join('')}</div>`).join('')+'</div>';
+  window.scrollTo(0,0)}
+$('app').addEventListener('click',e=>{const b=e.target.closest('[data-home]');if(!b)return;
+  const k=b.dataset.home;location.hash=TOK+'/'+({desp:'_list',docs:'_docs',prods:'_prods',kpi:'_kpi'}[k])});
+function subView(t,sub){resetView();$('bk').classList.remove('hide');$('bk').textContent='← Menú';$('bk').onclick=()=>{location.hash=TOK};$('ttl').textContent=t;$('sub').textContent=sub;window.scrollTo(0,0)}
+
+/* carga (una sola vez) todas las líneas de todos los despachos */
+let ALL=null;
+async function loadAll(){
+  if(ALL)return ALL;
+  const ids=Object.keys(IDX),out=[];let done=0;
+  $('app').innerHTML=`<div class="card msg" id="ldg">Cargando despachos… 0/${ids.length}</div>`;
+  const keep=SN;
+  await Promise.all(ids.map(async id=>{
+    try{const v=(await get(ref(db,`${CMPB}/${TOK}/pl/${id}`))).val();
+      if(v){SN={};(v.stores||[]).forEach(x=>{if(x.t&&x.tn)SN[x.t]=x.tn});
+        Object.values(v.rows||{}).forEach(r=>out.push({...norm1(r),pid:id,pn:v.num||IDX[id].num,pts:v.ts||0}))}}catch(e){}
+    done++;const l=$('ldg');if(l)l.textContent=`Cargando despachos… ${done}/${ids.length}`}));
+  SN=keep;ALL=out;return ALL}
+const here=h=>location.hash.slice(1)===TOK+'/'+h;
+
+async function showDocs(){
+  subView('Documentos','Transferencias y proformas de todos los despachos');
+  const A=await loadAll();if(!here('_docs'))return;
+  const m=new Map();
+  A.forEach(r=>{const k=r.td+'|'+r.tr+'|'+r.t;let o=m.get(k);if(!o){o={td:r.td,tr:r.tr,t:r.t,cn:r.cn,q:0,pl:new Map(),pa:false};m.set(k,o)}o.q+=r.q||0;o.pl.set(r.pid,r.pn);if(r.pa)o.pa=true});
+  const D=[...m.values()],tipos=[...new Set(D.map(x=>x.td))].sort();
+  $('app').innerHTML=`<div class="card"><div class="tools"><input type="search" id="dq" placeholder="Buscar n.º de documento, tienda, cliente o packing list…"><select id="dt"><option value="">Todos los tipos</option>${tipos.map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
+    <div class="cnt" id="dcnt"></div><div class="tw"><table style="min-width:760px"><thead><tr><th>Tipo</th><th>N.º documento</th><th>Tienda</th><th>Cliente</th><th class="n">Piezas</th><th>Packing list</th></tr></thead><tbody id="dtb"></tbody></table></div></div>`;
+  const draw=()=>{const q=norm($('dq').value).split(/\s+/).filter(Boolean),ty=$('dt').value;
+    const R=D.filter(x=>(!ty||x.td===ty)&&(!q.length||q.every(w=>norm([x.tr,x.t,x.cn,x.td,[...x.pl.values()].join(' ')].join(' ')).includes(w))))
+      .sort((a,b)=>String(a.td).localeCompare(String(b.td))||String(b.tr).localeCompare(String(a.tr),'es',{numeric:true}));
+    $('dcnt').textContent=`${fmt(R.length)} de ${fmt(D.length)} documentos`+(R.length>300?' · mostrando los primeros 300, afina la búsqueda':'');
+    $('dtb').innerHTML=R.slice(0,300).map(x=>`<tr data-id="${esc([...x.pl.keys()][0])}" style="cursor:pointer"><td><span class="chip ty">${esc(x.td)}</span></td><td>${esc(x.tr||'—')}${x.pa?'<span class="chip pa">Parcial</span>':''}</td><td><span class="chip T">${esc(x.t)}</span></td><td>${esc(x.cn)}</td><td class="n">${fmt(x.q)}</td><td>${esc([...x.pl.values()].join(', '))}</td></tr>`).join('')||'<tr><td colspan="6" class="msg">Sin resultados</td></tr>'};
+  $('dq').oninput=draw;$('dt').onchange=draw;draw();
+  $('dtb').onclick=e=>{const r=e.target.closest('tr[data-id]');if(r)location.hash=TOK+'/'+r.dataset.id}}
+
+async function showProds(){
+  subView('Productos','Busca un producto en todos los despachos');
+  const A=await loadAll();if(!here('_prods'))return;
+  $('app').innerHTML=`<div class="card"><div class="tools"><input type="search" id="pq" placeholder="Código, estilo, descripción o código de barras…"></div>
+    <div class="cnt" id="pcnt"></div><div class="tw"><table style="min-width:860px"><thead><tr><th>Producto</th><th>Estilo</th><th>Descripción</th><th>Tienda</th><th>Documento</th><th class="n">Piezas</th><th>Packing list</th></tr></thead><tbody id="ptb"></tbody></table></div></div>`;
+  const draw=()=>{const q=norm($('pq').value).split(/\s+/).filter(Boolean);
+    if(!q.length){$('pcnt').textContent=`${fmt(A.length)} líneas en ${fmt(Object.keys(IDX).length)} despachos · escribe para buscar`;$('ptb').innerHTML='<tr><td colspan="7" class="msg">Escribe un código, estilo o descripción</td></tr>';return}
+    const R=A.filter(r=>q.every(w=>norm([r.p,r.e,r.d,r.u].join(' ')).includes(w)));
+    $('pcnt').textContent=`${fmt(R.length)} líneas · ${fmt(R.reduce((a,r)=>a+(r.q||0),0))} piezas`+(R.length>400?' · mostrando las primeras 400':'');
+    $('ptb').innerHTML=R.slice(0,400).map(r=>`<tr data-id="${esc(r.pid)}" style="cursor:pointer"><td class="mono">${esc(r.p)}</td><td>${esc(r.e)}</td><td>${esc(r.d)}</td><td><span class="chip T">${esc(r.t)}</span></td><td>${esc(r.tr||'—')}</td><td class="n">${fmt(r.q)}</td><td>${esc(r.pn)}</td></tr>`).join('')||'<tr><td colspan="7" class="msg">Sin resultados</td></tr>'};
+  $('pq').oninput=draw;draw();
+  $('ptb').onclick=e=>{const r=e.target.closest('tr[data-id]');if(r)location.hash=TOK+'/'+r.dataset.id}}
+
+function showKpi(){
+  subView('KPIs','Resumen de todos los despachos');
+  const all=Object.entries(IDX).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0)),tp=all.reduce((a,[,v])=>a+(v.tp||0),0),rec=all.filter(([,v])=>v.st==='R').length;
+  const bars=(rows,mx,suf)=>rows.map(([l,n,extra])=>`<div class="sb"><div class="lb">${esc(l)}</div><div class="tr"><i style="width:${Math.max(1,n/Math.max(1,mx)*100).toFixed(1)}%"></i></div><div class="vl"><b>${fmt(n)}</b> ${suf}${extra?' · '+extra:''}</div></div>`).join('')||'<div class="msg">Sin datos</div>';
+  const last=all.slice(0,12);
+  const pm={};all.forEach(([,v])=>{if(!v.ts)return;const d=new Date(v.ts),k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');pm[k]=(pm[k]||0)+(v.tp||0)});
+  const meses=Object.entries(pm).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,12);
+  const ps={};all.forEach(([,v])=>String(v.sl||'').split(',').filter(Boolean).forEach(t=>{ps[t]=(ps[t]||0)+1}));
+  const tiendas=Object.entries(ps).sort((a,b)=>b[1]-a[1]);
+  $('app').innerHTML=`<div class="sum"><div><b>${fmt(all.length)}</b><span>Despachos</span></div><div><b>${fmt(rec)}</b><span>Recibidos</span></div><div><b>${fmt(all.length-rec)}</b><span>En tránsito</span></div><div><b>${fmt(tp)}</b><span>Piezas</span></div></div>
+   <div class="two"><div class="card"><h2>Piezas por despacho (últimos 12)</h2>${bars(last.map(([,v])=>[v.num,v.tp||0,v.st==='R'?'Recibido':'En tránsito']),Math.max(...last.map(([,v])=>v.tp||0),1),'pzas')}</div>
+   <div class="card"><h2>Piezas por mes</h2>${bars(meses.map(([k,n])=>[k,n]),Math.max(...meses.map(x=>x[1]),1),'pzas')}</div></div>
+   <div class="card"><h2>Despachos por tienda</h2>${bars(tiendas.map(([t,n])=>[t,n]),Math.max(...tiendas.map(x=>x[1]),1),'despachos')}</div>`}
 init();
 </script>
 </body>

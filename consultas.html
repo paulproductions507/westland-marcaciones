@@ -308,17 +308,51 @@ html[data-fx=none] .hm-it,html[data-fx=none] .hm-hero,html[data-fx=none] .hm-orb
 @keyframes hmZoom{0%{opacity:0;transform:scale(0)}100%{opacity:1;transform:scale(1)}}
 @keyframes hmFlip{from{opacity:0;transform:perspective(700px) rotateY(-110deg) translateX(-40px)}to{opacity:1;transform:perspective(700px) rotateY(0)}}
 @keyframes hmFan{from{opacity:0;transform:translateX(-70vw) rotate(-70deg)}to{opacity:1;transform:none}}
+/* ===== Recibos de Surtido: petróleo + blanco como el menú; las barras de avance conservan sus colores ===== */
+#recList>.card.row,html[data-theme=light] #recList>.card.row{background:radial-gradient(circle at 30% 0,#10606f 0,#08404c 55%,#052c35 100%);color:#fff;border:1px solid #17697a;box-shadow:0 10px 24px #00000050,inset 0 0 0 1px #2de2c91f}
+#recList>.card.row .bar,html[data-theme=light] #recList>.card.row .bar{background:#02171c;border:1px solid #17697a}
+#recList>.card.row .bar i{background:linear-gradient(90deg,#0fb5a8,#2de2c9)}
+#recList>.card.row .btn:not(.pri),html[data-theme=light] #recList>.card.row .btn:not(.pri){background:#0e4c5a;color:#fff;border-color:#17697a}
+
+/* ===== Transiciones entre pantallas + opción "sin movimiento" ===== */
+@keyframes vwIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes vwFade{from{opacity:0}to{opacity:1}}
+@keyframes hmFadeOnly{from{opacity:0}to{opacity:1}}
+#v-rec:not(.hide),#v-recibo:not(.hide),#v-stat:not(.hide),#v-auto:not(.hide),#v-pro:not(.hide),#v-pdn:not(.hide),#v-pal:not(.hide),#v-pkl:not(.hide),#v-list:not(.hide),#v-trf:not(.hide),#v-dsp:not(.hide),#v-dif:not(.hide),#v-est:not(.hide){animation:vwIn .32s cubic-bezier(.2,.8,.2,1) both}
+/* Efecto "Transición suave": todo aparece solo con desvanecimiento */
+html[data-fx=fade] .hm-it,html[data-nomove] .hm-it{animation:hmFadeOnly .5s ease backwards;animation-delay:calc(var(--i)*80ms + 60ms)}
+html[data-fx=fade] .hm-it .hm-lb,html[data-fx=fade] .hm-it .hm-sm,html[data-nomove] .hm-it .hm-lb,html[data-nomove] .hm-it .hm-sm{animation:none}
+html[data-fx=fade] .hm-hero,html[data-fx=fade] .hm-st,html[data-nomove] .hm-hero,html[data-nomove] .hm-st{animation:hmFadeOnly .45s ease backwards}
+html[data-fx=fade] .hm-orb,html[data-nomove] .hm-orb{animation:none}
+html[data-fx=fade] #v-rec:not(.hide),html[data-fx=fade] #v-recibo:not(.hide),html[data-fx=fade] #v-stat:not(.hide),html[data-fx=fade] #v-auto:not(.hide),html[data-fx=fade] #v-pro:not(.hide),html[data-fx=fade] #v-pdn:not(.hide),html[data-fx=fade] #v-pal:not(.hide),html[data-fx=fade] #v-pkl:not(.hide),html[data-fx=fade] #v-list:not(.hide),html[data-fx=fade] #v-trf:not(.hide),html[data-fx=fade] #v-dsp:not(.hide),html[data-fx=fade] #v-dif:not(.hide),html[data-fx=fade] #v-est:not(.hide),
+html[data-nomove] #v-rec:not(.hide),html[data-nomove] #v-recibo:not(.hide),html[data-nomove] #v-stat:not(.hide),html[data-nomove] #v-auto:not(.hide),html[data-nomove] #v-pro:not(.hide),html[data-nomove] #v-pdn:not(.hide),html[data-nomove] #v-pal:not(.hide),html[data-nomove] #v-pkl:not(.hide),html[data-nomove] #v-list:not(.hide),html[data-nomove] #v-trf:not(.hide),html[data-nomove] #v-dsp:not(.hide),html[data-nomove] #v-dif:not(.hide),html[data-nomove] #v-est:not(.hide){animation:vwFade .3s ease both}
+/* ventanas emergentes, filas y botones: sin desplazamientos ni rebotes */
+html[data-nomove] #mpal>div,html[data-nomove] .pkbox{animation:vwFade .25s ease}
+html[data-nomove] .palrow-in{animation:vwFade .3s ease}
+html[data-nomove] .palrow-out{animation:vwFade .2s ease reverse forwards}
+html[data-nomove] .palcnt b.bump,html[data-nomove] #palScanBox.flasherr,html[data-nomove] .dspbtn.done,html[data-nomove] .dsp-ck{animation:none}
+html[data-nomove] .hm-it:hover .hm-ring,html[data-nomove] .hm-it:active .hm-ring,html[data-nomove] .hm-it:hover .hm-ic,html[data-nomove] .ptl:hover,html[data-nomove] .ptl:active,html[data-nomove] .row:active,html[data-nomove] .tile:active{transform:none}
+/* "Sin animación" siempre gana */
+html[data-fx=none] .hm-it,html[data-fx=none] .hm-hero,html[data-fx=none] .hm-st,html[data-fx=none] .hm-orb,html[data-nomove][data-fx=none] .hm-it{animation:none}
+html[data-fx=none] #v-rec,html[data-fx=none] #v-recibo,html[data-fx=none] #v-stat,html[data-fx=none] #v-auto,html[data-fx=none] #v-pro,html[data-fx=none] #v-pdn,html[data-fx=none] #v-pal,html[data-fx=none] #v-pkl,html[data-fx=none] #v-list,html[data-fx=none] #v-trf,html[data-fx=none] #v-dsp,html[data-fx=none] #v-dif,html[data-fx=none] #v-est{animation:none!important}
+/* casilla "Sin movimiento" de Configuración */
+.cfg-chk{display:flex;gap:12px;align-items:flex-start;margin:14px 6px 6px;padding:12px 14px;border:1px solid var(--bd);border-radius:14px;background:var(--sf);cursor:pointer}
+.cfg-chk input{width:22px;height:22px;flex:none;margin-top:2px;accent-color:var(--ac)}
+.cfg-chk b{display:block;font:700 14px var(--ff);color:var(--tx)}
+.cfg-chk small{display:block;color:var(--mt);font-size:12px;margin-top:3px;font-weight:500;line-height:1.35}
+#recBtns{display:none!important}
 </style>
 <script>try{var _t=localStorage.getItem('conTheme');document.documentElement.dataset.theme=(_t==='light')?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
 <script>/* Modo de entrada automático: detecta móvil / tableta / escritorio y el ancho disponible */
 (function(){var d=document.documentElement,ua=navigator.userAgent||'',tc=(navigator.maxTouchPoints||0)>1;
 var mob=/iPhone|iPod|Android.+Mobile|Windows Phone|Mobile/i.test(ua),tab=!mob&&(/iPad|Tablet|Android/i.test(ua)||(/Macintosh/.test(ua)&&tc));
-d.dataset.device=mob?'mobile':tab?'tablet':'desktop';try{d.dataset.fx=localStorage.getItem('conFx')||'arc'}catch(e){d.dataset.fx='arc'}
+d.dataset.device=mob?'mobile':tab?'tablet':'desktop';try{d.dataset.fx=localStorage.getItem('conFx')||'arc'}catch(e){d.dataset.fx='arc'}try{if(localStorage.getItem('conNoMove')==='1')d.dataset.nomove='1'}catch(e){}
 function z(){var w=window.innerWidth;d.dataset.size=w<640?'s':w<1000?'m':'l'}z();window.addEventListener('resize',z)})();</script></head>
 <body>
 <div id="stSheet" class="stsheet hide"><div class="stbox"><div class="sthd"><b>Filtrar por tienda</b><button type="button" id="stSheetX" class="btn sm">✕</button></div><div id="stSheetList"></div></div></div>
 <div id="cfgSheet" class="stsheet hide"><div class="stbox"><div class="sthd"><b>Configuración</b><button type="button" id="cfgX" class="btn sm">✕</button></div>
   <div class="lbl" style="margin:6px 6px 8px">Efecto de entrada del menú</div><div id="cfgFx" class="cfg-fx"></div>
+  <label class="cfg-chk"><input type="checkbox" id="cfgNoMove"><span><b>Sin movimiento</b><small>Las transiciones se ven solo como desvanecimiento: nada se desplaza, gira ni rebota. Funciona con cualquier efecto.</small></span></label>
   <div class="msg" style="margin:10px 6px 4px">Se guarda en este equipo. Al elegir uno se ve de inmediato en el menú.</div></div></div>
 <div id="gate" class="gate"><h2>🔎 Consultas</h2><p id="gmsg" style="color:var(--mt)">Verificando sesión…</p><a class="btn pri" id="glink" href="index.html" style="text-decoration:none;display:none">Ir a Marcaciones</a><div id="gpick" style="margin-top:18px"></div><a id="gtemp" href="#" style="display:none;margin-top:46px;font-size:11px;color:var(--mt);opacity:.55;text-decoration:none">Temporal</a></div>
 
@@ -334,7 +368,7 @@ function z(){var w=window.innerWidth;d.dataset.size=w<640?'s':w<1000?'m':'l'}z()
     <div id="v-home" class="hide"><div class="hm-hero"><div class="hm-hi" id="hmHi">Bienvenido</div><div class="hm-sub" id="hmSub">¿Qué quieres hacer hoy?</div></div><div id="hmSecs"></div></div>
     <div id="v-rec">
       <div id="recBtns" style="display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:10px"><span id="recAdm3" class="hide" style="display:contents"><button class="btn sm pri" id="recUp">📥 Subir archivo</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></span><button class="btn sm pri hide" id="recProd"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Producción</button><button class="btn sm pri hide" id="recBul">🏷 Etiqueta de bulto</button></div>
-      <div class="card"><h2 style="font-size:20px">Surtido · elige el recibo</h2><div class="msg" style="margin-top:4px">Selecciona el recibo que vas a trabajar.</div></div>
+      <div class="card"><h2 style="font-size:20px">¿Con qué recibo iniciamos?</h2><div class="msg" style="margin-top:4px">Continuemos: toca el recibo que vas a trabajar.</div></div>
       <div id="recMenu" class="hide" style="margin-bottom:12px">
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <div id="recAdm" class="hide" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-mg="trf">🚚 Transferencias ▾</button><button class="btn sm" data-mg="dsp">📦 Despacho ▾</button></div>
@@ -3402,6 +3436,8 @@ const HIC={
  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
  hist:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
  truck:'<path d="M1 6h13v10H1z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="5.5" cy="18" r="2"/><circle cx="17.5" cy="18" r="2"/>',
+ kpi:'<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/><circle cx="12" cy="18" r="1.2"/><path d="M6.3 11.3l1 1M12 7.5v1.4M17.7 11.3l-1 1"/>',
+ upl:'<path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
  swap:'<path d="M4 8h14"/><path d="M14 4l4 4-4 4"/><path d="M20 16H6"/><path d="M10 12l-4 4 4 4"/>'};
 const HOME=[
  {k:'rec',n:'Surtido',ic:'box',sub:'Lista de recibos'},
@@ -3411,10 +3447,12 @@ const HOME=[
    {k:'auto',b:'recAuto',n:'Pedidos automáticos',ic:'bolt'},
    {k:'tun',n:'Túnel',ic:'tun',ch:[{k:'tun1',b:'recTun',n:'Túnel normal',ic:'tun'},{k:'tunm',b:'recTunM',n:'Túnel manual',ic:'pen'}]},
    {k:'prf',b:'recPrf',n:'Proformas',ic:'doc'}]},
- {k:'prd',n:'Producción',ic:'prod',sub:'Producción, estadística y ajustes',ch:[
-   {k:'prod',b:'recProd',n:'Mi producción',ic:'prod'},{k:'stat',b:'recStat',n:'Estadística',ic:'bars'},
+ {k:'prd',b:'recProd',n:'Producción',ic:'prod',sub:'Mi producción del día'},
+ {k:'kpi',n:'KPIs',ic:'kpi',sub:'Estadística, productividad y ajustes',ch:[
+   {k:'stat',b:'recStat',n:'Estadística',ic:'bars'},
    {k:'pro',b:'recPro',n:'Productividad',ic:'trend',adm:1},{k:'adj',b:'recAdj',n:'Ajustes',ic:'hist',adm:1,modal:1}]},
  {k:'bul',b:'recBul',n:'Etiquetas de bulto',ic:'tag',modal:1,sub:'Imprimir etiquetas'},
+ {k:'upl',b:'recUp',n:'Subir archivo',ic:'upl',adm:1,modal:1,sub:'Cargar recibos (Excel o CSV)'},
  {k:'cfg',b:'btnCfg',n:'Configuración',ic:'gear',modal:1,sub:'Efectos y opciones'}];
 const hmOrb='<svg class="hm-orb" viewBox="0 0 120 120" aria-hidden="true"><circle class="o2" cx="60" cy="60" r="50"/><circle class="o1" cx="60" cy="60" r="57"/><circle class="dt" cx="60" cy="3" r="4"/><circle class="dt" cx="19.7" cy="100.3" r="3"/></svg>';
 function hmNode(path){let list=HOME,node=null;for(const k of path){node=(list||[]).find(x=>x.k===k);if(!node)return null;list=node.ch}return{node,list:list||[]}}
@@ -3430,11 +3468,12 @@ function showHome(path){
   ['v-rec','v-recibo','v-stat','v-auto','v-pro','v-pdn','v-pal','v-pkl'].forEach(id=>{const e=$(id);if(e)e.classList.add('hide')});
   ['btnHome','btnPal','btnPkl','btnRecBack','bar'].forEach(id=>{const e=$(id);if(e)e.classList.add('hide')});
   buildHome();$('v-home').classList.remove('hide');window.scrollTo(0,0)}
-const FXS=[['arc','Media luna','Los cuatro salen juntos, suben en arco y caen en su lugar'],['slide','Deslizar','Uno por uno desde la izquierda'],['roll','Rodar','Uno por uno, rodando como rueda'],['drop','Caída con rebote','Caen desde arriba y rebotan al llegar'],['zoom','Zoom','Crecen desde el centro, en cascada'],['flip','Giro 3D','Giran como una puerta y se abren'],['fan','Abanico','Se abren en abanico desde la esquina izquierda'],['none','Sin animación','Entra directo; ideal para equipos lentos']];
+const FXS=[['arc','Media luna','Los cuatro salen juntos, suben en arco y caen en su lugar'],['slide','Deslizar','Uno por uno desde la izquierda'],['roll','Rodar','Uno por uno, rodando como rueda'],['drop','Caída con rebote','Caen desde arriba y rebotan al llegar'],['zoom','Zoom','Crecen desde el centro, en cascada'],['flip','Giro 3D','Giran como una puerta y se abren'],['fan','Abanico','Se abren en abanico desde la esquina izquierda'],['fade','Transición suave','Aparece con desvanecimiento, sin movimiento'],['none','Sin animación','Entra directo; ideal para equipos lentos']];
 function cfgPaint(){const cur=document.documentElement.dataset.fx||'arc';$('cfgFx').innerHTML=FXS.map(([k,n,d])=>`<button type="button" data-fx="${k}" class="${cur===k?'on':''}">${n}<small>${d}</small></button>`).join('')}
-$('btnCfg').onclick=()=>{cfgPaint();$('cfgSheet').classList.remove('hide')};
+$('btnCfg').onclick=()=>{cfgPaint();$('cfgNoMove').checked=document.documentElement.dataset.nomove==='1';$('cfgSheet').classList.remove('hide')};
+$('cfgNoMove').addEventListener('change',e=>{const d=document.documentElement;if(e.target.checked)d.dataset.nomove='1';else delete d.dataset.nomove;try{localStorage.setItem('conNoMove',e.target.checked?'1':'0')}catch(x){}if(!$('v-home').classList.contains('hide'))buildHome()});
 $('cfgSheet').addEventListener('click',e=>{if(e.target.id==='cfgSheet'||e.target.id==='cfgX'){$('cfgSheet').classList.add('hide');return}
-  const b=e.target.closest('[data-fx]');if(!b)return;document.documentElement.dataset.fx=b.dataset.fx;try{localStorage.setItem('conFx',b.dataset.fx)}catch(x){}cfgPaint();
+  const b=e.target.closest('#cfgFx [data-fx]');if(!b)return;document.documentElement.dataset.fx=b.dataset.fx;try{localStorage.setItem('conFx',b.dataset.fx)}catch(x){}cfgPaint();
   if(!$('v-home').classList.contains('hide')){$('cfgSheet').classList.add('hide');buildHome()}});
 $('hmSecs').addEventListener('click',e=>{const b=e.target.closest('[data-hm]');if(!b)return;const k=b.dataset.hm,r=hmNode(HMPATH),def=r.list.find(x=>x.k===k);if(!def)return;
   if(def.ch){HMPATH.push(k);buildHome();window.scrollTo(0,0);return}
