@@ -2,7 +2,7 @@
 <html lang="es"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Westland WMS · Centro de distribución</title>
+<title>Centro de distribución</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
@@ -337,10 +337,10 @@ html[data-fx=none] #v-rec,html[data-fx=none] #v-recibo,html[data-fx=none] #v-sta
 #recBtns{display:none!important}
 
 /* ===== Westland WMS · refinamiento visual (barras gruesas, más aire, filtros oscuros) ===== */
-:root{--bg1:#e6d5b8;--bg2:#c9ad82;--wine1:#8c1c3a;--wine2:#c0314f}
-.bar{height:28px!important;border-radius:99px!important;background:#021418!important;border:1px solid #1d7a8a!important;box-shadow:inset 0 2px 4px #0008;margin-top:10px!important}
-.bar i{border-radius:99px!important;background:linear-gradient(90deg,var(--bg2),var(--bg1))!important;box-shadow:0 0 10px #e6d5b84d}
-.bar i[style*="f5a623"]{background:linear-gradient(90deg,var(--wine1),var(--wine2))!important;box-shadow:0 0 10px #c0314f55}
+:root{--crm1:#e6d5b8;--crm2:#c9ad82;--wine1:#8c1c3a;--wine2:#c0314f}
+.bar{height:28px!important;border-radius:99px!important;margin-top:10px!important}html:not([data-theme=light]) .bar{background:#021418!important;border:1px solid #1d7a8a!important;box-shadow:inset 0 2px 4px #0008}
+.bar i{border-radius:99px!important;background:linear-gradient(90deg,var(--crm2),var(--crm1))!important;box-shadow:0 0 10px #e6d5b84d}
+#gDBar,[id^=db-],.bar i[style*="f5a623"],.bar i[style*="245, 166, 35"]{background:linear-gradient(90deg,var(--wine1),var(--wine2))!important;box-shadow:0 0 10px #c0314f55}
 td .bar,.tile .bar{height:16px!important;margin-top:4px!important}
 #gDv,[id^=da-]{color:#ff8fa8!important}
 .card{padding:22px 20px!important;margin-bottom:16px!important;border-radius:18px}
@@ -373,6 +373,11 @@ td .bar,.tile .bar{height:16px!important;margin-top:4px!important}
 .btn{padding:12px 16px}.btn.sm{padding:9px 12px}
 .top{padding-bottom:16px}
 .wlogo{flex:none;width:42px;height:42px;display:block;filter:drop-shadow(0 3px 8px #0007)}
+
+#gAv,[id^=ra-]{color:#e6d5b8!important}
+#gDv,[id^=da-],#rp-ORIG b,[id^=rp-] b[style*="--wn"]{color:#ff8fa8!important}
+.wlogo{width:34px!important;height:34px!important;filter:none!important}
+.top .ttl h1{font-size:15px!important}.top .ttl small{font-size:11px}
 </style>
 <script>try{var _t=localStorage.getItem('conTheme');document.documentElement.dataset.theme=(_t==='light')?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
 <script>/* Modo de entrada automático: detecta móvil / tableta / escritorio y el ancho disponible */
@@ -391,7 +396,7 @@ function z(){var w=window.innerWidth;d.dataset.size=w<640?'s':w<1000?'m':'l'}z()
 <div id="app" class="hide">
   <div class="top">
     <button class="btn sm" id="btnBack" title="Atrás" aria-label="Atrás">←</button>
-    <svg class="wlogo" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="wg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2de2c9"/><stop offset="1" stop-color="#0b6f7d"/></linearGradient></defs><rect x="1" y="1" width="46" height="46" rx="13" fill="url(#wg)"/><path d="M24 8 38 15.5v17L24 40 10 32.5v-17z" fill="#04252c" opacity=".9"/><path d="M10 15.5 24 23l14-7.5M24 23v17" stroke="#e6d5b8" stroke-width="1.8" fill="none" stroke-linejoin="round"/><path d="M16 11.8 30 19.4" stroke="#c0314f" stroke-width="2.4" stroke-linecap="round"/><path d="M14.5 27l2.2 4.2 2.1-3.4 2.1 3.4 2.2-4.2" stroke="#2de2c9" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0"/></svg><div class="ttl"><h1 id="ttl">Westland WMS</h1><small id="who">—</small></div><span id="incDot" class="hide" style="width:7px;height:7px;border-radius:50%;background:#f5a623;opacity:.55;margin-right:6px;flex:none"></span><span style="font-size:10px;opacity:.7;margin-right:6px;display:none" id="verTag">V25 octubre-C</span>
+    <svg class="wlogo" viewBox="0 0 48 48" aria-hidden="true"><rect x="9" y="7" width="8" height="6" rx="3" fill="#f4f5f7"/><rect x="20" y="7" width="8" height="6" rx="3" fill="#f4f5f7"/><rect x="31" y="7" width="8" height="6" rx="3" fill="#f4f5f7"/><rect x="5" y="12" width="38" height="14" rx="2.5" fill="#f4f5f7"/><rect x="5" y="26" width="38" height="14" rx="2.5" fill="#cbd5d8"/><rect x="5" y="25.2" width="38" height="1.6" fill="#aebbc0"/><rect x="10" y="29" width="7" height="8" rx="3.5" fill="#b3c2c6" stroke="#9fb0b5" stroke-width=".8"/><rect x="20.5" y="29" width="7" height="8" rx="3.5" fill="#b3c2c6" stroke="#9fb0b5" stroke-width=".8"/><rect x="31" y="29" width="7" height="8" rx="3.5" fill="#b3c2c6" stroke="#9fb0b5" stroke-width=".8"/></svg><div class="ttl"><h1 id="ttl">Centro de distribución Westland</h1><small id="who">—</small></div><span id="incDot" class="hide" style="width:7px;height:7px;border-radius:50%;background:#f5a623;opacity:.55;margin-right:6px;flex:none"></span><span style="font-size:10px;opacity:.7;margin-right:6px;display:none" id="verTag">V25 octubre-C</span>
     <button class="btn sm hide" id="btnCfg" title="Configuración" aria-label="Configuración">⚙</button><button class="btn sm th" id="btnTh" title="Cambiar tema claro/oscuro" aria-label="Tema" onclick="var t=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=t;try{localStorage.setItem('conTheme',t)}catch(e){};this.textContent=t==='light'?'☾':'☀'"></button><script>document.getElementById('btnTh').textContent=document.documentElement.dataset.theme==='light'?'☾':'☀'</script><button class="btn sm hide" id="btnRef" title="Actualizar" aria-label="Actualizar">⟳</button>
     <button class="btn sm hide" id="btnPal">🧱 Palets</button><button class="btn sm hide" id="btnPkl">📋 Packing</button><button class="btn sm hide" id="btnRecBack">↩ Recibo</button><button class="btn sm hide" id="btnHome">Recibos</button>
     <a class="btn sm" id="toMarc" href="index.html" style="text-decoration:none;background:#ff3b30;color:#fff" title="Salir a Marcaciones">⎋ Salir</a>
@@ -605,7 +610,7 @@ async function showRecList(){
   ensureWorked();
   $('v-stat').classList.add('hide');$('v-auto').classList.add('hide');$('v-pro').classList.add('hide');$('v-pdn').classList.add('hide');$('v-pal').classList.add('hide');$('v-pkl').classList.add('hide');$('mst').classList.add('hide');
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offDspt)offDspt();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();offDspt=null;offLog=offCli=offDsp=offTrf=offTb=offDs=offBg=null;cur=null;RECIBO=null;$('recAdm').classList.toggle('hide',!ISADM);$('recAdm2').classList.toggle('hide',!ISADM);$('recAdm3').classList.toggle('hide',!ISADM);
-  $('v-recibo').classList.add('hide');if(!document.body.dataset.home&&$('v-home').classList.contains('hide'))$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');PALBACK=null;$('btnPal').classList.add('hide');$('btnPkl').classList.add('hide');$('btnRecBack').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Westland WMS';
+  $('v-recibo').classList.add('hide');if(!document.body.dataset.home&&$('v-home').classList.contains('hide'))$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');PALBACK=null;$('btnPal').classList.add('hide');$('btnPkl').classList.add('hide');$('btnRecBack').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Centro de distribución Westland';
   await loadUploaded();for(const k in PSEUDO)if(RECS[k])PROV[k]=PSEUDO[k];await migrateAuto(Object.keys(RECS));autoProv().then(ch=>{if(ch&&!$('v-rec').classList.contains('hide'))showRecList()});const allIds=Object.keys(RECS),PSD={};
   for(const id of allIds.filter(isPs)){try{const [sn,dn2]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);const m={},dd=dn2.val()||{},it=RECS[id].items||[];Object.values(sn.val()||{}).forEach(e=>{if(e.bd||e.nb)return;m[e.p+'|'+e.t]=(m[e.p+'|'+e.t]||0)+(e.q||0)});PSD[id]=(id===PFID&&it.length===0)||it.length>0&&it.every(x=>dd[x.p]&&Object.entries(x.s||{}).every(([t,a])=>t==='BODEGA'||(m[x.p+'|'+t]||0)>=a))}catch(e){}}
   const dn=id=>!!COMP[id]||!!PSD[id];const nC=allIds.filter(dn).length;
@@ -625,7 +630,7 @@ async function showRecList(){
       g={A,S,s:A?Math.round(S/A*100):0,d:it.length?Math.round(refs/it.length*100):0,r:refs,n:it.length,si,ts:Date.now()};
       set(R(db,'meta_v1/consultas_prog/'+id),g).catch(()=>{})}
     if(id===PFID&&!(RECS[id].items||[]).length)g={...g,s:100,d:100};
-    $('ra-'+id).textContent=g.s+'%';$('rb-'+id).style.width=g.s+'%';$('da-'+id).textContent=g.d+'%';$('ri-'+id).innerHTML=`Ítems surtidos <b>${fmt(g.si||0)}/${fmt(g.n||0)}</b> · despachados <b>${fmt(g.r||0)}/${fmt(g.n||0)}</b>`;$('db-'+id).style.width=g.d+'%';GP[id]=g;if(g.A!==undefined)$('rp-'+id).innerHTML=`Piezas surtidas <b>${fmt(g.S)}/${fmt(g.A)}</b> · por surtir <b style="color:var(--wn)">${fmt(Math.max(0,g.A-g.S))}</b>`}catch(e){$('ra-'+id).textContent='—';$('da-'+id).textContent='—'}}
+    $('ra-'+id).textContent=g.s+'%';$('rb-'+id).style.width=g.s+'%';$('da-'+id).textContent=g.d+'%';$('ri-'+id).innerHTML=`Ítems surtidos <b>${fmt(g.si||0)}/${fmt(g.n||0)}</b> · despachados <b>${fmt(g.r||0)}/${fmt(g.n||0)}</b>`;$('db-'+id).style.width=g.d+'%';GP[id]=g;if(g.A!==undefined)$('rp-'+id).innerHTML=`Piezas surtidas <b>${fmt(g.S)}/${fmt(g.A)}</b> · por surtir <b style="color:#ff8fa8">${fmt(Math.max(0,g.A-g.S))}</b>`}catch(e){$('ra-'+id).textContent='—';$('da-'+id).textContent='—'}}
   {const bx=$('recList'),cs=[...bx.querySelectorAll(':scope > [data-rec]')];if(cs.length>1){const kv=c=>{const i=c.dataset.rec,g=GP[i]||PROG[i]||{};return[isPs(i)?1:0,g.s||0,g.d||0]};cs.sort((a,b)=>{const x=kv(a),y=kv(b);return y[0]-x[0]||y[1]-x[1]||y[2]-x[2]}).forEach(c=>bx.appendChild(c))}}
   if(ISADM&&!window._pw){window._pw=1;setTimeout(()=>{statLoad(false).catch(()=>{})},5000)}
 }
@@ -3496,7 +3501,7 @@ function hmNode(path){let list=HOME,node=null;for(const k of path){node=(list||[
 function buildHome(){
   const r=hmNode(HMPATH)||(HMPATH=[],hmNode([])),first=String(NAME||'').trim().split(/\s+/)[0]||'';
   if(r.node){$('hmHi').innerHTML=esc(r.node.n);$('ttl').textContent=r.node.n;$('hmSub').textContent='Elige una opción'}
-  else{$('hmHi').innerHTML='Bienvenido'+(first?' <b>'+esc(first)+'</b>':'');$('ttl').textContent='Westland WMS';$('hmSub').textContent='¿Qué quieres hacer hoy?'}
+  else{$('hmHi').innerHTML='Bienvenido'+(first?' <b>'+esc(first)+'</b>':'');$('ttl').textContent='Centro de distribución Westland';$('hmSub').textContent='¿Qué quieres hacer hoy?'}
   const items=r.list.filter(x=>!x.adm||ISADM);
   $('hmSecs').innerHTML=`<div class="hm-grid" style="margin-top:22px">${items.map((x,i)=>`<button type="button" class="hm-it" style="--i:${i}" data-hm="${x.k}"><span class="hm-ring">${hmOrb}<span class="hm-ic"><svg viewBox="0 0 24 24">${HIC[x.ic]}</svg></span></span><span class="hm-lb">${esc(x.n)}</span>${x.sub&&!r.node?`<small class="hm-sm">${esc(x.sub)}</small>`:''}</button>`).join('')}</div>`;
   if(HMPATH.length)delete document.body.dataset.home;else document.body.dataset.home='1'}
