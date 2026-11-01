@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Packing list · Comprador</title>
+<title>Lista de empaque · Comprador</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -45,7 +45,7 @@ header .sub{opacity:.9;font-size:12.5px;margin-top:4px;padding-right:90px}
 .sum{display:flex;flex-wrap:wrap;background:var(--card);border:1.5px solid var(--cbd);border-radius:14px;margin-bottom:12px;overflow:hidden;box-shadow:0 4px 14px var(--tsh)}
 .sum div{flex:1 1 25%;padding:11px 6px;border-right:1px solid var(--bd);text-align:center}.sum div:last-child{border-right:0}
 .sum b{display:block;font-size:21px;color:var(--acc)}.sum span{font-size:10.5px;color:var(--mt);text-transform:uppercase;letter-spacing:.5px}
-/* tiles de packing list (mismo lenguaje que las tiendas de la app) */
+/* tiles de lista de empaque (mismo lenguaje que las tiendas de la app) */
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:14px}
 .tile{border-radius:14px;overflow:hidden;border:2px solid var(--tbd);background:var(--card);cursor:pointer;box-shadow:0 6px 18px var(--tsh);transition:transform .15s,box-shadow .15s}
 .tile:hover{transform:translateY(-3px);box-shadow:0 12px 28px var(--tsh2)}
@@ -70,9 +70,9 @@ tbody tr:nth-child(even) td{background:var(--zb)}tbody tr:hover td{background:va
 tfoot td{background:var(--soft)!important;font-weight:800;position:sticky;bottom:0}
 .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
 .sp{color:var(--mt);font-style:italic}
-.sb{display:grid;grid-template-columns:150px 1fr 210px;gap:10px;align-items:center;padding:5px 0}
+.sb{display:grid;grid-template-columns:minmax(230px,40%) minmax(60px,1fr) 190px;gap:10px;align-items:center;padding:5px 0}
 .sb .tr{background:var(--track);border-radius:99px;height:15px;overflow:hidden}.sb .tr i{display:block;height:100%;background:linear-gradient(90deg,var(--pet3),var(--pet));border-radius:99px}
-.sb .lb{font-weight:700;overflow:hidden;text-overflow:ellipsis}.sb .vl{font-size:12.5px;text-align:right;color:var(--mt)}.sb .vl b{color:var(--ink)}
+.sb .lb{font-weight:700;white-space:normal;overflow-wrap:anywhere}.sb .vl{font-size:12.5px;text-align:right;color:var(--mt)}.sb .vl b{color:var(--ink)}
 .msg{padding:36px 14px;text-align:center;color:var(--mt)}.err{color:var(--err)}
 .cnt{font-size:12.5px;color:var(--mt);margin:8px 2px}
 footer{color:var(--mt);font-size:11.5px;text-align:center;padding:10px}
@@ -172,15 +172,15 @@ html[data-fx=none] #app>.card,html[data-fx=none] #app>.sum,html[data-fx=none] #a
 <header><div class="hin">
   <button class="tg" id="tg" type="button">☾ Oscuro</button>
   <button class="tg" id="cfgB" type="button" style="right:96px;padding:5px 11px;font-size:15px;line-height:1.1" aria-label="Configuración de animaciones" title="Animaciones">⚙</button>
-  <button class="back hide" id="bk">← Todos los packing list</button>
-  <h1 id="ttl">Packing list a tiendas</h1>
+  <button class="back hide" id="bk">← Todos los lista de empaque</button>
+  <h1 id="ttl">Lista de empaque a tiendas</h1>
   <div class="sub" id="sub">Cargando…</div>
 </div></header>
 <div class="wrap"><div id="app"><div class="card msg">Cargando…</div></div></div>
 <footer>Vista de solo lectura · Westland</footer>
 <div id="dspSheet" class="stsheet hide"><div class="stbox"><div class="sthd"><b>Selecciona el despacho</b><button type="button" id="dspX" class="btn sec">✕</button></div>
   <div style="margin:0 6px 10px;font-size:13.5px;color:var(--mt)">Por favor, selecciona el despacho para continuar.</div>
-  <div class="tools" style="margin:0 0 6px"><input type="search" id="dspQ" placeholder="Buscar packing list o tienda (ej. EMB-0009, S4)…"></div><div id="dspL"></div></div></div>
+  <div class="tools" style="margin:0 0 6px"><input type="search" id="dspQ" placeholder="Buscar lista de empaque o tienda (ej. DSP-0009, S4)…"></div><div id="dspL"></div></div></div>
 <div id="cfgSheet" class="stsheet hide"><div class="stbox"><div class="sthd"><b>Configuración</b><button type="button" id="cfgX" class="btn sec">✕</button></div>
   <div class="cfg-lbl">Efecto de entrada del menú</div><div id="cfgFx" class="cfg-fx"></div>
   <label class="cfg-chk"><input type="checkbox" id="cfgNoMove"><span><b>Sin movimiento</b><small>Detiene solo el giro alrededor de los iconos. Las transiciones y efectos siguen normales. Para detener todo, usa «Sin animación».</small></span></label>
@@ -211,6 +211,7 @@ setTheme(document.documentElement.dataset.theme==='light'?'light':'dark');
 $('tg').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
 let SN={},db,TOK='',IDX={},PL=null,ROWS=[],VIEW=[],SORT={k:'t',d:1},BUSY=false;
 
+const dn=n=>String(n||'').replace(/^EMB-/i,'DSP-');let PLID=null;
 const COLS=[
  {k:'t',h:'Tienda'},{k:'tr',h:'N.º de documento'},{k:'v',h:'Proveedor'},{k:'e',h:'Estilo'},{k:'p',h:'Producto',mono:1},{k:'d',h:'Descripción',w:380},{k:'q',h:'Piezas',n:1},
  {k:'td',h:'Tipo de documento'},{k:'cn',h:'Cliente'},{k:'ty',h:'Tipología'},{k:'rc',h:'Recibo'}
@@ -236,8 +237,8 @@ const norm1=r=>{let v=String(r.v||SP).replace(/\s+/g,' ').trim();
   return{...r,ty:tyN(r.ty),v,rc:r.rc||'',cn:r.cn||String(SN[r.t]||'').toUpperCase(),tr:String(r.tr||'').replace(/\s+/g,''),td:String(r.td||(r.t==='Cristal'?'Proforma':'Transferencia')).replace(/^Pro\s+forma$/i,'Proforma')}};
 
 window.addEventListener('hashchange',()=>{if(TOK)route()});
-function route(){const [t,id]=location.hash.slice(1).split('/');if(t!==TOK)return;
-  if(!id)return showHome();if(id==='_list'){showHome();openDsp();return}if(id==='_docs')return showDocs();if(id==='_prods')return showProds();if(id==='_kpi')return showKpi();openPL(id)}
+function route(){const [t,id,sec]=location.hash.slice(1).split('/');if(t!==TOK)return;
+  if(!id)return showHome();if(id==='_list'){showHome();openDsp();return}if(id==='_docs')return showDocs();if(id==='_prods')return showProds();if(id==='_kpi')return showKpi();openPL(id,sec)}
 function fail(m){$('bk').classList.add('hide');$('sub').textContent='';$('app').innerHTML=`<div class="card msg err"><b>${esc(m)}</b><br><span style="color:var(--mt)">Pide que te reenvíen el enlace.</span></div>`}
 
 async function init(){
@@ -247,24 +248,24 @@ async function init(){
   try{
     const app=initializeApp(FB),auth=getAuth(app);db=getDatabase(app);
     if(!auth.currentUser)await signInAnonymously(auth);
-    IDX=(await get(ref(db,`${CMPB}/${TOK}/idx`))).val()||{};
-    if(!Object.keys(IDX).length){fail('Este enlace no tiene packing list publicados o fue desactivado');return}
+    IDX=(await get(ref(db,`${CMPB}/${TOK}/idx`))).val()||{};Object.values(IDX).forEach(x=>{if(x)x.num=dn(x.num)});
+    if(!Object.keys(IDX).length){fail('Este enlace no tiene lista de empaque publicados o fue desactivado');return}
     route();
   }catch(e){fail('No se pudo abrir ('+(e.code||e.message)+')')}
 }
 
 /* ---------- LISTA (más reciente arriba) ---------- */
 function showList(){
-  PL=null;SEC=null;$('app').classList.remove('sec-one');$('bk').classList.remove('hide');$('bk').textContent='← Menú';$('bk').onclick=()=>{location.hash=TOK};$('ttl').textContent='Despacho · elige el packing list';
+  PL=null;SEC=null;$('app').classList.remove('sec-one');$('bk').classList.remove('hide');$('bk').textContent='← Menú';$('bk').onclick=()=>{location.hash=TOK};$('ttl').textContent='Despacho · elige el lista de empaque';
   const all=Object.entries(IDX).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
-  $('sub').textContent=`${all.length} packing list · ordenados por fecha de despacho, el más reciente primero`;
+  $('sub').textContent=`${all.length} lista de empaque · ordenados por fecha de despacho, el más reciente primero`;
   const tp=all.reduce((a,[,v])=>a+(v.tp||0),0);
   $('app').innerHTML=`<div class="sum">
-      <div><b>${fmt(all.length)}</b><span>Packing list</span></div>
+      <div><b>${fmt(all.length)}</b><span>Lista de empaque</span></div>
       <div><b>${fmt(all.filter(([,v])=>v.st==='R').length)}</b><span>Recibidos</span></div>
       <div><b>${fmt(all.filter(([,v])=>v.st!=='R').length)}</b><span>En tránsito</span></div>
       <div><b>${fmt(tp)}</b><span>Piezas</span></div></div>
-    <div class="tools" style="margin-bottom:14px"><input type="search" id="lq" placeholder="Buscar packing list o tienda (ej. EMB-0009, S4)…">
+    <div class="tools" style="margin-bottom:14px"><input type="search" id="lq" placeholder="Buscar lista de empaque o tienda (ej. DSP-0009, S4)…">
       <select id="ls" style="flex:0 1 200px"><option value="">Todos los estados</option><option value="D">Despachado</option><option value="R">Recibido</option></select></div>
     <div class="tiles" id="lst"></div>`;
   const draw=()=>{const q=norm($('lq').value),s=$('ls').value;
@@ -280,11 +281,11 @@ function showList(){
 }
 
 /* ---------- DETALLE ---------- */
-async function openPL(id){
-  $('app').innerHTML='<div class="card msg">Cargando packing list…</div>';
+async function openPL(id,sec){PLID=id;
+  $('app').innerHTML='<div class="card msg">Cargando lista de empaque…</div>';
   try{const v=(await get(ref(db,`${CMPB}/${TOK}/pl/${id}`))).val();
-    if(!v){fail('Ese packing list ya no está disponible');return}
-    PL=v;SN={};(v.stores||[]).forEach(s=>{if(s.t&&s.tn)SN[s.t]=s.tn});ROWS=Object.values(v.rows||{}).map(norm1);SORT={k:'t',d:1};paintPL()}
+    if(!v){fail('Ese lista de empaque ya no está disponible');return}
+    v.num=dn(v.num);PL=v;SN={};(v.stores||[]).forEach(s=>{if(s.t&&s.tn)SN[s.t]=s.tn});ROWS=Object.values(v.rows||{}).map(norm1);SORT={k:'t',d:1};paintPL();if(sec&&document.querySelector('#app [data-sec="'+sec+'"]'))hmGo(sec)}
   catch(e){fail('No se pudo abrir ('+(e.code||e.message)+')')}
 }
 const grp=(rows,f)=>{const o={};rows.forEach(r=>{const k=f(r),a=o[k]=o[k]||{k,q:0,l:0,rf:new Set()};a.q+=r.q||0;a.l++;if(r.p)a.rf.add(r.p)});return Object.values(o).sort((a,b)=>b.q-a.q)};
@@ -292,7 +293,7 @@ const grp=(rows,f)=>{const o={};rows.forEach(r=>{const k=f(r),a=o[k]=o[k]||{k,q:
 function paintPL(){
   const v=PL,rc=v.st==='R',tp=Math.max(1,v.tp||0);
   $('bk').classList.remove('hide');$('bk').onclick=()=>{location.hash=TOK};
-  $('ttl').textContent=`Packing list ${v.num}`;
+  $('ttl').textContent=`Lista de empaque ${v.num}`;
   $('sub').textContent=`${ST[v.st]||'Despachado'} · despachado ${fdt(v.ts)}${rc?' · recibido '+fdt(v.rts):''}`;
   const refs=new Set(ROWS.map(r=>r.p).filter(Boolean)).size,parc=new Set(ROWS.filter(r=>r.pa).map(r=>r.t+'|'+r.tr)).size;
   const opt=k=>[...new Set(ROWS.map(r=>r[k]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'es',{numeric:true}));
@@ -310,25 +311,29 @@ function paintPL(){
     <div class="info">Informativo: ${fmt(v.tb)} bultos · ${fmt((v.cams||[]).length)} camión(es) · Preparó ${esc(v.prep||'—')} · Despachó ${esc(v.dby||'—')}${rc&&v.rby?' · Recibió '+esc(v.rby):''}</div>
     <div class="tools" style="margin:14px 0 4px"><label style="font-weight:700;font-size:13px">Ver resumen:</label><select id="rsv"><option value="all">Todos</option><option value="tie">Por tienda</option><option value="pro">Por proveedor</option></select></div>
     <div id="rsBody">${RSV.all}</div>
-    ${parc?`<div class="info warn">${parc} transferencia(s) viajaron parcialmente en este packing list (marcadas “Parcial”); sus piezas son las de la transferencia completa.</div>`:''}</div>
+    ${parc?`<div class="info warn">${parc} transferencia(s) viajaron parcialmente en este lista de empaque (marcadas “Parcial”); sus piezas son las de la transferencia completa.</div>`:''}</div>
 
   <div class="card" data-sec="det"><h2>Detalle de productos</h2>
-    <div class="tools"><input type="search" id="q" placeholder="Buscar código, estilo, descripción, proveedor…">${sel('ft','Todas las tiendas',opt('t'))}${sel('fd','Todo tipo de documento',opt('td'))}${sel('fr','Todos los documentos',opt('tr'))}${sel('fy','Toda tipología',opt('ty'))}${sel('fv','Todos los proveedores',opt('v'))}<input type="number" id="fm" min="0" placeholder="Pzas ≥"><button class="btn sec" id="clr">Limpiar</button></div>
+    <div class="tools"><input type="search" id="q" placeholder="Buscar código, estilo, descripción, proveedor…" style="flex:1 1 340px;min-width:240px"><select id="fk"><option value="">Filtrar por: todo</option><option value="t">Tienda</option><option value="td">Tipo de documento</option><option value="tr">N.º de documento</option><option value="ty">Tipología</option><option value="v">Proveedor</option><option value="q">Piezas mínimas</option></select><select id="fx" class="hide"></select><input type="number" id="fm" min="0" placeholder="Pzas ≥" class="hide" style="max-width:110px"><button class="btn sec" id="clr">Limpiar</button></div>
     <div class="cnt" id="cnt"></div>
     <div class="tw"><table><thead><tr id="hd"></tr></thead><tbody id="tb"></tbody><tfoot><tr id="tf"></tr></tfoot></table></div></div>`;
   $('hd').innerHTML=COLS.map(c=>`<th data-k="${c.k}" class="${c.n?'n':''}"${c.w?` style="min-width:${c.w}px"`:''}>${c.h}<span id="ar_${c.k}" style="margin-left:4px"></span></th>`).join('');
   $('hd').onclick=e=>{const th=e.target.closest('th');if(!th)return;const k=th.dataset.k;SORT=SORT.k===k?{k,d:-SORT.d}:{k,d:1};render()};
-  ['q','ft','fd','fr','fy','fv','fm'].forEach(id=>$(id).addEventListener(id==='q'||id==='fm'?'input':'change',render));
-  $('clr').onclick=()=>{['q','ft','fd','fr','fy','fv','fm'].forEach(id=>$(id).value='');render()};
+  const FL={t:'Todas las tiendas',td:'Todos los tipos de documento',tr:'Todos los documentos',ty:'Toda tipología',v:'Todos los proveedores'};
+  const fkSync=()=>{const k=$('fk').value,x=$('fx'),m=$('fm');x.classList.add('hide');m.classList.add('hide');x.innerHTML='';m.value='';
+    if(k==='q')m.classList.remove('hide');else if(k){x.innerHTML=`<option value="">${FL[k]}</option>`+opt(k).map(o=>`<option>${esc(o)}</option>`).join('');x.classList.remove('hide')}};
+  $('fk').addEventListener('change',()=>{fkSync();render()});
+  ['q','fm'].forEach(id=>$(id).addEventListener('input',render));$('fx').addEventListener('change',render);
+  $('clr').onclick=()=>{$('q').value='';$('fk').value='';fkSync();render()};
   $('rsv').onchange=()=>{$('rsBody').innerHTML=RSV[$('rsv').value]};
   $('xl').onclick=excel;$('pdf').onclick=pdf;
   render();hmInit();
 }
 
 function render(){
-  const q=norm($('q').value).split(/\s+/).filter(Boolean),ft=$('ft').value,fr=$('fr').value,fy=$('fy').value,fd=$('fd').value,fv=$('fv').value,fm=+$('fm').value||0;
+  const q=norm($('q').value).split(/\s+/).filter(Boolean),fk=$('fk').value,fx=$('fx').value,fm=+$('fm').value||0;
   VIEW=ROWS.filter(r=>{
-    if(ft&&r.t!==ft)return false;if(fr&&r.tr!==fr)return false;if(fy&&r.ty!==fy)return false;if(fd&&r.td!==fd)return false;if(fv&&r.v!==fv)return false;if(fm&&(r.q||0)<fm)return false;
+    if(fk&&fk!=='q'&&fx&&r[fk]!==fx)return false;if(fk==='q'&&fm&&(r.q||0)<fm)return false;
     if(q.length){const h=norm([r.t,r.tn,r.tr,r.cn,r.td,r.ty,r.rc,r.v,r.e,r.p,r.d,r.u].join(' '));if(!q.every(w=>h.includes(w)))return false}
     return true});
   const k=SORT.k,d=SORT.d,num=COLS.find(c=>c.k===k).n;
@@ -367,8 +372,8 @@ async function excel(){
     const s1=wb.addWorksheet('Resumen',{views:[{showGridLines:false}]});
     s1.columns=[{width:30},{width:26},{width:16},{width:14},{width:14},{width:34}];
     band(s1,1,'REPORTE DE DESPACHO A TIENDAS',6,NAVY,16);
-    band(s1,2,`Packing list ${v.num}  ·  ${ST[v.st]||'Despachado'}`,6,PET,11);
-    const kv=[['Packing list',v.num],['Estado',ST[v.st]||'Despachado'],['Despachado',fdt(v.ts)],['Recibido',v.st==='R'?fdt(v.rts):'—'],['Preparó',v.prep||'—'],['Despachó',v.dby||'—']];
+    band(s1,2,`Lista de empaque ${v.num}  ·  ${ST[v.st]||'Despachado'}`,6,PET,11);
+    const kv=[['Lista de empaque',v.num],['Estado',ST[v.st]||'Despachado'],['Despachado',fdt(v.ts)],['Recibido',v.st==='R'?fdt(v.rts):'—'],['Preparó',v.prep||'—'],['Despachó',v.dby||'—']];
     kv.forEach(([k,x],i)=>{const r=4+i;const a=s1.getCell(r,1),c=s1.getCell(r,2);a.value=k;a.font={bold:true,color:{argb:GR}};a.fill=fill(LIGHT);a.border=bd;c.value=x;c.border=bd;c.alignment={horizontal:'left'};s1.mergeCells(r,2,r,3)});
     let r=11;sub(s1,r,'Indicadores',6);r++;
     head(s1,r,['Indicador','Valor']);r++;
@@ -384,24 +389,24 @@ async function excel(){
     r+=1;sub(s1,r,'Por tipología',6);r++;
     head(s1,r,['Tipología','','Líneas','Piezas','% del total','']);s1.mergeCells(r,1,r,2);r++;
     grp(ROWS,x=>x.ty).forEach((g,i)=>{body(s1,r,[g.k,'',g.l,g.q,g.q/tp,''],[null,null,'#,##0','#,##0','0.0%',null],i);s1.mergeCells(r,1,r,2);r++});
-    if(ROWS.some(x=>x.pa)){r+=1;const c=s1.getCell(r,1);s1.mergeCells(r,1,r,6);c.value='Nota: hay transferencias enviadas parcialmente en este packing list; sus piezas corresponden a la transferencia completa.';c.font={italic:true,color:{argb:'FFA3261B'},size:10}}
+    if(ROWS.some(x=>x.pa)){r+=1;const c=s1.getCell(r,1);s1.mergeCells(r,1,r,6);c.value='Nota: hay transferencias enviadas parcialmente en este lista de empaque; sus piezas corresponden a la transferencia completa.';c.font={italic:true,color:{argb:'FFA3261B'},size:10}}
     s1.pageSetup={orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,paperSize:9};
 
     /* Hoja 2: Productos (filtros + congelado) */
     const s2=wb.addWorksheet('Productos',{views:[{state:'frozen',ySplit:4,showGridLines:false}]});
-    const H=['Tienda','Tipo de documento','N.º de documento','Cliente','Tipología','Recibo','Proveedor','Estilo','Producto','Descripción','Código barras','Piezas'];
-    s2.columns=[{width:11},{width:21},{width:24},{width:32},{width:14},{width:12},{width:34},{width:16},{width:13},{width:52},{width:18},{width:11}];
-    band(s2,1,`Packing list ${v.num} · Detalle de productos`,12,NAVY,14);
-    s2.mergeCells(2,1,2,12);const t2=s2.getCell(2,1);t2.value=`${ST[v.st]||'Despachado'} · despachado ${fdt(v.ts)}${v.st==='R'?' · recibido '+fdt(v.rts):''}  ·  ${fmt(rowsAll.length)} líneas`;t2.font={italic:true,color:{argb:GR},size:10};
+    const H=['Tienda','N.º de documento','Proveedor','Estilo','Producto','Descripción','Piezas','Tipo de documento','Cliente','Tipología','Recibo'];
+    s2.columns=[{width:11},{width:24},{width:34},{width:16},{width:13},{width:60},{width:10},{width:21},{width:32},{width:14},{width:12}];
+    band(s2,1,`Lista de empaque ${v.num} · Detalle de productos`,11,NAVY,14);
+    s2.mergeCells(2,1,2,11);const t2=s2.getCell(2,1);t2.value=`${ST[v.st]||'Despachado'} · despachado ${fdt(v.ts)}${v.st==='R'?' · recibido '+fdt(v.rts):''}  ·  ${fmt(rowsAll.length)} líneas`;t2.font={italic:true,color:{argb:GR},size:10};
     head(s2,4,H,'left');
-    rowsAll.forEach((x,i)=>body(s2,5+i,[x.t,x.td||'—',String(x.tr||'—'),x.cn||'',x.ty,x.rc||'—',x.v,x.e||'',String(x.p||''),x.d||'',String(x.u||''),x.q||0],[null,null,'@',null,null,null,null,null,'@',null,'@','#,##0'],i));
+    rowsAll.forEach((x,i)=>body(s2,5+i,[x.t,String(x.tr||'—'),x.v,x.e||'',String(x.p||''),x.d||'',x.q||0,x.td||'—',x.cn||'',x.ty,x.rc||'—'],[null,'@',null,null,'@',null,'#,##0',null,null,null,null],i));
     const last=4+rowsAll.length;
-    total(s2,last+1,['TOTAL','','','','','','','','','','',{formula:`SUBTOTAL(109,L5:L${last})`,result:rowsAll.reduce((a,x)=>a+(x.q||0),0)}],[null,null,null,null,null,null,null,null,null,null,null,'#,##0']);
-    s2.autoFilter={from:{row:4,column:1},to:{row:Math.max(5,last),column:12}};
+    total(s2,last+1,['TOTAL','','','','','',{formula:`SUBTOTAL(109,G5:G${last})`,result:rowsAll.reduce((a,x)=>a+(x.q||0),0)},'','','',''],[null,null,null,null,null,null,'#,##0',null,null,null,null]);
+    s2.autoFilter={from:{row:4,column:1},to:{row:Math.max(5,last),column:11}};
     s2.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,paperSize:9,printTitlesRow:'4:4'};
 
     const buf=await wb.xlsx.writeBuffer(),url=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),a=document.createElement('a');
-    a.href=url;a.download=`packing_list_${v.num}.xlsx`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1500);
+    a.href=url;a.download=`lista_empaque_${v.num}.xlsx`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1500);
   }catch(e){alert('No se pudo generar el Excel: '+(e.message||e))}
   b.disabled=false;
 }
@@ -416,12 +421,12 @@ function pdf(){
   // Banner
   doc.setFillColor(...NAVY);doc.rect(0,0,W,26,'F');doc.setFillColor(...PET);doc.rect(0,26,W,1.6,'F');
   doc.setTextColor(255);doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text('Reporte de Despacho a Tiendas',M,12);
-  doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.text(`Packing list ${v.num}   |   ${ST[v.st]||'Despachado'}`,M,20);
+  doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.text(`Lista de empaque ${v.num}   |   ${ST[v.st]||'Despachado'}`,M,20);
   doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('WESTLAND',W-M,12,{align:'right'});doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text('Logística · Compras',W-M,18,{align:'right'});
   // Parámetros
   const lab={fontStyle:'bold',fillColor:LT,textColor:GR,cellWidth:34},val={cellWidth:'auto'};
   doc.autoTable({...base,startY:33,theme:'grid',head:[],body:[
-    [{content:'Packing list',styles:lab},v.num,{content:'Estado',styles:lab},ST[v.st]||'Despachado',{content:'Preparó',styles:lab},v.prep||'-'],
+    [{content:'Lista de empaque',styles:lab},v.num,{content:'Estado',styles:lab},ST[v.st]||'Despachado',{content:'Preparó',styles:lab},v.prep||'-'],
     [{content:'Despachado',styles:lab},fdt(v.ts),{content:'Recibido',styles:lab},v.st==='R'?fdt(v.rts):'-',{content:'Despachó',styles:lab},v.dby||'-'],
     [{content:'Bultos (informativo)',styles:lab},fmt(v.tb),{content:'Camiones (informativo)',styles:lab},fmt((v.cams||[]).length),{content:'Recibió',styles:lab},v.st==='R'?(v.rby||'-'):'-']
   ],margin:{left:M,right:M}});
@@ -431,7 +436,7 @@ function pdf(){
     doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text(n,x+kw/2,y+10,{align:'center'});doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...GR);doc.text(l.toUpperCase(),x+kw/2,y+15,{align:'center'})});
   y+=22;
   const parc=new Set(ROWS.filter(r=>r.pa).map(r=>r.t+'|'+r.tr)).size;
-  if(parc){doc.setFontSize(8);doc.setTextColor(163,38,27);doc.text(`Nota: ${parc} transferencia(s) viajaron parcialmente en este packing list; sus piezas son las de la transferencia completa.`,M,y);y+=4}
+  if(parc){doc.setFontSize(8);doc.setTextColor(163,38,27);doc.text(`Nota: ${parc} transferencia(s) viajaron parcialmente en este lista de empaque; sus piezas son las de la transferencia completa.`,M,y);y+=4}
   // Distribución por tienda (con barra de % real)
   doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Distribución por tienda',M,y+3);
   const pcs=v.stores.map(s=>(s.pz||0)/tp);
@@ -452,18 +457,18 @@ function pdf(){
   doc.addPage();
   const rows=sortRows(ROWS),stores=[...new Set(rows.map(r=>r.t))],body=[];
   stores.forEach(t=>{const rs=rows.filter(r=>r.t===t),sum=rs.reduce((a,r)=>a+(r.q||0),0),tn=(rs[0]||{}).tn;
-    body.push([{content:`Tienda ${t}${tn?' · '+tn:''}`,colSpan:11,styles:{fillColor:PET,textColor:255,fontStyle:'bold',halign:'left'}}]);
-    rs.forEach(r=>body.push([r.td||'-',(r.tr||'-')+(r.pa?' (parcial)':''),r.cn||'',r.ty,r.rc||'-',r.v,r.e||'',String(r.p||''),r.d||'',String(r.u||''),{content:fmt(r.q),styles:{halign:'right'}}]));
-    body.push([{content:`Subtotal ${t}  (${fmt(rs.length)} líneas)`,colSpan:10,styles:{halign:'right',fontStyle:'bold',fillColor:LT}},{content:fmt(sum),styles:{halign:'right',fontStyle:'bold',fillColor:LT}}])});
-  body.push([{content:`TOTAL GENERAL  (${fmt(rows.length)} líneas)`,colSpan:10,styles:{halign:'right',fontStyle:'bold',fillColor:NAVY,textColor:255}},{content:fmt(rows.reduce((a,r)=>a+(r.q||0),0)),styles:{halign:'right',fontStyle:'bold',fillColor:NAVY,textColor:255}}]);
+    body.push([{content:`Tienda ${t}${tn?' · '+tn:''}`,colSpan:10,styles:{fillColor:PET,textColor:255,fontStyle:'bold',halign:'left'}}]);
+    rs.forEach(r=>body.push([(r.tr||'-')+(r.pa?' (parcial)':''),r.v,r.e||'',String(r.p||''),r.d||'',{content:fmt(r.q),styles:{halign:'right'}},r.td||'-',r.cn||'',r.ty,r.rc||'-']));
+    body.push([{content:`Subtotal ${t}  (${fmt(rs.length)} líneas)`,colSpan:5,styles:{halign:'right',fontStyle:'bold',fillColor:LT}},{content:fmt(sum),styles:{halign:'right',fontStyle:'bold',fillColor:LT}},{content:'',colSpan:4,styles:{fillColor:LT}}])});
+  body.push([{content:`TOTAL GENERAL  (${fmt(rows.length)} líneas)`,colSpan:5,styles:{halign:'right',fontStyle:'bold',fillColor:NAVY,textColor:255}},{content:fmt(rows.reduce((a,r)=>a+(r.q||0),0)),styles:{halign:'right',fontStyle:'bold',fillColor:NAVY,textColor:255}},{content:'',colSpan:4,styles:{fillColor:NAVY}}]);
   doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Detalle de productos',M,15);
-  doc.autoTable({...base,startY:18,head:[['Tipo de documento','N.º de documento','Cliente','Tipología','Recibo','Proveedor','Estilo','Producto','Descripción','Código barras','Piezas']],body,
+  doc.autoTable({...base,startY:18,head:[['N.º de documento','Proveedor','Estilo','Producto','Descripción','Piezas','Tipo de documento','Cliente','Tipología','Recibo']],body,
     styles:{...base.styles,fontSize:7.6,cellPadding:1.4},alternateRowStyles:{},showHead:'everyPage',rowPageBreak:'avoid',
-    columnStyles:{0:{cellWidth:20},1:{cellWidth:22},2:{cellWidth:28},3:{cellWidth:20},4:{cellWidth:14},5:{cellWidth:28},6:{cellWidth:19},7:{cellWidth:16},8:{cellWidth:'auto'},9:{cellWidth:23},10:{cellWidth:13,halign:'right'}}});
+    columnStyles:{0:{cellWidth:24},1:{cellWidth:36},2:{cellWidth:20},3:{cellWidth:17},4:{cellWidth:'auto'},5:{cellWidth:13,halign:'right'},6:{cellWidth:20},7:{cellWidth:30},8:{cellWidth:17},9:{cellWidth:14}}});
   // Encabezado/pie en todas las páginas
   const n=doc.getNumberOfPages(),gen=fdt(Date.now());
   for(let i=1;i<=n;i++){doc.setPage(i);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...GR);
-    if(i>1){doc.text(`Reporte de Despacho a Tiendas  |  Packing list ${v.num}`,M,9);doc.text('WESTLAND',W-M,9,{align:'right'});doc.setDrawColor(...PET);doc.setLineWidth(.5);doc.line(M,11,W-M,11)}
+    if(i>1){doc.text(`Reporte de Despacho a Tiendas  |  Lista de empaque ${v.num}`,M,9);doc.text('WESTLAND',W-M,9,{align:'right'});doc.setDrawColor(...PET);doc.setLineWidth(.5);doc.line(M,11,W-M,11)}
     doc.setDrawColor(201,214,228);doc.setLineWidth(.2);doc.line(M,201,W-M,201);doc.text(`Generado el ${gen}  |  Documento de solo lectura`,M,205);doc.text(`Página ${i} de ${n}`,W-M,205,{align:'right'})}
   doc.save(`reporte_despacho_${v.num}.pdf`);
 }
@@ -482,7 +487,7 @@ const HM_LIST=[
   {s:'Exportar',it:[['xl','Excel','Descargar .xlsx'],['pdf','PDF','Descargar .pdf']]}];
 let SEC=null;
 function hmDraw(){const hm=$('hm');if(!hm||!PL)return;let n=0;
-  hm.innerHTML=`<div class="hm-hero"><div class="hm-hi">Menú</div><div class="hm-sub">Packing list <b>${esc(PL.num)}</b> · elige qué quieres ver</div></div>`+
+  hm.innerHTML=`<div class="hm-hero"><div class="hm-hi">Menú</div><div class="hm-sub">Lista de empaque <b>${esc(PL.num)}</b> · elige qué quieres ver</div></div>`+
     HM_LIST.map((g,gi)=>`<div class="hm-st" style="--i:${gi}">${g.s}</div><div class="hm-grid">${g.it.map(([k,t,sm])=>`<button type="button" class="hm-it" style="--i:${n++}" data-hm="${k}"><span class="hm-ring">${HM_ORB}<span class="hm-ic"><svg viewBox="0 0 24 24">${HM_ICO[k]}</svg></span></span><span class="hm-lb">${t}</span><small class="hm-sm">${sm}</small></button>`).join('')}</div>`).join('')}
 function hmSecs(k){document.querySelectorAll('#app [data-sec]').forEach(e=>e.classList.toggle('hide',e.dataset.sec!==k))}
 function hmInit(){SEC=null;
@@ -490,10 +495,10 @@ function hmInit(){SEC=null;
   hmSecs(null);$('app').classList.remove('sec-one');hmDraw();
   $('bk').textContent='← Inicio';
   $('bk').onclick=()=>{if(SEC)hmBack();else location.hash=TOK}}
-function hmBack(){SEC=null;hmSecs(null);$('app').classList.remove('sec-one');$('hm').classList.remove('hide');$('bk').textContent='← Inicio';scrollTo(0,0)}
+function hmBack(){SEC=null;try{history.replaceState(null,'','#'+TOK+'/'+PLID)}catch(e){}hmSecs(null);$('app').classList.remove('sec-one');$('hm').classList.remove('hide');$('bk').textContent='← Inicio';scrollTo(0,0)}
 function hmGo(k,btn){
   if(k==='xl'||k==='pdf'){if(btn){btn.classList.add('busy');setTimeout(()=>btn.classList.remove('busy'),2500)}$(k).click();return}
-  SEC=k;$('hm').classList.add('hide');hmSecs(k);$('app').classList.add('sec-one');$('bk').textContent='← Menú';scrollTo(0,0)}
+  SEC=k;try{history.replaceState(null,'','#'+TOK+'/'+PLID+'/'+k)}catch(e){}$('hm').classList.add('hide');hmSecs(k);$('app').classList.add('sec-one');$('bk').textContent='← Menú';scrollTo(0,0)}
 $('app').addEventListener('click',e=>{const b=e.target.closest('[data-hm]');if(b)hmGo(b.dataset.hm,b)});
 const FXS=[['arc','Media luna','Salen juntos, suben en arco y caen en su lugar'],['slide','Deslizar','Uno por uno desde la izquierda'],['roll','Rodar','Uno por uno, rodando como rueda'],['drop','Caída con rebote','Caen desde arriba y rebotan al llegar'],['zoom','Zoom','Crecen desde el centro, en cascada'],['flip','Giro 3D','Giran como una puerta y se abren'],['fan','Abanico','Se abren en abanico desde la esquina izquierda'],['fade','Transición suave','Aparece con desvanecimiento, sin movimiento'],['none','Sin animación','Entra directo; ideal para equipos lentos']];
 const cfgPaint=()=>{const cur=document.documentElement.dataset.fx||'arc';$('cfgFx').innerHTML=FXS.map(([k,n,d])=>`<button type="button" data-fxk="${k}" class="${cur===k?'on':''}">${n}<small>${d}</small></button>`).join('')};
@@ -512,7 +517,7 @@ const HM_ICO2={
   prods:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
   kpi:'<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/><circle cx="12" cy="18" r="1.2"/><path d="M6.3 11.3l1 1M12 7.5v1.4M17.7 11.3l-1 1"/>'};
 const HOME_LIST=[
-  {s:'Despacho',it:[['desp','Despacho','Elige el despacho (packing list)']]},
+  {s:'Despacho',it:[['desp','Despacho','Elige el despacho (lista de empaque)']]},
   {s:'Indicadores',it:[['kpi','KPIs','Gráficos y totales']]}];
 function resetView(){PL=null;SEC=null;$('app').classList.remove('sec-one')}
 function showHome(){resetView();$('bk').classList.add('hide');$('ttl').textContent='Bienvenido';$('sub').textContent='¿Qué quieres consultar hoy?';
@@ -551,8 +556,8 @@ async function showDocs(){
   const m=new Map();
   A.forEach(r=>{const k=r.td+'|'+r.tr+'|'+r.t;let o=m.get(k);if(!o){o={td:r.td,tr:r.tr,t:r.t,cn:r.cn,q:0,pl:new Map(),pa:false};m.set(k,o)}o.q+=r.q||0;o.pl.set(r.pid,r.pn);if(r.pa)o.pa=true});
   const D=[...m.values()],tipos=[...new Set(D.map(x=>x.td))].sort();
-  $('app').innerHTML=`<div class="card"><div class="tools"><input type="search" id="dq" placeholder="Buscar n.º de documento, tienda, cliente o packing list…"><select id="dt"><option value="">Todos los tipos</option>${tipos.map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
-    <div class="cnt" id="dcnt"></div><div class="tw"><table style="min-width:760px"><thead><tr><th>Tipo</th><th>N.º documento</th><th>Tienda</th><th>Cliente</th><th class="n">Piezas</th><th>Packing list</th></tr></thead><tbody id="dtb"></tbody></table></div></div>`;
+  $('app').innerHTML=`<div class="card"><div class="tools"><input type="search" id="dq" placeholder="Buscar n.º de documento, tienda, cliente o lista de empaque…"><select id="dt"><option value="">Todos los tipos</option>${tipos.map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
+    <div class="cnt" id="dcnt"></div><div class="tw"><table style="min-width:760px"><thead><tr><th>Tipo</th><th>N.º documento</th><th>Tienda</th><th>Cliente</th><th class="n">Piezas</th><th>Lista de empaque</th></tr></thead><tbody id="dtb"></tbody></table></div></div>`;
   const draw=()=>{const q=norm($('dq').value).split(/\s+/).filter(Boolean),ty=$('dt').value;
     const R=D.filter(x=>(!ty||x.td===ty)&&(!q.length||q.every(w=>norm([x.tr,x.t,x.cn,x.td,[...x.pl.values()].join(' ')].join(' ')).includes(w))))
       .sort((a,b)=>String(a.td).localeCompare(String(b.td))||String(b.tr).localeCompare(String(a.tr),'es',{numeric:true}));
@@ -565,7 +570,7 @@ async function showProds(){
   subView('Productos','Busca un producto en todos los despachos');
   const A=await loadAll();if(!here('_prods'))return;
   $('app').innerHTML=`<div class="card"><div class="tools"><input type="search" id="pq" placeholder="Código, estilo, descripción o código de barras…"></div>
-    <div class="cnt" id="pcnt"></div><div class="tw"><table style="min-width:860px"><thead><tr><th>Producto</th><th>Estilo</th><th>Descripción</th><th>Tienda</th><th>Documento</th><th class="n">Piezas</th><th>Packing list</th></tr></thead><tbody id="ptb"></tbody></table></div></div>`;
+    <div class="cnt" id="pcnt"></div><div class="tw"><table style="min-width:860px"><thead><tr><th>Producto</th><th>Estilo</th><th>Descripción</th><th>Tienda</th><th>Documento</th><th class="n">Piezas</th><th>Lista de empaque</th></tr></thead><tbody id="ptb"></tbody></table></div></div>`;
   const draw=()=>{const q=norm($('pq').value).split(/\s+/).filter(Boolean);
     if(!q.length){$('pcnt').textContent=`${fmt(A.length)} líneas en ${fmt(Object.keys(IDX).length)} despachos · escribe para buscar`;$('ptb').innerHTML='<tr><td colspan="7" class="msg">Escribe un código, estilo o descripción</td></tr>';return}
     const R=A.filter(r=>q.every(w=>norm([r.p,r.e,r.d,r.u].join(' ')).includes(w)));

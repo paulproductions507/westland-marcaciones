@@ -575,7 +575,7 @@ async function showRecList(){
   const ids=allIds.filter(id=>dn(id)===(recTab==='c')).sort((a,b)=>{const p=(isPs(b)?1:0)-(isPs(a)?1:0);if(p)return p;const fd=id=>FECHAS[id]||'',nm=(x,y)=>String(y).localeCompare(String(x),undefined,{numeric:true});
     if(recSort==='old')return fd(a).localeCompare(fd(b))||nm(b,a);if(recSort==='prov')return (PROV[a]||'~').localeCompare(PROV[b]||'~','es')||nm(b,a);if(recSort==='num')return nm(a,b);return fd(b).localeCompare(fd(a))||nm(a,b)});
   if(!ids.length){$('recList').innerHTML=`<div class="msg">${recTab==='c'?'Aún no hay recibos completados.':'No hay recibos en proceso.'}</div>`;return}
-  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1">${PROV[id]?`<div class="sora" style="font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:27px;font-weight:800;color:#fff;line-height:1.15;margin-bottom:4px;letter-spacing:-.01em">${esc(PROV[id])}</div>`:'<div class="msg" style="margin:0 0 4px;color:var(--wn)">Sin proveedor</div>'}<div class="lbl">Recibo</div><div class="sora" style="font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:26px;font-weight:800;letter-spacing:-.01em;color:var(--ac)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos · ${fmt(it.reduce((a,x)=>a+(x.rec||0),0))} piezas</div>${COMP[id]?`<div class="msg" style="margin:2px 0 0">✔ Completado · ${fdt(COMP[id].ts)} · ${esc(COMP[id].n||'')}</div>`:PSD[id]?'<div class="msg" style="margin:2px 0 0">✔ Completado · 100% surtido y despachado</div>':''}<div class="msg" id="ri-${id}" style="margin:2px 0 0;color:var(--tx)">Ítems …</div><div class="msg" id="rp-${id}" style="margin:2px 0 0;color:var(--tx)"></div>${RECDEP[id]?`<div class="msg" style="margin:2px 0 0">🏷 Departamento: <b>${esc(RECDEP[id])}</b></div>`:''}<div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}</div></div><div style="text-align:right;display:flex;gap:14px"><div><div class="big" id="ra-${id}" style="font:800 22px 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--ac)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar" style="height:16px;margin-top:10px"><i id="rb-${id}" style="width:0"></i></div><div class="bar" style="height:16px;margin-top:6px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">${COMP[id]?`<button class="btn sm" data-reopenrec="${id}">↩ Reabrir</button>`:''}<button class="btn sm" data-fecharec="${id}">📅 Fecha y departamento</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
+  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1">${PROV[id]?`<div class="sora" style="font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:27px;font-weight:800;color:#fff;line-height:1.15;margin-bottom:4px;letter-spacing:-.01em">${esc(PROV[id])}</div>`:'<div class="msg" style="margin:0 0 4px;color:var(--wn)">Sin proveedor</div>'}<div class="lbl">Recibo</div><div class="sora" style="font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:26px;font-weight:800;letter-spacing:-.01em;color:var(--tx)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos · ${fmt(it.reduce((a,x)=>a+(x.rec||0),0))} piezas</div>${COMP[id]?`<div class="msg" style="margin:2px 0 0">✔ Completado · ${fdt(COMP[id].ts)} · ${esc(COMP[id].n||'')}</div>`:PSD[id]?'<div class="msg" style="margin:2px 0 0">✔ Completado · 100% surtido y despachado</div>':''}<div class="msg" id="ri-${id}" style="margin:2px 0 0;color:var(--tx)">Ítems …</div><div class="msg" id="rp-${id}" style="margin:2px 0 0;color:var(--tx)"></div>${RECDEP[id]?`<div class="msg" style="margin:2px 0 0">🏷 Departamento: <b>${esc(RECDEP[id])}</b></div>`:''}<div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}${FDSP[id]?' · 🚚 Despacho: '+fdate(FDSP[id]):''}</div></div><div style="text-align:right;display:flex;gap:14px"><div><div class="big" id="ra-${id}" style="font:800 22px 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--tx)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar" style="height:16px;margin-top:10px"><i id="rb-${id}" style="width:0;background:var(--tx)"></i></div><div class="bar" style="height:16px;margin-top:6px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">${COMP[id]?`<button class="btn sm" data-reopenrec="${id}">↩ Reabrir</button>`:''}<button class="btn sm" data-fecharec="${id}">📅 Fecha y departamento</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
   const GP={};let PROG={};try{PROG=(await get(R(db,'meta_v1/consultas_prog'))).val()||{}}catch(e){}
   for(const id of ids){try{let g=PROG[id];
     if(!g||g.si===undefined||g.A===undefined){ // primera vez para este recibo: se calcula una sola vez y se guarda el resumen
@@ -598,8 +598,9 @@ $('recList').addEventListener('click',async e=>{
   if(ro){e.stopPropagation();const id=ro.dataset.reopenrec;if(!confirm(`¿Reabrir el recibo ${id}? Vuelve a la lista En proceso.`))return;try{await remove(R(db,'meta_v1/consultas_comp/'+id));delete COMP[id];recTab='a';toast('Recibo reabierto');showRecList()}catch(err){toast('Error: '+(err.code||err.message))}return}
   const fe=e.target.closest('[data-fecharec]');
   if(fe){e.stopPropagation();const id=fe.dataset.fecharec;const dl=[...new Set([...Object.values(RECDEP),'JUGUETERIA','CALZADO','CABALLERO','DAMAS','NIÑOS'])];
-    ask('Fecha y departamento · recibo '+id,[{k:'f',label:'Fecha de ingreso',type:'date',value:FECHAS[id]||''},{k:'dp',label:'Departamento',type:'text',value:RECDEP[id]||'',ph:'Ej. JUGUETERIA',list:dl}],'Guardar',async v=>{
+    ask('Fecha y departamento · recibo '+id,[{k:'f',label:'Fecha de ingreso',type:'date',value:FECHAS[id]||''},{k:'fd',label:'Fecha de despacho (las piezas surtidas cuentan en esta fecha)',type:'date',value:FDSP[id]||''},{k:'dp',label:'Departamento',type:'text',value:RECDEP[id]||'',ph:'Ej. JUGUETERIA',list:dl}],'Guardar',async v=>{
       try{if(v.f){await set(R(db,'meta_v1/consultas_fechas/'+id),v.f);FECHAS[id]=v.f}
+        if(v.fd){await set(R(db,'meta_v1/consultas_fdsp/'+id),v.fd);FDSP[id]=v.fd}else if(FDSP[id]){await remove(R(db,'meta_v1/consultas_fdsp/'+id));delete FDSP[id]}
         const d=(v.dp||'').trim().toUpperCase();if(d){await set(R(db,'meta_v1/consultas_dep/'+id),d);RECDEP[id]=d}else if(RECDEP[id]){await remove(R(db,'meta_v1/consultas_dep/'+id));delete RECDEP[id]}
         STC={};showRecList()}catch(err){toast('Error: '+(err.code||err.message));return false}});return}
   const d=e.target.closest('[data-delrec]');
@@ -626,7 +627,7 @@ function startTemp(){const t=getTemp();if(!t||STARTED)return;STARTED=true;TEMP=t
   $('who').textContent=`${NAME} · Temporal`;
   if(!$('tmpOut')){const a=document.createElement('a');a.id='tmpOut';a.href='#';a.textContent='salir';a.style.cssText='font-size:10px;opacity:.6;margin-right:8px;color:inherit';$('verTag').after(a);
     a.onclick=async ev=>{ev.preventDefault();if(!confirm('¿Salir del modo temporal?'))return;try{localStorage.removeItem(TKEY)}catch(err){}try{if(auth.currentUser&&auth.currentUser.isAnonymous)await signOut(auth)}catch(err){}location.reload()}}
-  $('gate').classList.add('hide');$('app').classList.remove('hide');startCtrl();showRecList();showHome()}
+  $('gate').classList.add('hide');$('app').classList.remove('hide');startCtrl();showRecList();showHome();navRestore()}
 $('gtemp').onclick=e=>{e.preventDefault();if(!$('gpick').innerHTML)openTempPicker()};
 onAuthStateChanged(auth,async u=>{
   if(STARTED)return;
@@ -643,7 +644,7 @@ onAuthStateChanged(auth,async u=>{
   try{const s=await get(R(db,'users_v1'));if(s.exists()){const m=Object.values(s.val()).find(x=>x&&x.user===USER);if(m&&m.nombre)NAME=m.nombre}}catch(e){}
   $('who').textContent=`${NAME} · ${ISADM?'Administrador':'Surtidor'}`;
   $('gate').classList.add('hide');$('app').classList.remove('hide');startCtrl();
-  showRecList();showHome();
+  showRecList();showHome();navRestore();
   if(ISADM)setTimeout(histMig,3000);
 });
 
@@ -1041,15 +1042,16 @@ function startCtrl(){if(_ctrlOn)return;_ctrlOn=true;let first=true,seen=0;
 let ONLINE=true;onValue(R(db,'.info/connected'),s=>{ONLINE=!!s.val()},()=>{});
 const NOCON='⛔ Sin conexión: espera a que vuelva para no duplicar surtidos';
 const LUKEY='cons_lu_v2';let _sigOn=false;
-function luApply(d){FECHAS=d.f||{};COMP=d.c||{};RECDEP=d.dep||{};const v=d.v||{};
+function luApply(d){FDSP=d.fd||{};FECHAS=d.f||{};COMP=d.c||{};RECDEP=d.dep||{};const v=d.v||{};
   for(const id of Object.keys(v)){if(BUILTIN.has(id)){const bi=Object.values((v[id]&&v[id].items)||{});if(bi.length&&RECS[id])RECS[id].items=bi.sort((a,b)=>(a.n||0)-(b.n||0)).map(x=>({...x,s:x.s||{}}));continue}const it=Object.values(v[id].items||{}).sort((a,b)=>(a.n||0)-(b.n||0));RECS[id]={items:it.map(x=>({...x,s:x.s||{}})),up:true}}
   for(const id of Object.keys(RECS)){if(!BUILTIN.has(id)&&!(id in v))delete RECS[id]}}
 async function loadUploaded(force){
   let sig=0;try{sig=(await get(R(db,'meta_v1/consultas_sig'))).val()||0}catch(e){}
   if(!sig){sig=Date.now();MYSIG=sig;try{await fbSet(R(db,'meta_v1/consultas_sig'),sig)}catch(e){}}
   if(!force){try{const k=JSON.parse(localStorage.getItem(LUKEY)||'null');if(k&&k.sig===sig&&Date.now()-k.t<6*3600e3){luApply(k.d);startSig(sig);return}}catch(e){}}
-  const d={f:{},c:{},dep:{},v:{}};
+  const d={f:{},c:{},dep:{},v:{},fd:{}};
   try{d.f=(await get(R(db,'meta_v1/consultas_fechas'))).val()||{}}catch(e){}
+  try{d.fd=(await get(R(db,'meta_v1/consultas_fdsp'))).val()||{}}catch(e){}
   try{d.c=(await get(R(db,'meta_v1/consultas_comp'))).val()||{}}catch(e){}
   try{d.dep=(await get(R(db,'meta_v1/consultas_dep'))).val()||{}}catch(e){}
   try{d.v=(await get(R(db,'meta_v1/consultas_recs'))).val()||{}}catch(e){}
@@ -1271,7 +1273,7 @@ async function saveBultos(key){
 
 
 // ---------- Fechas y ventana de captura ----------
-let FECHAS={},askCb=null,dspWhen=null,COMP={},recTab='a',recSort=(()=>{try{return localStorage.getItem('recSort')||'new'}catch(e){return'new'}})(),PROV={},RECDEP={};
+let FDSP={},FECHAS={},askCb=null,dspWhen=null,COMP={},recTab='a',recSort=(()=>{try{return localStorage.getItem('recSort')||'new'}catch(e){return'new'}})(),PROV={},RECDEP={};
 const nowLocal=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
 const toLocalIn=ts=>{const d=new Date(ts);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
 const fdate=f=>{const d=new Date(f+'T00:00:00');return isNaN(d)?f:d.toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'})};
@@ -1395,7 +1397,7 @@ async function openStat(){
 }
 async function statLoad(force){
   await loadUploaded();await autoProv();const now=Date.now();
-  await Promise.all(Object.keys(RECS).map(async id=>{if(!force&&STC[id]&&now-STC[id].t<300000)return;try{const [a,b]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);STC[id]={log:a.val()||{},desp:b.val()||{},t:now}}catch(e){STC[id]={log:{},desp:{},t:now}}}));
+  await Promise.all(Object.keys(RECS).map(async id=>{if(!force&&STC[id]&&now-STC[id].t<300000)return;try{const [a,b,c2]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`)),get(R(db,`meta_v1/consultas/${id}/dsps`))]);STC[id]={log:a.val()||{},desp:b.val()||{},dsps:c2.val()||{},t:now}}catch(e){STC[id]={log:{},desp:{},dsps:{},t:now}}}));
   if(force||!STERRT||now-STERRT>300000){try{STERR=Object.values((await get(R(db,'meta_v1/consultas_err'))).val()||{})}catch(e){STERR=[]}STERRT=now}
   buildEv()
 }
@@ -1404,10 +1406,11 @@ function buildEv(){
   const sv=[],dv=[],DM={};for(const id of Object.keys(RECS)){if(!isPs(id))for(const x of RECS[id].items){const d0=RECDEP[id]||x.dep;if(d0&&!DM[x.p])DM[x.p]=d0}}
   for(const k in PSEUDO)for(const x of (RECS[k]?RECS[k].items:[]))if(x.dep&&!DM[x.p])DM[x.p]=x.dep;
   for(const id of Object.keys(RECS)){const c=STC[id];if(!c)continue;const it=RECS[id].items,by=Object.fromEntries(it.map(x=>[x.p,x])),st=storesFor(it),prov=PROV[id]||'',sp={};
-    const mp=new Set();
-    for(const e of Object.values(c.log||{})){if(e.mir){mp.add(e.p);continue}const q=e.q||0;sp[e.p+'|'+e.t]=(sp[e.p+'|'+e.t]||0)+q;const x=by[e.p];sv.push({id,prov,p:e.p,r:e.r||(x&&x.ref)||'',ds:(x&&x.d)||'',dep:RECDEP[id]||(x&&x.dep)||DM[e.p]||'Sin departamento',h:e.au?1:0,t:e.t,q,b:0,u:e.n||e.u||'—',uu:e.u||'',d:e.d||'',ts:e.ts||0,tr:e.tr||''})}
+    const mp=new Set(),fd=FDSP[id]||'',dk={};
+    if(fd)for(const dd0 of Object.values(c.dsps||{}))for(const i of Object.values(dd0.items||{}))if(i.key)dk[i.key]=dd0.d||fd;
+    for(const e of Object.values(c.log||{})){if(e.mir){mp.add(e.p);continue}const q=e.q||0;sp[e.p+'|'+e.t]=(sp[e.p+'|'+e.t]||0)+q;const x=by[e.p];sv.push({id,prov,p:e.p,r:e.r||(x&&x.ref)||'',ds:(x&&x.d)||'',dep:RECDEP[id]||(x&&x.dep)||DM[e.p]||'Sin departamento',h:e.au?1:0,t:e.t,q,b:0,u:e.n||e.u||'—',uu:e.u||'',d:fd?(dk[e.t+'_'+(e.tr||'sin')]||fd):(e.d||''),ts:e.ts||0,tr:e.tr||''})}
     for(const [p,dd] of Object.entries(c.desp||{})){const x=by[p];if(!x)continue;const bu=dd.b!=null?dd.b:bul(x);let tot=0;st.forEach(t=>tot+=sp[p+'|'+t]||0);
-      const base={id,prov,p,r:dd.r||x.ref,ds:x.d||'',dep:RECDEP[id]||x.dep||DM[p]||'Sin departamento',h:dd.au?1:0,u:dd.n||dd.u||'—',uu:dd.u||'',d:dd.d||'',ts:dd.ts||0};
+      const base={id,prov,p,r:dd.r||x.ref,ds:x.d||'',dep:RECDEP[id]||x.dep||DM[p]||'Sin departamento',h:dd.au?1:0,u:dd.n||dd.u||'—',uu:dd.u||'',d:fd||dd.d||'',ts:dd.ts||0};
       if(!tot){if(!mp.has(p))dv.push({...base,t:'—',q:0,b:bu});continue}
       st.forEach(t=>{const q=sp[p+'|'+t]||0;if(q>0)dv.push({...base,t,q,b:bu*q/tot})})}}
   STEV={sv,dv}
@@ -2736,7 +2739,7 @@ let palDelMode=false,palDelChk=false,palFresh=new Set(),palBumpT=0,palFbT=null,_
 function weekCut(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7)-7);return d.getTime()}
 function startPal(){if(palOn)return;palOn=true;const w=weekCut();
   onValue(query(R(db,PB+'/pm'),orderByKey(),startAt('p'+w)),s=>{PM=s.val()||{};renderPal();renderPalModal()},()=>{palOn=false});
-  onValue(query(R(db,PB+'/emb'),orderByKey(),startAt('e'+w)),s=>{EMB=s.val()||{};renderPal();if(typeof renderTrf==='function')renderTrf()},()=>{})}
+  onValue(query(R(db,PB+'/emb'),orderByKey(),startAt('e'+w)),s=>{EMB=embFix(s.val()||{});renderPal();if(typeof renderTrf==='function')renderTrf()},()=>{})}
 async function loadHist(){const w=weekCut(),box=$('histList');box.innerHTML='<div class="msg">Cargando…</div>';
   try{const [a,b]=await Promise.all([get(query(R(db,PB+'/pm'),orderByKey(),endAt('p'+(w-1)),limitToLast(40))),get(query(R(db,PB+'/emb'),orderByKey(),endAt('e'+(w-1)),limitToLast(20)))]);
     const pm=Object.values(a.val()||{}).sort((x,y)=>(y.seq||0)-(x.seq||0)),em=Object.values(b.val()||{}).sort((x,y)=>(y.seq||0)-(x.seq||0));
@@ -3018,7 +3021,7 @@ async function addCams(eid,n,from){const o={},now=Date.now();for(let i=0;i<n;i++
 function newEmb(){ask('Nuevo packing list',[{k:'n',label:'¿Cuántos camiones son?',type:'number',value:'1'}],'Crear',async v=>{
   const n=Math.max(1,Math.min(10,parseInt(v.n,10)||1));
   try{const r=await runTransaction(R(db,PB+'/eseq'),c=>(c||0)+1);const seq=r.snapshot.val(),id='e'+Date.now();
-    await set(R(db,`${PB}/emb/${id}`),{num:'EMB-'+String(seq).padStart(4,'0'),seq,ts:Date.now(),u:USER,n:NAME,st:'abierto'});startPal();pklTab='n';embOpenSet.add(id);await addCams(id,n)}
+    await set(R(db,`${PB}/emb/${id}`),{num:'DSP-'+String(seq).padStart(4,'0'),seq,ts:Date.now(),u:USER,n:NAME,st:'abierto'});startPal();pklTab='n';embOpenSet.add(id);await addCams(id,n)}
   catch(err){toast('Error: '+(err.code||err.message));return false}})}
 function embCount(eid){const x=EMB[eid];if(!x)return;const c=embCalc(x);
   ask('Camiones · '+x.num,[{k:'n',label:'¿Cuántos camiones son?',type:'number',value:String(c.cams.length)}],'Aplicar',async v=>{
@@ -3164,7 +3167,9 @@ parseRecv=function(h){const a=_parseRecv0(h),t=emlTxt(h),pals=[];let pa=null,bu=
   if(!a.no)a.no=(t.match(/PACKING\s*LIST\s*#\s*(\d+)/i)||[])[1];
   if(pals.length&&(!a.pals.length||(pals.length>=a.pals.length&&palsQ(pals)>palsQ(a.pals))))a.pals=pals;return a};
 // Rutas de TODOS los embarques/camiones donde está cargado un palet (copia de sus transferencias)
-let EMBX=null;async function embLoad(){try{EMBX=(await get(R(db,`${PB}/emb`))).val()||{}}catch(e){EMBX=null}}
+let EMBX=null;async function embLoad(){try{EMBX=embFix((await get(R(db,`${PB}/emb`))).val()||{})}catch(e){EMBX=null}}
+const _embFx=new Set();
+function embFix(o){for(const [id,e] of Object.entries(o||{})){if(e&&typeof e.num==='string'&&/^EMB-/i.test(e.num)){e.num=e.num.replace(/^EMB-/i,'DSP-');if(ISADM&&!_embFx.has(id)){_embFx.add(id);try{Promise.resolve(set(R(db,`${PB}/emb/${id}/num`),e.num)).catch(()=>{})}catch(x){}}}}return o}
 function embPalPaths(id){const o=[];for(const [eid,e] of Object.entries(Object.assign({},EMBX||{},EMB||{})))for(const [cid,c] of Object.entries((e&&e.cam)||{}))if(c&&c.pal&&c.pal[id])o.push(`emb/${eid}/cam/${cid}/pal/${id}`);return o}
 // Formato de correo "RECIBIDO" sin número de bulto (ej. #585): cada <ul> interno = un bulto con sus productos y QTY
 function recvGroups(h,no){const m=new RegExp('Palet\\s*#\\s*'+no+'\\b').exec(h);if(!m)return[];let seg=h.slice(m.index+m[0].length);const nx=seg.search(/<li>\s*Palet\s*#/i);if(nx>=0)seg=seg.slice(0,nx);
@@ -3414,7 +3419,7 @@ window.addEventListener('popstate',()=>{
 $('toMarc').addEventListener('click',e=>{if(!confirm('¿Salir a Marcaciones? Allí tendrás que iniciar sesión de nuevo.'))e.preventDefault()});
 
 // ---------- Menú de inicio (4 secciones; cada una abre su submenú) ----------
-let HOMEBACK=false,HMPATH=[],HMLAST=[];
+let HOMEBACK=false,HMPATH=[],HMLAST=[],NAVK='';
 const HIC={
  box:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
  prod:'<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
@@ -3474,7 +3479,30 @@ $('hmSecs').addEventListener('click',e=>{const b=e.target.closest('[data-hm]');i
   if(def.modal){$(def.b).click();return} // ventanas emergentes: el menú queda detrás
   $('v-home').classList.add('hide');delete document.body.dataset.home;
   if(k==='rec'){HOMEBACK=false;$('btnHome').textContent='Recibos';showRecList();return}
-  HMLAST=HMPATH.slice();HOMEBACK=true;$(def.b).click();$('btnHome').textContent='Menú'});
+  HMLAST=HMPATH.slice();NAVK=k;HOMEBACK=true;$(def.b).click();$('btnHome').textContent='Menú'});
+
+// ---------- recordar dónde estaba la persona al actualizar la página ----------
+const _vis=id=>{const e=$(id);return !!e&&!e.classList.contains('hide')};
+function navSave(){try{if(!_vis('app'))return;let st=null;
+  if(_vis('v-home'))st={v:'home',hp:HMPATH.slice()};
+  else if(_vis('v-recibo')){const t=document.querySelector('.tab.on');st={v:'recibo',r:RECIBO,t:t?t.dataset.t:'cons',p:(_vis('v-prod')&&cur)?cur.p:''}}
+  else if(_vis('v-rec'))st={v:'rec',tab:recTab};
+  else if(['v-stat','v-auto','v-pdn','v-pro','v-pal','v-pkl'].some(_vis)&&NAVK)st={v:'other',hk:NAVK,hl:HMLAST.slice()};
+  if(st)sessionStorage.setItem('cons_nav',JSON.stringify(st))}catch(e){}}
+const _clickHome=k=>{const b=document.querySelector('#hmSecs [data-hm="'+k+'"]');if(b)b.click()};
+let _navOn=false;
+async function navRestore(){
+  if(_navOn)return;_navOn=true;let st=null;try{st=JSON.parse(sessionStorage.getItem('cons_nav')||'null')}catch(e){}
+  try{if(st){
+    if(st.v==='home')showHome(st.hp||[]);
+    else if(st.v==='rec'){recTab=st.tab||'a';showHome([]);_clickHome('rec')}
+    else if(st.v==='recibo'&&st.r){for(let i=0;i<50&&!RECS[st.r];i++)await new Promise(r=>setTimeout(r,200));
+      if(RECS[st.r]){showHome([]);_clickHome('rec');selectRecibo(st.r);
+        if(st.t&&st.t!=='cons'){const tb=document.querySelector('.tab[data-t="'+st.t+'"]');if(tb)tb.click()}
+        if(st.p)setTimeout(()=>{if(byProd[st.p])openProd(st.p)},500);setTimeout(()=>{if(_vis('v-recibo'))$('v-rec').classList.add('hide')},1500)}}
+    else if(st.v==='other'&&st.hk){showHome(st.hl||[]);_clickHome(st.hk)}
+  }}catch(e){}
+  setInterval(navSave,600);addEventListener('pagehide',navSave);document.addEventListener('visibilitychange',navSave)}
 // ← = atrás dentro de la app (nunca sale); para salir está el botón "Salir"
 $('btnBack').addEventListener('click',()=>{
   if(!$('v-home').classList.contains('hide')&&HMPATH.length){HMPATH.pop();buildHome();window.scrollTo(0,0);return}
