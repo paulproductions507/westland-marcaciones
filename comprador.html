@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Packing list · Comprador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{color-scheme:light;--h1:#0b4a52;--h2:#073a43;--pet:#0b4a52;--pet2:#073a43;--pet3:#0e6470;--acc:#0b4a52;
  --ink:#0f2a2e;--mt:#5b7479;--bg:#eef4f5;--card:#fff;--bd:#d3e2e4;--zb:#f5f9fa;--soft:#e1eeef;--hov:#e3f0f1;
@@ -14,7 +16,7 @@
  --cbd:#1f5560;--tbd:#1f8f9c;--tsh:rgba(45,226,201,.14);--tsh2:rgba(45,226,201,.28);--track:#12404a;
  --dbg:#4a3a0e;--dtx:#ffd27a;--rbg:#0f4a33;--rtx:#7ff0b8;--ubg:#14305a;--utx:#9ec5ff;--pbg:#3a2358;--ptx:#d7b8ff;--cbg:#55203a;--ctx:#ffadc9;--wbg:#5a1f1a;--wtx:#ffb3ab;--err:#ff8a80}
 *{box-sizing:border-box}
-body{margin:0;font:14px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);transition:background .2s,color .2s}
+body{margin:0;font:14px/1.45 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;background:var(--bg);color:var(--ink);transition:background .2s,color .2s}
 header{background:linear-gradient(135deg,var(--h1),var(--h2));color:#fff;padding:20px 16px 46px}
 .hin{max-width:1360px;margin:0 auto;position:relative}
 header h1{margin:0;font-size:22px;letter-spacing:.2px}
@@ -30,6 +32,7 @@ header .sub{opacity:.9;font-size:12.5px;margin-top:4px;padding-right:90px}
 .kpi b{display:block;font-size:22px;color:var(--acc)}.kpi span{font-size:11px;color:var(--mt);text-transform:uppercase;letter-spacing:.5px}
 .info{font-size:12.5px;color:var(--mt);margin-top:10px}.warn{color:var(--wtx)}
 .tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tools input,.tools select,.btn{font-family:inherit}
 .tools input,.tools select{font:inherit;border:1.5px solid var(--cbd);border-radius:9px;padding:8px 10px;background:var(--card);color:var(--ink);min-width:0}
 .tools input[type=search]{flex:1 1 220px}.tools select{flex:1 1 140px}.tools input[type=number]{width:105px}
 .btn{font:inherit;font-weight:700;border:0;border-radius:9px;padding:9px 14px;cursor:pointer;background:var(--pet);color:#fff}
@@ -78,7 +81,8 @@ footer{color:var(--mt);font-size:11.5px;text-align:center;padding:10px}
 @media(min-width:1000px){.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.two .card{margin-bottom:12px}header h1{font-size:25px}.wrap{padding:0 24px 28px}header{padding:24px 24px 52px}}
 @media(max-width:640px){.sb{grid-template-columns:100px 1fr}.sb .vl{grid-column:1/-1;text-align:left}}
 </style>
-<script>try{var t=localStorage.getItem("cmpTheme")||"light";document.documentElement.dataset.theme=t}catch(e){}</script>
+<script>try{var t=localStorage.getItem("cmpTheme")||"light";document.documentElement.dataset.theme=t}catch(e){}
+(function(){var d=document.documentElement,ua=navigator.userAgent||"",tc=(navigator.maxTouchPoints||0)>1,m=/iPhone|iPod|Android.+Mobile|Windows Phone|Mobile/i.test(ua),tb=!m&&(/iPad|Tablet|Android/i.test(ua)||(/Macintosh/.test(ua)&&tc));d.dataset.device=m?"mobile":tb?"tablet":"desktop";function z(){var w=innerWidth;d.dataset.size=w<640?"s":w<1000?"m":"l"}z();addEventListener("resize",z)})();</script>
 </head>
 <body>
 <header><div class="hin">
@@ -113,7 +117,7 @@ const TK='cmpTheme';
 const setTheme=t=>{document.documentElement.dataset.theme=t;$('tg').textContent=t==='dark'?'☀ Claro':'☾ Oscuro';try{localStorage.setItem(TK,t)}catch(e){}};
 setTheme(document.documentElement.dataset.theme==='dark'?'dark':'light');
 $('tg').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
-let db,TOK='',IDX={},PL=null,ROWS=[],VIEW=[],SORT={k:'t',d:1},BUSY=false;
+let SN={},db,TOK='',IDX={},PL=null,ROWS=[],VIEW=[],SORT={k:'t',d:1},BUSY=false;
 
 const COLS=[
  {k:'t',h:'Tienda'},{k:'td',h:'Tipo de documento'},{k:'tr',h:'N.º de documento'},{k:'cn',h:'Cliente'},{k:'ty',h:'Tipología'},{k:'rc',h:'Recibo'},{k:'v',h:'Proveedor'},
@@ -137,7 +141,7 @@ const prefOf=d=>String(d||'').trim().split(/\s+/)[0].toUpperCase().replace(/[^A-
 const tyN=t=>(!t||t==='Recibo'||t==='Túnel'||t==='Tunel')?'Túnel de distribución':(t==='Automático'||t==='Pedido automático')?AUTO_LBL:t;
 const norm1=r=>{let v=String(r.v||SP).replace(/\s+/g,' ').trim();
   if(v===SP&&r.p){const g=GUIA_PROV[prefOf(r.d)];if(g)v=g}
-  return{...r,ty:tyN(r.ty),v,rc:r.rc||'',cn:r.cn||'',tr:String(r.tr||'').replace(/\s+/g,''),td:String(r.td||(r.t==='Cristal'?'Proforma':'Transferencia')).replace(/^Pro\s+forma$/i,'Proforma')}};
+  return{...r,ty:tyN(r.ty),v,rc:r.rc||'',cn:r.cn||String(SN[r.t]||'').toUpperCase(),tr:String(r.tr||'').replace(/\s+/g,''),td:String(r.td||(r.t==='Cristal'?'Proforma':'Transferencia')).replace(/^Pro\s+forma$/i,'Proforma')}};
 
 window.addEventListener('hashchange',()=>{if(TOK)route()});
 function route(){const [t,id]=location.hash.slice(1).split('/');if(t!==TOK)return;id?openPL(id):showList()}
@@ -187,7 +191,7 @@ async function openPL(id){
   $('app').innerHTML='<div class="card msg">Cargando packing list…</div>';
   try{const v=(await get(ref(db,`${CMPB}/${TOK}/pl/${id}`))).val();
     if(!v){fail('Ese packing list ya no está disponible');return}
-    PL=v;ROWS=Object.values(v.rows||{}).map(norm1);SORT={k:'t',d:1};paintPL()}
+    PL=v;SN={};(v.stores||[]).forEach(s=>{if(s.t&&s.tn)SN[s.t]=s.tn});ROWS=Object.values(v.rows||{}).map(norm1);SORT={k:'t',d:1};paintPL()}
   catch(e){fail('No se pudo abrir ('+(e.code||e.message)+')')}
 }
 const grp=(rows,f)=>{const o={};rows.forEach(r=>{const k=f(r),a=o[k]=o[k]||{k,q:0,l:0,rf:new Set()};a.q+=r.q||0;a.l++;if(r.p)a.rf.add(r.p)});return Object.values(o).sort((a,b)=>b.q-a.q)};
