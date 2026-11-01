@@ -238,6 +238,7 @@ html[data-device=desktop] .hm-it,html[data-size=l] .hm-it{--d:132px}
 .hm-it:hover .hm-ic{transform:scale(1.08)}
 .hm-it:active .hm-ring{transform:scale(.96)}
 .hm-it:focus-visible{outline:none}
+html .hm-sm{display:block;margin-top:8px;color:var(--mt);font-size:11.5px;line-height:1.3;text-align:center;max-width:170px}
 @keyframes hmIn{from{opacity:0;transform:translateX(-84px) scale(.92)}to{opacity:1;transform:none}}
 @keyframes hmSpin{to{transform:rotate(360deg)}}
 html[data-theme=light] .hm-ring{background:radial-gradient(circle at 30% 22%,#1b8a97 0,#0e4c5a 60%,#082f38 100%)}
@@ -268,9 +269,9 @@ function z(){var w=window.innerWidth;d.dataset.size=w<640?'s':w<1000?'m':'l'}z()
     <a class="btn sm" id="toMarc" href="index.html" style="text-decoration:none;background:#ff3b30;color:#fff" title="Salir a Marcaciones">⎋ Salir</a>
   </div>
   <div class="wrap">
-    <div id="v-home" class="hide"><div class="hm-hero"><div class="hm-hi" id="hmHi">Bienvenido</div><div class="hm-sub">¿Qué quieres hacer hoy?</div></div><div id="hmSecs"></div></div>
+    <div id="v-home" class="hide"><div class="hm-hero"><div class="hm-hi" id="hmHi">Bienvenido</div><div class="hm-sub" id="hmSub">¿Qué quieres hacer hoy?</div></div><div id="hmSecs"></div></div>
     <div id="v-rec">
-      <div id="recBtns" style="display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:10px"><span id="recAdm3" class="hide" style="display:contents"><button class="btn sm pri" id="recUp">📥 Subir archivo</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></span><button class="btn sm pri hide" id="recProd"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Producción</button><button class="btn sm pri hide" id="recBul">🏷 Etiqueta de bulto</button></div>
+      <div id="recBtns" style="display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:10px"><span id="recAdm3" class="hide" style="display:contents"><button class="btn sm pri" id="recUp">📥 Subir archivo</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></span><button class="btn sm pri hide" id="recProd"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Producción</button><button class="btn sm pri" id="recBul">🏷 Etiqueta de bulto</button></div>
       <div class="card"><h2 style="font-size:20px">Surtido · elige el recibo</h2><div class="msg" style="margin-top:4px">Selecciona el recibo que vas a trabajar.</div></div>
       <div id="recMenu" class="hide" style="margin-bottom:12px">
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -475,7 +476,7 @@ async function showRecList(){
   ensureWorked();
   $('v-stat').classList.add('hide');$('v-auto').classList.add('hide');$('v-pro').classList.add('hide');$('v-pdn').classList.add('hide');$('v-pal').classList.add('hide');$('v-pkl').classList.add('hide');$('mst').classList.add('hide');
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offDspt)offDspt();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();offDspt=null;offLog=offCli=offDsp=offTrf=offTb=offDs=offBg=null;cur=null;RECIBO=null;$('recAdm').classList.toggle('hide',!ISADM);$('recAdm2').classList.toggle('hide',!ISADM);$('recAdm3').classList.toggle('hide',!ISADM);
-  $('v-recibo').classList.add('hide');$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');PALBACK=null;$('btnPal').classList.add('hide');$('btnPkl').classList.add('hide');$('btnRecBack').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Consultas';
+  $('v-recibo').classList.add('hide');if(!document.body.dataset.home&&$('v-home').classList.contains('hide'))$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');PALBACK=null;$('btnPal').classList.add('hide');$('btnPkl').classList.add('hide');$('btnRecBack').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Consultas';
   await loadUploaded();for(const k in PSEUDO)if(RECS[k])PROV[k]=PSEUDO[k];await migrateAuto(Object.keys(RECS));autoProv().then(ch=>{if(ch&&!$('v-rec').classList.contains('hide'))showRecList()});const allIds=Object.keys(RECS),PSD={};
   for(const id of allIds.filter(isPs)){try{const [sn,dn2]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);const m={},dd=dn2.val()||{},it=RECS[id].items||[];Object.values(sn.val()||{}).forEach(e=>{if(e.bd||e.nb)return;m[e.p+'|'+e.t]=(m[e.p+'|'+e.t]||0)+(e.q||0)});PSD[id]=(id===PFID&&it.length===0)||it.length>0&&it.every(x=>dd[x.p]&&Object.entries(x.s||{}).every(([t,a])=>t==='BODEGA'||(m[x.p+'|'+t]||0)>=a))}catch(e){}}
   const dn=id=>!!COMP[id]||!!PSD[id];const nC=allIds.filter(dn).length;
@@ -3310,12 +3311,11 @@ window.addEventListener('popstate',()=>{
 });
 $('toMarc').addEventListener('click',e=>{if(!confirm('¿Salir a Marcaciones? Allí tendrás que iniciar sesión de nuevo.'))e.preventDefault()});
 
-// ---------- Menú de inicio ----------
-let HOMEBACK=false;
+// ---------- Menú de inicio (4 secciones; cada una abre su submenú) ----------
+let HOMEBACK=false,HMPATH=[],HMLAST=[];
 const HIC={
  box:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
  prod:'<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
- tag:'<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.3"/>',
  pal:'<rect x="4" y="3" width="16" height="10" rx="1.5"/><path d="M12 3v10M4 8h16"/><path d="M2 17h20M4 21h16M5 17v4M12 17v4M19 17v4"/>',
  pkl:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 2.5h6v3H9z"/><path d="M9 11h6M9 15h6"/>',
  bolt:'<path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>',
@@ -3324,30 +3324,43 @@ const HIC={
  doc:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5z"/><path d="M14 3v5h5"/><path d="M12 11v6M14 12.5h-3a1.2 1.2 0 0 0 0 2.4h2a1.2 1.2 0 0 1 0 2.4h-3"/>',
  bars:'<path d="M5 20v-7M12 20V5M19 20v-11"/><path d="M3 20h18"/>',
  trend:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
- hist:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>'};
+ hist:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+ truck:'<path d="M1 6h13v10H1z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="5.5" cy="18" r="2"/><circle cx="17.5" cy="18" r="2"/>',
+ swap:'<path d="M4 8h14"/><path d="M14 4l4 4-4 4"/><path d="M20 16H6"/><path d="M10 12l-4 4 4 4"/>'};
 const HOME=[
- {t:'Operación',it:[{k:'rec',n:'Surtido',ic:'box'},{k:'prod',b:'recProd',n:'Producción',ic:'prod'},{k:'bul',b:'recBul',n:'Etiquetas de bulto',ic:'tag',modal:1}]},
- {t:'Despacho',adm:1,it:[{k:'pal',b:'recPal',n:'Palets',ic:'pal'},{k:'pkl',b:'recPkl',n:'Packing list',ic:'pkl'}]},
- {t:'Transferencias',adm:1,it:[{k:'auto',b:'recAuto',n:'Pedidos automáticos',ic:'bolt'},{k:'tun',b:'recTun',n:'Túnel',ic:'tun'},{k:'tunm',b:'recTunM',n:'Túnel manual',ic:'pen'},{k:'prf',b:'recPrf',n:'Proformas',ic:'doc'}]},
- {t:'Análisis',it:[{k:'stat',b:'recStat',n:'Estadística',ic:'bars'},{k:'pro',b:'recPro',n:'Productividad',ic:'trend',adm:1},{k:'adj',b:'recAdj',n:'Ajustes',ic:'hist',adm:1,modal:1}]}];
+ {k:'rec',n:'Surtido',ic:'box',sub:'Recibos y etiquetas de bulto'},
+ {k:'dsp',n:'Despacho',ic:'truck',adm:1,sub:'Palets y packing list',ch:[
+   {k:'pal',b:'recPal',n:'Palets',ic:'pal'},{k:'pkl',b:'recPkl',n:'Packing list',ic:'pkl'}]},
+ {k:'trf',n:'Transferencias',ic:'swap',adm:1,sub:'Automáticos, túnel y proformas',ch:[
+   {k:'auto',b:'recAuto',n:'Pedidos automáticos',ic:'bolt'},
+   {k:'tun',n:'Túnel',ic:'tun',ch:[{k:'tun1',b:'recTun',n:'Túnel normal',ic:'tun'},{k:'tunm',b:'recTunM',n:'Túnel manual',ic:'pen'}]},
+   {k:'prf',b:'recPrf',n:'Proformas',ic:'doc'}]},
+ {k:'prd',n:'Producción',ic:'prod',sub:'Producción, estadística y ajustes',ch:[
+   {k:'prod',b:'recProd',n:'Mi producción',ic:'prod'},{k:'stat',b:'recStat',n:'Estadística',ic:'bars'},
+   {k:'pro',b:'recPro',n:'Productividad',ic:'trend',adm:1},{k:'adj',b:'recAdj',n:'Ajustes',ic:'hist',adm:1,modal:1}]}];
 const hmOrb='<svg class="hm-orb" viewBox="0 0 120 120" aria-hidden="true"><circle class="o2" cx="60" cy="60" r="50"/><circle class="o1" cx="60" cy="60" r="57"/><circle class="dt" cx="60" cy="3" r="4"/><circle class="dt" cx="19.7" cy="100.3" r="3"/></svg>';
+function hmNode(path){let list=HOME,node=null;for(const k of path){node=(list||[]).find(x=>x.k===k);if(!node)return null;list=node.ch}return{node,list:list||[]}}
 function buildHome(){
-  const first=String(NAME||'').trim().split(/\s+/)[0]||'';$('hmHi').innerHTML='Bienvenido'+(first?' <b>'+esc(first)+'</b>':'');
-  let i=0;
-  $('hmSecs').innerHTML=HOME.filter(g=>!g.adm||ISADM).map(g=>{const items=g.it.filter(x=>!x.adm||ISADM);if(!items.length)return'';
-    return `<div class="hm-st" style="--i:${i++}">${esc(g.t)}</div><div class="hm-grid">${items.map(x=>`<button type="button" class="hm-it" style="--i:${i++}" data-hm="${x.k}"><span class="hm-ring">${hmOrb}<span class="hm-ic"><svg viewBox="0 0 24 24">${HIC[x.ic]}</svg></span></span><span class="hm-lb">${esc(x.n)}</span></button>`).join('')}</div>`}).join('')}
-function showHome(){
-  HOMEBACK=false;
+  const r=hmNode(HMPATH)||(HMPATH=[],hmNode([])),first=String(NAME||'').trim().split(/\s+/)[0]||'';
+  if(r.node){$('hmHi').innerHTML=esc(r.node.n);$('ttl').textContent=r.node.n;$('hmSub').textContent='Elige una opción'}
+  else{$('hmHi').innerHTML='Bienvenido'+(first?' <b>'+esc(first)+'</b>':'');$('ttl').textContent='Consultas';$('hmSub').textContent='¿Qué quieres hacer hoy?'}
+  const items=r.list.filter(x=>!x.adm||ISADM);
+  $('hmSecs').innerHTML=`<div class="hm-grid" style="margin-top:22px">${items.map((x,i)=>`<button type="button" class="hm-it" style="--i:${i}" data-hm="${x.k}"><span class="hm-ring">${hmOrb}<span class="hm-ic"><svg viewBox="0 0 24 24">${HIC[x.ic]}</svg></span></span><span class="hm-lb">${esc(x.n)}</span>${x.sub&&!r.node?`<small class="hm-sm">${esc(x.sub)}</small>`:''}</button>`).join('')}</div>`;
+  if(HMPATH.length)delete document.body.dataset.home;else document.body.dataset.home='1'}
+function showHome(path){
+  HOMEBACK=false;HMPATH=Array.isArray(path)?path.slice():[];
   ['v-rec','v-recibo','v-stat','v-auto','v-pro','v-pdn','v-pal','v-pkl'].forEach(id=>{const e=$(id);if(e)e.classList.add('hide')});
   ['btnHome','btnPal','btnPkl','btnRecBack','bar'].forEach(id=>{const e=$(id);if(e)e.classList.add('hide')});
-  $('ttl').textContent='Consultas';buildHome();$('v-home').classList.remove('hide');document.body.dataset.home='1';window.scrollTo(0,0)}
-$('hmSecs').addEventListener('click',e=>{const b=e.target.closest('[data-hm]');if(!b)return;const k=b.dataset.hm,def=HOME.flatMap(g=>g.it).find(x=>x.k===k);if(!def)return;
+  buildHome();$('v-home').classList.remove('hide');window.scrollTo(0,0)}
+$('hmSecs').addEventListener('click',e=>{const b=e.target.closest('[data-hm]');if(!b)return;const k=b.dataset.hm,r=hmNode(HMPATH),def=r.list.find(x=>x.k===k);if(!def)return;
+  if(def.ch){HMPATH.push(k);buildHome();window.scrollTo(0,0);return}
   if(def.modal){$(def.b).click();return} // ventanas emergentes: el menú queda detrás
   $('v-home').classList.add('hide');delete document.body.dataset.home;
   if(k==='rec'){HOMEBACK=false;$('btnHome').textContent='Recibos';showRecList();return}
-  HOMEBACK=true;$(def.b).click();$('btnHome').textContent='Inicio'});
+  HMLAST=HMPATH.slice();HOMEBACK=true;$(def.b).click();$('btnHome').textContent='Menú'});
 // ← = atrás dentro de la app (nunca sale); para salir está el botón "Salir"
 $('btnBack').addEventListener('click',()=>{
+  if(!$('v-home').classList.contains('hide')&&HMPATH.length){HMPATH.pop();buildHome();window.scrollTo(0,0);return}
   if(!$('mpal').classList.contains('hide')){history.back();return}
   if(!$('btnHome').classList.contains('hide')){$('btnHome').click();return}
   if(!$('v-rec').classList.contains('hide')){showHome();return}
@@ -3362,7 +3375,7 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
   for(const v of['cons','trf','dsp','dif','est'])$('v-'+v).classList.toggle('hide',v!==b.dataset.t);
   if(b.dataset.t!=='cons')$('bar').classList.add('hide');else updateBar();renderAll()
 });
-$('btnHome').onclick=()=>{closeCli();if(HOMEBACK){showHome();return}$('btnHome').textContent='Recibos';showRecList();window.scrollTo(0,0)};
+$('btnHome').onclick=()=>{closeCli();if(HOMEBACK){showHome(HMLAST);return}$('btnHome').textContent='Recibos';showRecList();window.scrollTo(0,0)};
 $('btnPal').onclick=()=>openPalView('pal');$('btnPkl').onclick=()=>openPalView('pkl');
 $('btnRecBack').onclick=()=>{const id=PALBACK;if(!id||!RECS[id]){$('btnHome').click();return}$('v-pal').classList.add('hide');$('v-pkl').classList.add('hide');$('v-recibo').classList.remove('hide');$('btnPal').classList.add('hide');$('btnPkl').classList.add('hide');$('btnRecBack').classList.add('hide');$('ttl').textContent='Recibo '+id+(PROV[id]?' · '+PROV[id]:'');window.scrollTo(0,0);renderAll()};
 // Menú por secciones: al tocar una sección se abre su panel; al volver con ← queda abierta la última
