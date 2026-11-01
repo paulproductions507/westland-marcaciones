@@ -260,7 +260,7 @@ async function excel(){
   const b=$('xl');b.disabled=true;
   try{
     const v=PL,tp=Math.max(1,v.tp||0),wb=new ExcelJS.Workbook();wb.creator='Westland';wb.created=new Date();
-    const NAVY='FF17375E',PET='FF0B4A52',LIGHT='FFEAF1F8',ZEB='FFF5F8FC',W='FFFFFFFF',GR='FF5A6B7A',LN='FFC9D6E4';
+    const NAVY='FF06303A',PET='FF08404C',LIGHT='FFEAF1F8',ZEB='FFF5F8FC',W='FFFFFFFF',GR='FF5A6B7A',LN='FFC9D6E4';
     const side={style:'thin',color:{argb:LN}},bd={top:side,left:side,bottom:side,right:side};
     const fill=c=>({type:'pattern',pattern:'solid',fgColor:{argb:c}});
     const band=(ws,r,text,last,color,size)=>{ws.mergeCells(r,1,r,last);const c=ws.getCell(r,1);c.value=text;c.font={name:'Calibri',bold:true,size,color:{argb:W}};c.fill=fill(color);c.alignment={vertical:'middle',horizontal:'left',indent:1};ws.getRow(r).height=size+14};
@@ -317,7 +317,7 @@ async function excel(){
 function pdf(){
   const J=window.jspdf&&window.jspdf.jsPDF;if(!J){alert('No cargó la librería de PDF. Revisa tu conexión.');return}
   const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});if(!doc.autoTable){alert('No cargó el complemento de tablas del PDF.');return}
-  const v=PL,tp=Math.max(1,v.tp||0),W=297,M=12,NAVY=[23,55,94],PET=[11,74,82],GR=[90,107,122],LT=[234,241,248],ZB=[245,248,252];
+  const v=PL,tp=Math.max(1,v.tp||0),W=297,M=12,NAVY=[6,48,58],PET=[8,64,76],GR=[90,107,122],LT=[234,241,248],ZB=[245,248,252];
   const refs=new Set(ROWS.map(r=>r.p).filter(Boolean)).size,pc1=n=>(n*100).toFixed(1)+'%';
   const base={theme:'grid',styles:{font:'helvetica',fontSize:8.5,cellPadding:1.8,lineColor:[201,214,228],lineWidth:.15,textColor:[30,40,50]},headStyles:{fillColor:NAVY,textColor:255,fontStyle:'bold',halign:'center'},alternateRowStyles:{fillColor:ZB},margin:{top:17,left:M,right:M,bottom:14}};
   // Banner

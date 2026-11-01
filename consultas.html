@@ -268,6 +268,21 @@ html[data-size=l] .wrap{max-width:1240px;padding-left:28px;padding-right:28px}
 html[data-device=desktop] .hm-hi,html[data-size=l] .hm-hi{font-size:38px}
 html[data-device=desktop] .hm-lb,html[data-size=l] .hm-lb{font-size:14.5px;padding:9px 18px}
 
+/* ===== Mismo petróleo de los iconos del menú: surtidores (producción), recibos y palets ===== */
+.tile.pdn,.tile.pdr,#recList>.card.row{--mt:#9fd6d3;--tx:#e9fbf8;--ac:#2de2c9;--wn:#ffc857;--ok:#34e08a;color:#fff;
+  background:radial-gradient(circle at 30% 0,#10606f 0,#08404c 55%,#052c35 100%);border:1px solid #17697a;box-shadow:0 10px 24px #00000050,inset 0 0 0 1px #2de2c91f}
+.tile.pdn .hd,.tile.pdr .hd{background:transparent;border-bottom:1px solid #ffffff1f}
+.tile.pdn .hd b,.tile.pdn .hd small,.tile.pdr .hd b,.tile.pdr .hd small{color:#fff;text-shadow:none}
+.tile.pdn .bd,.tile.pdr .bd{color:#e9fbf8}.tile.pdn .bd b,.tile.pdr .bd b{color:#fff;text-shadow:none}
+.tile.pdr .bd,.tile.pdr .hd b,.tile.pdr .hd small,.tile.pdr .bd b{text-shadow:none}
+html[data-theme=light] .tile.pdn,html[data-theme=light] .tile.pdn *,html[data-theme=light] .tile.pdr,html[data-theme=light] .tile.pdr *{color:#fff}
+#recList>.card.row .lbl,#recList>.card.row .msg{color:var(--mt)}
+#recList>.card.row .sora{text-shadow:none}
+html[data-theme=light] #recList>.card.row .sora{color:#fff}
+html[data-theme=light] #recList>.card.row .sora[style*="--ac"]{color:var(--ac)}
+#recList>.card.row .bar{background:#02171c;border-color:#17697a}
+.ptl{--mt:#9fd6d3}
+
 /* ===== Tarjetas de palets / packing list: mismo petróleo de los iconos del menú ===== */
 .ptl,.ptl.d,.ptl.r{border:1px solid #17697a;background:radial-gradient(circle at 30% 0,#10606f 0,#08404c 55%,#052c35 100%);box-shadow:0 10px 24px #00000050,inset 0 0 0 1px #2de2c91f;color:#fff}
 .ptl .hd,.ptl.d .hd,.ptl.r .hd{background:transparent;color:#fff;text-shadow:none;border-bottom:1px solid #ffffff1f}
@@ -311,14 +326,14 @@ function z(){var w=window.innerWidth;d.dataset.size=w<640?'s':w<1000?'m':'l'}z()
   <div class="top">
     <button class="btn sm" id="btnBack" title="Atrás" aria-label="Atrás">←</button>
     <div class="ttl"><h1 id="ttl">Consultas</h1><small id="who">—</small></div><span id="incDot" class="hide" style="width:7px;height:7px;border-radius:50%;background:#f5a623;opacity:.55;margin-right:6px;flex:none"></span><span style="font-size:10px;opacity:.7;margin-right:6px;display:none" id="verTag">V25 octubre-C</span>
-    <button class="btn sm" id="btnCfg" title="Configuración" aria-label="Configuración">⚙</button><button class="btn sm th" id="btnTh" title="Cambiar tema claro/oscuro" aria-label="Tema" onclick="var t=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=t;try{localStorage.setItem('conTheme',t)}catch(e){};this.textContent=t==='light'?'☾':'☀'"></button><script>document.getElementById('btnTh').textContent=document.documentElement.dataset.theme==='light'?'☾':'☀'</script><button class="btn sm hide" id="btnRef" title="Actualizar" aria-label="Actualizar">⟳</button>
+    <button class="btn sm hide" id="btnCfg" title="Configuración" aria-label="Configuración">⚙</button><button class="btn sm th" id="btnTh" title="Cambiar tema claro/oscuro" aria-label="Tema" onclick="var t=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=t;try{localStorage.setItem('conTheme',t)}catch(e){};this.textContent=t==='light'?'☾':'☀'"></button><script>document.getElementById('btnTh').textContent=document.documentElement.dataset.theme==='light'?'☾':'☀'</script><button class="btn sm hide" id="btnRef" title="Actualizar" aria-label="Actualizar">⟳</button>
     <button class="btn sm hide" id="btnPal">🧱 Palets</button><button class="btn sm hide" id="btnPkl">📋 Packing</button><button class="btn sm hide" id="btnRecBack">↩ Recibo</button><button class="btn sm hide" id="btnHome">Recibos</button>
     <a class="btn sm" id="toMarc" href="index.html" style="text-decoration:none;background:#ff3b30;color:#fff" title="Salir a Marcaciones">⎋ Salir</a>
   </div>
   <div class="wrap">
     <div id="v-home" class="hide"><div class="hm-hero"><div class="hm-hi" id="hmHi">Bienvenido</div><div class="hm-sub" id="hmSub">¿Qué quieres hacer hoy?</div></div><div id="hmSecs"></div></div>
     <div id="v-rec">
-      <div id="recBtns" style="display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:10px"><span id="recAdm3" class="hide" style="display:contents"><button class="btn sm pri" id="recUp">📥 Subir archivo</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></span><button class="btn sm pri hide" id="recProd"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Producción</button><button class="btn sm pri" id="recBul">🏷 Etiqueta de bulto</button></div>
+      <div id="recBtns" style="display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:10px"><span id="recAdm3" class="hide" style="display:contents"><button class="btn sm pri" id="recUp">📥 Subir archivo</button><input type="file" id="recFile" accept=".xlsx,.xls,.csv" class="hide"></span><button class="btn sm pri hide" id="recProd"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Producción</button><button class="btn sm pri hide" id="recBul">🏷 Etiqueta de bulto</button></div>
       <div class="card"><h2 style="font-size:20px">Surtido · elige el recibo</h2><div class="msg" style="margin-top:4px">Selecciona el recibo que vas a trabajar.</div></div>
       <div id="recMenu" class="hide" style="margin-bottom:12px">
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -2809,20 +2824,20 @@ function embCalc(e){
 // Tipología del documento: Pro forma (Cristal/clientes) · Transferencia (tiendas) · Movimiento interno (bodega a bodega, no va a tiendas)
 const docTipo=x=>(x&&(x.mi||x.t==='BODEGA'||x.t==='MI'))?'Movimiento interno':(x&&(x.t==='CRISTAL'||x.cl))?'Proforma':'Transferencia';
 function embHTML(e){
-  const c=embCalc(e),th='style="background:#0b3b5c;color:#fff;padding:8px 10px;text-align:left;font-size:12px"',thn='style="background:#0b3b5c;color:#fff;padding:8px 10px;text-align:right;font-size:12px"',td='style="padding:7px 10px;border-bottom:1px solid #d9e1e8;font-size:13px"',tdn='style="padding:7px 10px;border-bottom:1px solid #d9e1e8;font-size:13px;text-align:right"';
-  const kpi=(l,v,col)=>`<td style="background:#f4f8fb;border:1px solid #d9e1e8;border-top:4px solid ${col};padding:14px 6px;text-align:center;width:20%"><div style="font:800 26px Arial,sans-serif;color:#0b3b5c">${fmt(v)}</div><div style="font:11px Arial,sans-serif;color:#5a6b7a;text-transform:uppercase;letter-spacing:.5px">${l}</div></td>`;
+  const c=embCalc(e),th='style="background:#06303a;color:#fff;padding:9px 10px;text-align:left;font-size:12px"',thn='style="background:#06303a;color:#fff;padding:9px 10px;text-align:right;font-size:12px"',td='style="padding:7px 10px;border-bottom:1px solid #d9e1e8;font-size:13px"',tdn='style="padding:7px 10px;border-bottom:1px solid #d9e1e8;font-size:13px;text-align:right"';
+  const kpi=(l,v,col)=>`<td style="background:#08404c;border:1px solid #06303a;border-top:4px solid ${col};padding:14px 6px;text-align:center;width:20%"><div style="font:800 26px Arial,sans-serif;color:#ffffff">${fmt(v)}</div><div style="font:11px Arial,sans-serif;color:#bfeee8;text-transform:uppercase;letter-spacing:.5px">${l}</div></td>`;
   return `<div style="font-family:Arial,sans-serif;color:#1c2b36;max-width:760px;margin:0 auto;-webkit-text-size-adjust:none;text-size-adjust:none">
-  <div style="background:#0b3b5c;color:#fff;padding:18px 22px"><div style="font-size:12px;letter-spacing:1px;text-transform:uppercase;opacity:.8">Aviso de despacho · Logística</div><div style="font-size:22px;font-weight:700;margin-top:4px">${esc(e.num)}</div><div style="font-size:12px;opacity:.85;margin-top:4px">${esc(fdt(e.ts))} · Prepara: ${esc(e.n||e.u||'')}</div></div>
-  <table style="width:100%;border-collapse:collapse;margin:14px 0"><tr>${kpi('Camiones',c.cams.length,'#0b3b5c')}${kpi('Palets',c.np,'#1f7ae0')}${kpi('Bultos',c.tb,'#17a589')}${kpi('Piezas',c.tp,'#f39c12')}${kpi('Tiendas',c.st.length,'#8e44ad')}</tr></table>
-  <div style="font-size:15px;font-weight:700;margin:16px 0 6px">Distribución por tienda · piezas</div>
-  <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${(()=>{const tt=Math.max(1,c.tp);return c.st.map(x=>{const pc=x.pz/tt*100,w=Math.max(1,Math.round(pc));return `<tr><td style="padding:5px 8px 5px 0;font-size:13px;width:70px"><b>${esc(L(x.t))}</b></td><td style="padding:5px 0"><table width="100%" cellpadding="0" cellspacing="0" style="background:#e6edf3"><tr><td width="${w}%" bgcolor="#1f7ae0" style="background:#1f7ae0;height:16px;line-height:16px;font-size:1px">&nbsp;</td><td style="font-size:1px">&nbsp;</td></tr></table></td><td style="padding:5px 0 5px 8px;font-size:12px;white-space:nowrap;text-align:right"><b>${pc.toFixed(1)}%</b> · ${fmt(x.pz)} pzas · ${fmt(x.b)} bultos</td></tr>`}).join('')})()}</table>
-  <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Resumen por tienda</div>
+  <div style="background:#06303a;border-bottom:4px solid #2de2c9;color:#fff;padding:20px 24px"><div style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#2de2c9">Aviso de despacho · Logística</div><div style="font-size:22px;font-weight:700;margin-top:4px">${esc(e.num)}</div><div style="font-size:12px;opacity:.85;margin-top:4px">${esc(fdt(e.ts))} · Prepara: ${esc(e.n||e.u||'')}</div></div>
+  <table style="width:100%;border-collapse:collapse;margin:14px 0"><tr>${kpi('Camiones',c.cams.length,'#2de2c9')}${kpi('Palets',c.np,'#2de2c9')}${kpi('Bultos',c.tb,'#2de2c9')}${kpi('Piezas',c.tp,'#2de2c9')}${kpi('Tiendas',c.st.length,'#2de2c9')}</tr></table>
+  <div style="font-size:15px;font-weight:700;color:#06303a;border-left:4px solid #2de2c9;padding-left:8px;margin:16px 0 6px">Distribución por tienda · piezas</div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${(()=>{const tt=Math.max(1,c.tp);return c.st.map(x=>{const pc=x.pz/tt*100,w=Math.max(1,Math.round(pc));return `<tr><td style="padding:5px 8px 5px 0;font-size:13px;width:70px"><b>${esc(L(x.t))}</b></td><td style="padding:5px 0"><table width="100%" cellpadding="0" cellspacing="0" style="background:#e6edf3"><tr><td width="${w}%" bgcolor="#0fb5a8" style="background:#0fb5a8;height:16px;line-height:16px;font-size:1px">&nbsp;</td><td style="font-size:1px">&nbsp;</td></tr></table></td><td style="padding:5px 0 5px 8px;font-size:12px;white-space:nowrap;text-align:right"><b>${pc.toFixed(1)}%</b> · ${fmt(x.pz)} pzas · ${fmt(x.b)} bultos</td></tr>`}).join('')})()}</table>
+  <div style="font-size:15px;font-weight:700;color:#06303a;border-left:4px solid #2de2c9;padding-left:8px;margin:20px 0 6px">Resumen por tienda</div>
   <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Tienda</th><th ${thn}>Documentos</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.st.map(s=>`<tr><td ${td}><b>${esc(LN(s.t))}</b></td><td ${tdn}>${s.tf}</td><td ${tdn}>${fmt(s.b)}</td><td ${tdn}>${fmt(s.pz)}</td></tr>`).join('')}<tr><td ${td}><b>TOTAL</b></td><td ${tdn}><b>${c.tf.length}</b></td><td ${tdn}><b>${fmt(c.tb)}</b></td><td ${tdn}><b>${fmt(c.tp)}</b></td></tr></table>
-  <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Detalle por documento</div>
+  <div style="font-size:15px;font-weight:700;color:#06303a;border-left:4px solid #2de2c9;padding-left:8px;margin:20px 0 6px">Detalle por documento</div>
   <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Tienda</th><th ${th}>Tipología</th><th ${th}>N.º de documento</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.tf.map(a=>`<tr><td ${td}>${esc(L(a.t))}</td><td ${td}>${esc(docTipo(a))}</td><td ${td}>${esc(a.tr||'—')}${a.cn?` <span style="color:#5a6b7a">· ${esc(a.cn)}</span>`:''}</td><td ${tdn}>${a.b}${a.b<a.N?' de '+a.N:''}</td><td ${tdn}>${fmt(a.pz)}</td></tr>`).join('')}</table>
-  <div style="font-size:15px;font-weight:700;margin:20px 0 6px">Camiones</div>
+  <div style="font-size:15px;font-weight:700;color:#06303a;border-left:4px solid #2de2c9;padding-left:8px;margin:20px 0 6px">Camiones</div>
   <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Camión</th><th ${th}>Chofer</th><th ${th}>Placa</th><th ${th}>Palets</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.cams.map((x,i)=>`<tr><td ${td}>${i+1}</td><td ${td}>${esc(x.chofer||'')}</td><td ${td}>${esc(x.placa||'')}</td><td ${td}><span style="white-space:nowrap">${x.pals.length>1?`Palet ${x.pals[0].pos} hasta Palet ${x.pals[x.pals.length-1].pos}`:x.pals.length?`Palet ${x.pals[0].pos}`:'—'}</span></td><td ${tdn}>${fmt(x.b)}</td><td ${tdn}>${fmt(x.pz)}</td></tr><tr><td colspan="6" ${td}><span style="font-size:13px;line-height:1.5;-webkit-text-size-adjust:none">Nota: ${x.pals.map(pl=>esc(pl.num)).reduce((r,v,i)=>(i%5?r[r.length-1].push(v):r.push([v]),r),[]).map(g=>g.join(', ')).join('<br>')||'—'}</span></td></tr>`).join('')}</table>
-  ${c.cams.map((x,i)=>`<div style="font-size:15px;font-weight:700;margin:20px 0 6px">Desglose · Camión ${i+1}</div>
+  ${c.cams.map((x,i)=>`<div style="font-size:15px;font-weight:700;color:#06303a;border-left:4px solid #2de2c9;padding-left:8px;margin:20px 0 6px">Desglose · Camión ${i+1}</div>
   <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Palet (etiqueta)</th><th ${th}>Tienda</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${x.pals.map(pl=>`<tr><td ${td}><b>Palet ${pl.pos}</b> (${esc(pl.num)}${pl.g?' · PL GP #'+esc(String(pl.g)):''})</td><td ${td}>${esc(pStores(pl).map(s=>L(s.t)).join(' · ')||'—')}</td><td ${tdn}>${fmt(pl.nb)}</td><td ${tdn}>${fmt(pl.pz)}</td></tr>`).join('')}</table>`).join('')}
   <div style="font-size:12px;color:#5a6b7a;margin-top:16px">El número de palet indica el orden en que se cargó en el camión; la fila de notas de cada camión trae la referencia real (etiqueta impresa) de cada palet. La recepción se realiza por palet completo.</div></div>`
 }
@@ -3383,11 +3398,13 @@ const HIC={
  doc:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5z"/><path d="M14 3v5h5"/><path d="M12 11v6M14 12.5h-3a1.2 1.2 0 0 0 0 2.4h2a1.2 1.2 0 0 1 0 2.4h-3"/>',
  bars:'<path d="M5 20v-7M12 20V5M19 20v-11"/><path d="M3 20h18"/>',
  trend:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+ tag:'<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.3"/>',
+ gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
  hist:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
  truck:'<path d="M1 6h13v10H1z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="5.5" cy="18" r="2"/><circle cx="17.5" cy="18" r="2"/>',
  swap:'<path d="M4 8h14"/><path d="M14 4l4 4-4 4"/><path d="M20 16H6"/><path d="M10 12l-4 4 4 4"/>'};
 const HOME=[
- {k:'rec',n:'Surtido',ic:'box',sub:'Recibos y etiquetas de bulto'},
+ {k:'rec',n:'Surtido',ic:'box',sub:'Lista de recibos'},
  {k:'dsp',n:'Despacho',ic:'truck',adm:1,sub:'Palets y packing list',ch:[
    {k:'pal',b:'recPal',n:'Palets',ic:'pal'},{k:'pkl',b:'recPkl',n:'Packing list',ic:'pkl'}]},
  {k:'trf',n:'Transferencias',ic:'swap',adm:1,sub:'Automáticos, túnel y proformas',ch:[
@@ -3396,7 +3413,9 @@ const HOME=[
    {k:'prf',b:'recPrf',n:'Proformas',ic:'doc'}]},
  {k:'prd',n:'Producción',ic:'prod',sub:'Producción, estadística y ajustes',ch:[
    {k:'prod',b:'recProd',n:'Mi producción',ic:'prod'},{k:'stat',b:'recStat',n:'Estadística',ic:'bars'},
-   {k:'pro',b:'recPro',n:'Productividad',ic:'trend',adm:1},{k:'adj',b:'recAdj',n:'Ajustes',ic:'hist',adm:1,modal:1}]}];
+   {k:'pro',b:'recPro',n:'Productividad',ic:'trend',adm:1},{k:'adj',b:'recAdj',n:'Ajustes',ic:'hist',adm:1,modal:1}]},
+ {k:'bul',b:'recBul',n:'Etiquetas de bulto',ic:'tag',modal:1,sub:'Imprimir etiquetas'},
+ {k:'cfg',b:'btnCfg',n:'Configuración',ic:'gear',modal:1,sub:'Efectos y opciones'}];
 const hmOrb='<svg class="hm-orb" viewBox="0 0 120 120" aria-hidden="true"><circle class="o2" cx="60" cy="60" r="50"/><circle class="o1" cx="60" cy="60" r="57"/><circle class="dt" cx="60" cy="3" r="4"/><circle class="dt" cx="19.7" cy="100.3" r="3"/></svg>';
 function hmNode(path){let list=HOME,node=null;for(const k of path){node=(list||[]).find(x=>x.k===k);if(!node)return null;list=node.ch}return{node,list:list||[]}}
 function buildHome(){
