@@ -1075,6 +1075,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
                   <option>Corrección de marcaciones</option>
                   <option>Olvidó marcar</option>
                   <option>Falla de conexión o del sistema</option>
+                  <option>Almacén no abrió a tiempo (apertura tardía)</option>
                   <option>Ajuste según turno asignado</option>
                   <option>Adelanto de planilla solicitado por RRHH</option>
                   <option>Marcación duplicada</option>
@@ -1117,6 +1118,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
                   <option>Adelanto de planilla solicitado por RRHH</option>
                   <option>Colaborador aún no ha marcado — se corrige después si hace falta</option>
                   <option>Falla de conexión o del sistema</option>
+                  <option>Almacén no abrió a tiempo (apertura tardía)</option>
                   <option>Ajuste según turno asignado</option>
                   <option>Colaborador de licencia/permiso autorizado</option>
                   <option value="__otro__">Otro (escribir abajo)</option>
@@ -1377,6 +1379,11 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               <div style="font-size:12px;color:var(--mt);margin-bottom:8px">Envía a CADA colaborador, a su correo personal, un correo individual con SOLO sus marcaciones y su pago de este período (usa el rango de "Semana" de arriba). Solo llega a quienes ya guardaron su correo personal en su Perfil.</div>
               <button class="btn bp bsm" id="btn-sem-distribuir" style="width:auto">📤 Distribuir marcaciones ahora</button>
               <div id="sem-distribuir-status" style="font-size:12px;color:var(--mt);margin-top:8px"></div>
+              <div style="border-top:1px dashed var(--bd);margin-top:12px;padding-top:10px">
+                <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">📭 Distribución pendiente (sin correo personal)</div>
+                <div style="font-size:12px;color:var(--mt);margin-bottom:8px">Quien no tenía correo queda aquí con su período. Escribe un correo (puede ser de un familiar): se guarda en su cuenta para futuras distribuciones y se le envía ese período.</div>
+                <div id="sem-dist-pend"></div>
+              </div>
             </div>
           </div></div>
 
@@ -2442,6 +2449,19 @@ function fmtRangoLargo(desde,hasta){
 function notasDeMarcas(marks){
   const out=[];(marks||[]).forEach(m=>{const n=(m&&m.nota?String(m.nota):'').trim();if(n&&!out.includes(n))out.push(n);});
   return out;
+}
+// Para el COLABORADOR: si la marca fue corregida se muestra la hora real y la corregida, más el motivo.
+function notasDetalleColabHtml(marks){
+  const ORD={'Entrada':0,'Salida Alm.':1,'Regreso Alm.':2,'Salida Final':3};
+  const lista=[...(marks||[])].filter(Boolean).sort((a,b)=>(ORD[a.tipo]??9)-(ORD[b.tipo]??9));
+  const lineas=[],motivos=[];
+  lista.forEach(m=>{
+    const nota=(m.nota?String(m.nota):'').trim(),orig=(m.horaOriginal?String(m.horaOriginal):'').trim();
+    let nueva='';try{nueva=fmtHoraAP(m);}catch(e){}
+    if(orig&&nueva&&orig!==nueva)lineas.push(`✏️ ${escHtml(m.tipo||'')}: real <strong>${escHtml(orig)}</strong> → corregida <strong>${escHtml(nueva)}</strong>`);
+    if(nota&&!motivos.includes(nota))motivos.push(nota);
+  });
+  return [...lineas,...motivos.map(n=>`📝 ${escHtml(n)}`)].join('<br>');
 }
 const hav=(a,b,c,d)=>{const Rv=6371000,p=(c-a)*Math.PI/180,q=(d-b)*Math.PI/180,x=Math.sin(p/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(q/2)**2;return Rv*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));};
 const getSaludo=()=>{const h=new Date().getHours();return h>=5&&h<12?'Buenos días':h>=12&&h<19?'Buenas tardes':'Buenas noches';};
@@ -5060,19 +5080,21 @@ async function buildEmailRRHH(desde,hasta,nivel,modo){
     .rt th.emp{text-align:left}
     .rt td{padding:5px;border:1px solid #ccc;font-size:11px;text-align:center;vertical-align:top}
     .rt td.emp{text-align:left;font-weight:700;background:#f5f8f9}
+    .rt td.emp,.rt th.emp{min-width:130px}
+    .rt td.ced,.rt th.ced{min-width:110px;white-space:nowrap}
     .rt .sub{font-size:10px;color:#888;font-weight:400}
     .rt .ok{color:#007a5e;font-weight:700}
     .rt .abs{color:#cc3333;font-size:10px}
     .rt .desc{color:#cc3333;font-size:10px;font-weight:700}
     .rt tr.tot td{background:#d0f0e8;font-weight:800;color:#00313C}
   </style>`;
-  let thDias=`<th class="emp">Colaborador</th><th>Cédula</th>`;
+  let thDias=`<th class="emp">Colaborador</th><th class="ced">Cédula</th>`;
   data.diasVis.forEach(({d,etq})=>{thDias+=`<th>${etq}<br><span style="font-weight:400;font-size:10px">${d.getDate()}/${d.getMonth()+1}</span>${emerg[isoD(d)]?'<br><span style="font-weight:700;font-size:9px;color:#ffd27a">🚨 '+emergTipoCorto(emerg,isoD(d))+'</span>':''}</th>`;});
   thDias+=`<th style="background:#005570">Total</th>`;
   const totalPorDia=data.diasVis.map(()=>({monto:0,desc:0}));
   let rows='';
   data.filas.forEach(f=>{
-    let tds=`<td class="emp">${f.nombre}<br><span class="sub">${f.user}</span>${emergSRTag(emerg,f.user,true)}</td><td>${f.cedula||'—'}</td>`;
+    let tds=`<td class="emp">${f.nombre}<br><span class="sub">${f.user}</span>${emergSRTag(emerg,f.user,true)}</td><td class="ced">${f.cedula||'—'}</td>`;
     f.dias.forEach((dd,vi)=>{
       // En el correo a RRHH el pago base se muestra igual que un día completo (✅ + monto)
       if(dd.tipo==='fijo'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">✅</span><br>${nivel>=1?'':'8.00h · '}$${moneyRRHH(dd.monto)}</td>`;return;}
@@ -6292,7 +6314,9 @@ function pintarMisMarcaciones(snaps,dias,lunISO,domISO,hoyISO,sem,emerg){
       // Si esta marca pasó por aprobación y el admin ajustó la hora, se ve la comparación —
       // qué pediste vs. qué quedó registrado, y por qué.
       const notaAjuste=m.notaAprobacion?`<div style="font-size:10.5px;color:var(--wn);margin:1px 0 0 18px">↳ Solicitaste ${m.horaSolicitada} — se aprobó a esta hora. Motivo: ${escHtml(m.notaAprobacion)}</div>`:'';
-      return`<div style="font-size:12.5px;color:var(--tx);padding:2px 0">✅ ${MISMARCAS_ETIQ[t]}: <strong>${hora}</strong></div>${notaAjuste}`;
+      const _o=m.horaOriginal?String(m.horaOriginal).trim():'';let _n='';try{_n=fmtHoraAP(m);}catch(e){}
+      const notaEdit=(m.nota&&(m.editadoPor||_o))?`<div style="font-size:10.5px;color:var(--wn);margin:1px 0 0 18px">↳ ${_o&&_o!==_n?`Corregida: tu marcación real fue <strong>${escHtml(_o)}</strong>. `:''}Motivo: ${escHtml(String(m.nota))}</div>`:'';
+      return`<div style="font-size:12.5px;color:var(--tx);padding:2px 0">✅ ${MISMARCAS_ETIQ[t]}: <strong>${hora}</strong></div>${notaAjuste}${notaEdit}`;
     }).join('')+'</div>';
   }).join('');
   body.innerHTML=cab+emergBannerHtml(emerg,'colab','app',CU)+filas+`<div style="font-size:10.5px;color:var(--mt);text-align:center;margin-top:4px">Leído del servidor: ${new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true})}</div>`;
@@ -6400,7 +6424,7 @@ el('btn-bandeja-enviar')?.addEventListener('click',async()=>{
     const cuenta=d.metodo==='yappy'?('+507 '+(d.yappyTel||'')):(d.cuenta||'—');
     const bg=i%2===0?'':'background:#f9f9f9';
     return`<tr style="${bg}"><td style="${TD}"><strong>${d.nombre}</strong><br><span style="font-size:10px;color:#888">${d.uid}</span></td>`
-      +`<td style="${TD}">${d.cedula||'—'}</td>`
+      +`<td style="${TD};white-space:nowrap">${d.cedula||'—'}</td>`
       +`<td style="${TD}">${realMail(d.user,d.email)||'—'}</td>`
       +`<td style="${TD}">${metodo}</td>`
       +`<td style="${TD}">${d.banco||'—'}</td>`
@@ -6413,7 +6437,7 @@ el('btn-bandeja-enviar')?.addEventListener('click',async()=>{
     +`<p style="font-size:13px;color:#555;margin:0 0 14px 0">Resumen de datos bancarios recibidos de <strong>${selData.length} colaborador${selData.length!==1?'es':''}</strong>. Fecha: <strong>${new Date().toLocaleDateString('es')}</strong>.</p>`
     +`<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-size:12px">`
     +`<thead><tr>`
-    +`<th style="${TH}">Colaborador</th><th style="${TH}">Cédula</th><th style="${TH}">Correo</th><th style="${TH}">Método</th><th style="${TH}">Banco</th><th style="${TH}">Tipo</th><th style="${TH}">N° Cuenta / Yappy</th><th style="${TH}">Formulario</th>`
+    +`<th style="${TH}">Colaborador</th><th style="${TH};min-width:115px;white-space:nowrap">Cédula</th><th style="${TH}">Correo</th><th style="${TH}">Método</th><th style="${TH}">Banco</th><th style="${TH}">Tipo</th><th style="${TH}">N° Cuenta / Yappy</th><th style="${TH}">Formulario</th>`
     +`</tr></thead><tbody>${filas}</tbody></table></div>`
     +`<p style="margin-top:14px;border-top:2px solid #00313C;padding-top:8px;color:#00313C;font-size:11px;font-weight:700">Planilla Camarón — Juguetería Westland · Nivel 300 · ${new Date().toLocaleString('es')}</p>`
     +`</div>`;
@@ -7032,6 +7056,7 @@ const TIPO_LABEL={'Entrada':'Inicio de Jornada','Salida Alm.':'Salida a Almuerzo
 function tipoLabel(t){return TIPO_LABEL[t]||t;}
 
 async function renderVistaSemanal(refDate,hastaDate){
+  try{renderDistribPendiente();}catch(e){}
   const c=el('sem-tabla');
   c.innerHTML='<div style="color:var(--mt);font-size:13px;padding:10px">Cargando...</div>';
   const ETQ_DOW=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -7536,7 +7561,7 @@ async function renderVistaRRHH(desde,hasta){
   html+=emergBannerHtml(emerg,'rrhh','app');
   html+=`<table style="border-collapse:collapse;width:100%;min-width:${data.diasVis.length*96+260}px;font-size:11px">`;
   html+=`<tr><th style="background:var(--sf2);color:var(--tx);padding:7px 9px;text-align:left;border:1px solid var(--bd);min-width:130px">Colaborador</th>`
-    +`<th style="background:var(--sf2);color:var(--tx);padding:7px 9px;text-align:left;border:1px solid var(--bd);min-width:90px">Cédula</th>`;
+    +`<th style="background:var(--sf2);color:var(--tx);padding:7px 9px;text-align:left;border:1px solid var(--bd);min-width:125px;white-space:nowrap">Cédula</th>`;
   data.diasVis.forEach(({d,etq})=>{
     html+=`<th style="background:var(--sf2);color:var(--tx);padding:6px 5px;text-align:center;border:1px solid var(--bd);min-width:94px">${etq}<br><span style="font-size:10px;font-weight:400;opacity:.75">${d.getDate()} ${MES_LARGO[d.getMonth()]}</span>${emerg[isoD(d)]?'<br><span style="font-size:9.5px;color:#ffb020;font-weight:700">🚨 '+emergTipoCorto(emerg,isoD(d))+'</span>':''}</th>`;
   });
@@ -7545,7 +7570,7 @@ async function renderVistaRRHH(desde,hasta){
   data.filas.forEach(f=>{
     html+=`<tr><td style="padding:6px 8px;border:1px solid var(--bd);background:var(--sf);vertical-align:top">`
       +`<div style="font-weight:700;color:var(--tx);font-size:12px">${f.nombre}</div><div style="font-size:10px;color:var(--mt)">${f.user}</div>${emergSRTag(emerg,f.user,false)}</td>`
-      +`<td style="padding:6px 8px;border:1px solid var(--bd);background:var(--sf);color:var(--mt);font-size:11px;vertical-align:top">${f.cedula||'—'}</td>`;
+      +`<td style="padding:6px 8px;border:1px solid var(--bd);background:var(--sf);color:var(--mt);font-size:11px;vertical-align:top;white-space:nowrap">${f.cedula||'—'}</td>`;
     f.dias.forEach((dd,vi)=>{
       if(dd.tipo==='fijo'){
         totalPorDia[vi].monto+=dd.monto;
@@ -9230,9 +9255,11 @@ function buildResumenIndividualHTML(u,desde,hasta,s,fila,diasVis,emerg,deudaRes)
   if(fila&&diasVis){diasVis.forEach((dv,i)=>{const dd=fila.dias[i];if(dd&&(dd.dpMin>0||dd.dpPend))dpDia[dv.k]=dd;});}
   const adelDia={};
   if(fila&&diasVis){diasVis.forEach((dv,i)=>{const dd=fila.dias[i];if(dd&&dd.adelMin>0)adelDia[dv.k]=dd;});}
+  const acumDia={};
+  if(fila&&diasVis){diasVis.forEach((dv,i)=>{const dd=fila.dias[i];if(dd&&dd.acumAplicadoMin>0)acumDia[dv.k]=dd.acumAplicadoMin;});}
   const dias=[...new Set([...Object.keys(s.det||{}),...Object.keys(montoDia)])].sort();
   const TH='background:#00313C;color:#fff;padding:10px 8px;border:1px solid #00313C';
-  const TD='padding:9px 10px;border:1px solid #ccc;vertical-align:top';
+  const TD='padding:9px 10px;border:1px solid #ccc;vertical-align:top;word-break:break-word';
   let filas='';
   dias.forEach(d=>{
     const dd=(s.det&&s.det[d])||{},cnt=dd.marcCount||0;
@@ -9241,9 +9268,10 @@ function buildResumenIndividualHTML(u,desde,hasta,s,fila,diasVis,emerg,deudaRes)
     const _ORD={'Entrada':0,'Salida Alm.':1,'Regreso Alm.':2,'Salida Final':3};
     const mks=sinMarcas?'—':[...(dd.marcaciones||[])].sort((a,b)=>(_ORD[a.tipo]??9)-(_ORD[b.tipo]??9)).map(m=>`${m.tipo}: <strong>${fmtHoraAP(m)}</strong>`).join('<br>');
     const _nts=sinMarcas?[]:notasDeMarcas(dd.marcaciones);
-    const _notaBase=_nts.length?_nts.map(n=>`📝 ${escHtml(n)}`).join('<br>'):'';
+    const _notaBase=sinMarcas?'':notasDetalleColabHtml(dd.marcaciones);
+    const _acumN=acumDia[d]?`⏳ Se usaron ${acumDia[d]} min de tu tiempo a favor para cubrir este día.`:'';
     const _adelN=adelDia[d]?`<span style="color:#9a5b00;font-weight:700">⏱ Adelanto de horas: ${adelDia[d].adelMin} min — se te pagó la jornada completa; esas horas quedan por reponer.</span>`:'';
-    const notaHtml=[_notaBase,_adelN].filter(Boolean).join('<br>')||'—';
+    const notaHtml=[_notaBase,_acumN,_adelN].filter(Boolean).join('<br>')||'—';
     const monto=montoDia[d]!=null?montoDia[d]:Number(dd.saldoParcial||dd.bruto||0);
     filas+=`<tr><td style="${TD}">📅 ${fmtDiaLargo(d)}${emerg[d]?'<br><span style="font-size:11px;color:#9a5b00;font-weight:700">🚨 '+emergTipoCorto(emerg,d)+'</span>':''}${emergSRDia(emerg,d,u.user)}</td><td style="${TD};font-size:12.5px;line-height:1.6">${mks}</td><td style="${TD}">${estado}</td><td style="${TD};text-align:right;font-weight:700;white-space:nowrap">$${moneyRRHH(monto)}${dpDia[d]?dpCeldaHtml(dpDia[d],true):''}</td><td style="${TD};font-size:12.5px;color:#555;line-height:1.5">${notaHtml}</td></tr>`;
   });
@@ -9254,8 +9282,8 @@ function buildResumenIndividualHTML(u,desde,hasta,s,fila,diasVis,emerg,deudaRes)
     <h2 style="color:#00313C;margin-bottom:4px">Hola ${s.nombre||u.nombre||u.user} 👋</h2>
     <p style="color:#555;margin-bottom:14px">Esta es tu solicitud de pago, con el detalle de tus marcaciones del período <strong>${fmtRangoLargo(desde,hasta)}</strong>.</p>
     ${emergBannerHtml(emerg,'colab','email',u.user)}${Object.keys(emerg).length?'<p style="font-size:12.5px;color:#555;margin:0 0 12px 0">Los montos de la tabla corresponden a tus marcaciones. Si RRHH decide aplicar un descuento por el tiempo de evacuación, se te informará antes del cierre de planilla.</p>':''}
-    <table width="900" style="border-collapse:collapse;width:100%;min-width:760px;max-width:900px;table-layout:fixed"><colgroup><col width="160"><col width="270"><col width="110"><col width="120"><col width="240"></colgroup>
-      <tr><th style="${TH};text-align:left">Día</th><th style="${TH};text-align:left">Marcaciones</th><th style="${TH}">Estado</th><th style="${TH}">Monto del día</th><th style="${TH};text-align:left">Notas</th></tr>
+    <table width="100%" style="border-collapse:collapse;width:100%;max-width:960px">
+      <tr><th style="${TH};text-align:left;min-width:90px">Día</th><th style="${TH};text-align:left;min-width:150px">Marcaciones</th><th style="${TH};min-width:70px">Estado</th><th style="${TH};min-width:80px">Monto del día</th><th style="${TH};text-align:left;min-width:200px">Notas</th></tr>
       ${filas||'<tr><td colspan="5" style="padding:10px;border:1px solid #ccc;color:#888">Sin marcaciones registradas en este período.</td></tr>'}
       <tr style="font-weight:800;background:#f0f4f5"><td colspan="3" style="padding:10px;border:1px solid #ccc">TOTAL SOLICITADO</td><td style="padding:10px;border:1px solid #ccc;text-align:right;white-space:nowrap">$${moneyRRHH(totalSol)}${fila?dpUsuarioHtml(fila,true):''}</td><td style="padding:10px;border:1px solid #ccc"></td></tr>
     </table>
@@ -9271,7 +9299,50 @@ function buildResumenIndividualHTML(u,desde,hasta,s,fila,diasVis,emerg,deudaRes)
     <footer style="margin-top:20px;border-top:2px solid #00313C;padding-top:10px;color:#00313C;font-weight:700;font-size:13px">Juguetería Westland · Nivel 300</footer>
   </body></html>`;
 }
-async function distribuirMarcacionesIndividual(desde,hasta){
+const DISTPEND=`${META}/distribucion_pendiente`;
+function distPendKey(u,desde){return (String(u)+'__'+desde).replace(/[.#$\[\]\/]/g,'_');}
+async function renderDistribPendiente(){
+  const box=el('sem-dist-pend');if(!box)return;
+  let items=[];
+  try{const sn=await get(R(db,DISTPEND));items=sn.exists()?Object.entries(sn.val()).map(([k,v])=>({k,...v})):[];}catch(e){console.warn('dist pend',e);}
+  if(!items.length){box.innerHTML='<div style="font-size:12px;color:var(--mt)">Sin envíos pendientes ✅</div>';return;}
+  items.sort((a,b)=>String(a.desde).localeCompare(String(b.desde))||String(a.nombre).localeCompare(String(b.nombre),'es'));
+  const users=await getUsers();
+  box.innerHTML=items.map(it=>{
+    const tiene=emailPersonalDe(users[it.user]);
+    return `<div data-k="${escHtml(it.k)}" style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:9px 10px;margin-bottom:8px">
+      <div style="font-size:12.5px"><strong>${escHtml(it.nombre||it.user)}</strong> · <span style="color:var(--mt)">${escHtml(fmtRangoLargo(it.desde,it.hasta))}</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">
+        ${tiene?`<span style="font-size:11.5px;color:var(--ac)">Ya tiene correo guardado</span>`:`<input class="fc dp-mail" type="email" placeholder="correo (propio o de un familiar)" style="flex:1;min-width:180px">`}
+        <button class="btn bp bsm dp-send" style="width:auto">${tiene?'📤 Enviar':'💾 Guardar y enviar'}</button>
+        <button class="btn bg bsm dp-del" style="width:auto">Quitar</button>
+      </div></div>`;
+  }).join('');
+  box.querySelectorAll('.dp-send').forEach(b=>b.addEventListener('click',async()=>{
+    const row=b.closest('[data-k]'),it=items.find(x=>x.k===row.dataset.k);if(!it)return;
+    const inp=row.querySelector('.dp-mail');
+    if(inp){
+      const val=inp.value.trim();
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)){toast('Escribe un correo válido','err');return;}
+      b.disabled=true;
+      try{
+        const us=await getUsers(),meta=Object.assign({},us[it.user]||{});
+        meta.perfil=Object.assign({},meta.perfil||{},{email:val});meta.emailPersonal=val;
+        await setUser(it.user,meta);
+        await addLog('Correo personal guardado desde Distribución pendiente: '+it.user);
+      }catch(e){console.error(e);toast('No se pudo guardar el correo','err');b.disabled=false;return;}
+    }
+    b.disabled=true;
+    await distribuirMarcacionesIndividual(it.desde,it.hasta,[it.user]);
+    renderDistribPendiente();
+  }));
+  box.querySelectorAll('.dp-del').forEach(b=>b.addEventListener('click',async()=>{
+    const row=b.closest('[data-k]');if(!row||!confirm('¿Quitar de la cola de distribución pendiente?'))return;
+    try{await remove(R(db,`${DISTPEND}/${row.dataset.k}`));}catch(e){}
+    renderDistribPendiente();
+  }));
+}
+async function distribuirMarcacionesIndividual(desde,hasta,soloUsers){
   const status=el('sem-distribuir-status');
   const setStatus=(msg,color)=>{if(status){status.textContent=msg;status.style.color=color||'var(--mt)';}};
   let cfg=null;
@@ -9291,13 +9362,14 @@ async function distribuirMarcacionesIndividual(desde,hasta){
     // una selección específica, solo se distribuye a esos usuarios (ej. reenviar solo a los
     // que acaban de confirmar su correo, sin volver a mandarle a todo el resto).
     const activosSel=await loadSemActivos();
-    if(activosSel.length)colab=colab.filter(u=>activosSel.includes(u.user));
+    if(Array.isArray(soloUsers)&&soloUsers.length)colab=colab.filter(u=>soloUsers.includes(u.user));
+    else if(activosSel.length)colab=colab.filter(u=>activosSel.includes(u.user));
     let enviados=0,fallidos=0;const sinCorreo=[];
     for(const u of colab){
       const s=summ[u.user];
       if(!s||!s.dias)continue; // sin marcaciones ese período, no le mandamos nada
       const correo=emailPersonalDe(u);
-      if(!correo){sinCorreo.push(u.nombre||u.user);continue;}
+      if(!correo){sinCorreo.push(u.nombre||u.user);try{await set(R(db,`${DISTPEND}/${distPendKey(u.user,desde)}`),{user:u.user,nombre:u.nombre||u.user,desde,hasta,ts:new Date().toISOString()});}catch(qe){console.warn('cola distribución',qe);}continue;}
       const deudaRes=await resumenDeudaUsuario(u.user,deudasMapD,almGlobalD,histMapD,users[u.user]||{},feriadosD);
       const html=buildResumenIndividualHTML(u,desde,hasta,s,rrhhPorUser[u.user],rrhhBase.diasVis,emergInd,deudaRes);
       const subject=`Solicitud de pago — ${fmtRangoLargo(desde,hasta)} — Juguetería Westland`;
@@ -9310,12 +9382,13 @@ async function distribuirMarcacionesIndividual(desde,hasta){
       if(!sent&&typeof emailjs!=='undefined'){
         try{emailjs.init(cfg.publicKey);await emailjs.send(cfg.serviceId,cfg.templateId,tParams);sent=true;}catch(se){console.warn('distribuir individual falló',u.user,se);}
       }
-      if(sent)enviados++;else fallidos++;
+      if(sent){enviados++;try{await remove(R(db,`${DISTPEND}/${distPendKey(u.user,desde)}`));}catch(qe){}}else fallidos++;
     }
     const partes=[`✅ ${enviados} enviado${enviados!==1?'s':''}`];
-    if(sinCorreo.length)partes.push(`⚠ ${sinCorreo.length} sin correo personal guardado (${sinCorreo.join(', ')})`);
+    if(sinCorreo.length)partes.push(`⚠ ${sinCorreo.length} sin correo personal guardado (${sinCorreo.join(', ')}) — quedaron en Distribución pendiente`);
     if(fallidos)partes.push(`❌ ${fallidos} fallido${fallidos!==1?'s':''}`);
     setStatus(partes.join(' · '),sinCorreo.length||fallidos?'var(--wn)':'var(--ac)');
+    renderDistribPendiente();
     await addLog(`Distribución individual de marcaciones ${desde}→${hasta}: ${enviados} enviados, ${sinCorreo.length} sin correo, ${fallidos} fallidos`);
     toast(`Distribución: ${enviados} enviados`+(sinCorreo.length?`, ${sinCorreo.length} sin correo`:''),enviados>0?'ok':'err',6000);
   }catch(e){console.error('distribuirMarcacionesIndividual',e);setStatus('❌ Error al distribuir: '+(e.message||e),'var(--dn)');}
@@ -9372,7 +9445,7 @@ function showResumen(desde,hasta,sumObj){
         +`<td style='${TD};text-align:center'><b>${i+1}</b></td>`
         +`<td style='${TD}'><b>${s.nombre}</b></td>`
         +`<td style='${TD}'>${u}</td>`
-        +`<td style='${TD}'>${s.cedula||''}</td>`
+        +`<td style='${TD};white-space:nowrap;min-width:115px'>${s.cedula||''}</td>`
         +`<td style='${TD};text-align:center'>${s.dias}</td>`
         +`<td style='${TD};text-align:center'>${s.horas}</td>`
         +`<td style='${TD};text-align:right'>$${s.bruto.toFixed(2)}</td>`
@@ -9403,7 +9476,7 @@ function showResumen(desde,hasta,sumObj){
       +'<h2 style="color:#00313C;font-family:Arial">Resumen de Marcaciones — Juguetería Westland Nivel 300</h2>'
       +'<p style="font-family:Arial;color:#555">Período: <strong>'+desde+'</strong> al <strong>'+hasta+'</strong></p>'
       +'<table><tr>'
-      +'<th>#</th><th>Empleado</th><th>Usuario</th><th>Cédula</th>'
+      +'<th>#</th><th>Empleado</th><th>Usuario</th><th style="min-width:115px;white-space:nowrap">Cédula</th>'
       +'<th>Días</th><th>Horas</th><th>Bruto</th><th>Pendiente</th><th>NETO</th>'
       +'</tr>'+tRows
       +'<tr style="background:#f0f4f5;font-weight:800">'
