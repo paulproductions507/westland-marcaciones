@@ -225,11 +225,11 @@ body[data-home] #btnBack{display:none}
 @media(min-width:960px){.hm-grid{grid-template-columns:repeat(auto-fill,200px);justify-content:start;justify-items:center;gap:34px 30px}}
 .hm-it{--d:108px;appearance:none;border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0;display:flex;flex-direction:column;align-items:center;width:100%;max-width:210px;position:relative;}
 /* Efecto 1 · Media luna: los cuatro salen juntos desde la izquierda, suben en arco y caen formando la cuadrícula */
-html:not([data-fx]) .hm-it,html[data-fx=arc] .hm-it{animation:hmArcX 1.9s cubic-bezier(.25,.6,.3,1) backwards,hmArcY 1.9s linear backwards,hmFade .35s ease backwards;animation-delay:calc(var(--i)*90ms + 250ms)}
-html:not([data-fx]) .hm-it .hm-lb,html[data-fx=arc] .hm-it .hm-lb{animation:hmPop .45s cubic-bezier(.2,1.4,.4,1) backwards;animation-delay:calc(var(--i)*90ms + 2000ms)}
-html:not([data-fx]) .hm-it .hm-sm,html[data-fx=arc] .hm-it .hm-sm{animation:hmFade .5s ease backwards;animation-delay:calc(var(--i)*90ms + 2150ms)}
+html[data-fx=arc] .hm-it{animation:hmArcX 1.9s cubic-bezier(.25,.6,.3,1) backwards,hmArcY 1.9s linear backwards,hmFade .35s ease backwards;animation-delay:calc(var(--i)*90ms + 250ms)}
+html[data-fx=arc] .hm-it .hm-lb{animation:hmPop .45s cubic-bezier(.2,1.4,.4,1) backwards;animation-delay:calc(var(--i)*90ms + 2000ms)}
+html[data-fx=arc] .hm-it .hm-sm{animation:hmFade .5s ease backwards;animation-delay:calc(var(--i)*90ms + 2150ms)}
 /* Efecto 2 · Deslizar: uno por uno desde la izquierda, más lento */
-html[data-fx=slide] .hm-it{animation:hmSlide 1.1s cubic-bezier(.2,.9,.25,1) backwards;animation-delay:calc(var(--i)*300ms + 250ms)}
+html:not([data-fx]) .hm-it,html[data-fx=slide] .hm-it{animation:hmSlide 1.1s cubic-bezier(.2,.9,.25,1) backwards;animation-delay:calc(var(--i)*300ms + 250ms)}
 /* Efecto 3 · Rodar: uno por uno, rodando como rueda */
 html[data-fx=roll] .hm-it{animation:hmFly 1.1s cubic-bezier(.22,1.15,.36,1) backwards;animation-delay:calc(var(--i)*300ms + 250ms)}
 html[data-fx=roll] .hm-it .hm-lb{animation:hmPop .45s cubic-bezier(.2,1.4,.4,1) backwards;animation-delay:calc(var(--i)*300ms + 1050ms)}
@@ -372,18 +372,18 @@ td .bar,.tile .bar{height:16px!important;margin-top:4px!important}
 .row{padding:16px 14px!important}
 .btn{padding:12px 16px}.btn.sm{padding:9px 12px}
 .top{padding-bottom:16px}
-.wlogo{flex:none;width:42px;height:42px;display:block;filter:drop-shadow(0 3px 8px #0007)}
+.wlogo{flex:none;width:52px;height:52px;display:block;filter:drop-shadow(0 3px 8px #0007)}
 
 #gAv,[id^=ra-]{color:#e6d5b8!important}
 #gDv,[id^=da-],#rp-ORIG b,[id^=rp-] b[style*="--wn"]{color:#ff8fa8!important}
-.wlogo{width:34px!important;height:34px!important;filter:none!important}
+.wlogo{width:46px!important;height:46px!important;filter:none!important}
 .top .ttl h1{font-size:15px!important}.top .ttl small{font-size:11px}
 </style>
 <script>try{var _t=localStorage.getItem('conTheme');document.documentElement.dataset.theme=(_t==='light')?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
 <script>/* Modo de entrada automático: detecta móvil / tableta / escritorio y el ancho disponible */
 (function(){var d=document.documentElement,ua=navigator.userAgent||'',tc=(navigator.maxTouchPoints||0)>1;
 var mob=/iPhone|iPod|Android.+Mobile|Windows Phone|Mobile/i.test(ua),tab=!mob&&(/iPad|Tablet|Android/i.test(ua)||(/Macintosh/.test(ua)&&tc));
-d.dataset.device=mob?'mobile':tab?'tablet':'desktop';try{d.dataset.fx=localStorage.getItem('conFx')||'arc'}catch(e){d.dataset.fx='arc'}try{if(localStorage.getItem('conNoMove')==='1')d.dataset.nomove='1'}catch(e){}
+d.dataset.device=mob?'mobile':tab?'tablet':'desktop';try{if(localStorage.getItem('conFxSeed')!=='slide-v25'){localStorage.setItem('conFx','slide');localStorage.setItem('conFxSeed','slide-v25')}d.dataset.fx=localStorage.getItem('conFx')||'slide'}catch(e){d.dataset.fx='slide'}try{if(localStorage.getItem('conNoMove')==='1')d.dataset.nomove='1'}catch(e){}
 function z(){var w=window.innerWidth;d.dataset.size=w<640?'s':w<1000?'m':'l'}z();window.addEventListener('resize',z)})();</script></head>
 <body>
 <div id="stSheet" class="stsheet hide"><div class="stbox"><div class="sthd"><b>Filtrar por tienda</b><button type="button" id="stSheetX" class="btn sm">✕</button></div><div id="stSheetList"></div></div></div>
@@ -391,7 +391,7 @@ function z(){var w=window.innerWidth;d.dataset.size=w<640?'s':w<1000?'m':'l'}z()
   <div class="lbl" style="margin:6px 6px 8px">Efecto de entrada del menú</div><div id="cfgFx" class="cfg-fx"></div>
   <label class="cfg-chk"><input type="checkbox" id="cfgNoMove"><span><b>Sin movimiento</b><small>Detiene solo el giro alrededor de los iconos. Las transiciones y efectos siguen normales. Para detener todo, usa «Sin animación».</small></span></label>
   <div class="msg" style="margin:10px 6px 4px">Se guarda en este equipo. Al elegir uno se ve de inmediato en el menú.</div></div></div>
-<div id="gate" class="gate"><h2>🔎 Consultas</h2><p id="gmsg" style="color:var(--mt)">Verificando sesión…</p><a class="btn pri" id="glink" href="index.html" style="text-decoration:none;display:none">Ir a Marcaciones</a><div id="gpick" style="margin-top:18px"></div><a id="gtemp" href="#" style="display:none;margin-top:46px;font-size:11px;color:var(--mt);opacity:.55;text-decoration:none">Temporal</a></div>
+<div id="gate" class="gate"><h2>🔎 Consultas</h2><p id="gmsg" style="color:var(--mt)">Verificando sesión…</p><a class="btn pri" id="glink" href="index.html" style="text-decoration:none;display:none">Ir a Marcaciones</a><div id="glogin" style="display:none;margin-top:14px;width:100%;max-width:300px"><input id="glu" class="fc" placeholder="Usuario" autocapitalize="none" autocomplete="username" style="width:100%;box-sizing:border-box;margin-bottom:8px;padding:12px;border-radius:10px"><input id="glp" type="password" class="fc" placeholder="Contraseña" autocomplete="current-password" style="width:100%;box-sizing:border-box;margin-bottom:8px;padding:12px;border-radius:10px"><button class="btn pri" id="glgo" type="button" style="width:100%">Iniciar sesión</button><div id="glerr" class="msg err" style="margin-top:8px"></div></div><div id="gpick" style="margin-top:18px"></div><a id="gtemp" href="#" style="display:none;margin-top:46px;font-size:11px;color:var(--mt);opacity:.55;text-decoration:none">Temporal</a></div>
 
 <div id="app" class="hide">
   <div class="top">
@@ -552,7 +552,7 @@ function z(){var w=window.innerWidth;d.dataset.size=w<640?'s':w<1000?'m':'l'}z()
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js"></script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import{getAuth,onAuthStateChanged,signInAnonymously,signOut}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+import{getAuth,onAuthStateChanged,signInAnonymously,signOut,signInWithEmailAndPassword}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import{getDatabase,ref as R,push,get,onValue,remove as fbRemove,set as fbSet,runTransaction,update as fbUpdate,query,orderByKey,startAt,endAt,limitToLast}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 const FB={apiKey:"AIzaSyCn7bUx8PdK-1TCmOnffWJYLouC5vdGMIE",authDomain:"westland-marcaciones.firebaseapp.com",projectId:"westland-marcaciones",storageBucket:"westland-marcaciones.appspot.com",messagingSenderId:"477907187320",appId:"1:477907187320:web:c04ef5b3b8ff5773b99f8d",databaseURL:"https://westland-marcaciones-default-rtdb.firebaseio.com"};
 const app=initializeApp(FB),auth=getAuth(app),db=getDatabase(app);
@@ -671,6 +671,12 @@ function startTemp(){const t=getTemp();if(!t||STARTED)return;STARTED=true;TEMP=t
   if(!$('tmpOut')){const a=document.createElement('a');a.id='tmpOut';a.href='#';a.textContent='salir';a.style.cssText='font-size:10px;opacity:.6;margin-right:8px;color:inherit';$('verTag').after(a);
     a.onclick=async ev=>{ev.preventDefault();if(!confirm('¿Salir del modo temporal?'))return;try{localStorage.removeItem(TKEY)}catch(err){}try{if(auth.currentUser&&auth.currentUser.isAnonymous)await signOut(auth)}catch(err){}location.reload()}}
   $('gate').classList.add('hide');$('app').classList.remove('hide');startCtrl();showRecList();showHome();navRestore()}
+const u2e=u=>{const uu=String(u).trim().toLowerCase();return uu==='aojo'?uu+'@saks.com.pa':'westlandoutletjugueterianivel+'+uu+'@gmail.com'};
+async function doLogin(){const u=$('glu').value.trim(),p=$('glp').value;$('glerr').textContent='';if(!u||!p){$('glerr').textContent='Escribe tu usuario y contraseña.';return}
+  const b=$('glgo');b.disabled=true;b.textContent='Entrando…';
+  try{try{localStorage.removeItem(TKEY)}catch(e){}await signInWithEmailAndPassword(auth,u2e(u),p);$('glp').value=''}
+  catch(err){const c=err.code||'';$('glerr').textContent=(c.includes('invalid-credential')||c.includes('wrong-password')||c.includes('user-not-found'))?'Usuario o contraseña incorrectos.':'No se pudo iniciar sesión ('+(c||err.message)+').';b.disabled=false;b.textContent='Iniciar sesión'}}
+$('glgo').onclick=doLogin;$('glp').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 $('gtemp').onclick=e=>{e.preventDefault();if(!$('gpick').innerHTML)openTempPicker()};
 onAuthStateChanged(auth,async u=>{
   if(STARTED)return;
@@ -680,7 +686,7 @@ onAuthStateChanged(auth,async u=>{
     startTemp();return}
   if(!u||u.isAnonymous){
     if(!u){$('gmsg').textContent='Verificando sesión…';await new Promise(r=>setTimeout(r,2500));if(auth.currentUser&&!auth.currentUser.isAnonymous)return}
-    showGate('Para consultar debes iniciar sesión en la app de Marcaciones y entrar desde el icono de Consultas.');$('glink').style.display='inline-block';
+    showGate('Inicia sesión con tu usuario y contraseña de Marcaciones.');$('glogin').style.display='block';$('glink').style.display='inline-block';
     if(u&&u.isAnonymous&&!$('gpick').innerHTML)openTempPicker();return}
   STARTED=true;
   USER=emailToUser(u.email);NAME=USER;ISADM=ADMINS.includes(USER);applyRole();
@@ -3511,7 +3517,7 @@ function showHome(path){
   ['btnHome','btnPal','btnPkl','btnRecBack','bar'].forEach(id=>{const e=$(id);if(e)e.classList.add('hide')});
   buildHome();$('v-home').classList.remove('hide');window.scrollTo(0,0)}
 const FXS=[['arc','Media luna','Los cuatro salen juntos, suben en arco y caen en su lugar'],['slide','Deslizar','Uno por uno desde la izquierda'],['roll','Rodar','Uno por uno, rodando como rueda'],['drop','Caída con rebote','Caen desde arriba y rebotan al llegar'],['zoom','Zoom','Crecen desde el centro, en cascada'],['flip','Giro 3D','Giran como una puerta y se abren'],['fan','Abanico','Se abren en abanico desde la esquina izquierda'],['fade','Transición suave','Aparece con desvanecimiento, sin movimiento'],['none','Sin animación','Entra directo; ideal para equipos lentos']];
-function cfgPaint(){const cur=document.documentElement.dataset.fx||'arc';$('cfgFx').innerHTML=FXS.map(([k,n,d])=>`<button type="button" data-fx="${k}" class="${cur===k?'on':''}">${n}<small>${d}</small></button>`).join('')}
+function cfgPaint(){const cur=document.documentElement.dataset.fx||'slide';$('cfgFx').innerHTML=FXS.map(([k,n,d])=>`<button type="button" data-fx="${k}" class="${cur===k?'on':''}">${n}<small>${d}</small></button>`).join('')}
 $('btnCfg').onclick=()=>{cfgPaint();$('cfgNoMove').checked=document.documentElement.dataset.nomove==='1';$('cfgSheet').classList.remove('hide')};
 $('cfgNoMove').addEventListener('change',e=>{const d=document.documentElement;if(e.target.checked)d.dataset.nomove='1';else delete d.dataset.nomove;try{localStorage.setItem('conNoMove',e.target.checked?'1':'0')}catch(x){}if(!$('v-home').classList.contains('hide'))buildHome()});
 $('cfgSheet').addEventListener('click',e=>{if(e.target.id==='cfgSheet'||e.target.id==='cfgX'){$('cfgSheet').classList.add('hide');return}

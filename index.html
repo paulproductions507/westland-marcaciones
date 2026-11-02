@@ -994,7 +994,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
           <div class="asec"><div class="ashdr" data-ac="ac-turnos"><span>🔀 Turnos de trabajo</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-turnos">
             <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Crea los turnos que necesites (nombre + horario). Luego, en cada turno, elige el día de la semana y marca qué colaboradores tienen ESE turno ESE día — puedes tener turnos distintos cada día (ej. martes: 4 en Turno 1 y 4 en Turno 2; miércoles: solo Turno 1). Un colaborador solo puede tener un turno por día; si lo asignas aquí, se quita automáticamente de cualquier otro turno que tuviera ese mismo día. El domingo se configura igual, por su propia pestaña.</div>
-            <div style="font-size:12px;color:var(--mt);margin-bottom:10px">Usa las pestañas de izquierda a derecha: cada turno, luego Domingo y Día libre. Dentro de cada turno elige el día de la semana y marca qué colaboradores tienen ESE turno ESE día. Un colaborador solo puede tener un turno por día; si lo asignas aquí, se quita automáticamente de cualquier otro turno que tuviera ese mismo día.</div>
+            <details style="margin-bottom:10px"><summary style="font-size:12px;color:var(--ac);cursor:pointer;font-weight:700">ℹ Cómo funciona</summary><div style="font-size:12px;color:var(--mt);margin-top:6px;line-height:1.5">Elige la semana arriba, luego una pestaña (cada turno, Domingo, Día libre o Reporte). En cada turno toca el día y marca quién tiene ESE turno ESE día. Un colaborador solo puede tener un turno por día: si lo asignas aquí, se quita del otro. Al terminar, usa “Confirmar esta semana” y envía el reporte.</div></details>
             <div id="turnos-semana-bar" style="background:var(--sf);border:1px solid var(--ac);border-radius:var(--rs);padding:10px 12px;margin-bottom:10px">
               <div style="font-weight:700;font-size:13px;margin-bottom:6px">🗓 Semana que estás programando (lunes → domingo)</div>
               <div style="display:flex;align-items:center;gap:8px">
@@ -1029,24 +1029,21 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               <div id="libre-status" style="font-size:12px;color:var(--mt);margin-top:8px"></div>
             </div>
             </div>
-            <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin:10px 0">
-              <div style="font-weight:700;font-size:13px;margin-bottom:8px">👤 Ver el turno por colaborador — o de TODOS a la vez — semana por semana</div>
-              <div class="fg"><label>Colaborador</label>
+            <div data-tpanel="__rep" style="display:none;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:10px">
+              <div style="font-weight:700;font-size:13px;margin-bottom:2px">📊 Reporte semanal de turnos</div>
+              <div id="tcol-label" style="font-size:12px;color:var(--mt);margin-bottom:8px"></div>
+              <div class="fg"><label>Ver</label>
                 <div style="display:flex;align-items:center;gap:6px">
                   <button class="btn bg bsm" id="tcol-user-prev" type="button" style="width:auto;flex-shrink:0">‹</button>
                   <select class="fc" id="tcol-user" style="flex:1"></select>
                   <button class="btn bg bsm" id="tcol-user-next" type="button" style="width:auto;flex-shrink:0">›</button>
                 </div>
               </div>
-              <div style="display:flex;align-items:center;gap:8px;margin-top:9px">
-                <button class="btn bg bsm" id="tcol-prev" style="width:auto">‹</button>
-                <div id="tcol-label" style="flex:1;text-align:center;font-size:13px;font-weight:800"></div>
-                <button class="btn bg bsm" id="tcol-next" style="width:auto">›</button>
-              </div>
+              
               <div id="tcol-body" style="margin-top:9px"></div>
             </div>
-            <div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:10px">
-              <div style="font-weight:700;font-size:13px;margin-bottom:8px">+ Nuevo turno</div>
+            <details style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-top:10px">
+              <summary style="font-weight:700;font-size:13px;cursor:pointer">+ Nuevo turno</summary><div style="margin-top:8px">
               <div class="fg2">
                 <div class="fg"><label>Nombre</label><input class="fc" id="nt-nombre" placeholder="Ej: Turno 5"></div>
                 <div class="fg"><label>Inicio</label><input type="time" class="fc" id="nt-ini"></div>
@@ -1057,7 +1054,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
                 <div class="fg"><label>Duración almuerzo (min)</label><input type="number" min="0" step="5" class="fc" id="nt-alm-dur" value="60"></div>
               </div>
               <button class="btn bp bsm" id="btn-crear-turno" style="width:auto;margin-top:8px">➕ Crear turno</button>
-            </div>
+            </div></details>
           </div></div>
 <div class="asec"><div class="ashdr" data-ac="ac-ed"><span>🔍 Editar marcaciones</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-ed">
@@ -3844,7 +3841,7 @@ function renderTurnoDiaBody(id){
   const badge=prog
     ?`<div style="font-size:11px;color:var(--ac);margin-bottom:6px">✓ Programado para el ${fmtFechaCorta(fechaISO)} — por <strong>${meta.por||'?'}</strong> · ${fmtFechaHora(meta.ts)}</div>`
     :`<div style="font-size:11px;color:var(--wn);margin-bottom:6px">⚠ ${fmtFechaCorta(fechaISO)} aún NO está programado: se muestra el horario base. Al guardar, queda programado solo para esa fecha.</div>`;
-  body.innerHTML=badge+`<div style="display:flex;flex-direction:column;gap:2px;max-height:230px;overflow-y:auto;margin-bottom:8px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px">`
+  body.innerHTML=badge+`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 12px;max-height:260px;overflow-y:auto;margin-bottom:8px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px">`
     +turnoDiaChecklistHTML(id,dia,dias,_turnosColabCache,dueno)
     +`</div><button class="btn bp bsm btn-guardar-turno-dia" data-id="${id}" data-dia="${dia}" style="width:auto">💾 Guardar ${DIA_NOMBRE[dia]} ${fmtFechaCorta(fechaISO)}</button>`;
   body.querySelector('.btn-guardar-turno-dia').addEventListener('click',()=>guardarTurnoDia(id,dia));
@@ -3857,7 +3854,7 @@ function renderTurnoPills(id){
   wrap.innerHTML=DIA_KEYS.map((dk,i)=>{
     const cnt=Object.keys(dias[dk]||{}).length;
     const on=dk===sel;
-    return `<button type="button" class="btn ${on?'bp':'bg'} bsm turno-dia-pill" data-id="${id}" data-dia="${dk}" style="width:auto;font-size:11px;padding:4px 9px">${DIA_PILL[i]}${cnt?` (${cnt})`:''}${diaProgramado(_turnosSemData,dk)?' ✓':''}</button>`;
+    return `<button type="button" class="btn ${on?'bp':'bg'} bsm turno-dia-pill" data-id="${id}" data-dia="${dk}" style="width:auto;font-size:11px;padding:4px 9px">${DIA_PILL[i]} ${new Date(addDaysISO(_turnosSemLun,i)+'T00:00:00').getDate()}${cnt?` (${cnt})`:''}${diaProgramado(_turnosSemData,dk)?' ✓':''}</button>`;
   }).join('');
   wrap.querySelectorAll('.turno-dia-pill').forEach(btn=>btn.addEventListener('click',()=>{_turnoDiaSel[id]=btn.dataset.dia;renderTurnoPills(id);renderTurnoDiaBody(id);}));
 }
@@ -3886,6 +3883,7 @@ function renderBarraSemanaTurnos(){
     lb.innerHTML=filas.length?`<div style="font-weight:700;margin-bottom:2px">🏖 Días libres esta semana</div>${filas.join('')}`:'<span style="color:var(--mt)">🏖 Sin días libres registrados esta semana.</span>';
   }
   try{renderDomingoResumen();}catch(e){}
+  try{if(_turnoTabSel==='__rep'){_tcolLun=_turnosSemLun;renderTcolSemana();}}catch(e){}
 }
 async function cargarSemanaTurnos(){
   if(!_turnosSemLun)_turnosSemLun=semanaPorDefectoLun();
@@ -3910,12 +3908,13 @@ function ordenarIdsTurnos(turnos){
 function renderTurnoTabs(ids){
   const bar=el('turnos-tabs');if(!bar)return;
   const tabs=ids.map(id=>({k:id,t:(_turnosCache[id]&&_turnosCache[id].nombre)||id}));
-  tabs.push({k:'__dom',t:'☀ Turno domingo'},{k:'__libre',t:'🏖 Día libre'});
+  tabs.push({k:'__dom',t:'☀ Turno domingo'},{k:'__libre',t:'🏖 Día libre'},{k:'__rep',t:'📊 Reporte semanal'});
   if(!tabs.some(x=>x.k===_turnoTabSel))_turnoTabSel=tabs[0].k;
   bar.innerHTML=tabs.map(x=>`<button type="button" class="btn ${x.k===_turnoTabSel?'bp':'bg'} bsm turno-tab" data-k="${escHtml(x.k)}" style="width:auto;flex-shrink:0;white-space:nowrap;font-size:12px;padding:6px 12px">${escHtml(x.t)}</button>`).join('');
   bar.querySelectorAll('.turno-tab').forEach(b=>b.addEventListener('click',()=>{_turnoTabSel=b.dataset.k;renderTurnoTabs(ids);}));
   document.querySelectorAll('#ac-turnos [data-tpanel]').forEach(p=>{p.style.display=(p.dataset.tpanel===_turnoTabSel)?'block':'none';});
   if(_turnoTabSel==='__dom')renderDomingoResumen();
+  if(_turnoTabSel==='__rep'){_tcolLun=_turnosSemLun||_tcolLun;renderTcolSemana();}
 }
 function renderDomingoResumen(){
   const c=el('tdom-resumen');if(!c||!_turnosCache||!_turnosSemLun)return;
@@ -3930,11 +3929,15 @@ function renderDomingoResumen(){
   c.innerHTML=`<div style="font-size:11.5px;color:var(--mt);margin-bottom:6px">Quién trabaja el domingo ${fmtFechaCorta(f)} (semana seleccionada arriba):</div>${filas||'<div style="font-size:12px;color:var(--mt)">Sin turnos.</div>'}`;
   c.querySelectorAll('.tdom-edit').forEach(b=>b.addEventListener('click',()=>{_turnoDiaSel[b.dataset.id]='domingo';_turnoTabSel=b.dataset.id;renderTurnoTabs(ordenarIdsTurnos(_turnosCache));renderTurnoPills(b.dataset.id);renderTurnoDiaBody(b.dataset.id);}));
 }
-// ── REPORTE DE TODOS LOS COLABORADORES (semana seleccionada) → correo / WhatsApp ──
+// ── REPORTE DE TODOS LOS COLABORADORES (semana seleccionada) → correo (EmailJS) / WhatsApp ──
 const TALL='__TODOS__';
-const TALL_MAIL_KEY='turnos_reporte_email';
+const TALL_MAIL_KEY='turnos_reporte_email',TALL_FROM_KEY='turnos_reporte_remitente';
+const TALL_FROM_DEF='trafico@outlook.com',TALL_TO_DEF='alvarado@sac.com.pa';
+const TALL_TINT=['rgba(0,201,167,.20)','rgba(80,140,255,.22)','rgba(255,190,50,.24)','rgba(255,110,110,.20)','rgba(170,110,255,.22)','rgba(120,200,60,.22)'];
+const TALL_TINT_MAIL=['#d6f5ef','#dbe8ff','#fff0c9','#ffe0e0','#ece0ff','#e2f3d0'];
 function fmt12(h){if(!h)return'';const p=String(h).split(':');const H=parseInt(p[0],10),M=parseInt(p[1]||'0',10);if(isNaN(H))return h;return`${H%12||12}:${String(M).padStart(2,'0')} ${H>=12?'PM':'AM'}`;}
 function fmtDiaTurnoRep(iso){return new Date(iso+'T00:00:00').toLocaleDateString('es',{weekday:'long',day:'numeric',month:'short'});}
+function codigoTurno(nombre,id){const n=String(nombre||'').toLowerCase();const m=n.match(/(\d+)/);if(/especial/.test(n))return'TE';if(m)return'T'+m[1];return String(nombre||id||'?').replace(/[^A-Za-z0-9]/g,'').slice(0,3).toUpperCase()||'?';}
 function copiarTexto(t){
   return (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject()).catch(()=>{
     const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
@@ -3953,73 +3956,117 @@ async function datosSemanaTodos(lun){
     else Object.keys(turnos).forEach(tid=>{const dd=migrarTurnoADias(turnos[tid]);Object.keys(dd[dk]||{}).forEach(u=>{asig[u]={tid,nombre:turnos[tid].nombre,inicio:turnos[tid].inicio,fin:turnos[tid].fin};});});
     return{dk,f,prog,meta:prog?semD[dk]._meta:null,asig,libres:libres[f]||{}};
   });
-  return{lun,dom,colab,dias,turnos};
+  const ids=ordenarIdsTurnos(turnos);
+  const info={};ids.forEach((id,i)=>{info[id]={id,nombre:turnos[id].nombre,inicio:turnos[id].inicio,fin:turnos[id].fin,cod:codigoTurno(turnos[id].nombre,id),idx:i};});
+  // Turnos que ya no existen pero quedaron guardados en una semana programada
+  dias.forEach(x=>Object.keys(x.asig).forEach(u=>{const a=x.asig[u];if(a&&a.tid&&!info[a.tid])info[a.tid]={id:a.tid,nombre:a.nombre,inicio:a.inicio,fin:a.fin,cod:codigoTurno(a.nombre,a.tid),idx:Object.keys(info).length};}));
+  return{lun,dom,colab,dias,turnos,info};
 }
+function nombresCortos(colab){
+  const base=colab.map(u=>String(u.nombre||u.user).trim().split(/\s+/));
+  const cnt={};base.forEach(p=>{cnt[p[0]]=(cnt[p[0]]||0)+1;});
+  const out={};
+  colab.forEach((u,i)=>{const p=base[i];out[u.user]=(cnt[p[0]]>1&&p[1]?p[0]+' '+p[1][0]+'.':p[0]).slice(0,9);});
+  return out;
+}
+// Texto para WhatsApp: tabla en monoespaciado (bloque ```), cabe en pantalla de celular
 function textoReporteTurnos(d){
-  const nom={};d.colab.forEach(u=>{nom[u.user]=u.nombre||u.user;});
-  const ids=ordenarIdsTurnos(d.turnos);
-  let t=`📅 *TURNOS DE LA SEMANA*\n${fmtDiaTurnoRep(d.lun)} → ${fmtDiaTurnoRep(d.dom)}\n`;
-  d.dias.forEach(x=>{
-    t+=`\n*${fmtDiaTurnoRep(x.f).replace(/^./,c=>c.toUpperCase())}*\n`;
-    const usados=new Set();
-    ids.forEach(id=>{
-      const us=d.colab.filter(u=>!x.libres[u.user]&&x.asig[u.user]&&x.asig[u.user].tid===id);
-      if(!us.length)return;
-      us.forEach(u=>usados.add(u.user));
-      const a=x.asig[us[0].user];
-      t+=`• ${a.nombre||d.turnos[id].nombre} (${fmt12(a.inicio)} – ${fmt12(a.fin)}): ${us.map(u=>u.nombre||u.user).join(', ')}\n`;
-    });
-    const libres=d.colab.filter(u=>x.libres[u.user]);
-    if(libres.length)t+=`• 🏖 LIBRE: ${libres.map(u=>u.nombre||u.user).join(', ')}\n`;
-    const sin=d.colab.filter(u=>!x.libres[u.user]&&!usados.has(u.user));
-    if(sin.length)t+=`• Sin turno asignado: ${sin.map(u=>u.nombre||u.user).join(', ')}\n`;
-  });
+  const cor=nombresCortos(d.colab);
+  const cod=(u,x)=>{if(x.libres[u.user])return'LIB';const a=x.asig[u.user];if(!a)return'--';return(d.info[a.tid]&&d.info[a.tid].cod)||codigoTurno(a.nombre,a.tid);};
+  const W=9,pad=(s,n)=>String(s).padEnd(n,' ');
+  let t=`📅 *TURNOS DE LA SEMANA*\n${fmtFechaCorta(d.lun)} → ${fmtFechaCorta(d.dom)}\n\n`;
+  const ab=['Lu','Ma','Mi','Ju','Vi','Sa','Do'];
+  let tb=pad('',W)+ab.map(a=>pad(a,4)).join('').trimEnd()+'\n';
+  d.colab.forEach(u=>{tb+=pad(cor[u.user],W)+d.dias.map(x=>pad(cod(u,x),4)).join('').trimEnd()+'\n';});
+  t+='```\n'+tb+'```\n';
+  const usados={};d.colab.forEach(u=>d.dias.forEach(x=>{if(!x.libres[u.user]&&x.asig[u.user]){const a=x.asig[u.user];usados[a.tid]=d.info[a.tid]||{cod:codigoTurno(a.nombre,a.tid),nombre:a.nombre,inicio:a.inicio,fin:a.fin};}}));
+  Object.values(usados).sort((a,b)=>a.idx-b.idx).forEach(i=>{t+=`*${i.cod}* = ${i.nombre} (${fmt12(i.inicio)} – ${fmt12(i.fin)})\n`;});
+  t+=`*LIB* = 🏖 Día libre · *--* = sin turno asignado\n`;
+  const lib=d.colab.map(u=>({u,dd:d.dias.filter(x=>x.libres[u.user]).map(x=>fmtFechaCorta(x.f).replace(/\./g,''))})).filter(o=>o.dd.length);
+  if(lib.length){t+=`\n🏖 *Días libres:*\n`+lib.map(o=>`• ${o.u.nombre||o.u.user}: ${o.dd.join(', ')}`).join('\n')+'\n';}
   const pend=d.dias.filter(x=>!x.prog);
-  if(pend.length)t+=`\n⚠ Días aún sin confirmar (horario base): ${pend.map(x=>DIA_PILL[DIA_KEYS.indexOf(x.dk)]).join(', ')}\n`;
-  else t+=`\n✅ Semana confirmada.\n`;
+  t+=pend.length?`\n⚠ Sin confirmar (horario base): ${pend.map(x=>DIA_PILL[DIA_KEYS.indexOf(x.dk)]).join(', ')}\n`:`\n✅ Semana confirmada.\n`;
   t+=`\nCualquier cambio se avisa por este mismo medio.`;
   return t;
 }
-let _tallTxt='',_tallAsunto='';
+// HTML con tabla para el correo (estilos en línea, como el resto de correos de la app)
+function htmlReporteTurnos(d,remit){
+  const th='background:#00313C;color:#fff;padding:7px 8px;border:1px solid #00313C;font-size:12px;text-align:center';
+  const td='padding:6px 8px;border:1px solid #ccc;font-size:12px;text-align:center';
+  const cor=d.colab;
+  let h='<div style="font-family:Arial,sans-serif;color:#022;max-width:760px">'
+    +`<h2 style="color:#00313C;margin:0 0 4px 0">📅 Turnos de la semana</h2>`
+    +`<p style="font-size:13px;color:#555;margin:0 0 12px 0">${escHtml(fmtDiaTurnoRep(d.lun))} → ${escHtml(fmtDiaTurnoRep(d.dom))}</p>`
+    +'<table style="border-collapse:collapse;width:100%"><tr><th style="'+th+';text-align:left">Colaborador</th>'
+    +d.dias.map(x=>`<th style="${th}">${DIA_PILL[DIA_KEYS.indexOf(x.dk)]} ${new Date(x.f+'T00:00:00').getDate()}${x.prog?'':' *'}</th>`).join('')+'</tr>';
+  cor.forEach(u=>{
+    h+=`<tr><td style="${td};text-align:left;font-weight:700">${escHtml(u.nombre||u.user)}</td>`;
+    d.dias.forEach(x=>{
+      if(x.libres[u.user])h+=`<td style="${td};background:#ffd9d9;color:#a00;font-weight:700">🏖 LIBRE</td>`;
+      else if(x.asig[u.user]){const a=x.asig[u.user],i=d.info[a.tid];h+=`<td style="${td};background:${TALL_TINT_MAIL[(i?i.idx:0)%TALL_TINT_MAIL.length]}"><strong>${escHtml(a.nombre||'')}</strong><br><span style="color:#555;font-size:11px">${fmt12(a.inicio)} – ${fmt12(a.fin)}</span></td>`;}
+      else h+=`<td style="${td};color:#999">—</td>`;
+    });
+    h+='</tr>';
+  });
+  h+='</table>';
+  const pend=d.dias.filter(x=>!x.prog);
+  h+=pend.length?`<p style="font-size:12px;color:#a60;margin:10px 0 0 0">* Día aún sin confirmar (se muestra el horario base): ${pend.map(x=>DIA_NOMBRE[x.dk]).join(', ')}.</p>`:`<p style="font-size:12px;color:#080;margin:10px 0 0 0">✅ Semana confirmada.</p>`;
+  h+='<p style="font-size:12px;color:#555;margin:6px 0 0 0">🏖 LIBRE = día libre · — = sin turno asignado. Cualquier cambio se avisará por este mismo medio.</p>'
+    +`<p style="margin-top:14px;border-top:1px solid #00313C;padding-top:8px;color:#00313C;font-size:11px;font-weight:700">Notificaciones Tráfico · ${escHtml(remit)} · Westland Marcaciones · ${new Date().toLocaleString('es')}</p></div>`;
+  return h;
+}
+let _tallTxt='',_tallAsunto='',_tallData=null;
+async function enviarReporteTurnosCorreo(){
+  const dest=(el('tall-email').value||'').trim(),remit=(el('tall-from').value||'').trim()||TALL_FROM_DEF;
+  if(!dest||!dest.includes('@')){toast('Escribe el correo de destino','err');return;}
+  try{localStorage.setItem(TALL_MAIL_KEY,dest);localStorage.setItem(TALL_FROM_KEY,remit);}catch(e){}
+  let cfg=getEJSCfg();
+  if(!cfg||!cfg.serviceId||!cfg.publicKey||!cfg.templateId){try{const s=await get(R(db,EMCFG));if(s.exists())cfg=s.val();}catch(e){}}
+  if(!cfg||!cfg.serviceId||!cfg.publicKey||!cfg.templateId){toast('Configura EmailJS primero (Panel Administrativo → Correo automático)','err',6000);return;}
+  if(!confirm(`Se enviará el reporte de turnos:\n\nPara: ${dest}\nRemitente: ${remit}\nSemana: ${fmtFechaCorta(_tallData.lun)} → ${fmtFechaCorta(_tallData.dom)}\n\n¿Enviar ahora?`))return;
+  const btn=el('tall-mail');if(btn){btn.disabled=true;btn.textContent='Enviando...';}
+  try{
+    const html=htmlReporteTurnos(_tallData,remit);
+    emailjs.init(cfg.publicKey);
+    await emailjs.send(cfg.serviceId,cfg.templateId,{to_email:dest,cc_email:'',subject:_tallAsunto,html_content:html,message:html,from_name:'Notificaciones Tráfico',from_email:remit,reply_to:remit,periodo:_tallAsunto,timestamp:new Date().toLocaleString('es')});
+    toast('✅ Reporte enviado a '+dest,'ok',5000);
+    await addLog(`Reporte de turnos ${_tallData.lun}→${_tallData.dom} enviado a ${dest} (por ${CU})`);
+  }catch(e){console.error(e);toast('⛔ No se pudo enviar: '+(e.text||e.message||'revisa EmailJS'),'err',6000);}
+  finally{if(btn){btn.disabled=false;btn.textContent='📧 Enviar por correo';}}
+}
 async function renderTodosSemana(){
   const body=el('tcol-body');if(!body)return;
   if(!_tcolLun)_tcolLun=semanaPorDefectoLun();
   body.innerHTML='<div style="font-size:12px;color:var(--mt)">Cargando...</div>';
   try{
     const d=await datosSemanaTodos(_tcolLun);
-    _tallTxt=textoReporteTurnos(d);
+    _tallData=d;_tallTxt=textoReporteTurnos(d);
     _tallAsunto=`Turnos semana ${fmtFechaCorta(d.lun)} → ${fmtFechaCorta(d.dom)}`;
-    let mail='alvarado@sac.com.pa';try{mail=localStorage.getItem(TALL_MAIL_KEY)||mail;}catch(e){}
-    const th='padding:5px 6px;font-size:11px;color:var(--mt);text-align:center;border-bottom:1px solid var(--bd);white-space:nowrap';
+    let mail=TALL_TO_DEF,from=TALL_FROM_DEF;try{mail=localStorage.getItem(TALL_MAIL_KEY)||mail;from=localStorage.getItem(TALL_FROM_KEY)||from;}catch(e){}
+    const th='padding:6px 6px;font-size:11px;color:var(--mt);text-align:center;border-bottom:2px solid var(--bd);white-space:nowrap';
     const celda=(u,x)=>{
-      if(x.libres[u.user])return`<td style="padding:5px 6px;text-align:center;font-size:11px;color:var(--wn);font-weight:800;border-bottom:1px solid var(--bd)">🏖 Libre</td>`;
+      const b='padding:5px 6px;text-align:center;font-size:11px;border-bottom:1px solid var(--bd);border-left:1px solid var(--bd)';
+      if(x.libres[u.user])return`<td style="${b};color:var(--dn);font-weight:800;background:rgba(255,80,80,.12)">🏖 Libre</td>`;
       const a=x.asig[u.user];
-      if(a)return`<td style="padding:5px 6px;text-align:center;font-size:11px;border-bottom:1px solid var(--bd);white-space:nowrap"><strong>${escHtml(a.nombre||'')}</strong><div style="color:var(--mt)">${fmt12(a.inicio)}–${fmt12(a.fin)}</div></td>`;
-      return`<td style="padding:5px 6px;text-align:center;font-size:11px;color:var(--mt);border-bottom:1px solid var(--bd)">—</td>`;
+      if(a){const i=d.info[a.tid];return`<td style="${b};white-space:nowrap;background:${TALL_TINT[(i?i.idx:0)%TALL_TINT.length]}"><strong>${escHtml(a.nombre||'')}</strong><div style="color:var(--mt);font-size:10.5px">${fmt12(a.inicio)}–${fmt12(a.fin)}</div></td>`;}
+      return`<td style="${b};color:var(--mt)">—</td>`;
     };
     body.innerHTML=
-      `<div class="fg"><label>Enviar a (correo)</label><input type="email" class="fc" id="tall-email" value="${escHtml(mail)}" placeholder="correo@dominio.com"></div>`
-      +`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:9px 0">`
+      `<div class="fg2" style="margin-bottom:8px"><div class="fg"><label>De (notificaciones)</label><input type="email" class="fc" id="tall-from" value="${escHtml(from)}"></div>`
+      +`<div class="fg"><label>Para</label><input type="email" class="fc" id="tall-email" value="${escHtml(mail)}"></div></div>`
+      +`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">`
       +`<button class="btn bp bsm" id="tall-mail" style="width:auto">📧 Enviar por correo</button>`
-      +`<button class="btn bg bsm" id="tall-copy" style="width:auto">📋 Copiar para WhatsApp</button>`
-      +`<button class="btn bg bsm" id="tall-wa" style="width:auto">💬 Abrir WhatsApp</button></div>`
+      +`<button class="btn bg bsm" id="tall-wa" style="width:auto">💬 WhatsApp (copia y abre)</button></div>`
       +`<div style="overflow-x:auto;border:1px solid var(--bd);border-radius:var(--rs)"><table style="border-collapse:collapse;width:100%;min-width:560px"><thead><tr><th style="${th};text-align:left;position:sticky;left:0;background:var(--sf)">Colaborador</th>`
-      +d.dias.map(x=>`<th style="${th}">${DIA_PILL[DIA_KEYS.indexOf(x.dk)]} ${new Date(x.f+'T00:00:00').getDate()}${x.prog?' ✓':''}</th>`).join('')
+      +d.dias.map(x=>`<th style="${th};border-left:1px solid var(--bd)">${DIA_PILL[DIA_KEYS.indexOf(x.dk)]} ${new Date(x.f+'T00:00:00').getDate()}${x.prog?' ✓':''}</th>`).join('')
       +`</tr></thead><tbody>`
-      +d.colab.map(u=>`<tr><td style="padding:5px 6px;font-size:12px;font-weight:700;border-bottom:1px solid var(--bd);white-space:nowrap;position:sticky;left:0;background:var(--sf)">${escHtml(u.nombre||u.user)}</td>${d.dias.map(x=>celda(u,x)).join('')}</tr>`).join('')
+      +d.colab.map(u=>`<tr><td style="padding:5px 8px;font-size:12px;font-weight:700;border-bottom:1px solid var(--bd);white-space:nowrap;position:sticky;left:0;background:var(--sf)">${escHtml(u.nombre||u.user)}</td>${d.dias.map(x=>celda(u,x)).join('')}</tr>`).join('')
       +`</tbody></table></div>`
-      +`<div style="font-size:11px;color:var(--mt);margin-top:6px">✓ = día confirmado para esa semana. Sin ✓ se muestra el horario base. Cambia de semana con ‹ › de arriba.</div>`;
+      +`<div style="font-size:11px;color:var(--mt);margin-top:6px">✓ = día confirmado. Sin ✓ se muestra el horario base. La semana se cambia con ‹ › arriba.</div>`;
+    el('tall-from').addEventListener('change',function(){try{localStorage.setItem(TALL_FROM_KEY,this.value.trim());}catch(e){}});
     el('tall-email').addEventListener('change',function(){try{localStorage.setItem(TALL_MAIL_KEY,this.value.trim());}catch(e){}});
-    el('tall-mail').addEventListener('click',async()=>{
-      const dest=(el('tall-email').value||'').trim();
-      if(!dest||!dest.includes('@')){toast('Escribe el correo de destino','err');return;}
-      try{localStorage.setItem(TALL_MAIL_KEY,dest);}catch(e){}
-      await copiarTexto(_tallTxt);
-      window.open(`mailto:${dest}?subject=${encodeURIComponent(_tallAsunto)}&body=${encodeURIComponent(_tallTxt)}`,'_blank');
-      toast('Se abrió el correo (el texto también quedó copiado por si acaso) ✓','ok',5000);
-    });
-    el('tall-copy').addEventListener('click',async()=>{await copiarTexto(_tallTxt);toast('📋 Copiado: pégalo en WhatsApp ✓','ok');});
-    el('tall-wa').addEventListener('click',()=>{window.open('https://wa.me/?text='+encodeURIComponent(_tallTxt),'_blank');});
+    el('tall-mail').addEventListener('click',enviarReporteTurnosCorreo);
+    el('tall-wa').addEventListener('click',async()=>{await copiarTexto(_tallTxt);window.open('https://wa.me/?text='+encodeURIComponent(_tallTxt),'_blank');toast('📋 Copiado y abriendo WhatsApp ✓','ok');});
   }catch(e){console.error('renderTodosSemana',e);body.innerHTML='<div style="font-size:12px;color:var(--dn)">Error al cargar.</div>';}
 }
 // Visor: el turno de UN colaborador elegido, día por día, para cualquier semana — reutiliza
@@ -4123,7 +4170,6 @@ async function loadTurnosAdmin(){
   selDom.innerHTML='<option value="">— Ninguno —</option>'+ids.map(id=>`<option value="${id}" ${id===domDefault?'selected':''}>${turnos[id].nombre} (${turnos[id].inicio}→${turnos[id].fin})</option>`).join('');
   _turnosCache=turnos;_turnosColabCache=colab;_turnosUsersCache=users;
   await cargarSemanaTurnos();
-  renderTcolSemana();
   // Migra en Firebase, en segundo plano, los turnos que todavía tengan el formato viejo
   ids.forEach(id=>{const t=turnos[id];if(!t.dias&&t.usuarios){set(R(db,`${TURNOS}/${id}/dias`),migrarTurnoADias(t)).catch(()=>{});}});
   if(!ids.length){c.innerHTML='<div style="color:var(--mt);font-size:12px">Aún no hay turnos creados. Crea el primero abajo.</div>';renderTurnoTabs(ids);return;}
@@ -4136,21 +4182,28 @@ async function loadTurnosAdmin(){
     div.dataset.tpanel=id;div.style.display='none';
     div.innerHTML=`
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-        <strong style="font-size:13px">${t.nombre}</strong>
-        <input type="time" class="fc turno-inp" data-id="${id}" data-campo="inicio" value="${t.inicio}" style="width:auto;font-size:12px;padding:4px 6px">
-        <span style="font-size:11px;color:var(--mt)">→</span>
-        <input type="time" class="fc turno-inp" data-id="${id}" data-campo="fin" value="${t.fin}" style="width:auto;font-size:12px;padding:4px 6px">
-        <button class="btn bd bsm btn-del-turno" data-id="${id}" style="width:auto;font-size:11px;padding:4px 10px;margin-left:auto">🗑 Eliminar turno</button>
+        <strong style="font-size:14px">${escHtml(t.nombre)}</strong>
+        <span style="font-size:11.5px;color:var(--mt)">${fmt12(t.inicio)} – ${fmt12(t.fin)} · 🍽 ${fmt12(t.almInicio||'12:00')} (${t.duracionAlm!==undefined?t.duracionAlm:60} min)</span>
+        <button class="btn bd bsm btn-del-turno" data-id="${id}" style="width:auto;font-size:11px;padding:4px 10px;margin-left:auto">🗑 Eliminar</button>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;font-size:11px;color:var(--mt)">
-        <span>🍽 Almuerzo desde</span>
-        <input type="time" class="fc turno-inp" data-id="${id}" data-campo="almInicio" value="${t.almInicio||'12:00'}" style="width:auto;font-size:12px;padding:4px 6px">
-        <span>Duración</span>
-        <input type="number" min="0" step="5" class="fc turno-inp" data-id="${id}" data-campo="duracionAlm" value="${t.duracionAlm!==undefined?t.duracionAlm:60}" style="width:64px;font-size:12px;padding:4px 6px">
-        <span>min</span>
-        <button class="btn bp bsm btn-save-turno" data-id="${id}" style="width:auto;font-size:11px;padding:4px 10px">💾 Guardar horas del turno (no cambia semanas ya programadas)</button>
-      </div>
-      <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">📅 Colaboradores por día</div>
+      <details style="margin-bottom:10px">
+        <summary style="font-size:11.5px;color:var(--ac);cursor:pointer;font-weight:700">⚙ Cambiar horario y almuerzo del turno</summary>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;font-size:11px;color:var(--mt)">
+          <span>Entrada</span>
+          <input type="time" class="fc turno-inp" data-id="${id}" data-campo="inicio" value="${t.inicio}" style="width:auto;font-size:12px;padding:4px 6px">
+          <span>Salida</span>
+          <input type="time" class="fc turno-inp" data-id="${id}" data-campo="fin" value="${t.fin}" style="width:auto;font-size:12px;padding:4px 6px">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;font-size:11px;color:var(--mt)">
+          <span>🍽 Almuerzo desde</span>
+          <input type="time" class="fc turno-inp" data-id="${id}" data-campo="almInicio" value="${t.almInicio||'12:00'}" style="width:auto;font-size:12px;padding:4px 6px">
+          <span>Duración</span>
+          <input type="number" min="0" step="5" class="fc turno-inp" data-id="${id}" data-campo="duracionAlm" value="${t.duracionAlm!==undefined?t.duracionAlm:60}" style="width:64px;font-size:12px;padding:4px 6px">
+          <span>min</span>
+        </div>
+        <button class="btn bp bsm btn-save-turno" data-id="${id}" style="width:auto;font-size:11px;padding:4px 10px;margin-top:8px">💾 Guardar horario</button>
+        <div style="font-size:10.5px;color:var(--mt);margin-top:4px">No cambia semanas ya programadas.</div>
+      </details>
       <div class="turno-dia-pills" data-id="${id}" style="display:flex;gap:5px;margin-bottom:9px;flex-wrap:wrap"></div>
       <div class="turno-dia-body" data-id="${id}"></div>`;
     c.appendChild(div);
