@@ -669,12 +669,12 @@ async function openTempPicker(){
 function startTemp(){const t=getTemp();if(!t||STARTED)return;STARTED=true;TEMP=true;USER=t.user;NAME=t.nombre||t.user;ISADM=false;applyRole();
   $('who').textContent=`${NAME} · Temporal`;
   if(!$('tmpOut')){const a=document.createElement('a');a.id='tmpOut';a.href='#';a.textContent='salir';a.style.cssText='font-size:10px;opacity:.6;margin-right:8px;color:inherit';$('verTag').after(a);
-    a.onclick=async ev=>{ev.preventDefault();if(!confirm('¿Salir del modo temporal?'))return;try{localStorage.removeItem(TKEY)}catch(err){}try{if(auth.currentUser&&auth.currentUser.isAnonymous)await signOut(auth)}catch(err){}location.reload()}}
+    a.onclick=async ev=>{ev.preventDefault();if(!confirm('¿Salir del modo temporal?'))return;try{localStorage.removeItem(TKEY);sessionStorage.removeItem('cons_nav')}catch(err){}try{if(auth.currentUser&&auth.currentUser.isAnonymous)await signOut(auth)}catch(err){}location.reload()}}
   $('gate').classList.add('hide');$('app').classList.remove('hide');startCtrl();showRecList();showHome();navRestore()}
 const u2e=u=>{const uu=String(u).trim().toLowerCase();return uu==='aojo'?uu+'@saks.com.pa':'westlandoutletjugueterianivel+'+uu+'@gmail.com'};
 async function doLogin(){const u=$('glu').value.trim(),p=$('glp').value;$('glerr').textContent='';if(!u||!p){$('glerr').textContent='Escribe tu usuario y contraseña.';return}
   const b=$('glgo');b.disabled=true;b.textContent='Entrando…';
-  try{try{localStorage.removeItem(TKEY)}catch(e){}await signInWithEmailAndPassword(auth,u2e(u),p);$('glp').value=''}
+  try{try{localStorage.removeItem(TKEY)}catch(e){}try{sessionStorage.removeItem('cons_nav')}catch(e){}await signInWithEmailAndPassword(auth,u2e(u),p);$('glp').value=''}
   catch(err){const c=err.code||'';$('glerr').textContent=(c.includes('invalid-credential')||c.includes('wrong-password')||c.includes('user-not-found'))?'Usuario o contraseña incorrectos.':'No se pudo iniciar sesión ('+(c||err.message)+').';b.disabled=false;b.textContent='Iniciar sesión'}}
 $('glgo').onclick=doLogin;$('glp').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 $('gtemp').onclick=e=>{e.preventDefault();if(!$('gpick').innerHTML)openTempPicker()};
@@ -3465,7 +3465,7 @@ window.addEventListener('popstate',()=>{
   if(!$('v-cons').classList.contains('hide')){ if($('q').value){$('q').value='';renderList()} window.scrollTo(0,0);guard();return}
   document.querySelector('[data-t=cons]').click();guard()
 });
-$('toMarc').addEventListener('click',e=>{if(!confirm('¿Salir a Marcaciones? Allí tendrás que iniciar sesión de nuevo.'))e.preventDefault()});
+$('toMarc').addEventListener('click',e=>{try{sessionStorage.removeItem('cons_nav')}catch(x){}if(!confirm('¿Salir a Marcaciones? Allí tendrás que iniciar sesión de nuevo.'))e.preventDefault()});
 
 // ---------- Menú de inicio (4 secciones; cada una abre su submenú) ----------
 let HOMEBACK=false,HMPATH=[],HMLAST=[],NAVK='';
@@ -3537,11 +3537,15 @@ function navSave(){try{if(!_vis('app'))return;let st=null;
   else if(_vis('v-recibo')){const t=document.querySelector('.tab.on');st={v:'recibo',r:RECIBO,t:t?t.dataset.t:'cons',p:(_vis('v-prod')&&cur)?cur.p:''}}
   else if(_vis('v-rec'))st={v:'rec',tab:recTab};
   else if(['v-stat','v-auto','v-pdn','v-pro','v-pal','v-pkl'].some(_vis)&&NAVK)st={v:'other',hk:NAVK,hl:HMLAST.slice()};
-  if(st)sessionStorage.setItem('cons_nav',JSON.stringify(st))}catch(e){}}
+  if(st){st.ts=Date.now();st.u=USER||'';sessionStorage.setItem('cons_nav',JSON.stringify(st))}}catch(e){}}
+const navClear=()=>{try{sessionStorage.removeItem('cons_nav')}catch(e){}};
 const _clickHome=k=>{const b=document.querySelector('#hmSecs [data-hm="'+k+'"]');if(b)b.click()};
 let _navOn=false;
 async function navRestore(){
   if(_navOn)return;_navOn=true;let st=null;try{st=JSON.parse(sessionStorage.getItem('cons_nav')||'null')}catch(e){}
+  /* Recordar dónde quedó al recargar/reanudar la página (incluye pantalla apagada o ahorro de batería, sin límite de tiempo) y con el mismo usuario. Al cerrar/iniciar sesión o pulsar Salir → flujo normal (inicio). */
+  try{const nv=performance.getEntriesByType&&performance.getEntriesByType('navigation')[0];const isReload=nv?(nv.type==='reload'||nv.type==='back_forward'):(performance.navigation&&performance.navigation.type!==0);
+    if(!isReload||!st||st.u!==(USER||'')){st=null;navClear()}}catch(e){st=null}
   try{if(st){
     if(st.v==='home')showHome(st.hp||[]);
     else if(st.v==='rec'){recTab=st.tab||'a';showHome([]);_clickHome('rec')}
