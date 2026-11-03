@@ -378,16 +378,45 @@ td .bar,.tile .bar{height:16px!important;margin-top:4px!important}
 #gDv,[id^=da-],#rp-ORIG b,[id^=rp-] b[style*="--wn"]{color:#ff8fa8!important}
 .wlogo{width:46px!important;height:46px!important;filter:none!important}
 .top .ttl h1{font-size:15px!important}.top .ttl small{font-size:11px}
+.dgrid{grid-template-columns:repeat(auto-fill,minmax(270px,1fr))!important;gap:14px!important}
+.dcard .hd{padding:12px 8px!important}.dcard .hd b{font-size:20px!important}
+.dcard .bd{padding:14px 12px 10px!important}
+.dcard .dbig{display:flex;justify-content:space-around;gap:8px;margin-bottom:6px}
+.dcard .dbig b{display:block;font:800 24px 'Inter',sans-serif;color:inherit}
+.dcard .dbig span{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;opacity:.8}
+.dcard .dsub{font-size:11.5px;opacity:.85;margin-top:6px}
+.dcard .dchips{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:8px}
+.dcard .dchips span{background:#ffffff1c;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:700}
+.dcard .dft{display:flex;gap:6px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:8px 10px;border-top:1px solid #ffffff22}
+.dcard .dpub{font-size:11.5px;font-weight:700}.dcard .dpub.w{color:#ffd9a0}
+/* ===== Vista móvil: 4 iconos por página, se desliza de lado, con puntos abajo ===== */
+.hm-pager{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;overscroll-behavior-x:contain;margin:0 -4px}
+.hm-pager::-webkit-scrollbar{display:none}
+.hm-page{flex:0 0 100%;min-width:0;scroll-snap-align:start;scroll-snap-stop:always;padding:0 4px;box-sizing:border-box}
+html[data-view=mobile] .hm-page .hm-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 10px;align-content:start;margin-top:22px}
+.hm-dots{display:flex;justify-content:center;gap:10px;margin:20px 0 4px}
+.hm-dots button{appearance:none;border:0;padding:0;width:9px;height:9px;border-radius:50%;background:var(--bd);cursor:pointer;transition:all .25s ease}
+.hm-dots button.on{width:26px;border-radius:99px;background:var(--ac)}
+.vw-box{width:calc(100% - 32px);max-width:420px;background:var(--bg2);border:1px solid var(--bd);border-radius:20px;padding:20px 16px 16px}
+.vw-box h3{margin:0 0 4px;font:800 19px var(--ff)}.vw-box p{margin:0 0 14px;color:var(--mt);font-size:13px}
+.vw-opt{display:block;width:100%;text-align:left;font:700 15px var(--ff);padding:14px;border-radius:14px;border:1px solid var(--bd);background:var(--sf);color:var(--tx);cursor:pointer;margin-top:8px}
+.vw-opt small{display:block;font-weight:500;color:var(--mt);margin-top:3px;font-size:12px}
+.vw-opt.on{background:var(--ac);color:#02343a;border-color:var(--ac)}.vw-opt.on small{color:#04403f}
+#viewSheet{align-items:center}
 </style>
 <script>try{var _t=localStorage.getItem('conTheme');document.documentElement.dataset.theme=(_t==='light')?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
 <script>/* Modo de entrada automático: detecta móvil / tableta / escritorio y el ancho disponible */
 (function(){var d=document.documentElement,ua=navigator.userAgent||'',tc=(navigator.maxTouchPoints||0)>1;
 var mob=/iPhone|iPod|Android.+Mobile|Windows Phone|Mobile/i.test(ua),tab=!mob&&(/iPad|Tablet|Android/i.test(ua)||(/Macintosh/.test(ua)&&tc));
-d.dataset.device=mob?'mobile':tab?'tablet':'desktop';try{if(localStorage.getItem('conFxSeed')!=='slide-v25'){localStorage.setItem('conFx','slide');localStorage.setItem('conFxSeed','slide-v25')}d.dataset.fx=localStorage.getItem('conFx')||'slide'}catch(e){d.dataset.fx='slide'}try{if(localStorage.getItem('conNoMove')==='1')d.dataset.nomove='1'}catch(e){}
+d.dataset.device=mob?'mobile':tab?'tablet':'desktop';try{var cv=localStorage.getItem('conView');if(cv==='mobile'||cv==='desktop')d.dataset.view=cv}catch(e){}try{if(localStorage.getItem('conFxSeed')!=='slide-v25'){localStorage.setItem('conFx','slide');localStorage.setItem('conFxSeed','slide-v25')}d.dataset.fx=localStorage.getItem('conFx')||'slide'}catch(e){d.dataset.fx='slide'}try{if(localStorage.getItem('conNoMove')==='1')d.dataset.nomove='1'}catch(e){}
 function z(){var w=window.innerWidth;d.dataset.size=w<640?'s':w<1000?'m':'l'}z();window.addEventListener('resize',z)})();</script></head>
 <body>
 <div id="stSheet" class="stsheet hide"><div class="stbox"><div class="sthd"><b>Filtrar por tienda</b><button type="button" id="stSheetX" class="btn sm">✕</button></div><div id="stSheetList"></div></div></div>
+<div id="viewSheet" class="stsheet hide"><div class="vw-box"><h3>¿Cómo vas a usar la app?</h3><p>Así ajustamos el menú a tu pantalla. Lo puedes cambiar luego en Configuración.</p>
+  <button type="button" class="vw-opt" data-view="mobile">📱 Teléfono móvil<small>Menú de 4 iconos por página; desliza el dedo para ver más</small></button>
+  <button type="button" class="vw-opt" data-view="desktop">🖥️ Computadora / escritorio<small>Menú completo con todos los iconos a la vista</small></button></div></div>
 <div id="cfgSheet" class="stsheet hide"><div class="stbox"><div class="sthd"><b>Configuración</b><button type="button" id="cfgX" class="btn sm">✕</button></div>
+  <div class="lbl" style="margin:6px 6px 8px">Vista del menú</div><div id="cfgView" class="cfg-fx" style="margin-bottom:14px"><button type="button" data-view="mobile">📱 Teléfono móvil<small>4 iconos por página, desliza para cambiar</small></button><button type="button" data-view="desktop">🖥️ Escritorio<small>Todos los iconos a la vista</small></button></div>
   <div class="lbl" style="margin:6px 6px 8px">Efecto de entrada del menú</div><div id="cfgFx" class="cfg-fx"></div>
   <label class="cfg-chk"><input type="checkbox" id="cfgNoMove"><span><b>Sin movimiento</b><small>Detiene solo el giro alrededor de los iconos. Las transiciones y efectos siguen normales. Para detener todo, usa «Sin animación».</small></span></label>
   <div class="msg" style="margin:10px 6px 4px">Se guarda en este equipo. Al elegir uno se ve de inmediato en el menú.</div></div></div>
@@ -2998,12 +3027,49 @@ async function cmpPublish(eid,quiet){const e=EMB[eid];
 async function cmpRemove(eid){const e=EMB[eid];if(!e||!e.cmp)return;
   if(!confirm(`¿Quitar ${e.num} del portal del comprador?`))return;
   try{const tok=await cmpTok();await update(R(db,`${CMPB}/${tok}`),{[`idx/${eid}`]:null,[`pl/${eid}`]:null});await remove(R(db,`${PB}/emb/${eid}/cmp`));toast('Quitado del portal del comprador')}catch(err){toast('Error: '+(err.code||err.message))}}
-async function cmpAll(){const L0=Object.entries(EMB).filter(([,e])=>e&&e.desp);if(!L0.length){toast('No hay packing list despachados');return}
-  if(!confirm(`¿Publicar ${L0.length} packing list (despachados y recibidos) en el portal del comprador?`))return;
-  let ok=0;for(const [id] of L0){toast(`Publicando ${ok+1} de ${L0.length}…`);if(await cmpPublish(id,true))ok++}
-  await cmpCopy(`✅ ${ok} de ${L0.length} publicados · link copiado`)}
-function cmpBar(D){if(!ISADM)return'';const n=D.filter(([id,e])=>e.cmp).length;
-  return `<div class="card" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="msg" style="margin:0;flex:1;min-width:150px">🛒 Comprador: <b>${n}</b> de ${D.length} publicados</span><button class="btn sm pri" data-ecmpall="1">Publicar todos</button><button class="btn sm" data-ecmplink="1">🔗 Copiar link</button><button class="btn sm" data-clfix="1">🔧 Piezas Cristal</button></div>`}
+// Pendiente de publicar = nunca publicado, o publicado con otro estatus (despachado -> recibido)
+function cmpPend(e){if(!e||!e.desp)return false;if(!e.cmp)return true;const s=cmpSt(e,true);return s!==undefined&&e.cmp.st!==s}
+// Al despachar se publica SOLO ese packing list (un único envío, sin republicar los demás)
+async function cmpAuto(id){for(let i=0;i<24&&!(EMB[id]&&EMB[id].desp);i++)await new Promise(r=>setTimeout(r,250));
+  const ok=await cmpPublish(id,true);toast(ok?'🛒 Publicado en el portal del comprador':'⚠ No se pudo publicar en el portal; avisa al administrador');
+  // Abre solo el mensaje para el comprador (listo para copiar y pegar); espera a que llegue el estado publicado para incluir el link
+  for(let i=0;i<12&&!(EMB[id]&&EMB[id].cmp);i++)await new Promise(r=>setTimeout(r,250));
+  try{await cmpMsg(id)}catch(x){}}
+// Publicar por estatus: solo los pendientes de la pestaña (d = despachados, r = recibidos)
+async function cmpGroup(tab){const nm=tab==='r'?'recibidos':'despachados';
+  const D=Object.entries(EMB).filter(([id,e])=>e&&e.desp&&((cmpRc(e)?'r':'d')===tab)&&cmpPend(e));
+  if(!D.length){toast('Todos los '+nm+' ya están publicados');return}
+  if(!confirm(`¿Publicar ${D.length} packing list ${nm} pendiente(s) en el portal del comprador?\n\nLos que ya están al día no se vuelven a enviar.`))return;
+  let ok=0;for(const [id] of D){toast(`Publicando ${ok+1} de ${D.length}…`);if(await cmpPublish(id,true))ok++}
+  toast(`✅ ${ok} de ${D.length} publicados`)}
+function cmpBar(D,tab){if(!ISADM)return'';const nm=tab==='r'?'recibidos':'despachados',pend=D.filter(([id,e])=>cmpPend(e)).length;
+  return `<div class="card" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:12px"><span class="msg" style="margin:0;flex:1;min-width:150px">🛒 Portal del comprador · ${nm}: <b>${D.length-pend}</b> de ${D.length} al día</span><button class="btn sm pri" data-cmpgrp="${tab}" ${pend?'':'disabled'}>Publicar ${nm}${pend?' ('+pend+')':''}</button><button class="btn sm" data-ecmplink="1">🔗 Copiar link</button><button class="btn sm" data-clfix="1">🔧 Piezas Cristal</button></div>`}
+// Mensaje listo para copiar y pegar en el correo al comprador (según estatus y contenido del despacho)
+async function cmpMsg(id){const e=EMB[id];if(!e||!e.desp)return;const c=embCalc(e),rc=cmpRc(e),rec=!!rc;
+  let link='';if(e.cmp){try{link=cmpUrl(await cmpTok())}catch(x){}}
+  const day=ts=>new Date(ts).toLocaleDateString('es',{day:'numeric',month:'long',year:'numeric'});
+  const P={Transferencia:['transferencia','transferencias','a tiendas'],Proforma:['proforma','proformas','de clientes'],'Movimiento interno':['movimiento interno','movimientos internos','entre bodegas']};
+  const tp={};c.tf.forEach(a=>{const k=docTipo(a),o=tp[k]=tp[k]||{n:0,b:0,pz:0};o.n++;o.b+=a.b;o.pz+=a.pz});
+  const cli=c.tf.filter(a=>a.cn&&(a.cl||a.t==='CRISTAL')).map(a=>`${a.cn}${a.tr?' (proforma '+String(a.tr).replace(/\s+/g,'')+')':''} · ${fmt(a.pz)} pzas`);
+  const intro=rec?`Les informamos que el despacho ${e.num} fue RECIBIDO en la Bodega CF el ${day(rc.ts||e.desp.ts)}${rc.by?' (recibido por '+rc.by+')':''}. Había salido el ${day(e.desp.ts)}.`:`Les informamos que el despacho ${e.num} fue despachado el ${day(e.desp.ts)} y se encuentra EN TRÁNSITO hacia la Bodega CF.`;
+  const res=`Contenido: ${c.cams.length} camión(es), ${c.np} palets, ${fmt(c.tb)} bultos y ${fmt(c.tp)} piezas, para ${c.st.length} tienda(s)/destino(s).`;
+  const tiendas=c.st.map(s=>`${LN(s.t)} — ${fmt(s.pz)} pzas · ${fmt(s.b)} bultos`);
+  const tipos=Object.entries(tp).map(([k,o])=>`${o.n} ${(P[k]||[k,k])[o.n===1?0:1]} ${(P[k]||['','',''])[2]} — ${fmt(o.pz)} pzas · ${fmt(o.b)} bultos`.replace('  ',' '));
+  const cliS=cli.length?cli.slice(0,12).concat(cli.length>12?['y '+(cli.length-12)+' más']:[]):[];
+  const cierre=link?`Pueden consultar el detalle por producto en el portal: ${link}`:'';
+  const adj='Adjunto encontrarán el PDF y el Excel con el detalle por producto.';
+  const firma=`Quedamos atentos.\nSaludos cordiales,\n${NAME||''}`.trim();
+  const subj=`Despacho ${e.num} · ${rec?'Recibido en Bodega CF':'En tránsito a Bodega CF'} · ${fmt(c.tb)} bultos · ${fmt(c.tp)} piezas`;
+  const plain=['Buen día, estimado comprador y equipo:','',intro,'',res,'','Distribución por tienda:',...tiendas.map(x=>'• '+x),'','Por tipo de documento:',...tipos.map(x=>'• '+x),...(cliS.length?['','Clientes (Cristal):',...cliS.map(x=>'• '+x)]:[]),'',adj,...(cierre?['',cierre]:[]),'',firma].join('\n');
+  const ul=a=>`<ul style="margin:4px 0 10px 18px;padding:0">${a.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
+  const html=`<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#1c2b36"><p>Buen día, estimado comprador y equipo:</p><p>${esc(intro)}</p><p>${esc(res)}</p><p><b>Distribución por tienda:</b></p>${ul(tiendas)}<p><b>Por tipo de documento:</b></p>${ul(tipos)}${cliS.length?`<p><b>Clientes (Cristal):</b></p>${ul(cliS)}`:''}<p>${esc(adj)}</p>${cierre?`<p>Pueden consultar el detalle por producto en el portal: <a href="${esc(link)}">${esc(link)}</a></p>`:''}<p>Quedamos atentos.<br>Saludos cordiales,<br>${esc(NAME||'')}</p></div>`;
+  const ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;z-index:99999;background:#000b;display:flex;align-items:flex-end;justify-content:center';
+  ov.innerHTML=`<div style="background:#fff;color:#1c2b36;width:100%;max-width:680px;max-height:90vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column"><div style="padding:12px 14px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #d9e1e8"><b style="flex:1;font-size:15px">💬 Mensaje para el comprador · ${esc(e.num)}</b><button type="button" class="btn sm" data-m="x">✕</button></div><div style="padding:10px 14px;border-bottom:1px solid #d9e1e8;font-size:13px"><b>Asunto:</b> ${esc(subj)}</div><div style="padding:14px;overflow:auto;flex:1">${html}</div><div style="padding:10px 14px;border-top:1px solid #d9e1e8;display:flex;gap:8px"><button type="button" class="btn pri" data-m="c" style="flex:2">📋 Copiar mensaje</button><button type="button" class="btn" data-m="s" style="flex:1">Asunto</button></div></div>`;
+  const clip=async(h,p,okm)=>{try{if(h&&window.ClipboardItem&&navigator.clipboard.write)await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([h],{type:'text/html'}),'text/plain':new Blob([p],{type:'text/plain'})})]);else await navigator.clipboard.writeText(p);toast(okm)}catch(x){try{await navigator.clipboard.writeText(p);toast(okm)}catch(y){prompt('Copia el texto:',p)}}};
+  ov.addEventListener('click',ev=>{const b=ev.target.closest('[data-m]');if(ev.target===ov||(b&&b.dataset.m==='x')){ov.remove();return}
+    if(b&&b.dataset.m==='c')clip(html,plain,'✅ Mensaje copiado: pégalo en tu correo');
+    if(b&&b.dataset.m==='s')clip('',subj,'✅ Asunto copiado')});
+  document.body.appendChild(ov)}
 function cmpSync(){if(!ISADM)return;for(const [id,e] of Object.entries(EMB)){if(!e||!e.cmp||!e.desp||cmpBusy.has(id))continue;const s=cmpSt(e,true);if(s!==undefined&&e.cmp.st!==s)cmpPublish(id,true)}}
 function embPrint(id){const e=EMB[id],w=window.open('','_blank');if(!w){toast('Permite ventanas emergentes para imprimir');return}
   w.document.write(`<!doctype html><meta charset="utf-8"><title>${esc(e.num)}</title><body style="margin:20px">${embHTML(e)}</body>`);w.document.close();w.focus();setTimeout(()=>w.print(),400)}
@@ -3100,7 +3166,7 @@ function pkmHTML(id,e,rc){const c=embCalc(e);
   <div class="msg">Preparó ${esc(e.n||e.u||'')} · Despachó <b>${esc(e.desp.n||e.desp.u||'')}</b> · ${fdt(e.desp.ts)}${e.mail?' · correo enviado a '+esc(e.mail.to||''):''}</div>
       ${c.cams.map((x,i)=>`<div class="crow"><b>Camión ${i+1} · ${esc(x.chofer||'—')} · ${esc(x.placa||'—')}</b> <span class="msg" style="margin:0">${x.pals.length} palets · ${fmt(x.b)} bultos · ${fmt(x.pz)} pzas</span><div class="msg" style="margin:4px 0 0">${x.pals.map(pl=>esc(pl.num)).join(' · ')}</div></div>`).join('')}
       ${c.st.length?`<div class="scroll"><table><tr><th>Tienda</th><th class="n">Docs.</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${c.st.map(s=>`<tr><td>${esc(LN(s.t))}</td><td class="n">${s.tf}</td><td class="n">${fmt(s.b)}</td><td class="n">${fmt(s.pz)}</td></tr>`).join('')}<tr><td><b>TOTAL</b></td><td class="n"><b>${c.tf.length}</b></td><td class="n"><b>${fmt(c.tb)}</b></td><td class="n"><b>${fmt(c.tp)}</b></td></tr></table></div>`:''}
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button><button class="btn sm" data-email="${id}">✉ Reenviar correo</button>${ISADM?`<button class="btn sm" data-ecmp="${id}">🛒 Comprador${e.cmp?' ✓':''}</button>${e.cmp?`<button class="btn sm" data-ecmpx="${id}">⛔ Quitar</button>`:''}`:''}${ISADM?`<button class="btn sm" data-eundesp="${id}">↩ Revertir despacho</button>`:''}</div>`}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button><button class="btn sm" data-email="${id}">✉ Reenviar correo</button><button class="btn sm" data-cmsg="${id}">💬 Mensaje comprador</button>${ISADM?`<button class="btn sm" data-ecmp="${id}">🛒 ${e.cmp?'Republicar':'Publicar'} en comprador</button>${e.cmp?`<button class="btn sm" data-ecmpx="${id}">⛔ Quitar</button>`:''}`:''}${ISADM?`<button class="btn sm" data-eundesp="${id}">↩ Revertir despacho</button>`:''}</div>`}
 function pkmRefresh(){const m=$('mpkl');if(m.classList.contains('hide'))return;const e=pklSel&&EMB[pklSel];
   if(!e||!e.desp){m.classList.add('hide');pklSel=null;return}
   const rc=(()=>{if(e.rcv)return e.rcv;const ps=embCalc(e).cams.flatMap(c=>c.pals);if(!ps.length)return null;let ts=0,by='';for(const pl of ps){const r=(PM[pl.id]||{}).rcv;if(!r)return null;if((r.ts||0)>=ts){ts=r.ts||0;by=r.by||''}}return{ts,by}})();
@@ -3133,8 +3199,9 @@ function renderPal(){
   $('pklTabs').innerHTML=`<button class="btn sm ${pklTab==='n'?'pri':''}" data-ptk="n" style="flex:1">🆕 Nuevos (${eN.length})</button><button class="btn sm ${pklTab==='d'?'pri':''}" data-ptk="d" style="flex:1">🚚 Despachados (${eD.length})</button><button class="btn sm ${pklTab==='r'?'pri':''}" data-ptk="r" style="flex:1">📥 Recibidos (${eRc.length})</button>`;
   $('embDone').innerHTML=(()=>{if(pklTab==='n')return'';const D=pklTab==='r'?eRc:eD;if(!D.length)return `<div class="msg">${pklTab==='r'?'Aún no hay packing list recibidos.':'Aún no hay packing list despachados.'}</div>`;
     if(!D.some(([id])=>id===pklSel))pklSel=null;
-    const grid=`<div class="pgrid">`+D.map(([id,e])=>{const c=embCalc(e),rc=embRc(e);return `<div class="ptl ${rc?'r':'d'}${pklSel===id?' sel':''}" data-pk="${id}"><div class="hd"><b>${esc(e.num)}</b><small>${rc?'📥 '+esc(rc.by||'Recibido'):'🚚 Despachado'}</small></div><div class="bd"><div style="font:800 24px 'Inter',sans-serif">${c.np}</div><div style="opacity:.8">palets</div><div style="margin-top:6px;font-size:11.5px">${c.cams.length} camión(es) · ${fmt(c.tb)} bultos</div><div style="margin-top:4px;font-size:11px;opacity:.85">${fdt(rc&&rc.ts?rc.ts:e.desp.ts)}</div></div></div>`}).join('')+`</div>`;
-    return cmpBar(D)+grid})();
+    const grid=`<div class="pgrid dgrid">`+D.map(([id,e])=>{const c=embCalc(e),rc=embRc(e),pb=!!e.cmp,pend=cmpPend(e);
+      return `<div class="ptl dcard ${rc?'r':'d'}${pklSel===id?' sel':''}" data-pk="${id}"><div class="hd"><b>${esc(e.num)}</b><small>${rc?'📥 Recibido · '+esc(rc.by||''):'🚚 Despachado · en tránsito'}</small></div><div class="bd"><div class="dbig"><div><b>${c.np}</b><span>palets</span></div><div><b>${fmt(c.tb)}</b><span>bultos</span></div><div><b>${fmt(c.tp)}</b><span>piezas</span></div></div><div class="dsub">${c.cams.length} camión(es) · ${c.st.length} tienda(s)</div><div class="dchips">${c.st.map(s=>`<span>${esc(L(s.t))}</span>`).join('')}</div><div class="dsub">${fdt(rc&&rc.ts?rc.ts:e.desp.ts)}</div></div><div class="dft"><span class="dpub ${pend?'w':'k'}">${pend?(pb?'⚠ Portal desactualizado':'○ Sin publicar'):'🛒 Publicado'}</span><span style="display:flex;gap:6px">${ISADM&&pend?`<button type="button" class="btn sm pri" data-cmpone="${id}">Publicar</button>`:''}<button type="button" class="btn sm" data-cmsg="${id}">💬 Mensaje</button></span></div></div>`}).join('')+`</div>`;
+    return grid+cmpBar(D,pklTab)})();
   pkmRefresh();
   $('embList').innerHTML=pklTab!=='n'?'':embSorted.filter(([id,e])=>!e.desp).map(([id,e])=>{const c=embCalc(e),env=e.st==='enviado';
     return `<details class="card" data-ek="${id}" ${embOpenSet.has(id)?'open':''}><summary>🚛 ${esc(e.num)} <span class="pill p-aq" style="margin-left:6px">${c.cams.length} camión(es) · ${c.np} palets · ${c.tb} bultos</span> ${env?'<span class="pill p-ok">Enviado</span>':e.comp?'<span class="pill p-bl">Completado</span>':'<span class="pill p-wn">En armado</span>'}</summary>
@@ -3314,6 +3381,9 @@ $('palwrap').addEventListener('toggle',e=>{const k=e.target.dataset&&e.target.da
 $('palwrap').addEventListener('keydown',e=>{if(e.key!=='Enter'||!e.target.dataset.escan)return;e.preventDefault();const [eid,cid]=e.target.dataset.escan.split('|'),v=e.target.value;e.target.value='';if(v.trim()){keepScan=eid+'|'+cid;scanQ=scanQ.then(()=>embScan(eid,cid,v)).then(()=>renderPal())}});
 $('palwrap').addEventListener('click',async e=>{
   const po=e.target.closest('[data-po]');if(po){openPal(po.dataset.po);return}
+  const c1=e.target.closest('[data-cmpone]');if(c1){e.stopPropagation();c1.disabled=true;if(await cmpPublish(c1.dataset.cmpone))toast('✅ Publicado en el portal del comprador');renderPal();return}
+  const cg=e.target.closest('[data-cmpgrp]');if(cg){cmpGroup(cg.dataset.cmpgrp);return}
+  const cmg=e.target.closest('[data-cmsg]');if(cmg){e.stopPropagation();cmpMsg(cmg.dataset.cmsg);return}
   const ptk=e.target.closest('[data-ptk]');if(ptk){pklTab=ptk.dataset.ptk;pklSel=null;renderPal();return}
   if(e.target.closest('#pkmX')||e.target.id==='mpkl'){pkmClose();return}
   const pk=e.target.closest('[data-pk]');if(pk){pkmOpen(pk.dataset.pk);return}
@@ -3327,7 +3397,7 @@ $('palwrap').addEventListener('click',async e=>{
   if(ed){const id=ed.dataset.edesp,x=EMB[id];if(!x||x.desp)return;let bad;try{bad=await embReady(x)}catch(err){toast('Error: '+(err.code||err.message));return}
     if(bad){alert('No se puede despachar todavía:\n\n'+bad);return}
     const c=embCalc(x);if(!confirm(`¿Despachar ${x.num}?\n\n${c.cams.length} camión(es) · ${c.np} palets · ${c.tb} bultos · ${c.tp} piezas\n\nQuedará bloqueado y guardado en el historial de despachados.${x.st==='enviado'?'':'\n(Aún no se ha enviado el correo; podrás enviarlo desde el historial.)'}`))return;
-    try{await update(R(db,`${PB}/emb/${id}`),{desp:{ts:Date.now(),u:USER,n:NAME}});embOpenSet.add(id);pklTab='d';pklSel=id;toast(`✅ ${x.num} despachado y guardado en el historial`)}catch(err){toast('Error: '+(err.code||err.message))}return}
+    try{await update(R(db,`${PB}/emb/${id}`),{desp:{ts:Date.now(),u:USER,n:NAME}});embOpenSet.add(id);pklTab='d';pklSel=id;toast(`✅ ${x.num} despachado y guardado en el historial`);cmpAuto(id)}catch(err){toast('Error: '+(err.code||err.message))}return}
   const eu=e.target.closest('[data-eundesp]');
   if(eu){const id=eu.dataset.eundesp,x=EMB[id];if(!x||!x.desp||!ISADM)return;if(!confirm(`¿Revertir el despacho de ${x.num}? Vuelve a la lista de packing list en curso.`))return;
     try{await remove(R(db,`${PB}/emb/${id}/desp`));toast('Despacho revertido')}catch(err){toast('Error: '+(err.code||err.message))}return}
@@ -3340,7 +3410,6 @@ $('palwrap').addEventListener('click',async e=>{
   const cf=e.target.closest('[data-clfix]');if(cf){cf.disabled=true;toast('Revisando piezas de Cristal…');try{const r=await clFixPz();alert(r.fx?`✔ Piezas recuperadas en ${r.fx} documento(s) de Cristal.`+(r.sin?`\n⚠ ${r.sin} documento(s) siguen sin piezas: no tienen el dato guardado. Sube sus correos .eml (despacho o recibido); puedes elegir todos a la vez y se aplican solos a cada packing list.`:''):(r.sin?`⚠ ${r.sin} documento(s) de Cristal no tienen piezas guardadas. Sube sus correos .eml (despacho o recibido), todos a la vez; se aplican solos a cada packing list.`:'✔ Todo Cristal ya tiene piezas.'));setTimeout(()=>{for(const [id,x] of Object.entries(EMB))if(x&&x.cmp&&x.desp)cmpPublish(id,true)},2500)}catch(err){toast('Error: '+(err.code||err.message))}cf.disabled=false;return}
   const cp=e.target.closest('[data-ecmp]');if(cp){if(await cmpPublish(cp.dataset.ecmp))await cmpCopy('✅ Publicado · link del comprador copiado');return}
   const cx=e.target.closest('[data-ecmpx]');if(cx){cmpRemove(cx.dataset.ecmpx);return}
-  const ca=e.target.closest('[data-ecmpall]');if(ca){cmpAll();return}
   const cl=e.target.closest('[data-ecmplink]');if(cl){cmpCopy();return}
   const rm=e.target.closest('[data-erm]');if(rm){const [eid,cid,pid]=rm.dataset.erm.split('|');if(embLocked(EMB[eid]))return;try{await update(R(db,PB),{[`pm/${pid}/emb`]:null,[`emb/${eid}/cam/${cid}/pal/${pid}`]:null});toast('Palet descargado del camión')}catch(err){toast('Error: '+(err.code||err.message))}return}
   const d=e.target.closest('[data-edel]');if(d){const id=d.dataset.edel;if(!confirm('¿Eliminar este embarque? Sus palets quedan libres.'))return;const up={[`emb/${id}`]:null};Object.entries(PM).forEach(([pid,p])=>{if(p.emb&&p.emb.e===id)up[`pm/${pid}/emb`]=null});try{await update(R(db,PB),up);toast('Embarque eliminado')}catch(err){toast('Error: '+(err.code||err.message))}}
@@ -3509,16 +3578,37 @@ function buildHome(){
   if(r.node){$('hmHi').innerHTML=esc(r.node.n);$('ttl').textContent=r.node.n;$('hmSub').textContent='Elige una opción'}
   else{$('hmHi').innerHTML='Bienvenido'+(first?' <b>'+esc(first)+'</b>':'');$('ttl').textContent='Centro de distribución Westland';$('hmSub').textContent='¿Qué quieres hacer hoy?'}
   const items=r.list.filter(x=>!x.adm||ISADM);
-  $('hmSecs').innerHTML=`<div class="hm-grid" style="margin-top:22px">${items.map((x,i)=>`<button type="button" class="hm-it" style="--i:${i}" data-hm="${x.k}"><span class="hm-ring">${hmOrb}<span class="hm-ic"><svg viewBox="0 0 24 24">${HIC[x.ic]}</svg></span></span><span class="hm-lb">${esc(x.n)}</span>${x.sub&&!r.node?`<small class="hm-sm">${esc(x.sub)}</small>`:''}</button>`).join('')}</div>`;
+  const itHtml=(x,i)=>`<button type="button" class="hm-it" style="--i:${i}" data-hm="${x.k}"><span class="hm-ring">${hmOrb}<span class="hm-ic"><svg viewBox="0 0 24 24">${HIC[x.ic]}</svg></span></span><span class="hm-lb">${esc(x.n)}</span>${x.sub&&!r.node?`<small class="hm-sm">${esc(x.sub)}</small>`:''}</button>`;
+  const VIEW=document.documentElement.dataset.view;
+  if(VIEW==='mobile'){
+    const pages=[];for(let p=0;p<items.length;p+=4)pages.push(items.slice(p,p+4));
+    $('hmSecs').innerHTML=`<div class="hm-pager" id="hmPager">${pages.map(pg=>`<div class="hm-page"><div class="hm-grid">${pg.map((x,i)=>itHtml(x,i)).join('')}</div></div>`).join('')}</div>`+(pages.length>1?`<div class="hm-dots" id="hmDots">${pages.map((_,i)=>`<button type="button" class="${i?'':'on'}" data-pg="${i}" aria-label="Página ${i+1}"></button>`).join('')}</div>`:'');
+    const pg=$('hmPager'),dots=$('hmDots');
+    if(dots){let raf=0;pg.addEventListener('scroll',()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{const k=Math.round(pg.scrollLeft/Math.max(1,pg.clientWidth));[...dots.children].forEach((d,n)=>d.classList.toggle('on',n===k))})},{passive:true});
+      dots.addEventListener('click',e=>{const b=e.target.closest('[data-pg]');if(b)pg.scrollTo({left:+b.dataset.pg*pg.clientWidth,behavior:'smooth'})})}
+  }else{
+    $('hmSecs').innerHTML=`<div class="hm-grid" style="margin-top:22px">${items.map(itHtml).join('')}</div>`;
+  }
   if(HMPATH.length)delete document.body.dataset.home;else document.body.dataset.home='1'}
+
+// ---------- vista móvil / escritorio ----------
+function setView(v){const d=document.documentElement;d.dataset.view=v;try{localStorage.setItem('conView',v)}catch(e){}
+  $('viewSheet').classList.add('hide');viewPaint();if(!$('v-home').classList.contains('hide'))buildHome()}
+function viewPaint(){const cur=document.documentElement.dataset.view;document.querySelectorAll('#cfgView [data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===cur))}
+function askView(){if(document.documentElement.dataset.view)return;
+  const rec=document.documentElement.dataset.device==='mobile'?'mobile':'desktop';
+  document.querySelectorAll('#viewSheet [data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===rec));
+  $('viewSheet').classList.remove('hide')}
+$('viewSheet').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)setView(b.dataset.view)});
+$('cfgView').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)setView(b.dataset.view)});
 function showHome(path){
   HOMEBACK=false;HMPATH=Array.isArray(path)?path.slice():[];
   ['v-rec','v-recibo','v-stat','v-auto','v-pro','v-pdn','v-pal','v-pkl'].forEach(id=>{const e=$(id);if(e)e.classList.add('hide')});
   ['btnHome','btnPal','btnPkl','btnRecBack','bar'].forEach(id=>{const e=$(id);if(e)e.classList.add('hide')});
-  buildHome();$('v-home').classList.remove('hide');window.scrollTo(0,0)}
+  buildHome();$('v-home').classList.remove('hide');window.scrollTo(0,0);askView()}
 const FXS=[['arc','Media luna','Los cuatro salen juntos, suben en arco y caen en su lugar'],['slide','Deslizar','Uno por uno desde la izquierda'],['roll','Rodar','Uno por uno, rodando como rueda'],['drop','Caída con rebote','Caen desde arriba y rebotan al llegar'],['zoom','Zoom','Crecen desde el centro, en cascada'],['flip','Giro 3D','Giran como una puerta y se abren'],['fan','Abanico','Se abren en abanico desde la esquina izquierda'],['fade','Transición suave','Aparece con desvanecimiento, sin movimiento'],['none','Sin animación','Entra directo; ideal para equipos lentos']];
 function cfgPaint(){const cur=document.documentElement.dataset.fx||'slide';$('cfgFx').innerHTML=FXS.map(([k,n,d])=>`<button type="button" data-fx="${k}" class="${cur===k?'on':''}">${n}<small>${d}</small></button>`).join('')}
-$('btnCfg').onclick=()=>{cfgPaint();$('cfgNoMove').checked=document.documentElement.dataset.nomove==='1';$('cfgSheet').classList.remove('hide')};
+$('btnCfg').onclick=()=>{cfgPaint();viewPaint();$('cfgNoMove').checked=document.documentElement.dataset.nomove==='1';$('cfgSheet').classList.remove('hide')};
 $('cfgNoMove').addEventListener('change',e=>{const d=document.documentElement;if(e.target.checked)d.dataset.nomove='1';else delete d.dataset.nomove;try{localStorage.setItem('conNoMove',e.target.checked?'1':'0')}catch(x){}if(!$('v-home').classList.contains('hide'))buildHome()});
 $('cfgSheet').addEventListener('click',e=>{if(e.target.id==='cfgSheet'||e.target.id==='cfgX'){$('cfgSheet').classList.add('hide');return}
   const b=e.target.closest('#cfgFx [data-fx]');if(!b)return;document.documentElement.dataset.fx=b.dataset.fx;try{localStorage.setItem('conFx',b.dataset.fx)}catch(x){}cfgPaint();
