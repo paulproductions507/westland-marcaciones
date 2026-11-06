@@ -813,6 +813,14 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
                   <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" class="u-pf-dia" value="6" style="width:auto">Sáb</label>
                   <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" class="u-pf-dia" value="0" style="width:auto">Dom</label>
                 </div>
+                <div style="margin-top:10px;font-size:12px;font-weight:700;color:var(--mt)">📅 Fechas específicas (opcional)</div>
+                <div style="font-size:11px;color:var(--mt);margin:3px 0 6px">Paga salario base en esa fecha exacta. Si dejas la tarifa vacía usa la de su perfil (feriado si es feriado). Si la escribes, usa esa.</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                  <input type="date" id="u-pf-fec" class="fc" style="flex:1;min-width:130px">
+                  <input type="number" id="u-pf-fec-t" class="fc" placeholder="Tarifa (opcional)" step="0.01" style="flex:1;min-width:110px">
+                  <button type="button" id="u-pf-fec-add" class="btn" style="padding:7px 12px">➕ Agregar</button>
+                </div>
+                <div id="u-pf-fec-list" style="margin-top:6px"></div>
               </div>
             </div>
             <div style="margin-top:10px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 11px">
@@ -4501,9 +4509,9 @@ window.editUser=async function(userKey){
     el('u-te-on').checked=tieneEspecial;el('u-te').value=u.tarifa.especial||'';
     el('u-te-row').style.display=tieneEspecial?'block':'none';
   }
-  const pf=u.pagoFijo||{};const pfOn=!!(pf.activo&&Array.isArray(pf.dias)&&pf.dias.length);
+  const pf=u.pagoFijo||{};PF_FECHAS=Array.isArray(pf.fechas)?pf.fechas.filter(x=>x&&x.fecha).map(x=>({...x})):[];const pfOn=!!(pf.activo&&((Array.isArray(pf.dias)&&pf.dias.length)||PF_FECHAS.length));try{renderPfFechas();}catch(e){}
   el('u-pf-on').checked=pfOn;el('u-pf-row').style.display=pfOn?'block':'none';
-  document.querySelectorAll('.u-pf-dia').forEach(cb=>{cb.checked=pfOn&&pf.dias.includes(parseInt(cb.value));});
+  document.querySelectorAll('.u-pf-dia').forEach(cb=>{cb.checked=pfOn&&Array.isArray(pf.dias)&&pf.dias.includes(parseInt(cb.value));});
   if(el('u-finicio'))el('u-finicio').value=u.fechaInicio||'';
   loadBitacora(userKey);
   openUserModal('Editar usuario · '+(u.nombre||userKey));
@@ -5158,11 +5166,11 @@ async function buildEmailSemanal(desde,hasta,nivel){
   // Incluye usuarios con marcación en el rango, o con pago fijo configurado para algún
   // día del rango (ej. Super Admin con salario base los sábados, sin marcar reloj)
   const userList=todosColab.filter(u=>isoList.some(k=>(histByDay[k]||[]).some(m=>m.user===u.user))
-    ||(u.pagoFijo?.activo&&isoList.some((k,i)=>u.pagoFijo.dias?.includes(dias[i].getDay()))));
+    ||pfActivoRango(u,isoList,dias));
   // Solo columnas donde al menos un colaborador tiene marcación o pago fijo ese día
   const diasVis=isoList.map((k,i)=>({k,i,d:dias[i],etq:ETQ_DOW[dias[i].getDay()]}))
     .filter(({k,d})=>userList.some(u=>(histByDay[k]||[]).some(m=>m.user===u.user)
-      ||(u.pagoFijo?.activo&&u.pagoFijo.dias?.includes(d.getDay()))));
+      ||pfAplicaDia(u,k,d.getDay())));
   // CSS compartido por CLASE (no repetido inline en cada celda) — esto es lo que reduce
   // más el tamaño del HTML frente a la versión anterior con estilos inline por celda.
   const css=`<style>
@@ -5199,7 +5207,7 @@ async function buildEmailSemanal(desde,hasta,nivel){
       {const _nt=notasDeMarcas(marks);if(_nt.length)notasUsr.push({d,nts:_nt});}
       const dowNum=d.getDay();
       const isFer=feriados.includes(k);
-      const pf=pagoFijoDelDia(uObj,dowNum,isFer);
+      const pf=pagoFijoDelDia(uObj,dowNum,isFer,k);
       if(pf){
         totalPorDia[vi].colab++;totalPorDia[vi].monto+=pf.monto;totalSemana+=pf.monto;totalUsuario+=pf.monto;
         tds+=`<td class="c"><div class="ok">💰 Base</div><div style="font-size:12px;font-weight:800;color:#007a5e">$${pf.monto.toFixed(2)}</div></td>`;
@@ -7190,13 +7198,25 @@ function calcularAcumuladoSemana(dias){
 // sí deben recibir su pago íntegro en la Vista Semanal para los días configurados en su perfil.
 // Usa la tarifa especial del usuario si está activa; si no, la tarifa regular/domingo/feriado
 // que corresponda al día. Devuelve null si el día no aplica pago fijo para ese usuario.
-function pagoFijoDelDia(uObj,dowNum,isFer){
+function pagoFijoDelDia(uObj,dowNum,isFer,k){
   const pf=uObj&&uObj.pagoFijo;
-  if(!pf||!pf.activo||!Array.isArray(pf.dias)||!pf.dias.includes(dowNum))return null;
-  const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
-  const monto=(uObj.tarifa?.especial&&uObj.tarifa.especial>0)?uObj.tarifa.especial:tar;
+  if(!pf||!pf.activo)return null;
+  const t=uObj.tarifa||{};
+  // Tarifa del día: FERIADO manda sobre todo (usa lo registrado en el perfil), luego domingo, luego regular.
+  const tar=isFer?(t.feriado||t.regular||20):(dowNum===0?(t.domingo||t.regular||20):(t.regular||20));
+  // Fecha puntual configurada en el perfil (opcional, con tarifa propia opcional).
+  const fe=Array.isArray(pf.fechas)&&k?pf.fechas.find(x=>x&&x.fecha===k):null;
+  if(fe){const m=(+fe.tarifa>0)?+fe.tarifa:tar;return{monto:m};}
+  if(!Array.isArray(pf.dias)||!pf.dias.includes(dowNum))return null;
+  if(isFer)return{monto:tar};
+  const monto=(t.especial&&t.especial>0)?t.especial:tar;
   return{monto};
 }
+function pfAplicaDia(u,k,dow){
+  const pf=u&&u.pagoFijo;if(!pf||!pf.activo)return false;
+  return (Array.isArray(pf.dias)&&pf.dias.includes(dow))||(Array.isArray(pf.fechas)&&pf.fechas.some(x=>x&&x.fecha===k));
+}
+function pfActivoRango(u,isoList,dias){return isoList.some((k,i)=>pfAplicaDia(u,k,dias[i].getDay()));}
 
 // USUARIOS ACTIVOS PARA VISTA SEMANAL (guardado en localStorage + Firebase meta)
 const SEM_KEY='wl_sem_activos';
@@ -7281,7 +7301,7 @@ async function renderVistaSemanal(refDate,hastaDate){
   // AUTO-FILTER: incluir usuarios con AL MENOS UNA marcación en la semana, o con pago fijo
   // configurado para algún día de esta semana (ej. Super Admin con salario base los sábados)
   const userList0=todosColab.filter(u=>isoList.some(k=>(histByDay[k]||[]).some(m=>m.user===u.user))
-    ||(u.pagoFijo?.activo&&isoList.some((k,i)=>u.pagoFijo.dias?.includes(dias[i].getDay()))));
+    ||pfActivoRango(u,isoList,dias));
   // Aplicar el filtro de "Usuarios a mostrar esta semana" (checkboxes guardados). Array vacío
   // guardado significa "todos" — si no, solo se muestran los usuarios marcados.
   const activosSel=await loadSemActivos();
@@ -7294,7 +7314,7 @@ async function renderVistaSemanal(refDate,hastaDate){
   const histMapDeuda=new Map();
   const diasVisibles=isoList.map((k,i)=>({k,i,d:dias[i],etq:etiquetas[i]}))
     .filter(({k,d})=>userList.some(u=>(histByDay[k]||[]).some(m=>m.user===u.user)
-      ||(u.pagoFijo?.activo&&u.pagoFijo.dias?.includes(d.getDay()))));
+      ||pfAplicaDia(u,k,d.getDay())));
   // Build table
   const periodoStr=`${isoList[0]} al ${isoList[isoList.length-1]}`;
   let html=`<div style="font-size:12px;color:var(--ac);font-weight:700;margin-bottom:4px">📆 Semana: ${periodoStr}</div>`;
@@ -7337,7 +7357,7 @@ async function renderVistaSemanal(refDate,hastaDate){
     // su descuento siempre sale de su propia jornada real, sin suavizar.
     const diasInfoAcumRaw=uObj.sinAcumulado?[]:await Promise.all(diasVisibles.filter(({k})=>k>=DESCUENTO_DESDE).map(async({k,d})=>{
       const dowNum=d.getDay(),isFer=feriados.includes(k);
-      if(pagoFijoDelDia(uObj,dowNum,isFer))return null;
+      if(pagoFijoDelDia(uObj,dowNum,isFer,k))return null;
       const dayMarks=(histByDay[k]||[]).filter(m=>m.user===u.user);
       if(!dayMarks.length)return null;
       const cnt=dayMarks.length,completo=cnt>=4;
@@ -7370,13 +7390,13 @@ async function renderVistaSemanal(refDate,hastaDate){
       const isWeekend=dowNum===0||dowNum===6;
       const bgBase=isToday?'rgba(0,85,112,.35)':isWeekend?'rgba(0,201,167,.04)':'var(--bg)';
       const isFer=feriados.includes(k);
-      const pf=pagoFijoDelDia(uObj,dowNum,isFer);
+      const pf=pagoFijoDelDia(uObj,dowNum,isFer,k);
       if(pf){
         totalPorDia[vi].colab++;totalPorDia[vi].monto+=pf.monto;totalSemana+=pf.monto;totalUsuario+=pf.monto;
         html+=`<td style="padding:5px 5px;border:1px solid var(--bd);background:${bgBase};text-align:center;vertical-align:middle">`
           +`<div style="color:#00c9a7;font-size:10px;font-weight:700">💰 Salario Base</div>`
           +`<div style="color:#00c9a7;font-size:12px;font-weight:800;margin-top:2px">$${pf.monto.toFixed(2)}</div>`
-          +`<div style="color:var(--mt);font-size:9px;margin-top:1px">Pago completo</div></td>`;
+          +`<div style="color:var(--mt);font-size:9px;margin-top:1px">Pago completo${isFer?' · 🎉 Feriado':''}</div></td>`;
         return;
       }
       if(!dayMarks.length){
@@ -7422,6 +7442,7 @@ async function renderVistaSemanal(refDate,hastaDate){
         const mLines=dayMarks.map(m=>`<div style="white-space:nowrap;line-height:1.6"><span style="color:var(--mt);font-size:10px">${tipoLabel(m.tipo)}${m.generadoPorSistema?' <span title="Generada por el sistema — no fue un toque real" style="color:#ffb020">🤖</span>':''}</span><br><span style="color:var(--ac);font-family:'DM Mono',monospace;font-size:11px">${fmtHoraAP(m)}</span></div>`).join('');
         const badge=completo?`<div style="color:#00c9a7;font-size:10px;font-weight:700;margin-top:2px">✅ $${monto.toFixed(2)}</div>${datosSospechosos?`<div style="color:#ffb020;font-size:9px;font-weight:700;margin-top:1px">⚠ Revisar esta marca (dato inconsistente)</div>`:''}`:`<div style="color:var(--wn);font-size:10px;margin-top:2px">⏳ ${cnt}/4 · $${monto.toFixed(2)}</div>`;
         const descHtml=descAuto>0?`<div style="color:#ff6b6b;font-size:9.5px;font-weight:700;margin-top:2px">💸 Desc: -$${descAuto.toFixed(2)}</div>`:'';
+        const ferHtml=isFer?`<div style="color:#ffb020;font-size:9.5px;font-weight:700;margin-top:2px">🎉 Feriado · tarifa $${tar.toFixed(2)}${(uObj.tarifa?.feriado>0)?'':' ⚠ sin tarifa feriado en su perfil (se usó la regular)'}</div>`:'';
         const descManHtml=descManualMonto>0?`<div style="color:#c084fc;font-size:9px;font-weight:700;margin-top:1px">🔒 Confirmado: -$${descManualMonto.toFixed(2)} (${escHtml(descManInfo.motivo||'sin motivo')}) · por ${escHtml(descManInfo.por||'?')}</div>`:'';
         const adelDeudaHtml=cdAd.monto>0?`<div style="color:#f59e0b;font-size:9px;font-weight:700;margin-top:1px">⏱ ADELANTO de horas: ${cdAd.deuda} min · pagado completo, sin descuento (+$${cdAd.monto.toFixed(2)}) · queda como deuda por reponer</div>`:'';
         const acumReg=acumAplicado-adelAplic-bancoAplic;
@@ -7453,7 +7474,7 @@ async function renderVistaSemanal(refDate,hastaDate){
           +`<button type="button" class="btn-avisar-hueco" data-user="${u.user}" data-dia="${k}" data-falta="${hueco.join('|')}" style="margin-top:2px;font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid #ff6b6b;background:transparent;color:#ff6b6b;cursor:pointer">🔔 Avisar</button>`
           +(huecoAlmGenerable?` <button type="button" class="btn-generar-hueco" data-user="${u.user}" data-dia="${k}" data-falta="${hueco[0]}" style="margin-top:2px;font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid #ffb020;background:transparent;color:#ffb020;cursor:pointer">🤖 Generar</button>`:'')
           +`</div>`:'';
-        html+=`<td style="padding:5px 6px;border:1px solid var(--bd);background:${bgBase};vertical-align:top">${mLines}${badge}${descHtml}${descManHtml}${adelDeudaHtml}${acumHtml}${emergSRDia(emerg,k,u.user)}${dpHtml}${huecoHtml}</td>`;
+        html+=`<td style="padding:5px 6px;border:1px solid var(--bd);background:${bgBase};vertical-align:top">${mLines}${badge}${ferHtml}${descHtml}${descManHtml}${adelDeudaHtml}${acumHtml}${emergSRDia(emerg,k,u.user)}${dpHtml}${huecoHtml}</td>`;
       }
     });
     html+=`<td style="padding:6px 8px;border:1px solid var(--bd);background:rgba(0,201,167,.08);text-align:center;vertical-align:middle"><strong style="color:var(--ac);font-size:13px">$${totalUsuario.toFixed(2)}</strong>${totalDescUsuario>0?`<div style="color:#ff6b6b;font-size:10px;font-weight:700;margin-top:2px">💸 -$${totalDescUsuario.toFixed(2)}</div>`:''}${totalAcumUsrMin>0?`<div style="color:#00c9a7;font-size:9.5px;font-weight:700;margin-top:2px">💧 ${totalAcumUsrMin} min de la semana usados para cubrir faltantes</div>`:''}${totalDpUsuario>0?`<div style="color:#ffb020;font-size:10px;font-weight:700;margin-top:3px">🚨 Posible desc.: -$${totalDpUsuario.toFixed(2)}</div><div style="font-size:9.5px;color:var(--mt)">Si se aplica: $${(totalUsuario-totalDpUsuario).toFixed(2)}</div>`:''}</td>`;
@@ -7510,14 +7531,14 @@ async function buildRRHHData(desde,hasta){
   const emergRango=await loadEmergenciasRango(isoList[0],isoList[isoList.length-1]);
   for(const k of isoList){histByDay[k]=await getHist(k);}
   const userList0=todosColab.filter(u=>isoList.some(k=>(histByDay[k]||[]).some(m=>m.user===u.user))
-    ||(u.pagoFijo?.activo&&isoList.some((k,i)=>u.pagoFijo.dias?.includes(dias[i].getDay()))));
+    ||pfActivoRango(u,isoList,dias));
   // Reutiliza la misma selección de "usuarios activos" guardada por la Vista Semanal, para que
   // ambas vistas muestren siempre el mismo grupo de colaboradores sin configurarlo dos veces.
   const activosSel=await loadSemActivos();
   const userList=activosSel.length?userList0.filter(u=>activosSel.includes(u.user)):userList0;
   const diasVis=isoList.map((k,i)=>({k,i,d:dias[i],etq:ETQ_DOW[dias[i].getDay()]}))
     .filter(({k,d})=>userList.some(u=>(histByDay[k]||[]).some(m=>m.user===u.user)
-      ||(u.pagoFijo?.activo&&u.pagoFijo.dias?.includes(d.getDay()))));
+      ||pfAplicaDia(u,k,d.getDay())));
   const filas=[];
   for(const u of userList){
     const uObj=users[u.user]||{};
@@ -7527,7 +7548,7 @@ async function buildRRHHData(desde,hasta){
     let horcolUserCache=null;try{const hc=await get(R(db,`${HORCOL}/${u.user}`));horcolUserCache=hc.exists()?hc.val():{};}catch(e){horcolUserCache={};}
     const diasInfoAcumRaw=uObj.sinAcumulado?[]:await Promise.all(diasVis.filter(({k})=>k>=DESCUENTO_DESDE).map(async({k,d})=>{
       const dowNum=d.getDay(),isFer=feriados.includes(k);
-      if(pagoFijoDelDia(uObj,dowNum,isFer))return null;
+      if(pagoFijoDelDia(uObj,dowNum,isFer,k))return null;
       const marks=(histByDay[k]||[]).filter(m=>m.user===u.user);
       if(!marks.length)return null;
       const cnt=marks.length,completo=cnt>=4;
@@ -7543,7 +7564,7 @@ async function buildRRHHData(desde,hasta){
     const diasArr=diasVis.map(({k,d})=>{
       const marks=(histByDay[k]||[]).filter(m=>m.user===u.user);
       const dowNum=d.getDay();const isFer=feriados.includes(k);
-      const pf=pagoFijoDelDia(uObj,dowNum,isFer);
+      const pf=pagoFijoDelDia(uObj,dowNum,isFer,k);
       if(pf){totalUsuario+=pf.monto;return{tipo:'fijo',monto:pf.monto};}
       if(!marks.length)return{tipo:'ausente'};
       const cnt=marks.length;const completo=cnt>=4;
@@ -8723,14 +8744,32 @@ el('btn-man').addEventListener('click',async()=>{
 
 // USUARIOS
 el('u-te-on').addEventListener('change',()=>{el('u-te-row').style.display=el('u-te-on').checked?'block':'none';if(!el('u-te-on').checked)el('u-te').value='';});
-el('u-pf-on').addEventListener('change',()=>{el('u-pf-row').style.display=el('u-pf-on').checked?'block':'none';if(!el('u-pf-on').checked)document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);});
+let PF_FECHAS=[];
+function renderPfFechas(){
+  const c=el('u-pf-fec-list');if(!c)return;c.innerHTML='';
+  PF_FECHAS.slice().sort((a,b)=>a.fecha.localeCompare(b.fecha)).forEach(x=>{
+    const d=document.createElement('div');
+    d.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;margin-bottom:4px;font-size:12px';
+    const sp=document.createElement('span');sp.textContent=`📅 ${x.fecha} — ${x.tarifa>0?'$'+(+x.tarifa).toFixed(2):'tarifa del perfil'}`;
+    const b=document.createElement('button');b.type='button';b.textContent='✕';b.style.cssText='background:transparent;border:none;color:#ff6b6b;font-size:14px;cursor:pointer';
+    b.addEventListener('click',()=>{PF_FECHAS=PF_FECHAS.filter(y=>y.fecha!==x.fecha);renderPfFechas();});
+    d.appendChild(sp);d.appendChild(b);c.appendChild(d);
+  });
+}
+el('u-pf-fec-add')?.addEventListener('click',()=>{
+  const f=el('u-pf-fec').value;if(!f){toast('Elige la fecha','err');return;}
+  const t=parseFloat(el('u-pf-fec-t').value)||0;
+  PF_FECHAS=PF_FECHAS.filter(y=>y.fecha!==f);PF_FECHAS.push(t>0?{fecha:f,tarifa:t}:{fecha:f});
+  el('u-pf-fec').value='';el('u-pf-fec-t').value='';renderPfFechas();
+});
+el('u-pf-on').addEventListener('change',()=>{el('u-pf-row').style.display=el('u-pf-on').checked?'block':'none';if(!el('u-pf-on').checked){document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);PF_FECHAS=[];renderPfFechas();}});
 
 // ── USUARIOS: modal "Nuevo usuario / Editar usuario" ──────────────────────────────────────────
 function clearUserForm(){
   ['u-nombre','u-user','u-ced','u-email','u-tr','u-td','u-tf','u-te','u-finicio'].forEach(id=>{if(el(id))el(id).value='';});
   if(el('u-rol'))el('u-rol').value='Colaborador';
   el('u-te-on').checked=false;el('u-te-row').style.display='none';el('u-pf-on').checked=false;el('u-pf-row').style.display='none';el('u-sinacum').checked=false;
-  document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);
+  document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);PF_FECHAS=[];try{renderPfFechas();}catch(e){}
   if(el('bita-list'))el('bita-list').innerHTML='';if(el('bita-resumen'))el('bita-resumen').textContent='';
   ['bita-desde','bita-hasta','bita-nota'].forEach(id=>{if(el(id))el(id).value='';});
 }
@@ -8759,7 +8798,7 @@ el('btn-save-user').addEventListener('click',async()=>{
   const pfDias=pfOn?Array.from(document.querySelectorAll('.u-pf-dia:checked')).map(cb=>parseInt(cb.value)):[];
   const meta={...prev,nombre,user,cedula:el('u-ced').value.trim()||'',email:el('u-email').value.trim()||prev.email||'',rol:el('u-rol').value||'Colaborador',
     tarifa:{regular:parseFloat(el('u-tr').value||20)||20,domingo:parseFloat(el('u-td').value||25)||25,feriado:parseFloat(el('u-tf').value||30)||30,especial:especialOn?(parseFloat(el('u-te').value||0)||0):0},
-    pagoFijo:{activo:pfOn&&pfDias.length>0,dias:pfDias},sinAcumulado:el('u-sinacum').checked,
+    pagoFijo:{activo:pfOn&&(pfDias.length>0||PF_FECHAS.length>0),dias:pfDias,fechas:pfOn?PF_FECHAS.slice():[]},sinAcumulado:el('u-sinacum').checked,
     profileUrl:prev.profileUrl||'',fechaInicio:finicio};
   await setUser(user,meta);
   // Si existe una selección personalizada de "colaboradores activos" (Vista semanal →
