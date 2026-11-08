@@ -593,6 +593,8 @@ const storesFor=items=>BASE_ST.filter(t=>t!=="ECOM"||items.some(x=>(x.s.ECOM||0)
 const TILES=()=>[...STORES,"BODEGA"];
 const L=t=>({ECOM:"E-commerce",CRISTAL:"Cristal",BODEGA:"Bodega"}[t]||t);
 const NAMES={S4:"Los Pueblos",S5:"San Miguelito",S6:"Los Andes",S7:"Albrook Mall",S8:"El Dorado",S9:"Westland",S11:"Santiago",S12:"Vía España",S13:"Soho Mall",S14:"Santa María"};
+const pctF=(a,b)=>{a=+a||0;b=+b||0;if(b<=0)return 0;if(a>=b)return 100;const v=Math.round(a/b*1000)/10;return Math.min(99.9,Math.max(a>0?0.1:0,v))};
+const pctT=(a,b)=>{const v=pctF(a,b);return (Number.isInteger(v)?v:v.toFixed(1))+'%'};
 const PSEUDO={AUTO:'PEDIDOS AUTOMÁTICOS',TUNEL:'TÚNEL',PROFORMAS:'PROFORMAS'},TUID='TUNEL',PFID='PROFORMAS',isPs=id=>!!PSEUDO[id];
 const LN=t=>NAMES[t]?`${L(t)} · ${NAMES[t]}`:L(t);
 const ckey=c=>(String(c.c||'')+'~'+String(c.pos||'')).toLowerCase().replace(/[^a-z0-9~]+/g,'_');
@@ -647,7 +649,8 @@ async function showRecList(){
       set(R(db,'meta_v1/consultas_prog/'+id),g).catch(()=>{})}
     if(id===PFID&&!(RECS[id].items||[]).length)g={...g,s:100,d:100};
     if(id===AUID&&AUPEND.n){const A2=(g.A||0)+AUPEND.pz,N2=(g.n||0)+AUPEND.it;g={...g,A:A2,n:N2,s:A2?Math.round((g.S||0)/A2*100):0,d:N2?Math.round((g.r||0)/N2*100):0}}
-    $('ra-'+id).textContent=g.s+'%';$('rb-'+id).style.width=g.s+'%';$('da-'+id).textContent=g.d+'%';$('ri-'+id).innerHTML=`Ítems surtidos <b>${fmt(g.si||0)}/${fmt(g.n||0)}</b> · despachados <b>${fmt(g.r||0)}/${fmt(g.n||0)}</b>`;$('db-'+id).style.width=g.d+'%';GP[id]=g;if(g.A!==undefined)$('rp-'+id).innerHTML=`Piezas surtidas <b>${fmt(g.S)}/${fmt(g.A)}</b> · por surtir <b style="color:#ff8fa8">${fmt(Math.max(0,g.A-g.S))}</b>`}catch(e){$('ra-'+id).textContent='—';$('da-'+id).textContent='—'}}
+    {const ps=(id===PFID&&!(RECS[id].items||[]).length)?100:(g.A?pctF(g.S||0,g.A):(g.s||0)),pd=(id===PFID&&!(RECS[id].items||[]).length)?100:(g.n?pctF(g.r||0,g.n):(g.d||0));g={...g,s:ps,d:pd}}
+    const fp=v=>Number.isInteger(v)?v:v.toFixed(1);$('ra-'+id).textContent=fp(g.s)+'%';$('rb-'+id).style.width=g.s+'%';$('da-'+id).textContent=fp(g.d)+'%';$('ri-'+id).innerHTML=`Ítems surtidos <b>${fmt(g.si||0)}/${fmt(g.n||0)}</b> · despachados <b>${fmt(g.r||0)}/${fmt(g.n||0)}</b>`;$('db-'+id).style.width=g.d+'%';GP[id]=g;if(g.A!==undefined)$('rp-'+id).innerHTML=`Piezas surtidas <b>${fmt(g.S)}/${fmt(g.A)}</b> · por surtir <b style="color:#ff8fa8">${fmt(Math.max(0,g.A-g.S))}</b>`}catch(e){$('ra-'+id).textContent='—';$('da-'+id).textContent='—'}}
   {const bx=$('recList'),cs=[...bx.querySelectorAll(':scope > [data-rec]')];if(cs.length>1){const kv=c=>{const i=c.dataset.rec,g=GP[i]||PROG[i]||{};return[isPs(i)?1:0,g.s||0,g.d||0]};cs.sort((a,b)=>{const x=kv(a),y=kv(b);return y[0]-x[0]||y[1]-x[1]||y[2]-x[2]}).forEach(c=>bx.appendChild(c))}}
   if(ISADM&&!window._pw){window._pw=1;setTimeout(()=>{statLoad(false).catch(()=>{})},5000)}
 }
@@ -666,7 +669,7 @@ $('recList').addEventListener('click',async e=>{
   const d=e.target.closest('[data-delrec]');
   if(d){e.stopPropagation();const id=d.dataset.delrec;if(!confirm(`¿Quitar el recibo ${id} de la lista?\nLo ya surtido y despachado queda registrado, pero el recibo no se podrá abrir hasta subirlo de nuevo.`))return;
     try{await remove(R(db,'meta_v1/consultas_recs/'+id));try{await remove(R(db,'meta_v1/consultas_fechas/'+id))}catch(e2){}delete FECHAS[id];toast('Recibo quitado');showRecList()}catch(err){toast('Error: '+(err.code||err.message))}return}
-  const c=e.target.closest('[data-rec]');if(c){if(c.dataset.rec===AUID&&AUPEND.n){openAu('auto');return}if(c.dataset.rec===PFID&&!((RECS[PFID]||{}).items||[]).length){openAu('prf');return}selectRecibo(c.dataset.rec)}});
+  const c=e.target.closest('[data-rec]');if(c){if(c.dataset.rec===AUID){openAu('autosur');return}if(c.dataset.rec===PFID&&!((RECS[PFID]||{}).items||[]).length){openAu('prf');return}selectRecibo(c.dataset.rec)}});
 
 // ---------- sesión compartida con la app de marcaciones ----------
 function emailToUser(e){e=(e||'').toLowerCase();let m=e.match(/\+([^@]+)@gmail\.com$/);if(m)return m[1];if(e.endsWith('@saks.com.pa'))return e.split('@')[0];return e.split('@')[0]}
@@ -727,7 +730,7 @@ function renderGlobal(){
   let A=0,S=0,refs=0;const bySur={};for(const e of entries()){bySur[e.p+'|'+e.t]=(bySur[e.p+'|'+e.t]||0)+(e.q||0)}
   for(const x of DATA){for(const t of STORES){const a=x.s[t]||0;A+=a;S+=Math.min(bySur[x.p+'|'+t]||0,a)}{const bx=bodUsed(x.p);A+=bx;S+=bx}if(DSP[x.p])refs++}
   $('gPz').textContent=`${fmt(S)} / ${fmt(A)}`;$('gBul').textContent=fmtB(totBul(DATA));$('gRef').textContent=`${fmt(refs)} / ${fmt(DATA.length)}`;
-  const pc=A?Math.round(S/A*100):0;$('gAv').textContent=pc+'%';$('gBar').style.width=pc+'%';const pd=DATA.length?Math.round(refs/DATA.length*100):0;$('gDv').textContent=pd+'%';$('gDBar').style.width=pd+'%';
+  const pc=A?pctF(S,A):0;$('gAv').textContent=pctT(S,A)+'';$('gBar').style.width=pc+'%';const pd=DATA.length?pctF(refs,DATA.length):0;$('gDv').textContent=pctT(refs,DATA.length);$('gDBar').style.width=pd+'%';
   const cb=$('compBox'),cd=COMP[RECIBO];
   if(cd){cb.innerHTML=`<div class="card" style="display:flex;align-items:center;gap:10px"><div style="flex:1"><b class="sora">✔ Recibo completado</b><div class="msg" style="margin:2px 0 0">${fdt(cd.ts)} · ${esc(cd.n||'')}</div></div>${ISADM?'<button class="btn sm" id="compUndo">↩ Reabrir</button>':''}</div>`}
   else if(!ISADM){cb.innerHTML=''}
@@ -1445,7 +1448,7 @@ async function softRefresh(){
       resub()
     }else if(!$('v-stat').classList.contains('hide')){await statLoad(true);buildFilters();renderStat()}
     else if(!$('v-pro').classList.contains('hide')){await statLoad(true);prFilters();renderPro()}
-    else if(!$('v-auto').classList.contains('hide')){if(window._auMode==='prf')await pfList();else if(window._auMode!=='tunm')await auList()}
+    else if(!$('v-auto').classList.contains('hide')){if(window._auMode==='prf')await pfList();else if(window._auMode==='auto'||window._auMode==='autosur')await auHome();else if(window._auMode!=='tunm')await auList()}
     else if(!$('v-pal').classList.contains('hide')||!$('v-pkl').classList.contains('hide')){/* palets y packing list ya escuchan en vivo */}
     else await showRecList();
     toast('✅ Datos actualizados')
@@ -1883,10 +1886,10 @@ function parseTransfer(t){
   {const pm=t.match(/(?:^|\s)(\d{1,2})\/(\d{1,2})\/(\d{2}),?\s+(\d{1,2}):(\d{2})(?:\s|$)/);
    if(pm&&+pm[2]>=1&&+pm[2]<=12&&+pm[1]>=1&&+pm[1]<=31){const p=new Date(2000+ +pm[3],+pm[2]-1,+pm[1],+pm[4],+pm[5]).getTime();if(isFinite(p)&&(!fs||p>=tsS)){ts=p;tsSrc='imp'}}}
   return{tr,ts,tsSrc,tsSol:tsS,tsAuto:ts,sur,org,des,nota,t:guessStore(des),lines,tot}}
-function openAu(mode){window._auMode=mode;$('v-rec').classList.add('hide');$('v-auto').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent=mode==='auto'?'Recibo #AUTO · Pedidos automáticos':mode==='tun'?'Túnel':mode==='prf'?'Proformas':'Túnel manual';window.scrollTo(0,0);AU=null;$('auReview').innerHTML='';$('auMsg').textContent='';
-  $('auUpCard').classList.toggle('hide',mode==='tunm'||mode==='prf');$('pfCard').classList.toggle('hide',mode!=='prf');$('pfMsg').textContent='';$('auListT').textContent=mode==='prf'?'Proformas cargadas':'Transferencias cargadas';$('auSrc').value=mode==='auto'?'auto':'tun';
-  {const au=mode==='auto';$('auAuto').classList.toggle('hide',!au);$('auAuto').innerHTML='';$('auTabs').innerHTML='';$('auOldCard').classList.toggle('hide',au);
-   if(au){AUCUR='';AUUP=false;AUV=ISADM?'adm':'mine';AUSEL.clear();AUGP=null;AUQUE=[];AUPG=100;
+function openAu(mode){window._auMode=mode;$('v-rec').classList.add('hide');$('v-auto').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent=mode==='auto'?'Transferencias · Pedidos automáticos':mode==='autosur'?'Recibo #AUTO · Surtido':mode==='tun'?'Túnel':mode==='prf'?'Proformas':'Túnel manual';window.scrollTo(0,0);AU=null;$('auReview').innerHTML='';$('auMsg').textContent='';
+  $('auUpCard').classList.toggle('hide',mode==='tunm'||mode==='prf');$('pfCard').classList.toggle('hide',mode!=='prf');$('pfMsg').textContent='';$('auListT').textContent=mode==='prf'?'Proformas cargadas':'Transferencias cargadas';$('auSrc').value=(mode==='auto'||mode==='autosur')?'auto':'tun';
+  {const au=mode==='auto'||mode==='autosur';$('auAuto').classList.toggle('hide',!au);$('auAuto').innerHTML='';$('auTabs').innerHTML='';$('auOldCard').classList.toggle('hide',au);
+   if(au){AUCUR='';AUUP=false;AUV=ISADM?'adm':'mine';AUSEL.clear();AUGP=null;AUQUE=[];AUPG=100;AUSF='all';AUSQ='';AUSS='all';AUSP=40;AUOP='';
      $('auUpT').textContent='Subir transferencias del Gestor de Bodega';$('auUpM').textContent='Sube el PDF (o captura) de la pantalla de Surtido de cada transferencia. Puedes elegir varios archivos a la vez: quedan como pendientes por surtir. Quien las asigna es el encargado.';auHome();return}
    $('auUpT').textContent='Cargar transferencia del Gestor de Bodega';$('auUpM').textContent='Sube el PDF (o una captura PNG/JPG) de la pantalla de Chequeo. La app lee la transferencia, la tienda y los productos; tú revisas y guardas.'}
   if(mode==='prf')pfList();else auList();if(mode==='tunm')auManualStart()}
@@ -2126,8 +2129,8 @@ async function auHome(){
 function auPaint(){
   const box=$('auAuto');if(!box)return;const det=AUCUR&&AUD.all[AUCUR];
   $('auUpCard').classList.toggle('hide',!AUUP||!!det);
-  $('auTabs').innerHTML=det?'':auTabs();
-  box.innerHTML=det?auDetail(AUCUR):(AUV==='adm'&&ISADM?auAdmView():auMineView())}
+  const sv=window._auMode==='autosur';$('auTabs').innerHTML=(det||sv)?'':auTabs();
+  box.innerHTML=det?auDetail(AUCUR):sv?auSurView():(AUV==='adm'&&ISADM?auAdmView():auMineView())}
 function auTabs(){
   const pn=ISADM?Object.values(AUD.all).filter(isPend).length:0;
   return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
@@ -2150,12 +2153,16 @@ function auAdmView(){
   let me='';try{me=localStorage.getItem('auWho')||''}catch(e){}
   const dirOpt=`<option value="">Elegir surtidor…</option>`+UDIR.map(x=>`<option value="${esc(x.u)}" ${me===x.u?'selected':''}>${esc(x.n)} (${esc(x.u)})</option>`).join('');
   const vis=rows.slice(0,AUPG),selN=[...AUSEL].filter(tr=>AUD.all[tr]).length;
-  const card=m=>{const a=asgOf(m.tr);return `<div class="card" style="margin:0 0 8px;padding:10px"><div style="display:flex;gap:10px;align-items:center">
-    <input type="checkbox" data-ps="${esc(m.tr)}" ${AUSEL.has(m.tr)?'checked':''} style="width:22px;height:22px;flex:none">
-    <div style="flex:1;min-width:0"><b class="sora">${esc(m.tr)}</b> <span class="pill p-aq">${esc(LN(m.t))}</span>${m.pas?` <span class="pill p-no">Pasillo ${esc(m.pas)}</span>`:''}
-     ${a?` <span class="pill p-bl">👤 ${esc(a.n||a.u)}</span>${auEstado(m)}${auReasg(m)}`:' <span class="pill p-wn">Sin asignar</span>'}
-     <div class="msg" style="margin:4px 0 0">${fdt(m.ts)} · ${fmt(m.n||0)} ítems · Solic. <b>${fmt(m.sol||0)}</b> · Reser. <b>${fmt(m.pz||0)}</b>${(m.sol||0)!==(m.pz||0)?' <span style="color:var(--wn)">⚠ reservado menor</span>':''}${surtOf(m)?` · avance ${fmt(surtOf(m))}`:''}</div>${auTimes(m)}</div>
-    <button class="btn sm" data-auopen="${esc(m.tr)}" title="Ver / forzar">👁</button><button class="btn sm" data-pan="${esc(m.tr)}" title="Anular">🚫</button><button class="btn sm" data-pdel="${esc(m.tr)}" title="Quitar">🗑</button></div></div>`};
+  const card=m=>{const a=asgOf(m.tr);return `<div class="card" style="margin:0 0 10px;padding:12px">
+    <div style="display:flex;gap:12px;align-items:flex-start">
+     <input type="checkbox" data-ps="${esc(m.tr)}" ${AUSEL.has(m.tr)?'checked':''} style="width:24px;height:24px;flex:none;margin-top:2px">
+     <div style="flex:1;min-width:0">
+      <div style="font:800 18px 'Inter';color:#fff;line-height:1.15">${esc(LN(m.t))}</div>
+      <div class="msg" style="margin:3px 0 0"><b>#${esc(m.tr)}</b>${m.pas?' · Pasillo '+esc(m.pas):''}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${a?`<span class="pill p-bl">👤 ${esc(a.n||a.u)}</span>${auEstado(m)}${auReasg(m)}`:'<span class="pill p-wn">Sin asignar</span>'}</div>
+      <div class="msg" style="margin:7px 0 0">${fmt(m.n||0)} ítems · Solic. <b>${fmt(m.sol||0)}</b> · Reser. <b>${fmt(m.pz||0)}</b>${(m.sol||0)!==(m.pz||0)?' <span style="color:var(--wn)">⚠ reservado menor</span>':''}${surtOf(m)?` · avance ${fmt(surtOf(m))}`:''}</div>
+      <details style="margin-top:6px"><summary class="msg" style="margin:0;cursor:pointer">Ver tiempos</summary>${auTimes(m)}</details></div></div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm" data-auopen="${esc(m.tr)}" style="flex:1">👁 Ver / forzar</button><button class="btn sm" data-pan="${esc(m.tr)}" style="flex:1">🚫 Anular</button><button class="btn sm" data-pdel="${esc(m.tr)}" style="flex:1">🗑 Quitar</button></div></div>`};
   const hq=sinAcc(AUHQ),hrows=AUHS?done.filter(m=>{if(!hq)return true;const h=sinAcc([m.tr,LN(m.t),m.sur,m.suru,m.nota,m.nt].join(' '));return hq.split(/\s+/).every(w=>h.includes(w))}):[];
   const hcard=m=>m.st==='anu'?`<div class="card" style="margin:0 0 8px;padding:10px;opacity:.85"><b class="sora">${esc(m.tr)}</b> <span class="pill p-aq">${esc(LN(m.t))}</span> <span class="pill p-wn">🚫 Anulada</span>
     <div class="msg" style="margin:4px 0 0">${m.anu?fdt(m.anu.ts)+' · '+esc(m.anu.n||m.anu.u)+' · ':''}Motivo: ${esc((m.anu&&m.anu.m)||'—')}</div></div>`
@@ -2203,6 +2210,62 @@ function auGpHtml(){
   return `<div class="card" style="margin-top:10px"><div class="slbl">Asignación leída del PDF</div>${blocks}
     <div style="display:flex;gap:8px;margin-top:8px"><button class="btn pri" data-aua="gpgo" style="flex:1" ${Object.entries(by).every(([r])=>G.map[r]&&G.map[r].u)?'':'disabled'}>Asignar ${G.list.length} transferencia(s)</button><button class="btn" data-aua="gpno">Cancelar</button></div></div>`}
 
+/* ---------- SURTIDO · Pedidos automáticos: lista de transferencias (misma estructura que los productos de un recibo) ---------- */
+let AUSF='all',AUSQ='',AUSS='all',AUSP=40;
+const AUSL={all:'Todos',no:'Nuevo',wn:'Parcial',ok:'Surtido',dsp:'Despachado',none:'Sin asignar',anu:'Anulada'};
+const AUSC={dsp:'#34e08a',ok:'#58b4f7',wn:'#f5a623',no:'#2fd9c3',none:'#7f9aa3',anu:'#ff8fa8'};
+const lnV=(m,l)=>isPend(m)?wkQ(m.tr)[l.p]:(+l.desp||0);
+function auTrInfo(m){
+  const pend=isPend(m),q=wkQ(m.tr),a=AUD.asg[m.tr];let items=0,idone=0,pz=0,sdone=0;
+  (m.lines||[]).forEach(l=>{const r=lnRes(l);if(r<=0)return;const v=pend?Math.min(Math.max(0,+q[l.p]||0),lnCap(m.tr,l)):(+l.desp||0),sv=Math.min(v,r);items++;pz+=r;sdone+=sv;if(sv>=r)idone++});
+  let k;
+  if(m.st==='anu')k='anu';else if(m.st==='inc'||isYa(m))k='dsp';else if(m.st==='sur')k='ok';
+  else if(!a)k='none';else if(sdone>0||Object.keys(q).length)k='wn';else k='no';
+  return{items,idone,pz,sdone,k,pc:pctF(sdone,pz)}}
+function auPill(k,i){return k==='dsp'?'<span class="pill p-ok">Despachado ✓</span>':k==='ok'?'<span class="pill p-bl">Surtido · por chequear</span>':k==='wn'?`<span class="pill p-wn">${i&&i.pz&&i.sdone>=i.pz?'Por cerrar':'Parcial'}</span>`:k==='no'?'<span class="pill p-aq">Nuevo</span>':k==='none'?'<span class="pill p-no">Sin asignar</span>':'<span class="pill p-wn">🚫 Anulada</span>'}
+function auClosedBox(m){const i=auTrInfo(m);
+  return `<div class="card"><div class="slbl">Estado de la transferencia</div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${auPill(i.k,i)}${m.sur||m.suru?`<span class="pill p-ok">✔ ${esc(m.sur||m.suru)}</span>`:''}${m.chk?`<span class="pill p-bl">✔ Chequeada · ${esc(m.chk.n||m.chk.u)}</span>`:''}</div>
+   ${m.st==='anu'?`<div class="msg">${m.anu?fdt(m.anu.ts)+' · '+esc(m.anu.n||m.anu.u)+' · ':''}Motivo: ${esc((m.anu&&m.anu.m)||'—')}</div>`:`<div class="msg">${fmt(m.pz||0)} pzas · ${fmt(m.bul||0)} bultos${m.nt?` · nota: ${esc(m.nt)}`:''}</div>`}
+   <details style="margin-top:6px"><summary class="msg" style="margin:0;cursor:pointer">Ver tiempos</summary>${auTimes(m)}</details>
+   ${isSur(m)&&ISADM?`<button class="btn pri" data-pchk="${esc(m.tr)}" style="width:100%;margin-top:10px">✔ Chequear y despachar</button>`:''}
+   ${(m.st==='sur'||m.st==='inc')?`<button class="btn sm" data-pgoto="${esc(m.tr)}" style="width:100%;margin-top:8px">🏷 Etiquetas</button>`:''}</div>`}
+function auSurCard(m,i){
+  const a=AUD.asg[m.tr],rk=m.st==='anu'?'—':pctT(i.sdone,i.pz);
+  return `<div class="card row" data-auopen="${esc(m.tr)}" style="display:block;cursor:pointer;margin:0 0 8px;padding:12px;border-left:4px solid ${AUSC[i.k]}">
+   <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+    <div style="min-width:0;overflow-wrap:anywhere">
+     <b class="sora" style="font-size:16px">${esc(LN(m.t))}</b>
+     <div style="color:var(--mt);font-size:13px">#${esc(m.tr)}${m.pas?' · Pasillo '+esc(m.pas):''}</div>
+     <div style="color:var(--mt);font-size:13px">${fmt(i.pz)} pzas · ${fmt(i.sdone)} surtidas${a&&(ISADM||a.u!==USER)?' · 👤 '+esc(a.n||a.u):''}</div>
+     <div style="color:var(--mt);font-size:12px">${fdt(m.ts)}</div></div>
+    <div style="text-align:right;flex:none">${auPill(i.k,i)}
+     <div style="font:800 17px 'DM Mono',monospace;margin-top:4px">${i.idone}/${i.items}</div>
+     <div style="color:var(--mt);font-size:11px">ítems · <b style="color:var(--tx)">${rk}</b></div></div></div>
+   ${m.st==='anu'?'':`<div class="bar" style="height:8px;margin-top:8px"><i style="width:${i.pc}%"></i></div>`}</div>`}
+function auSurView(){
+  const all=Object.values(AUD.all).map(m=>({m,i:auTrInfo(m)})),q=sinAcc(AUSQ);
+  const base0=all.filter(x=>!q||q.split(/\s+/).every(w=>sinAcc([x.m.tr,LN(x.m.t),x.m.pas,x.m.nota,(AUD.asg[x.m.tr]||{}).n].join(' ')).includes(w)));
+  const stores=[...new Set(all.map(x=>x.m.t).filter(Boolean))].sort((a,b)=>{const ia=BASE_ST.indexOf(a),ib=BASE_ST.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)});
+  if(AUSS!=='all'&&!stores.includes(AUSS))AUSS='all';
+  const base=AUSS==='all'?base0:base0.filter(x=>x.m.t===AUSS);
+  const cn={};Object.keys(AUSL).forEach(k=>cn[k]=0);cn.all=base.length;base.forEach(x=>cn[x.i.k]++);
+  const keys=Object.keys(AUSL).filter(k=>k==='all'||(k==='none'?ISADM:k==='anu'?cn.anu>0:true));if(!keys.includes(AUSF))AUSF='all';
+  const rk={wn:0,no:1,none:2,ok:3,dsp:4,anu:5},rows=(AUSF==='all'?base:base.filter(x=>x.i.k===AUSF)).sort((a,b)=>(rk[a.i.k]-rk[b.i.k])||(rk[a.i.k]<=2?(a.m.ts||0)-(b.m.ts||0):(b.m.dts||b.m.ts||0)-(a.m.dts||a.m.ts||0)));
+  const vis=rows.slice(0,AUSP),live=base.filter(x=>x.i.k!=='anu'),T=sumL(live,x=>x.i.pz),S=sumL(live,x=>x.i.sdone),IT=sumL(live,x=>x.i.items),ID=sumL(live,x=>x.i.idone),nd=live.filter(x=>x.i.k==='dsp').length;
+  return `<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><button class="btn sm" data-aut="ref">⟳ Actualizar</button><button class="btn sm" data-aut="prods">📦 Productos del recibo</button></div>
+  <div class="card"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px">
+    <div><div class="lbl">Surtido</div><div style="font:800 26px 'Inter';color:var(--tx)">${pctT(S,T)}</div><div class="msg" style="margin:0">${fmt(S)}/${fmt(T)} pzas</div></div>
+    <div><div class="lbl">Ítems surtidos</div><div style="font:800 26px 'Inter';color:var(--ac)">${fmt(ID)}/${fmt(IT)}</div><div class="msg" style="margin:0">${pctT(ID,IT)}</div></div>
+    <div><div class="lbl">Despachadas</div><div style="font:800 26px 'Inter';color:#f5a623">${fmt(nd)}/${fmt(live.length)}</div><div class="msg" style="margin:0">transferencias</div></div></div>
+   <div class="bar" style="height:12px"><i style="width:${pctF(S,T)}%"></i></div></div>
+  <div class="card"><div class="slbl">Buscar</div><div class="search"><label class="sbox"><input id="auSQ" placeholder="Transferencia, tienda, pasillo${ISADM?', surtidor':''}…" value="${esc(AUSQ)}" autocomplete="off"></label></div>
+   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${keys.map(k=>`<button class="btn sm ${AUSF===k?'pri':''}" data-aus="${k}">${AUSL[k]} (${fmt(cn[k])})</button>`).join('')}</div>
+   <div class="slbl" style="margin:12px 2px 6px">Filtrar por tienda</div>
+   <select class="f" id="auSS"><option value="all">Todas las tiendas (${fmt(base0.length)})</option>${stores.map(t=>`<option value="${esc(t)}" ${AUSS===t?'selected':''}>${esc(LN(t))} (${fmt(base0.filter(x=>x.m.t===t).length)})</option>`).join('')}</select></div>
+  <div class="msg" style="margin:0 2px 8px;font-weight:700">Mostrando ${fmt(Math.min(AUSP,rows.length))} de ${fmt(rows.length)} transferencias${AUSF!=='all'||AUSS!=='all'||q?' (filtrado)':''}</div>
+  ${vis.map(x=>auSurCard(x.m,x.i)).join('')||`<div class="msg">${ISADM?'Sin transferencias.':'No tienes transferencias asignadas ahora. Cuando el encargado te asigne, aparecen aquí.'}</div>`}
+  ${rows.length>vis.length?`<button class="btn" data-aus="more" style="width:100%">Ver más (${fmt(rows.length-vis.length)})</button>`:''}`}
+
 /* ---------- Vista del surtidor: Mis transferencias ---------- */
 function auMineView(){
   const L=mineP(),res=sumL(L,m=>m.pz),sur=sumL(L,m=>surtOf(m));
@@ -2226,41 +2289,42 @@ function auCoinc(p,except){ // el mismo producto en OTRAS transferencias asignad
 let AUOP='';
 function auProdHead(l,tr,m){return `<div style="margin-bottom:8px"><button class="btn sm" data-auprodback="1">← Productos de la transferencia #${esc(tr)}</button></div>
   <div class="card" style="margin-bottom:8px"><div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;justify-content:space-between"><div><div class="lbl">Estilo</div><h2 style="font-size:24px;margin:0">${esc(l.ref||'—')}</h2></div><div style="text-align:right"><div class="lbl">Producto</div><div class="sora" style="font-size:32px;color:var(--ac);line-height:1">${esc(l.p)}</div></div></div><div style="color:var(--mt);margin-top:2px">${esc(l.d||'')}</div></div>
-  ${(()=>{const v=((AUD.wk[tr]||{}).q||{})[l.p],on=v!==undefined&&v>0,r=lnRes(l);return `<div class="tile ${on&&v>=r?'full':on?'part':''}" style="width:100%;margin-bottom:8px"><div class="hd"><b>${esc(LN(m.t))}</b><small>${esc(m.t||'')} · #${esc(m.tr)}</small></div><div class="bd">${(l.sol||0)!==r?`<span style="color:var(--mt)">Solicitado: <b>${fmt(l.sol||0)}</b></span><br>`:''}Distribuir: <b>${fmt(r)}</b><br>Surtidas: <b id="auSurP">${fmt(v||0)}</b><br>Pendiente: <b id="auPenP" style="color:${r-(v||0)>0?'var(--wn)':'var(--ok)'}">${fmt(Math.max(0,r-(v||0)))}</b></div><label class="ck"><input type="checkbox" data-auck="${esc(l.p)}" ${on?'checked':''}> ${on&&v>=r?'Surtido ✓':'Surtido'}</label><div class="ed"><input type="number" min="0" inputmode="numeric" data-q="${esc(l.p)}" value="${v===undefined?'':v}" placeholder="Cant."></div></div>`})()}`}
-function auRowHtml(l,tr,r,v,h){const st=v===undefined||v===0?['Nuevo','p-aq']:(v>=r?['Surtido','p-ok']:['Parcial','p-wn']);
+  ${(()=>{const v=lnV(m,l),on=v!==undefined&&v>0,r=lnRes(l);return `<div class="tile ${on&&v>=r?'full':on?'part':''}" style="width:100%;margin-bottom:8px"><div class="hd"><b>${esc(LN(m.t))}</b><small>${esc(m.t||'')} · #${esc(m.tr)}</small></div><div class="bd">${(l.sol||0)!==r?`<span style="color:var(--mt)">Solicitado: <b>${fmt(l.sol||0)}</b></span><br>`:''}Distribuir: <b>${fmt(r)}</b><br>Surtidas: <b id="auSurP">${fmt(v||0)}</b><br>Pendiente: <b id="auPenP" style="color:${r-(v||0)>0?'var(--wn)':'var(--ok)'}">${fmt(Math.max(0,r-(v||0)))}</b></div>${isPend(m)?`<label class="ck"><input type="checkbox" data-auck="${esc(l.p)}" ${on?'checked':''}> ${on&&v>=r?'Surtido ✓':'Surtido'}</label><div class="ed"><input type="number" min="0" inputmode="numeric" data-q="${esc(l.p)}" value="${v===undefined?'':v}" placeholder="Cant."></div>`:''}</div>`})()}`}
+function auRowHtml(l,tr,r,v,h,np){const st=np?(v>=r?['Surtido','p-ok']:v>0?['Parcial','p-wn']:['Sin surtir','p-no']):(v===undefined||v===0?['Nuevo','p-aq']:(v>=r?['Surtido','p-ok']:['Parcial','p-wn']));
   return `<div class="card row" data-auprod="${esc(l.p)}" data-line="${esc(l.p)}" data-h="${esc(h)}" style="display:block;cursor:pointer;margin:0 0 8px;padding:12px;border-left:4px solid ${st[0]==='Surtido'?'#34e08a':st[0]==='Parcial'?'#f5a623':'#2fd9c3'}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div style="min-width:0;overflow-wrap:anywhere"><b class="sora">${esc(l.ref||'—')}</b> <span class="msg" style="margin:0">· ${esc(l.p)}</span><div style="color:var(--mt);font-size:13px">${esc(l.d||'')}</div></div><div style="text-align:right;flex:none"><span class="pill ${st[1]}">${st[0]}</span><div style="font:800 18px 'DM Mono',monospace;margin-top:4px">${fmt(v||0)}/${fmt(r)}</div></div></div></div>`}
 function auDetail(tr){
-  const m=AUD.all[tr],w=AUD.wk[tr]||{},q=w.q||{},lines=m.lines||[],res=sumL(lines,lnRes),sol=sumL(lines,l=>l.sol),sur=surtOf(m);
+  const m=AUD.all[tr],w=AUD.wk[tr]||{},q=w.q||{},lines=m.lines||[],res=sumL(lines,lnRes),sol=sumL(lines,l=>l.sol),sur=isPend(m)?surtOf(m):sumL(lines,l=>l.desp),inf=auTrInfo(m);
   if(AUOP&&!lines.some(x=>x.p===AUOP))AUOP='';
-  const rows=lines.map(l=>{const r=lnRes(l),cap=lnCap(tr,l),v=q[l.p],co=auCoinc(l.p,tr),cls=v===undefined?'':(v>=r?'full':''),neg=(+l.inv||0)<=0,fzd=((w.fz||{})[l.p]);
+  const rows=lines.map(l=>{const r=lnRes(l),cap=lnCap(tr,l),v=lnV(m,l),co=auCoinc(l.p,tr),cls=v===undefined?'':(v>=r?'full':''),neg=(+l.inv||0)<=0,fzd=((w.fz||{})[l.p]);
     const h=sinAcc([l.p,l.ref,l.d,upcOf(l.p),l.ub].join(' '));
     if(AUOP&&AUOP!==l.p)return '';
-    if(!AUOP)return auRowHtml(l,tr,r,v,h);
+    if(!AUOP)return auRowHtml(l,tr,r,v,h,!isPend(m));
     return `${auProdHead(l,tr,m)}<div class="crow ${cls}" data-line="${esc(l.p)}" data-h="${esc(h)}">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b>${esc(l.ref||'—')}</b> <span class="pos">${esc(l.p)}</span></div>${(l.sol||0)>r?`<span class="pill p-wn">Reser. ${r} de ${l.sol}</span>`:''}</div>
       <div style="margin:5px 0 2px;font-weight:600">${esc(l.d||'')}</div>
       <div class="msg" style="margin:0 0 6px">📍 ${esc(l.ub||'sin ubicación')} · INV <b style="${(l.inv||0)<r?'color:var(--dn)':''}">${fmt(l.inv||0)}</b></div>
       <div class="msg" style="margin:0">Solic. <b>${fmt(l.sol||0)}</b> · Reser. <b>${fmt(r)}</b></div>
-      ${cap>r?`<div class="msg" style="margin:6px 0 0;color:var(--ok)">✔ Puedes surtir hasta ${fmt(cap)} (el inventario lo permite): útil para completar bultos sellados o no dejar saldos.</div>`:''}
+      ${isPend(m)&&cap>r?`<div class="msg" style="margin:6px 0 0;color:var(--ok)">✔ Puedes surtir hasta ${fmt(cap)} (el inventario lo permite): útil para completar bultos sellados o no dejar saldos.</div>`:''}
       ${v!==undefined&&v>(+l.sol||0)?`<div class="msg" style="margin:6px 0 0;color:var(--wn)">⚠ Surtes ${fmt(v-(+l.sol||0))} pza(s) más de lo solicitado.</div>`:''}
-      ${neg&&cap<=r&&!fzd?`<div class="msg" style="margin:6px 0 0;color:var(--dn)">⛔ Inventario ${fmt(l.inv||0)}: solo puedes surtir lo reservado.${ISADM?'':' Si hace falta más, el administrador debe forzarlo.'}</div>`:''}
-      ${ISADM&&neg&&!fzd?`<button class="btn sm" data-fz="${esc(l.p)}" style="margin-top:6px">🔓 Forzar inventario negativo</button>`:''}
+      ${isPend(m)&&neg&&cap<=r&&!fzd?`<div class="msg" style="margin:6px 0 0;color:var(--dn)">⛔ Inventario ${fmt(l.inv||0)}: solo puedes surtir lo reservado.${ISADM?'':' Si hace falta más, el administrador debe forzarlo.'}</div>`:''}
+      ${isPend(m)&&ISADM&&neg&&!fzd?`<button class="btn sm" data-fz="${esc(l.p)}" style="margin-top:6px">🔓 Forzar inventario negativo</button>`:''}
       ${fzd?`<div class="msg" style="margin:6px 0 0;color:var(--wn)">🔓 Forzado por el administrador (hasta ${fmt(cap)}).</div>`:''}
       ${co.length?`<button class="btn sm pri" data-co="${esc(l.p)}" style="margin-top:8px;width:100%">🔁 También en ${co.length} transferencia(s) tuya(s): ${fmt(sumL(co,x=>lnRes(x.l)))} pzas más · surtir juntas</button><div class="msg" style="margin:8px 0 4px">Saltar a otra transferencia con este producto:</div><div style="display:flex;gap:6px;flex-wrap:wrap">${co.map(o=>`<button class="btn sm" data-auopen="${esc(o.m.tr)}" data-aup="${esc(l.p)}">↪ ${esc(LN(o.m.t))} · #${esc(o.m.tr)} · ${fmt(lnRes(o.l))} pzas</button>`).join('')}</div>`:''}</div>`}).join('');
-  return `<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><button class="btn sm" data-aut="back">← ${(AUD.asg[tr]||{}).u===USER?'Mis transferencias':'Volver'}</button>${(AUD.asg[tr]||{}).u===USER?`<button class="btn sm" data-qall="*">✔ Surtir todo (reservado)</button>`:''}</div>
-   <div class="card"><div style="font:800 22px 'Inter';color:#fff;line-height:1.15">${esc(LN(m.t))}</div>
-    <div class="msg" style="margin:4px 0 0"><b>#${esc(m.tr)}</b>${m.pas?' · Pasillo '+esc(m.pas):''} · Solicitada ${fdt(m.ts)}</div>
+  return `<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><button class="btn sm" data-aut="back">← ${window._auMode==='autosur'?'Transferencias':(AUD.asg[tr]||{}).u===USER?'Mis transferencias':'Volver'}</button>${isPend(m)&&(AUD.asg[tr]||{}).u===USER?`<button class="btn sm" data-qall="*">✔ Surtir todo (reservado)</button>`:''}</div>
+   <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="font:800 22px 'Inter';color:#fff;line-height:1.15">${esc(LN(m.t))}</div><div style="flex:none">${auPill(inf.k,inf)}</div></div>
+    <div class="msg" style="margin:4px 0 0"><b>#${esc(m.tr)}</b>${m.pas?' · Pasillo '+esc(m.pas):''} · Solicitada ${fdt(m.ts)}</div>${(AUD.asg[tr]||{}).n?`<div class="msg" style="margin:2px 0 0">👤 ${esc(AUD.asg[tr].n)}</div>`:''}
     <div class="msg" style="margin:2px 0 0">${esc(m.org||'')} → ${esc(m.des||'')}</div>${m.nota?`<div class="msg" style="margin:2px 0 0">Nota: ${esc(m.nota)}</div>`:''}
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px"><div><div class="lbl">Solicitado</div><b style="font-size:20px">${fmt(sol)}</b></div><div><div class="lbl">Reservado</div><b style="font-size:20px;color:var(--wn)">${fmt(res)}</b></div><div><div class="lbl">Surtido</div><b id="auSur" style="font-size:20px;color:var(--ok)">${fmt(sur)}</b></div></div>
-    ${sol!==res?`<div class="msg" style="color:var(--wn)">⚠ Hay líneas con lo reservado distinto a lo solicitado. La base es lo reservado, pero puedes surtir más si el inventario (INV) lo tiene.</div>`:''}</div>
+    <div style="margin-top:12px;display:flex;justify-content:space-between;font-weight:800"><span id="auItm">${inf.idone}/${inf.items} ítems</span><span id="auPct">${pctT(inf.sdone,inf.pz)}</span></div><div class="bar" style="margin-top:6px"><i id="auBar" style="width:${inf.pc}%"></i></div>
+    ${sol!==res&&isPend(m)?`<div class="msg" style="color:var(--wn)">⚠ Hay líneas con lo reservado distinto a lo solicitado. La base es lo reservado, pero puedes surtir más si el inventario (INV) lo tiene.</div>`:''}</div>
    <div class="search" style="margin-bottom:10px"><div class="sbox"><input id="auPq" placeholder="Buscar producto, estilo o código de barras" autocomplete="off"></div></div>
    ${rows||'<div class="msg">Esta transferencia no trae productos.</div>'}
-   ${((AUD.asg[tr]||{}).u!==USER&&!ISADM)?`<div class="card"><div class="msg" style="margin:0">Vista de administrador: esta transferencia está asignada a ${esc((AUD.asg[tr]||{}).n||'nadie')}; solo esa persona puede cerrarla. Aquí puedes forzar inventarios negativos.</div></div>`:`<div class="card"><div class="slbl">Cerrar el surtido</div>
+   ${!isPend(m)?auClosedBox(m):((AUD.asg[tr]||{}).u!==USER&&!ISADM)?`<div class="card"><div class="msg" style="margin:0">Vista de administrador: esta transferencia está asignada a ${esc((AUD.asg[tr]||{}).n||'nadie')}; solo esa persona puede cerrarla. Aquí puedes forzar inventarios negativos.</div></div>`:`<div class="card"><div class="slbl">Cerrar el surtido</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px"><div><div class="lbl">Cantidad de bultos de esta transferencia</div><input class="f" type="number" inputmode="numeric" min="0" id="auBul" value="${w.b!=null?w.b:''}" placeholder="Ej. 2"></div></div>
     <div class="lbl" style="margin-top:10px">Nota <span style="text-transform:none;letter-spacing:0">(obligatoria si surtes en cero)</span></div><textarea class="f" id="auNt" rows="2" style="font-family:inherit;width:100%;padding:11px;border-radius:12px;border:1px solid var(--bd);background:#02171c;color:var(--tx)">${esc(w.nt||'')}</textarea>
     <div class="msg">No se puede cerrar el surtido sin indicar los bultos. Lo surtido se acredita a tu producción; el administrador la chequea y despacha.</div>
     <button class="btn pri" id="auFin" data-tr="${esc(m.tr)}" style="width:100%;margin-top:10px">✔ Completar surtido</button></div>`}`}
-function auSumUI(tr){const m=AUD.all[tr],e=$('auSur');if(e&&m)e.textContent=fmt(surtOf(m))}
+function auSumUI(tr){const m=AUD.all[tr],e=$('auSur');if(e&&m){e.textContent=fmt(surtOf(m));const i=auTrInfo(m);if($('auItm'))$('auItm').textContent=i.idone+'/'+i.items+' ítems';if($('auPct'))$('auPct').textContent=pctT(i.sdone,i.pz);if($('auBar'))$('auBar').style.width=i.pc+'%'}}
 async function auSetQ(tr,ps){ // ps = {p:cantidad}
   const m=AUD.all[tr];if(!m||m.st!=='new'){toast('Esta transferencia ya no está pendiente');return false}
   const up={u:USER,ts:Date.now()};const w=AUD.wk[tr]=AUD.wk[tr]||{};w.q=w.q||{};if(!w.t0){w.t0=up.ts;up.t0=up.ts}
@@ -2568,6 +2632,14 @@ box.addEventListener('input',e=>{const t=e.target;
   else if(t.id==='auPq'){const q=sinAcc(t.value.trim());document.querySelectorAll('#auAuto [data-line]').forEach(r=>r.classList.toggle('hide',!!q&&!q.split(/\s+/).every(w=>r.dataset.h.includes(w))))}});
 box.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='auPq'){e.preventDefault();const v=sinAcc(e.target.value.trim());if(!v)return;
   const row=[...document.querySelectorAll('#auAuto [data-line]')].find(r=>!r.classList.contains('hide'));if(row){const i=row.querySelector('[data-q]');if(i){i.focus();i.select()}}}});
+/* ---------- Eventos: surtido de pedidos automáticos ---------- */
+(()=>{const box=$('v-auto');let _t=0;
+box.addEventListener('click',e=>{if(window._auMode!=='autosur')return;const t=e.target;
+  const c=t.closest('[data-aus]');if(c){const k=c.dataset.aus;if(k==='more')AUSP+=40;else{AUSF=k;AUSP=40}auPaint();return}
+  const b=t.closest('[data-aut="prods"]');if(b){$('v-auto').classList.add('hide');selectRecibo(AUID)}});
+box.addEventListener('change',e=>{if(window._auMode!=='autosur'||e.target.id!=='auSS')return;AUSS=e.target.value;AUSP=40;auPaint()});
+box.addEventListener('input',e=>{if(window._auMode!=='autosur'||e.target.id!=='auSQ')return;AUSQ=e.target.value;AUSP=40;clearTimeout(_t);_t=setTimeout(()=>{auPaint();const i=$('auSQ');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},250)});
+})();
 $('auMod').addEventListener('click',async e=>{
   if(e.target.id==='auDfNo'){$('auMod').classList.add('hide');AUDF=null;return}
   if(e.target.id==='auDfGo'&&AUDF){const D=AUDF;e.target.disabled=true;
