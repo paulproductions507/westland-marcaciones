@@ -220,6 +220,8 @@ body[data-home] #btnBack{display:none}
 .hm-sub{color:var(--mt);margin-top:6px;font-size:14px}
 .hm-st{display:flex;align-items:center;gap:10px;font:700 11px var(--ff);letter-spacing:.14em;text-transform:uppercase;color:var(--mt);margin:26px 4px 16px;animation:hmIn .6s cubic-bezier(.2,.9,.25,1) backwards;animation-delay:calc(var(--i)*70ms + 60ms)}
 .hm-st::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--bd),transparent)}
+.hm-pager{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;overscroll-behavior-x:contain}.hm-pager::-webkit-scrollbar{display:none}.hm-pg{flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always}.hm-grid.d5{grid-template-columns:repeat(5,minmax(0,1fr));gap:30px 14px}.hm-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:18px}.hm-nav button{appearance:none;border:1px solid var(--bd);background:var(--cd,transparent);color:inherit;width:38px;height:38px;border-radius:50%;font:700 20px var(--ff);cursor:pointer}.hm-nav .hm-dots{margin-top:0}.hm-dots i{cursor:pointer}#devAsk{position:fixed;inset:0;z-index:99999;background:rgba(2,14,20,.86);display:flex;align-items:center;justify-content:center;padding:20px}#devAsk .bx{background:var(--cd,#0b2a33);border:1px solid var(--bd);border-radius:20px;padding:22px;max-width:420px;width:100%;text-align:center}#devAsk h3{font:800 20px var(--ff);margin:0 0 6px}#devAsk p{color:var(--mt);margin:0 0 16px;font-size:14px}#devAsk button{display:block;width:100%;margin-top:10px;padding:14px;border-radius:14px;border:1px solid var(--ac);background:transparent;color:inherit;font:700 16px var(--ff);cursor:pointer}#devAsk button small{display:block;font-weight:400;color:var(--mt);margin-top:3px;font-size:12px}
+.hm-dots{display:flex;justify-content:center;gap:8px;margin-top:18px}.hm-dots i{width:8px;height:8px;border-radius:50%;background:var(--bd);transition:.2s}.hm-dots i.on{width:22px;border-radius:5px;background:var(--ac)}
 .hm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 10px;justify-items:center}
 @media(min-width:620px){.hm-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(min-width:960px){.hm-grid{grid-template-columns:repeat(auto-fill,200px);justify-content:start;justify-items:center;gap:34px 30px}}
@@ -4096,12 +4098,23 @@ const HOME=[
  {k:'cfg',b:'btnCfg',n:'Configuración',ic:'gear',modal:1,sub:'Efectos y opciones'}];
 const hmOrb='<svg class="hm-orb" viewBox="0 0 120 120" aria-hidden="true"><circle class="o2" cx="60" cy="60" r="50"/><circle class="o1" cx="60" cy="60" r="57"/><circle class="dt" cx="60" cy="3" r="4"/><circle class="dt" cx="19.7" cy="100.3" r="3"/></svg>';
 function hmNode(path){let list=HOME,node=null;for(const k of path){node=(list||[]).find(x=>x.k===k);if(!node)return null;list=node.ch}return{node,list:list||[]}}
+function hmDev(){try{return localStorage.getItem('conDev')||''}catch(e){return''}}
+function hmSetDev(v){try{localStorage.setItem('conDev',v)}catch(e){}}
+function hmAskDev(){if($('devAsk'))return;const d=document.createElement('div');d.id='devAsk';d.innerHTML='<div class="bx"><h3>¿Desde qué dispositivo vas a usar el sistema?</h3><p>Se pregunta solo esta vez y se ajusta el menú. Lo puedes cambiar luego en Configuración.</p><button type="button" data-dv="m">📱 Móvil / POC<small>4 iconos por página, desliza de lado</small></button><button type="button" data-dv="d">🖥 Escritorio / computadora<small>10 iconos por página (5 arriba, 5 abajo)</small></button></div>';
+  d.onclick=e=>{const b=e.target.closest('[data-dv]');if(!b)return;hmSetDev(b.dataset.dv);d.remove();if(!$('v-home').classList.contains('hide'))buildHome()};document.body.appendChild(d)}
 function buildHome(){
   const r=hmNode(HMPATH)||(HMPATH=[],hmNode([])),first=String(NAME||'').trim().split(/\s+/)[0]||'';
   if(r.node){$('hmHi').innerHTML=esc(r.node.n);$('ttl').textContent=r.node.n;$('hmSub').textContent='Elige una opción'}
   else{$('hmHi').innerHTML='Bienvenido'+(first?' <b>'+esc(first)+'</b>':'');$('ttl').textContent='Centro de distribución Westland';$('hmSub').textContent='¿Qué quieres hacer hoy?'}
   const items=r.list.filter(x=>(!x.adm||ISADM)&&(!x.noadm||!ISADM));
-  $('hmSecs').innerHTML=`<div class="hm-grid" style="margin-top:22px">${items.map((x,i)=>`<button type="button" class="hm-it" style="--i:${i}" data-hm="${x.k}"><span class="hm-ring">${hmOrb}<span class="hm-ic"><svg viewBox="0 0 24 24">${HIC[x.ic]}</svg></span></span><span class="hm-lb">${esc(x.n)}</span>${x.sub&&!r.node?`<small class="hm-sm">${esc(x.sub)}</small>`:''}</button>`).join('')}</div>`;
+  const bt=(x,i)=>`<button type="button" class="hm-it" style="--i:${i}" data-hm="${x.k}"><span class="hm-ring">${hmOrb}<span class="hm-ic"><svg viewBox="0 0 24 24">${HIC[x.ic]}</svg></span></span><span class="hm-lb">${esc(x.n)}</span>${x.sub&&!r.node?`<small class="hm-sm">${esc(x.sub)}</small>`:''}</button>`,dev=hmDev(),per=dev==='d'?10:4,paged=items.length>per;
+  if(!dev&&!HMPATH.length)hmAskDev();
+  if(!paged)$('hmSecs').innerHTML=`<div class="hm-grid${dev==='d'?' d5':''}" style="margin-top:22px">${items.map(bt).join('')}</div>`;
+  else{const pg=[];for(let k=0;k<items.length;k+=per)pg.push(items.slice(k,k+per).map((x,j)=>bt(x,k+j)).join(''));
+    $('hmSecs').innerHTML=`<div class="hm-pager" id="hmPager">${pg.map(h=>`<div class="hm-pg"><div class="hm-grid${dev==='d'?' d5':''}" style="margin-top:22px">${h}</div></div>`).join('')}</div><div class="hm-nav">${dev==='d'?'<button type="button" id="hmPrev">‹</button>':''}<div class="hm-dots" id="hmDots">${pg.map((_,k)=>`<i data-pg="${k}" class="${k?'':'on'}"></i>`).join('')}</div>${dev==='d'?'<button type="button" id="hmNext">›</button>':''}</div>`;
+    const pr=$('hmPager'),ds=[...$('hmDots').children],go=n=>pr.scrollTo({left:Math.max(0,Math.min(pg.length-1,n))*pr.clientWidth,behavior:'smooth'}),cu=()=>Math.round(pr.scrollLeft/pr.clientWidth);
+    pr.addEventListener('scroll',()=>{const n=cu();ds.forEach((d,k)=>d.classList.toggle('on',k===n))},{passive:true});
+    ds.forEach(d=>d.onclick=()=>go(+d.dataset.pg));if($('hmPrev')){$('hmPrev').onclick=()=>go(cu()-1);$('hmNext').onclick=()=>go(cu()+1)}}
   if(HMPATH.length)delete document.body.dataset.home;else document.body.dataset.home='1'}
 function showHome(path){
   HOMEBACK=false;HMPATH=Array.isArray(path)?path.slice():[];
@@ -4109,10 +4122,11 @@ function showHome(path){
   ['btnHome','btnPal','btnPkl','btnRecBack','bar'].forEach(id=>{const e=$(id);if(e)e.classList.add('hide')});
   buildHome();$('v-home').classList.remove('hide');window.scrollTo(0,0)}
 const FXS=[['arc','Media luna','Los cuatro salen juntos, suben en arco y caen en su lugar'],['slide','Deslizar','Uno por uno desde la izquierda'],['roll','Rodar','Uno por uno, rodando como rueda'],['drop','Caída con rebote','Caen desde arriba y rebotan al llegar'],['zoom','Zoom','Crecen desde el centro, en cascada'],['flip','Giro 3D','Giran como una puerta y se abren'],['fan','Abanico','Se abren en abanico desde la esquina izquierda'],['fade','Transición suave','Aparece con desvanecimiento, sin movimiento'],['none','Sin animación','Entra directo; ideal para equipos lentos']];
-function cfgPaint(){const cur=document.documentElement.dataset.fx||'slide';$('cfgFx').innerHTML=FXS.map(([k,n,d])=>`<button type="button" data-fx="${k}" class="${cur===k?'on':''}">${n}<small>${d}</small></button>`).join('')}
+function cfgPaint(){const cur=document.documentElement.dataset.fx||'slide';$('cfgFx').innerHTML=FXS.map(([k,n,d])=>`<button type="button" data-fx="${k}" class="${cur===k?'on':''}">${n}<small>${d}</small></button>`).join('')+`<button type="button" data-dev="1">Dispositivo: ${hmDev()==='d'?'Escritorio (10 por página)':'Móvil (4 por página)'}<small>Toca para cambiar</small></button>`}
 $('btnCfg').onclick=()=>{cfgPaint();$('cfgNoMove').checked=document.documentElement.dataset.nomove==='1';$('cfgSheet').classList.remove('hide')};
 $('cfgNoMove').addEventListener('change',e=>{const d=document.documentElement;if(e.target.checked)d.dataset.nomove='1';else delete d.dataset.nomove;try{localStorage.setItem('conNoMove',e.target.checked?'1':'0')}catch(x){}if(!$('v-home').classList.contains('hide'))buildHome()});
 $('cfgSheet').addEventListener('click',e=>{if(e.target.id==='cfgSheet'||e.target.id==='cfgX'){$('cfgSheet').classList.add('hide');return}
+  if(e.target.closest('[data-dev]')){hmSetDev(hmDev()==='d'?'m':'d');cfgPaint();if(!$('v-home').classList.contains('hide'))buildHome();return}
   const b=e.target.closest('#cfgFx [data-fx]');if(!b)return;document.documentElement.dataset.fx=b.dataset.fx;try{localStorage.setItem('conFx',b.dataset.fx)}catch(x){}cfgPaint();
   if(!$('v-home').classList.contains('hide')){$('cfgSheet').classList.add('hide');buildHome()}});
 $('hmSecs').addEventListener('click',e=>{const b=e.target.closest('[data-hm]');if(!b)return;const k=b.dataset.hm,r=hmNode(HMPATH),def=r.list.find(x=>x.k===k);if(!def)return;
