@@ -1889,7 +1889,7 @@ function parseTransfer(t){
 function openAu(mode){window._auMode=mode;$('v-rec').classList.add('hide');$('v-auto').classList.remove('hide');$('btnHome').classList.remove('hide');$('ttl').textContent=mode==='auto'?'Transferencias · Pedidos automáticos':mode==='autosur'?'Recibo #AUTO · Surtido':mode==='tun'?'Túnel':mode==='prf'?'Proformas':'Túnel manual';window.scrollTo(0,0);AU=null;$('auReview').innerHTML='';$('auMsg').textContent='';
   $('auUpCard').classList.toggle('hide',mode==='tunm'||mode==='prf');$('pfCard').classList.toggle('hide',mode!=='prf');$('pfMsg').textContent='';$('auListT').textContent=mode==='prf'?'Proformas cargadas':'Transferencias cargadas';$('auSrc').value=(mode==='auto'||mode==='autosur')?'auto':'tun';
   {const au=mode==='auto'||mode==='autosur';$('auAuto').classList.toggle('hide',!au);$('auAuto').innerHTML='';$('auTabs').innerHTML='';$('auOldCard').classList.toggle('hide',au);
-   if(au){AUCUR='';AUUP=false;AUV=ISADM?'adm':'mine';AUSEL.clear();AUGP=null;AUQUE=[];AUPG=100;AUSF='no';AUSQ='';AUSS='all';AUSP=40;AUOP='';
+   if(au){AUCUR='';AUUP=false;AUV=ISADM?'adm':'mine';AUSEL.clear();AUGP=null;AUQUE=[];AUPG=100;AUSF='no';AUSQ='';AUSS='all';AUSP=40;AUOP='';AUGT='asg0';AUQ='';AUFT='';AUFA='';
      $('auUpT').textContent='Subir transferencias del Gestor de Bodega';$('auUpM').textContent='Sube el PDF (o captura) de la pantalla de Surtido de cada transferencia. Puedes elegir varios archivos a la vez: quedan como pendientes por surtir. Quien las asigna es el encargado.';auHome();return}
    $('auUpT').textContent='Cargar transferencia del Gestor de Bodega';$('auUpM').textContent='Sube el PDF (o una captura PNG/JPG) de la pantalla de Chequeo. La app lee la transferencia, la tienda y los productos; tú revisas y guardas.'}
   if(mode==='prf')pfList();else auList();if(mode==='tunm')auManualStart()}
@@ -2134,71 +2134,65 @@ function auPaint(){
 function auTabs(){
   const pn=ISADM?Object.values(AUD.all).filter(isPend).length:0;
   return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
-   ${ISADM?`<button class="btn sm ${AUV==='adm'?'pri':''}" data-aut="adm">📋 Por surtir (${fmt(pn)})</button>`:''}
+   ${ISADM?`<button class="btn sm ${AUV==='adm'?'pri':''}" data-aut="adm">📋 Gestión</button>`:''}
    <button class="btn sm ${AUV==='mine'?'pri':''}" data-aut="mine">👤 Mis transferencias (${fmt(mineP().length)})</button>
    <button class="btn sm ${AUUP?'pri':''}" data-aut="up">⬆ Subir PDF</button>
    <button class="btn sm" data-aut="ref" title="Actualizar">⟳</button></div>`}
 
 /* ---------- Vista del administrador / encargado ---------- */
+let AUGT='asg0';
+function auTabRows(tab){
+  const all=Object.values(AUD.all),q=sinAcc(AUQ),asgOf=tr=>AUD.asg[tr];
+  let L=tab==='asg0'?all.filter(m=>isPend(m)&&!asgOf(m.tr)):tab==='asg'?all.filter(m=>isPend(m)&&asgOf(m.tr)):tab==='sur'?all.filter(isSur):all.filter(m=>isDone(m)||isAnu(m));
+  L=L.filter(m=>{if(AUFT&&m.t!==AUFT)return false;const a=asgOf(m.tr);if(AUFA==='none'&&a)return false;if(AUFA&&AUFA!=='none'&&(!a||a.u!==AUFA))return false;
+    if(q){const h=sinAcc([m.tr,LN(m.t),m.nota,m.pas,a&&a.n,m.sur,m.suru].filter(Boolean).join(' '));if(!q.split(/\s+/).every(w=>h.includes(w)))return false}return true});
+  return L.sort(tab==='sur'?(a,b)=>(a.dts||0)-(b.dts||0):tab==='hist'?(a,b)=>(b.dts||b.ts||0)-(a.dts||a.ts||0):(a,b)=>(a.ts||0)-(b.ts||0))}
 function auAdmView(){
-  const all=Object.values(AUD.all),pend=all.filter(isPend),sur=all.filter(isSur).sort((a,b)=>(a.dts||0)-(b.dts||0)),ya=all.filter(isYa),done=all.filter(m=>isDone(m)||isAnu(m)).sort((a,b)=>(b.dts||b.ts||0)-(a.dts||a.ts||0));
-  const asgOf=tr=>AUD.asg[tr],q=sinAcc(AUQ);
-  const rows=pend.filter(m=>{if(AUFT&&m.t!==AUFT)return false;const a=asgOf(m.tr);if(AUFA==='none'&&a)return false;if(AUFA&&AUFA!=='none'&&(!a||a.u!==AUFA))return false;
-    if(q){const h=sinAcc([m.tr,LN(m.t),m.nota,m.pas,a&&a.n].join(' '));if(!q.split(/\s+/).every(w=>h.includes(w)))return false}return true}).sort((a,b)=>(a.ts||0)-(b.ts||0));
-  const nSin=pend.filter(m=>!asgOf(m.tr)).length,resT=sumL(pend,m=>m.pz),solT=sumL(pend,m=>m.sol);
+  const all=Object.values(AUD.all),pend=all.filter(isPend),sur=all.filter(isSur),ya=all.filter(isYa),hist=all.filter(m=>isDone(m)||isAnu(m));
+  const n0=pend.filter(m=>!AUD.asg[m.tr]).length,n1=pend.length-n0,open=[...pend,...sur].map(m=>auTrInfo(m)),Tp=sumL(open,i=>i.pz),Sd=sumL(open,i=>i.sdone);
+  if(!['asg0','asg','sur','pers','hist'].includes(AUGT))AUGT='asg0';
+  const tabs=[['asg0','Por asignar',n0],['asg','Asignadas',n1],['sur','Por chequear',sur.length],['pers','Por surtidor',null],['hist','Histórico',hist.length]];
   const falt=Object.keys(AUD.asg).filter(tr=>!AUD.all[tr]&&!AUD.asg[tr].dn);
   const users=[...new Map(Object.values(AUD.asg).filter(a=>a&&a.u&&!a.dn).map(a=>[a.u,a.n||a.u])).entries()].sort((a,b)=>String(a[1]).localeCompare(String(b[1])));
-  const cnt=u=>pend.filter(m=>asgOf(m.tr)&&asgOf(m.tr).u===u).length;
-  const sts=[...new Set(pend.map(m=>m.t).filter(Boolean))].sort((a,b)=>BASE_ST.indexOf(a)-BASE_ST.indexOf(b));
+  const cnt=u=>pend.filter(m=>AUD.asg[m.tr]&&AUD.asg[m.tr].u===u).length;
+  const sts=[...new Set(all.map(m=>m.t).filter(Boolean))].sort((a,b)=>BASE_ST.indexOf(a)-BASE_ST.indexOf(b));
   let me='';try{me=localStorage.getItem('auWho')||''}catch(e){}
   const dirOpt=`<option value="">Elegir surtidor…</option>`+UDIR.map(x=>`<option value="${esc(x.u)}" ${me===x.u?'selected':''}>${esc(x.n)} (${esc(x.u)})</option>`).join('');
-  const vis=rows.slice(0,AUPG),selN=[...AUSEL].filter(tr=>AUD.all[tr]).length;
-  const card=m=>{const a=asgOf(m.tr);return `<div class="card" style="margin:0 0 10px;padding:12px">
-    <div style="display:flex;gap:12px;align-items:flex-start">
-     <input type="checkbox" data-ps="${esc(m.tr)}" ${AUSEL.has(m.tr)?'checked':''} style="width:24px;height:24px;flex:none;margin-top:2px">
-     <div style="flex:1;min-width:0">
-      <div style="font:800 18px 'Inter';color:#fff;line-height:1.15">${esc(LN(m.t))}</div>
-      <div class="msg" style="margin:3px 0 0"><b>#${esc(m.tr)}</b>${m.pas?' · Pasillo '+esc(m.pas):''}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${a?`<span class="pill p-bl">👤 ${esc(a.n||a.u)}</span>${auEstado(m)}${auReasg(m)}`:'<span class="pill p-wn">Sin asignar</span>'}</div>
-      <div class="msg" style="margin:7px 0 0">${fmt(m.n||0)} ítems · Solic. <b>${fmt(m.sol||0)}</b> · Reser. <b>${fmt(m.pz||0)}</b>${(m.sol||0)!==(m.pz||0)?' <span style="color:var(--wn)">⚠ reservado menor</span>':''}${surtOf(m)?` · avance ${fmt(surtOf(m))}`:''}</div>
-      <details style="margin-top:6px"><summary class="msg" style="margin:0;cursor:pointer">Ver tiempos</summary>${auTimes(m)}</details></div></div>
-    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm" data-auopen="${esc(m.tr)}" style="flex:1">👁 Ver / forzar</button><button class="btn sm" data-pan="${esc(m.tr)}" style="flex:1">🚫 Anular</button><button class="btn sm" data-pdel="${esc(m.tr)}" style="flex:1">🗑 Quitar</button></div></div>`};
-  const hq=sinAcc(AUHQ),hrows=AUHS?done.filter(m=>{if(!hq)return true;const h=sinAcc([m.tr,LN(m.t),m.sur,m.suru,m.nota,m.nt].join(' '));return hq.split(/\s+/).every(w=>h.includes(w))}):[];
-  const hcard=m=>m.st==='anu'?`<div class="card" style="margin:0 0 8px;padding:10px;opacity:.85"><b class="sora">${esc(m.tr)}</b> <span class="pill p-aq">${esc(LN(m.t))}</span> <span class="pill p-wn">🚫 Anulada</span>
-    <div class="msg" style="margin:4px 0 0">${m.anu?fdt(m.anu.ts)+' · '+esc(m.anu.n||m.anu.u)+' · ':''}Motivo: ${esc((m.anu&&m.anu.m)||'—')}</div></div>`
-   :`<div class="card" style="margin:0 0 8px;padding:10px"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:180px"><b class="sora">${esc(m.tr)}</b> <span class="pill p-aq">${esc(LN(m.t))}</span> <span class="pill p-ok">✔ ${esc(m.sur||m.suru||'Gestor')}</span>${m.chk?` <span class="pill p-bl">✔ Chequeada · ${esc(m.chk.n||m.chk.u)}</span>`:''}
-    <div class="msg" style="margin:4px 0 0">${fdt(m.cts||m.dts||m.ts)} · ${fmt(m.n||0)} ítems · ${fmt(m.pz||0)} pzas · ${fmt(m.bul||0)} bultos${m.nt?` · nota: ${esc(m.nt)}`:''}</div>${m.bdi&&m.bdi.length?`<div class="msg" style="margin:2px 0 0">Descontó de Bodega de recibo(s): ${[...new Set(m.bdi.map(x=>x.rc))].map(esc).join(', ')}${m.bdx&&m.bdx.length?` · <span style="color:var(--wn)">⚠ ${fmt(m.bdx.reduce((a,x)=>a+x.q,0))} pzas sin saldo en recibos</span>`:''}</div>`:''}${auTimes(m)}</div>
-    <button class="btn sm" data-pgoto="${esc(m.tr)}">🏷 Etiquetas</button>${m.dts?`<button class="btn sm" data-prev="${esc(m.tr)}" title="Reabrir para reasignar">↩ Reabrir</button><button class="btn sm" data-pan="${esc(m.tr)}" title="Anular">🚫</button>`:`<button class="btn sm" data-pdel="${esc(m.tr)}" title="Quitar">🗑</button>`}</div></div>`;
-  return `
-  <div class="card"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">
-    <div><div class="lbl">Por surtir</div><div class="big" style="font:800 26px 'Inter';color:var(--ac)">${fmt(pend.length)}</div><div class="msg" style="margin:0">transferencias</div></div>
-    <div><div class="lbl">Reservado pendiente</div><div style="font:800 26px 'Inter';color:var(--wn)">${fmt(resT)}</div><div class="msg" style="margin:0">piezas (solicitado ${fmt(solT)})</div></div>
-    <div><div class="lbl">Sin asignar</div><div style="font:800 26px 'Inter';color:${nSin?'var(--wn)':'var(--ok)'}">${fmt(nSin)}</div><div class="msg" style="margin:0">transferencias</div></div></div>
-    <div class="msg">La base es lo <b>reservado</b>, pero el surtidor puede surtir más (hasta el inventario) para completar bultos o no dejar saldos. Con inventario negativo solo se surte lo reservado, salvo que un administrador lo fuerce (👁 en la transferencia). La productividad cuenta el despacho de cada surtidor.</div></div>
-  <div class="card"><div class="slbl">Asignar transferencias</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
-      <div><div class="lbl">Surtidor</div><select class="f" id="auWho">${dirOpt}</select></div>
-      <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap"><button class="btn pri" data-aua="go" ${selN?'':'disabled'} style="flex:1">Asignar seleccionadas (${selN})</button></div></div>
-    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn sm" data-aua="all">☑ Marcar las ${fmt(rows.length)} visibles</button><button class="btn sm" data-aua="clr">Limpiar marcas</button><button class="btn sm" data-aua="un" ${selN?'':'disabled'}>Quitar asignación</button>
-      <label class="btn sm" style="margin:0;cursor:pointer">📄 Asignar con PDF de Liberación y reasignación<input type="file" id="auAsgFile" accept=".pdf" class="hide"></label></div>
-    <div class="msg" id="auAsgMsg"></div><div id="auAsgBox">${auGpHtml()}</div>
-    ${falt.length?`<div class="msg" style="color:var(--wn)">⚠ ${fmt(falt.length)} transferencia(s) ya asignadas todavía sin PDF cargado: <span style="font-family:'DM Mono',monospace">${falt.slice(0,40).map(esc).join(', ')}${falt.length>40?'…':''}</span></div>`:''}</div>
-  <div class="card"><div class="slbl">Nuevas pendientes por surtir</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:10px">
-      <div><div class="lbl">Buscar</div><input class="f" id="auQ" placeholder="Transferencia, tienda, pasillo…" value="${esc(AUQ)}"></div>
-      <div><div class="lbl">Tienda</div><select class="f" id="auFT"><option value="">Todas</option>${sts.map(t=>`<option value="${t}" ${AUFT===t?'selected':''}>${esc(LN(t))}</option>`).join('')}</select></div>
-      <div><div class="lbl">Asignación</div><select class="f" id="auFA"><option value="">Todas</option><option value="none" ${AUFA==='none'?'selected':''}>Sin asignar (${nSin})</option>${users.map(([u,n])=>`<option value="${esc(u)}" ${AUFA===u?'selected':''}>${esc(n)} (${cnt(u)})</option>`).join('')}</select></div></div>
-    ${vis.map(card).join('')||`<div class="msg">${pend.length?'Ninguna transferencia con ese filtro.':'No hay transferencias pendientes. Sube los PDF con “⬆ Subir PDF”.'}</div>`}
-    ${rows.length>vis.length?`<button class="btn" data-aua="more" style="width:100%">Ver más (${fmt(rows.length-vis.length)})</button>`:''}</div>
-  ${sur.length?`<div class="card"><div class="slbl">Surtidas · por chequear y despachar (${sur.length})</div><div class="msg" style="margin:0 0 8px">Cuando las chequeas quedan despachadas y pasan al Histórico. Si subes el PDF de una de ellas, la app compara lo surtido con lo despachado en el Gestor.</div>
-    ${sur.map(m=>`<div class="card" style="margin:0 0 8px;padding:10px"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:180px"><b class="sora">${esc(m.tr)}</b> <span class="pill p-aq">${esc(LN(m.t))}</span> <span class="pill p-ok">✔ ${esc(m.sur||m.suru||'—')}</span> <span class="pill p-wn">⏳ Por chequear</span>
-      <div class="msg" style="margin:4px 0 0">Surtida ${fdt(m.dts||m.ts)} · ${fmt(m.n||0)} ítems · ${fmt(m.pz||0)} pzas · ${fmt(m.bul||0)} bultos${m.nt?` · nota: ${esc(m.nt)}`:''}</div></div>
-      <button class="btn sm pri" data-pchk="${esc(m.tr)}">✔ Chequear y despachar</button><button class="btn sm" data-pgoto="${esc(m.tr)}">🏷</button><button class="btn sm" data-prev="${esc(m.tr)}" title="Reabrir para reasignar">↩ Reasignar</button><button class="btn sm" data-pan="${esc(m.tr)}" title="Anular">🚫</button></div></div>`).join('')}</div>`:''}
-  ${ya.length?`<div class="card"><div class="slbl">Cargadas antes como ya despachadas (${ya.length})</div><div class="msg" style="margin:0 0 8px">Estas se subieron con el flujo anterior (ya despachadas en el Gestor). Se incorporan al recibo de pedidos automáticos al 100%.</div>
-    <button class="btn pri" data-aua="ya" style="width:100%">✔ Incorporar ${ya.length} ya despachada(s) al recibo</button>
-    <div class="msg" style="font-family:'DM Mono',monospace">${ya.slice(0,30).map(m=>esc(m.tr)).join(', ')}${ya.length>30?'…':''}</div></div>`:''}
-  <div class="card"><button class="btn" data-aua="hist" style="width:100%;text-align:left">🗂 Histórico de transferencias surtidas (${fmt(done.length)}) ${AUHS?'▴':'▾'}</button>
-   ${AUHS?`<div style="margin-top:10px"><input class="f" id="auHQ" placeholder="Buscar por transferencia, tienda, surtidor o nota…" value="${esc(AUHQ)}"></div><div style="margin-top:10px">${hrows.slice(0,AUHPG).map(hcard).join('')||'<div class="msg">Sin resultados.</div>'}${hrows.length>AUHPG?`<button class="btn" data-aua="hmore" style="width:100%">Ver más (${fmt(hrows.length-AUHPG)})</button>`:''}</div>`:''}</div>`}
+  const head=`<div class="card" style="padding:12px"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">
+    <div><div class="lbl">Sin asignar</div><div style="font:800 22px 'Inter';color:${n0?'var(--wn)':'var(--ok)'}">${fmt(n0)}</div></div>
+    <div><div class="lbl">Asignadas</div><div style="font:800 22px 'Inter';color:var(--ac)">${fmt(n1)}</div></div>
+    <div><div class="lbl">Por chequear</div><div style="font:800 22px 'Inter';color:#58b4f7">${fmt(sur.length)}</div></div>
+    <div><div class="lbl">Avance</div><div style="font:800 22px 'Inter';color:var(--tx)">${pctT(Sd,Tp)}</div></div></div>
+    <div class="msg" style="text-align:center;margin:6px 0 0">${fmt(Sd)} de ${fmt(Tp)} pzas surtidas · ${fmt(Tp-Sd)} pendientes</div></div>
+   <div style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px">${tabs.map(([k,l,n])=>`<button class="btn sm ${AUGT===k?'pri':''}" data-aum="${k}" style="white-space:nowrap;flex:none">${l}${n==null?'':' ('+fmt(n)+')'}</button>`).join('')}</div>`;
+  const ayaB=ya.length?`<div class="card" style="padding:10px 12px"><div class="msg" style="margin:0 0 6px">${ya.length} cargada(s) con el flujo anterior (ya despachadas en el Gestor).</div><button class="btn pri sm" data-aua="ya" style="width:100%">✔ Incorporar ${ya.length} al recibo</button></div>`:'';
+  if(AUGT==='pers'){
+    const by={};[...pend,...sur].forEach(m=>{const a=AUD.asg[m.tr];if(!a||!a.u)return;const o=by[a.u]=by[a.u]||{u:a.u,n:a.n||a.u,t:0,pz:0,sd:0,it:0,id:0,ch:0},i=auTrInfo(m);o.t++;o.pz+=i.pz;o.sd+=i.sdone;o.it+=i.items;o.id+=i.idone;if(m.st==='sur')o.ch++});
+    const L=Object.values(by).sort((a,b)=>b.pz-a.pz||String(a.n).localeCompare(String(b.n)));
+    const row=o=>{const pc=pctF(o.sd,o.pz),k=o.pz&&o.sd>=o.pz?'ok':o.sd>0?'wn':'no';return `<div class="card row st-${k}" data-aupers="${esc(o.u)}" style="display:block;cursor:pointer;margin:0 0 8px;padding:11px 12px">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div style="min-width:0"><b class="sora" style="font-size:16px">👤 ${esc(o.n)}</b>
+       <div style="color:var(--mt);font-size:12.5px">${fmt(o.t)} transferencias · ${fmt(o.it)} ítems · ${fmt(o.pz)} pzas</div>
+       <div style="color:var(--mt);font-size:12.5px">Surtidas <b style="color:var(--tx)">${fmt(o.sd)}</b> · Pendientes <b style="color:var(--wn)">${fmt(Math.max(0,o.pz-o.sd))}</b>${o.ch?` · ${o.ch} por chequear`:''}</div></div>
+       <div style="text-align:right;flex:none"><div style="font:800 20px 'Inter'">${pctT(o.sd,o.pz)}</div><div style="color:var(--mt);font-size:11px">${o.id}/${o.it} ítems</div></div></div>
+      <div class="bar" style="height:6px;margin-top:7px"><i style="width:${pc}%"></i></div></div>`};
+    return head+ayaB+`<div class="msg" style="margin:0 2px 8px;font-weight:700">Surtidores con transferencias abiertas (${L.length})</div>
+     ${n0?`<div class="card row st-no" data-aum="asg0" style="display:block;cursor:pointer;margin:0 0 8px;padding:11px 12px"><b class="sora" style="font-size:16px">Sin asignar</b><div style="color:var(--mt);font-size:12.5px">${fmt(n0)} transferencias · ${fmt(sumL(pend.filter(m=>!AUD.asg[m.tr]),m=>auTrInfo(m).pz))} pzas · toca para asignar</div></div>`:''}
+     ${L.map(row).join('')||'<div class="msg">Ningún surtidor tiene transferencias abiertas.</div>'}`}
+  const rows=auTabRows(AUGT),vis=rows.slice(0,AUPG),sel=AUGT==='asg0'||AUGT==='asg',selN=[...AUSEL].filter(tr=>AUD.all[tr]).length;
+  const filt=`<div class="card" style="padding:10px 12px"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px">
+    <div><div class="lbl">Buscar</div><input class="f" id="auQ" placeholder="Transferencia, tienda, surtidor…" value="${esc(AUQ)}"></div>
+    <div><div class="lbl">Tienda</div><select class="f" id="auFT"><option value="">Todas</option>${sts.map(t=>`<option value="${t}" ${AUFT===t?'selected':''}>${esc(LN(t))}</option>`).join('')}</select></div>
+    <div><div class="lbl">Surtidor</div><select class="f" id="auFA"><option value="">Todos</option><option value="none" ${AUFA==='none'?'selected':''}>Sin asignar (${n0})</option>${users.map(([u,n])=>`<option value="${esc(u)}" ${AUFA===u?'selected':''}>${esc(n)} (${cnt(u)})</option>`).join('')}</select></div></div></div>`;
+  const panel=sel?`<div class="card" style="padding:10px 12px"><div class="slbl" style="margin-bottom:6px">Asignar transferencias</div>
+    <div style="display:flex;gap:8px;align-items:center"><select class="f" id="auWho" style="flex:1;min-width:0">${dirOpt}</select><button class="btn pri sm" data-aua="go" ${selN?'':'disabled'} style="flex:none">Asignar (${selN})</button></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn sm" data-aua="all">☑ Marcar ${fmt(rows.length)}</button><button class="btn sm" data-aua="clr">Limpiar</button><button class="btn sm" data-aua="un" ${selN?'':'disabled'}>Quitar asignación</button>
+     <label class="btn sm" style="margin:0;cursor:pointer">📄 PDF de Liberación<input type="file" id="auAsgFile" accept=".pdf" class="hide"></label></div>
+    <div class="msg" id="auAsgMsg"></div><div id="auAsgBox">${auGpHtml()}</div></div>`:'';
+  const note=AUGT==='sur'?'Cuando las chequeas quedan despachadas y pasan al Histórico. Toca ✔ para chequear y despachar.':AUGT==='asg'&&falt.length?`⚠ ${fmt(falt.length)} transferencia(s) asignadas todavía sin PDF cargado: ${falt.slice(0,30).map(esc).join(', ')}${falt.length>30?'…':''}`:'';
+  const emp={asg0:'No hay transferencias sin asignar. Sube los PDF con “⬆ Subir PDF”.',asg:'No hay transferencias asignadas con ese filtro.',sur:'No hay transferencias por chequear.',hist:'Sin resultados en el histórico.'}[AUGT];
+  return head+ayaB+panel+filt+(note?`<div class="msg" style="margin:0 2px 8px">${note}</div>`:'')+`<div class="msg" style="margin:0 2px 8px;font-weight:700">Mostrando ${fmt(Math.min(AUPG,rows.length))} de ${fmt(rows.length)} transferencias</div>
+   ${vis.map(m=>auSurCard(m,auTrInfo(m),sel)).join('')||`<div class="msg">${emp}</div>`}
+   ${rows.length>vis.length?`<button class="btn" data-aua="more" style="width:100%">Ver más (${fmt(rows.length-vis.length)})</button>`:''}`}
 function auGpHtml(){
   if(!AUGP)return '';const G=AUGP,by={};G.list.forEach(x=>(by[x.raw]=by[x.raw]||[]).push(x));
   const dirOpt=sel=>`<option value="">Elegir…</option>`+UDIR.map(x=>`<option value="${esc(x.u)}" ${sel===x.u?'selected':''}>${esc(x.n)} (${esc(x.u)})</option>`).join('');
@@ -2223,25 +2217,30 @@ function auTrInfo(m){
   else if(!a)k='none';else if(sdone>0||Object.keys(q).length)k='wn';else k='no';
   return{items,idone,pz,sdone,k,pc:pctF(sdone,pz)}}
 function auPill(k,i){return k==='dsp'?'<span class="pill p-ok">Despachado ✓</span>':k==='ok'?'<span class="pill p-bl">Surtido · por chequear</span>':k==='wn'?`<span class="pill p-wn">${i&&i.pz&&i.sdone>=i.pz?'Por cerrar':'Parcial'}</span>`:k==='no'?'<span class="pill p-aq">Nuevo</span>':k==='none'?'<span class="pill p-no">Sin asignar</span>':'<span class="pill p-wn">🚫 Anulada</span>'}
+function auAdminBox(m){const a=AUD.asg[m.tr];
+  return `<div class="card"><div class="slbl">Administración</div><div class="msg" style="margin:0 0 6px">${a?'👤 Asignada a <b>'+esc(a.n||a.u)+'</b>':'Sin asignar'}${auReasg(m)}</div>
+   <details><summary class="msg" style="margin:0;cursor:pointer">Ver tiempos</summary>${auTimes(m)}</details>
+   <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm" data-pan="${esc(m.tr)}" style="flex:1">🚫 Anular</button><button class="btn sm" data-pdel="${esc(m.tr)}" style="flex:1">🗑 Quitar</button></div></div>`}
 function auClosedBox(m){const i=auTrInfo(m);
   return `<div class="card"><div class="slbl">Estado de la transferencia</div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${auPill(i.k,i)}${m.sur||m.suru?`<span class="pill p-ok">✔ ${esc(m.sur||m.suru)}</span>`:''}${m.chk?`<span class="pill p-bl">✔ Chequeada · ${esc(m.chk.n||m.chk.u)}</span>`:''}</div>
    ${m.st==='anu'?`<div class="msg">${m.anu?fdt(m.anu.ts)+' · '+esc(m.anu.n||m.anu.u)+' · ':''}Motivo: ${esc((m.anu&&m.anu.m)||'—')}</div>`:`<div class="msg">${fmt(m.pz||0)} pzas · ${fmt(m.bul||0)} bultos${m.nt?` · nota: ${esc(m.nt)}`:''}</div>`}
    <details style="margin-top:6px"><summary class="msg" style="margin:0;cursor:pointer">Ver tiempos</summary>${auTimes(m)}</details>
+   ${ISADM&&m.dts&&(m.st==='sur'||m.st==='inc')?`<div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm" data-prev="${esc(m.tr)}" style="flex:1">↩ Reabrir / reasignar</button><button class="btn sm" data-pan="${esc(m.tr)}" style="flex:1">🚫 Anular</button></div>`:''}
    ${isSur(m)&&ISADM?`<button class="btn pri" data-pchk="${esc(m.tr)}" style="width:100%;margin-top:10px">✔ Chequear y despachar</button>`:''}
    ${(m.st==='sur'||m.st==='inc')?`<button class="btn sm" data-pgoto="${esc(m.tr)}" style="width:100%;margin-top:8px">🏷 Etiquetas</button>`:''}</div>`}
-function auSurCard(m,i){
-  const a=AUD.asg[m.tr],rk=m.st==='anu'?'—':pctT(i.sdone,i.pz),bl=(m.st==='sur'||m.st==='inc')&&m.bul>0?` · ${fmt(m.bul)} bulto${m.bul===1?'':'s'}`:'';
-  return `<div class="card row st-${i.k==='anu'?'none':i.k==='none'?'no':i.k}" data-auopen="${esc(m.tr)}" style="display:block;cursor:pointer;margin:0 0 8px;padding:12px">
+function auSurCard(m,i,cb){
+  const a=AUD.asg[m.tr],rk=m.st==='anu'?'—':pctT(i.sdone,i.pz),bl=(m.st==='sur'||m.st==='inc')&&m.bul>0?` · ${fmt(m.bul)} bulto${m.bul===1?'':'s'}`:'',who=a?'👤 '+esc(a.n||a.u):(isPend(m)?'Sin asignar':esc(m.sur||m.suru||''));
+  return `<div class="card row st-${i.k==='anu'?'none':i.k==='none'?'no':i.k}" style="display:flex;gap:10px;align-items:center;margin:0 0 8px;padding:11px 12px">
+   ${cb?`<input type="checkbox" data-ps="${esc(m.tr)}" ${AUSEL.has(m.tr)?'checked':''} style="width:22px;height:22px;flex:none">`:''}
+   <div data-auopen="${esc(m.tr)}" style="flex:1;min-width:0;cursor:pointer">
    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
     <div style="min-width:0;overflow-wrap:anywhere">
-     <b class="sora" style="font-size:18px">#${esc(m.tr)}</b>
-     <div style="color:var(--ac);font-size:13px;font-weight:700">${esc(LN(m.t))}</div>
-     <div style="color:var(--mt);font-size:13px">${fmt(i.pz)} pzas · ${fmt(i.sdone)} surtidas${bl}</div>
-     <div style="color:var(--mt);font-size:12px">${m.pas?'Pasillo '+esc(m.pas)+' · ':''}${fdt(m.ts)}${a&&(ISADM||a.u!==USER)?' · 👤 '+esc(a.n||a.u):''}</div></div>
-    <div style="text-align:right;flex:none">${auPill(i.k,i)}
-     <div style="font:800 17px 'DM Mono',monospace;margin-top:4px">${i.idone}/${i.items}</div>
-     <div style="color:var(--mt);font-size:11px">ítems · <b style="color:var(--tx)">${rk}</b></div></div></div>
-   ${m.st==='anu'?'':`<div class="bar" style="height:8px;margin-top:8px"><i style="width:${i.pc}%"></i></div>`}</div>`}
+     <b class="sora" style="font-size:17px">#${esc(m.tr)}</b> <span style="color:var(--ac);font-size:13px;font-weight:700">${esc(LN(m.t))}</span>
+     <div style="color:var(--mt);font-size:12.5px">${i.items} ítems · ${fmt(i.pz)} pzas · ${fmt(i.sdone)} surtidas${bl}</div>
+     <div style="color:var(--mt);font-size:12px">${who}${m.pas?' · P'+esc(String(m.pas).replace(/^P/i,'')):''} · ${fdt(m.ts)}</div></div>
+    <div style="text-align:right;flex:none">${auPill(i.k,i)}<div style="font:800 13px 'DM Mono',monospace;margin-top:4px">${i.idone}/${i.items} · ${rk}</div></div></div>
+   ${m.st==='anu'?'':`<div class="bar" style="height:6px;margin-top:7px"><i style="width:${i.pc}%"></i></div>`}</div>
+   ${ISADM&&isSur(m)?`<button class="btn sm pri" data-pchk="${esc(m.tr)}" title="Chequear y despachar" style="flex:none">✔</button>`:''}</div>`}
 function auSurView(){
   const all=Object.values(AUD.all).map(m=>({m,i:auTrInfo(m)})),q=sinAcc(AUSQ);
   const base0=all.filter(x=>!q||q.split(/\s+/).every(w=>sinAcc([x.m.tr,LN(x.m.t),x.m.pas,x.m.nota,(AUD.asg[x.m.tr]||{}).n].join(' ')).includes(w)));
@@ -2325,7 +2324,7 @@ function auDetail(tr){
    <div class="search" style="margin-bottom:10px"><div class="sbox"><input id="auPq" placeholder="Buscar producto, estilo o código de barras" autocomplete="off"></div></div>
 `}
    ${rows||'<div class="msg">Esta transferencia no trae productos.</div>'}
-   ${!AUOP&&!isPend(m)?auClosedBox(m):''}`}
+   ${!AUOP&&!isPend(m)?auClosedBox(m):''}${!AUOP&&ISADM&&isPend(m)?auAdminBox(m):''}`}
 function auSumUI(tr){const m=AUD.all[tr],e=$('auSur');if(e&&m){e.textContent=fmt(surtOf(m));const i=auTrInfo(m);if($('auItm'))$('auItm').textContent=i.idone+'/'+i.items+' ítems';if($('auPct'))$('auPct').textContent=pctT(i.sdone,i.pz);if($('auBar'))$('auBar').style.width=i.pc+'%'}}
 async function auSetQ(tr,ps){ // ps = {p:cantidad}
   const m=AUD.all[tr];if(!m||m.st!=='new'){toast('Esta transferencia ya no está pendiente');return false}
@@ -2583,10 +2582,7 @@ box.addEventListener('click',async e=>{
   const pg=t.closest('[data-pgoto]');if(pg){auGoto(AUID,pg.dataset.pgoto);return}
   const aa=t.closest('[data-aua]');
   if(aa&&!aa.disabled){const k=aa.dataset.aua;
-    if(k==='all'){document.querySelectorAll('#auAuto [data-ps]').forEach(c=>{c.checked=true;AUSEL.add(c.dataset.ps)});
-      // marca TODAS las que coinciden con el filtro (no solo las pintadas)
-      const q=sinAcc(AUQ);Object.values(AUD.all).filter(isPend).forEach(m=>{if(AUFT&&m.t!==AUFT)return;const a=AUD.asg[m.tr];if(AUFA==='none'&&a)return;if(AUFA&&AUFA!=='none'&&(!a||a.u!==AUFA))return;
-        if(q){const h=sinAcc([m.tr,LN(m.t),m.nota,m.pas,a&&a.n].join(' '));if(!q.split(/\s+/).every(w=>h.includes(w)))return}AUSEL.add(m.tr)});auPaint();return}
+    if(k==='all'){auTabRows(AUGT).filter(isPend).forEach(m=>AUSEL.add(m.tr));auPaint();return}
     if(k==='clr'){AUSEL.clear();auPaint();return}
     if(k==='more'){AUPG+=100;auPaint();return}
     if(k==='hist'){AUHS=!AUHS;AUHPG=40;auPaint();return}
@@ -2646,6 +2642,12 @@ box.addEventListener('input',e=>{const t=e.target;
   else if(t.id==='auPq'){const q=sinAcc(t.value.trim());document.querySelectorAll('#auAuto [data-line]').forEach(r=>r.classList.toggle('hide',!!q&&!q.split(/\s+/).every(w=>r.dataset.h.includes(w))))}});
 box.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='auPq'){e.preventDefault();const v=sinAcc(e.target.value.trim());if(!v)return;
   const row=[...document.querySelectorAll('#auAuto [data-line]')].find(r=>!r.classList.contains('hide'));if(row){const i=row.querySelector('[data-q]');if(i){i.focus();i.select()}}}});
+/* ---------- Eventos: gestión de transferencias ---------- */
+(()=>{const box=$('v-auto');
+box.addEventListener('click',e=>{if(window._auMode!=='auto')return;const t=e.target;
+  const tb=t.closest('[data-aum]');if(tb){AUGT=tb.dataset.aum;AUPG=100;AUSEL.clear();auPaint();return}
+  const pr=t.closest('[data-aupers]');if(pr){AUFA=pr.dataset.aupers;AUFT='';AUQ='';AUGT='asg';AUPG=100;auPaint();window.scrollTo(0,0)}});
+})();
 /* ---------- Eventos: surtido de pedidos automáticos ---------- */
 (()=>{const box=$('v-auto');let _t=0;
 box.addEventListener('click',e=>{const fb=e.target.closest('[data-aufin]');if(fb){auFinModal(fb.dataset.aufin);return}if(window._auMode!=='autosur')return;const t=e.target;
