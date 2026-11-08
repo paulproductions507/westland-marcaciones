@@ -824,6 +824,21 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               </div>
             </div>
             <div style="margin-top:10px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 11px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <input type="checkbox" id="u-otp-on" style="width:auto">
+                <label for="u-otp-on" style="font-size:13px;font-weight:700;color:var(--mt);text-transform:none;letter-spacing:0">🏢 Otra planilla (sin pago en este departamento)</label>
+              </div>
+              <div id="u-otp-row" style="display:none">
+                <div style="font-size:11px;color:var(--mt);margin-bottom:7px">En las fechas marcadas, si el usuario no tiene marcación aquí, en los reportes (Vista Semanal, RRHH y correos) aparece el nombre de la planilla en vez de "Ausente". No genera pago ni descuento.</div>
+                <div class="fg" style="margin-bottom:8px"><label>Nombre que se muestra</label><input class="fc" id="u-otp-nom" type="text" placeholder="GPH" maxlength="20"></div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                  <input type="date" id="u-otp-fec" class="fc" style="flex:1;min-width:130px">
+                  <button type="button" id="u-otp-fec-add" class="btn" style="padding:7px 12px">➕ Agregar</button>
+                </div>
+                <div id="u-otp-fec-list" style="margin-top:6px"></div>
+              </div>
+            </div>
+            <div style="margin-top:10px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 11px">
               <div style="display:flex;align-items:center;gap:8px">
                 <input type="checkbox" id="u-sinacum" style="width:auto">
                 <label for="u-sinacum" style="font-size:12.5px;font-weight:700;color:var(--mt);text-transform:none;letter-spacing:0">🚫 No aplicar acumulado semanal a este colaborador (descuento siempre por su jornada real, sin cubrir con sobrante de otros días)</label>
@@ -4512,6 +4527,7 @@ window.editUser=async function(userKey){
   const pf=u.pagoFijo||{};PF_FECHAS=Array.isArray(pf.fechas)?pf.fechas.filter(x=>x&&x.fecha).map(x=>({...x})):[];const pfOn=!!(pf.activo&&((Array.isArray(pf.dias)&&pf.dias.length)||PF_FECHAS.length));try{renderPfFechas();}catch(e){}
   el('u-pf-on').checked=pfOn;el('u-pf-row').style.display=pfOn?'block':'none';
   document.querySelectorAll('.u-pf-dia').forEach(cb=>{cb.checked=pfOn&&Array.isArray(pf.dias)&&pf.dias.includes(parseInt(cb.value));});
+  {const op=u.otraPlanilla||{};OTP_FECHAS=Array.isArray(op.fechas)?op.fechas.filter(Boolean):[];const opOn=!!(op.activo&&OTP_FECHAS.length);el('u-otp-on').checked=opOn;el('u-otp-row').style.display=opOn?'block':'none';el('u-otp-nom').value=op.nombre||'';try{renderOtpFechas();}catch(e){}}
   if(el('u-finicio'))el('u-finicio').value=u.fechaInicio||'';
   loadBitacora(userKey);
   openUserModal('Editar usuario · '+(u.nombre||userKey));
@@ -5214,7 +5230,7 @@ async function buildEmailSemanal(desde,hasta,nivel){
         tds+=`<td class="c"><div class="ok">💰 Base</div><div style="font-size:12px;font-weight:800;color:#007a5e">$${pf.monto.toFixed(2)}</div></td>`;
         return;
       }
-      if(!marks.length){tds+=isFer?`<td class="c" style="color:#b36b00;font-size:10px;font-weight:700">🎉 Feriado</td>`:((libresRango[k]||{})[u.user]?`<td class="c" style="color:#0b6e99;font-size:10px;font-weight:700">🏖 Libre</td>`:`<td class="abs">Ausente</td>`);return;}
+      if(!marks.length){const _op=otraPlanillaDe(uObj,k);if(_op){tds+=`<td class="c" style="color:#6b3fa0;font-size:11px;font-weight:800">${escHtml(_op)}</td>`;return;}tds+=isFer?`<td class="c" style="color:#b36b00;font-size:10px;font-weight:700">🎉 Feriado</td>`:((libresRango[k]||{})[u.user]?`<td class="c" style="color:#0b6e99;font-size:10px;font-weight:700">🏖 Libre</td>`:`<td class="abs">Ausente</td>`);return;}
       const cnt=marks.length;const completo=cnt>=4;
       const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
       const almCfg=almCfgForDia(almGlobal,dowNum);
@@ -5301,6 +5317,7 @@ async function buildEmailRRHH(desde,hasta,nivel,modo){
     f.dias.forEach((dd,vi)=>{
       // En el correo a RRHH el pago base se muestra igual que un día completo (✅ + monto)
       if(dd.tipo==='fijo'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">✅</span><br>${nivel>=1?'':'8.00h · '}$${moneyRRHH(dd.monto)}</td>`;return;}
+      if(dd.tipo==='otraPlanilla'){tds+=`<td style="color:#6b3fa0;font-size:11px;font-weight:800">${escHtml(dd.nombre||'GPH')}</td>`;return;}
       if(dd.tipo==='feriado'){tds+=`<td style="color:#b36b00;font-size:10px;font-weight:700">🎉 Feriado</td>`;return;}
       if(dd.tipo==='diaLibre'){tds+=`<td style="color:#0b6e99;font-size:10px;font-weight:700">🏖 Libre</td>`;return;}
       if(dd.tipo==='ausente'){tds+=`<td class="abs">Ausente</td>`;return;}
@@ -7201,6 +7218,11 @@ function calcularAcumuladoSemana(dias){
 // sí deben recibir su pago íntegro en la Vista Semanal para los días configurados en su perfil.
 // Usa la tarifa especial del usuario si está activa; si no, la tarifa regular/domingo/feriado
 // que corresponda al día. Devuelve null si el día no aplica pago fijo para ese usuario.
+// Otra planilla (ej. GPH): devuelve el nombre a mostrar si esa fecha corresponde a otra planilla, o null.
+function otraPlanillaDe(uObj,k){
+  const o=uObj&&uObj.otraPlanilla;if(!o||!o.activo)return null;
+  return Array.isArray(o.fechas)&&o.fechas.includes(k)?(o.nombre||'GPH'):null;
+}
 function pagoFijoDelDia(uObj,dowNum,isFer,k){
   const pf=uObj&&uObj.pagoFijo;
   if(!pf||!pf.activo)return null;
@@ -7408,7 +7430,7 @@ async function renderVistaSemanal(refDate,hastaDate){
         return;
       }
       if(!dayMarks.length){
-        html+=`<td style="padding:5px 5px;border:1px solid var(--bd);background:${bgBase};text-align:center;vertical-align:middle">${isFer?'<span style="color:#ffb020;font-size:10px;font-weight:700">🎉 Feriado</span>':((libresRango[k]||{})[u.user]?'<span style="color:#38bdf8;font-size:10px;font-weight:700">🏖 Libre</span>':'<span style="color:var(--dn);font-size:10px;font-weight:700">Ausente</span>')}</td>`;
+        html+=`<td style="padding:5px 5px;border:1px solid var(--bd);background:${bgBase};text-align:center;vertical-align:middle">${otraPlanillaDe(uObj,k)?`<span style="color:#c084fc;font-size:11px;font-weight:800">${escHtml(otraPlanillaDe(uObj,k))}</span>`:isFer?'<span style="color:#ffb020;font-size:10px;font-weight:700">🎉 Feriado</span>':((libresRango[k]||{})[u.user]?'<span style="color:#38bdf8;font-size:10px;font-weight:700">🏖 Libre</span>':'<span style="color:var(--dn);font-size:10px;font-weight:700">Ausente</span>')}</td>`;
       }else{
         const cnt=dayMarks.length;const completo=cnt>=4;
         const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
@@ -7575,7 +7597,7 @@ async function buildRRHHData(desde,hasta){
       const dowNum=d.getDay();const isFer=feriados.includes(k);
       const pf=pagoFijoDelDia(uObj,dowNum,isFer,k);
       if(pf){totalUsuario+=pf.monto;return{tipo:'fijo',monto:pf.monto};}
-      if(!marks.length)return isFer?{tipo:'feriado'}:((libresRango[k]||{})[u.user]?{tipo:'diaLibre'}:{tipo:'ausente'});
+      if(!marks.length)return otraPlanillaDe(uObj,k)?{tipo:'otraPlanilla',nombre:otraPlanillaDe(uObj,k)}:isFer?{tipo:'feriado'}:((libresRango[k]||{})[u.user]?{tipo:'diaLibre'}:{tipo:'ausente'});
       const cnt=marks.length;const completo=cnt>=4;
       const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
       const almCfg=almCfgForDia(almGlobal,dowNum);
@@ -7800,6 +7822,10 @@ async function renderVistaRRHH(desde,hasta){
         totalPorDia[vi].monto+=dd.monto;
         html+=`<td style="padding:5px 5px;border:1px solid var(--bd);text-align:center;vertical-align:middle">`
           +`<div style="color:#00c9a7;font-size:10px;font-weight:700">💰 Base</div><div style="color:#00c9a7;font-size:12px;font-weight:800;margin-top:2px">$${moneyRRHH(dd.monto)}</div></td>`;
+        return;
+      }
+      if(dd.tipo==='otraPlanilla'){
+        html+=`<td style="padding:5px 5px;border:1px solid var(--bd);text-align:center;vertical-align:middle"><span style="color:#c084fc;font-size:11px;font-weight:800">${escHtml(dd.nombre||'GPH')}</span></td>`;
         return;
       }
       if(dd.tipo==='feriado'){
@@ -8779,6 +8805,24 @@ el('u-pf-fec-add')?.addEventListener('click',()=>{
   PF_FECHAS=PF_FECHAS.filter(y=>y.fecha!==f);PF_FECHAS.push(t>0?{fecha:f,tarifa:t}:{fecha:f});
   el('u-pf-fec').value='';el('u-pf-fec-t').value='';renderPfFechas();
 });
+let OTP_FECHAS=[];
+function renderOtpFechas(){
+  const c=el('u-otp-fec-list');if(!c)return;c.innerHTML='';
+  OTP_FECHAS.slice().sort().forEach(f=>{
+    const d=document.createElement('div');
+    d.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;margin-bottom:4px;font-size:12px';
+    const sp=document.createElement('span');sp.textContent=`🏢 ${f}`;
+    const b=document.createElement('button');b.type='button';b.textContent='✕';b.style.cssText='background:transparent;border:none;color:#ff6b6b;font-size:14px;cursor:pointer';
+    b.addEventListener('click',()=>{OTP_FECHAS=OTP_FECHAS.filter(y=>y!==f);renderOtpFechas();});
+    d.appendChild(sp);d.appendChild(b);c.appendChild(d);
+  });
+}
+el('u-otp-fec-add')?.addEventListener('click',()=>{
+  const f=el('u-otp-fec').value;if(!f){toast('Elige la fecha','err');return;}
+  if(!OTP_FECHAS.includes(f))OTP_FECHAS.push(f);
+  el('u-otp-fec').value='';renderOtpFechas();
+});
+el('u-otp-on').addEventListener('change',()=>{el('u-otp-row').style.display=el('u-otp-on').checked?'block':'none';if(!el('u-otp-on').checked){OTP_FECHAS=[];el('u-otp-nom').value='';renderOtpFechas();}});
 el('u-pf-on').addEventListener('change',()=>{el('u-pf-row').style.display=el('u-pf-on').checked?'block':'none';if(!el('u-pf-on').checked){document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);PF_FECHAS=[];renderPfFechas();}});
 
 // ── USUARIOS: modal "Nuevo usuario / Editar usuario" ──────────────────────────────────────────
@@ -8787,6 +8831,7 @@ function clearUserForm(){
   if(el('u-rol'))el('u-rol').value='Colaborador';
   el('u-te-on').checked=false;el('u-te-row').style.display='none';el('u-pf-on').checked=false;el('u-pf-row').style.display='none';el('u-sinacum').checked=false;
   document.querySelectorAll('.u-pf-dia').forEach(cb=>cb.checked=false);PF_FECHAS=[];try{renderPfFechas();}catch(e){}
+  OTP_FECHAS=[];if(el('u-otp-on')){el('u-otp-on').checked=false;el('u-otp-row').style.display='none';el('u-otp-nom').value='';try{renderOtpFechas();}catch(e){}}
   if(el('bita-list'))el('bita-list').innerHTML='';if(el('bita-resumen'))el('bita-resumen').textContent='';
   ['bita-desde','bita-hasta','bita-nota'].forEach(id=>{if(el(id))el(id).value='';});
 }
@@ -8816,6 +8861,7 @@ el('btn-save-user').addEventListener('click',async()=>{
   const meta={...prev,nombre,user,cedula:el('u-ced').value.trim()||'',email:el('u-email').value.trim()||prev.email||'',rol:el('u-rol').value||'Colaborador',
     tarifa:{regular:parseFloat(el('u-tr').value||20)||20,domingo:parseFloat(el('u-td').value||25)||25,feriado:parseFloat(el('u-tf').value||30)||30,especial:especialOn?(parseFloat(el('u-te').value||0)||0):0},
     pagoFijo:{activo:pfOn&&(pfDias.length>0||PF_FECHAS.length>0),dias:pfDias,fechas:pfOn?PF_FECHAS.slice():[]},sinAcumulado:el('u-sinacum').checked,
+    otraPlanilla:{activo:el('u-otp-on').checked&&OTP_FECHAS.length>0,nombre:(el('u-otp-nom').value||'').trim()||'GPH',fechas:el('u-otp-on').checked?OTP_FECHAS.slice():[]},
     profileUrl:prev.profileUrl||'',fechaInicio:finicio};
   await setUser(user,meta);
   // Si existe una selección personalizada de "colaboradores activos" (Vista semanal →
