@@ -5163,13 +5163,14 @@ async function buildEmailSemanal(desde,hasta,nivel){
   const almGlobal=await loadAlmuerzoGlobal();
   const histByDay={};
   for(const k of isoList){histByDay[k]=await getHist(k);}
+  const libresRango=await loadDiasLibresRango(isoList[0],isoList[isoList.length-1]);
   // Incluye usuarios con marcación en el rango, o con pago fijo configurado para algún
   // día del rango (ej. Super Admin con salario base los sábados, sin marcar reloj)
   const userList=todosColab.filter(u=>isoList.some(k=>(histByDay[k]||[]).some(m=>m.user===u.user))
     ||pfActivoRango(u,isoList,dias));
   // Solo columnas donde al menos un colaborador tiene marcación o pago fijo ese día
   const diasVis=isoList.map((k,i)=>({k,i,d:dias[i],etq:ETQ_DOW[dias[i].getDay()]}))
-    .filter(({k,d})=>userList.some(u=>(histByDay[k]||[]).some(m=>m.user===u.user)
+    .filter(({k,d})=>feriados.includes(k)||userList.some(u=>(libresRango[k]||{})[u.user]||(histByDay[k]||[]).some(m=>m.user===u.user)
       ||pfAplicaDia(u,k,d.getDay())));
   // CSS compartido por CLASE (no repetido inline en cada celda) — esto es lo que reduce
   // más el tamaño del HTML frente a la versión anterior con estilos inline por celda.
@@ -5199,7 +5200,7 @@ async function buildEmailSemanal(desde,hasta,nivel){
   let totalSemana=0,rows='';
   userList.forEach(u=>{
     const uObj=users[u.user]||{};
-    let tds=`<td class="emp">${u.nombre}<br><span class="sub">${u.user}</span></td>`;
+    let tds=`<td class="emp">${u.nombre}<br><span class="sub">${u.user}</span><br><span class="sub">Cédula: ${(uObj.cedula||u.cedula||'—')}</span></td>`;
     let totalUsuario=0;
     const notasUsr=[];
     diasVis.forEach(({k,d},vi)=>{
@@ -5213,7 +5214,7 @@ async function buildEmailSemanal(desde,hasta,nivel){
         tds+=`<td class="c"><div class="ok">💰 Base</div><div style="font-size:12px;font-weight:800;color:#007a5e">$${pf.monto.toFixed(2)}</div></td>`;
         return;
       }
-      if(!marks.length){tds+=`<td class="abs">Ausente</td>`;return;}
+      if(!marks.length){tds+=isFer?`<td class="c" style="color:#b36b00;font-size:10px;font-weight:700">🎉 Feriado</td>`:((libresRango[k]||{})[u.user]?`<td class="c" style="color:#0b6e99;font-size:10px;font-weight:700">🏖 Libre</td>`:`<td class="abs">Ausente</td>`);return;}
       const cnt=marks.length;const completo=cnt>=4;
       const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
       const almCfg=almCfgForDia(almGlobal,dowNum);
@@ -5300,6 +5301,8 @@ async function buildEmailRRHH(desde,hasta,nivel,modo){
     f.dias.forEach((dd,vi)=>{
       // En el correo a RRHH el pago base se muestra igual que un día completo (✅ + monto)
       if(dd.tipo==='fijo'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">✅</span><br>${nivel>=1?'':'8.00h · '}$${moneyRRHH(dd.monto)}</td>`;return;}
+      if(dd.tipo==='feriado'){tds+=`<td style="color:#b36b00;font-size:10px;font-weight:700">🎉 Feriado</td>`;return;}
+      if(dd.tipo==='diaLibre'){tds+=`<td style="color:#0b6e99;font-size:10px;font-weight:700">🏖 Libre</td>`;return;}
       if(dd.tipo==='ausente'){tds+=`<td class="abs">Ausente</td>`;return;}
       if(dd.tipo==='libre'){tds+=`<td style="color:#999">—</td>`;return;}
       if(dd.tipo==='manual'){totalPorDia[vi].monto+=dd.monto;tds+=`<td><span class="ok">✅</span><br>${nivel>=1?'':dd.horas.toFixed(2)+'h · '}$${moneyRRHH(dd.monto)}${dpCeldaHtml(dd,true)}</td>`;return;}
@@ -7305,15 +7308,19 @@ async function renderVistaSemanal(refDate,hastaDate){
   // Aplicar el filtro de "Usuarios a mostrar esta semana" (checkboxes guardados). Array vacío
   // guardado significa "todos" — si no, solo se muestran los usuarios marcados.
   const activosSel=await loadSemActivos();
-  const userList=activosSel.length?userList0.filter(u=>activosSel.includes(u.user)):userList0;
+  const userList=activosSel.length?userList0.filter(u=>activosSel.includes(u.user)||pfActivoRango(u,isoList,dias)):userList0;
   const fs=await get(R(db,FER));const feriados=fs.exists()?Object.values(fs.val()).map(f=>f.fecha):[];
   const almGlobal=await loadAlmuerzoGlobal();
+  // Días libres programados del rango (para mostrar la columna y marcar "Libre" a cada persona)
+  const libresRango=await loadDiasLibresRango(isoList[0],isoList[isoList.length-1]);
   // OCULTAR columnas donde NINGÚN colaborador tiene marcación ni pago fijo ese día
   const descManRango=await loadDescuentoManualRango(isoList[0],isoList[isoList.length-1]);
   const deudasMapSem=await loadDeudasTodos();
   const histMapDeuda=new Map();
+  // Los feriados y los días libres SIEMPRE tienen columna (aunque nadie haya marcado) para que
+  // RRHH no piense que se olvidó un día.
   const diasVisibles=isoList.map((k,i)=>({k,i,d:dias[i],etq:etiquetas[i]}))
-    .filter(({k,d})=>userList.some(u=>(histByDay[k]||[]).some(m=>m.user===u.user)
+    .filter(({k,d})=>feriados.includes(k)||userList.some(u=>(libresRango[k]||{})[u.user]||(histByDay[k]||[]).some(m=>m.user===u.user)
       ||pfAplicaDia(u,k,d.getDay())));
   // Build table
   const periodoStr=`${isoList[0]} al ${isoList[isoList.length-1]}`;
@@ -7375,6 +7382,7 @@ async function renderVistaSemanal(refDate,hastaDate){
     html+=`<td style="padding:6px 8px;border:1px solid var(--bd);background:var(--sf);vertical-align:top">`
       +`<div style="font-weight:700;color:var(--tx);font-size:12px">${u.nombre}</div>`
       +`<div style="font-size:10px;color:var(--mt)">${u.user}</div>`
+      +`<div style="font-size:10px;color:var(--mt);white-space:nowrap">Cédula: ${escHtml(uObj.cedula||u.cedula||'—')}</div>`
       +`</td>`;
     diasVisibles.forEach(({k,d},vi)=>{
       // Se muestra SIEMPRE en el orden lógico de la jornada (Entrada → Salida Alm. →
@@ -7400,7 +7408,7 @@ async function renderVistaSemanal(refDate,hastaDate){
         return;
       }
       if(!dayMarks.length){
-        html+=`<td style="padding:5px 5px;border:1px solid var(--bd);background:${bgBase};text-align:center;vertical-align:middle"><span style="color:var(--dn);font-size:10px;font-weight:700">Ausente</span></td>`;
+        html+=`<td style="padding:5px 5px;border:1px solid var(--bd);background:${bgBase};text-align:center;vertical-align:middle">${isFer?'<span style="color:#ffb020;font-size:10px;font-weight:700">🎉 Feriado</span>':((libresRango[k]||{})[u.user]?'<span style="color:#38bdf8;font-size:10px;font-weight:700">🏖 Libre</span>':'<span style="color:var(--dn);font-size:10px;font-weight:700">Ausente</span>')}</td>`;
       }else{
         const cnt=dayMarks.length;const completo=cnt>=4;
         const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
@@ -7526,6 +7534,7 @@ async function buildRRHHData(desde,hasta){
   const fs=await get(R(db,FER));const feriados=fs.exists()?Object.values(fs.val()).map(f=>f.fecha):[];
   const almGlobal=await loadAlmuerzoGlobal();
   const histByDay={};
+  const libresRango=await loadDiasLibresRango(isoList[0],isoList[isoList.length-1]);
   const descManRango=await loadDescuentoManualRango(isoList[0],isoList[isoList.length-1]);
   const deudasMapRR=await loadDeudasTodos();
   const emergRango=await loadEmergenciasRango(isoList[0],isoList[isoList.length-1]);
@@ -7535,9 +7544,9 @@ async function buildRRHHData(desde,hasta){
   // Reutiliza la misma selección de "usuarios activos" guardada por la Vista Semanal, para que
   // ambas vistas muestren siempre el mismo grupo de colaboradores sin configurarlo dos veces.
   const activosSel=await loadSemActivos();
-  const userList=activosSel.length?userList0.filter(u=>activosSel.includes(u.user)):userList0;
+  const userList=activosSel.length?userList0.filter(u=>activosSel.includes(u.user)||pfActivoRango(u,isoList,dias)):userList0;
   const diasVis=isoList.map((k,i)=>({k,i,d:dias[i],etq:ETQ_DOW[dias[i].getDay()]}))
-    .filter(({k,d})=>userList.some(u=>(histByDay[k]||[]).some(m=>m.user===u.user)
+    .filter(({k,d})=>feriados.includes(k)||userList.some(u=>(libresRango[k]||{})[u.user]||(histByDay[k]||[]).some(m=>m.user===u.user)
       ||pfAplicaDia(u,k,d.getDay())));
   const filas=[];
   for(const u of userList){
@@ -7566,7 +7575,7 @@ async function buildRRHHData(desde,hasta){
       const dowNum=d.getDay();const isFer=feriados.includes(k);
       const pf=pagoFijoDelDia(uObj,dowNum,isFer,k);
       if(pf){totalUsuario+=pf.monto;return{tipo:'fijo',monto:pf.monto};}
-      if(!marks.length)return{tipo:'ausente'};
+      if(!marks.length)return isFer?{tipo:'feriado'}:((libresRango[k]||{})[u.user]?{tipo:'diaLibre'}:{tipo:'ausente'});
       const cnt=marks.length;const completo=cnt>=4;
       const tar=isFer?(uObj.tarifa?.feriado||uObj.tarifa?.regular||20):(dowNum===0?(uObj.tarifa?.domingo||uObj.tarifa?.regular||20):(uObj.tarifa?.regular||20));
       const almCfg=almCfgForDia(almGlobal,dowNum);
@@ -7589,7 +7598,7 @@ async function buildRRHHData(desde,hasta){
       totalUsuario+=monto;descUsuario+=descuento;
       return{tipo:completo?'completo':'parcial',tar,cnt,monto,descuento,horas,datosSospechosos,adelMin:cdAd.min,adelMonto:cdAd.monto,acumAplicadoMin:acumAplicado>0?Math.round(acumAplicado*60):0,adelNota:verNotaAdel&&(((acumRes.mapAdel||{})[k]||0)+((acumRes.mapBanco||{})[k]||0))>0?`+${Math.round((((acumRes.mapAdel||{})[k]||0)+((acumRes.mapBanco||{})[k]||0))*60)} min adelantados (${trazaAdel(k,acumRes,bancoOrigU)})`:''};
     });
-    filas.push({user:u.user,nombre:u.nombre,cedula:uObj.cedula||'',dias:diasArr,totalUsuario:+totalUsuario.toFixed(2),descUsuario:+descUsuario.toFixed(2),acumUsrMin});
+    filas.push({user:u.user,nombre:u.nombre,cedula:uObj.cedula||u.cedula||'',dias:diasArr,totalUsuario:+totalUsuario.toFixed(2),descUsuario:+descUsuario.toFixed(2),acumUsrMin});
   }
   const totalGlobal=+filas.reduce((a,f)=>a+f.totalUsuario,0).toFixed(2);
   const descGlobal=+filas.reduce((a,f)=>a+f.descUsuario,0).toFixed(2);
@@ -7671,7 +7680,7 @@ async function buildRRHHDataMerged(desde,hasta,modo){
       if(presentes.has(uid))return;
       const uObj=users[uid];if(!uObj||!uObj.nombre)return;
       presentes.add(uid);
-      base.filas.push({user:uid,nombre:uObj.nombre,cedula:uObj.cedula||'',dias:base.diasVis.map(()=>({tipo:'ausente'})),totalUsuario:0,descUsuario:0});
+      base.filas.push({user:uid,nombre:uObj.nombre,cedula:uObj.cedula||uObj.cedula===undefined&&users[uid]&&users[uid].cedula||'',dias:base.diasVis.map(()=>({tipo:'ausente'})),totalUsuario:0,descUsuario:0});
     });
   });
   base.filas.forEach(f=>{
@@ -7791,6 +7800,14 @@ async function renderVistaRRHH(desde,hasta){
         totalPorDia[vi].monto+=dd.monto;
         html+=`<td style="padding:5px 5px;border:1px solid var(--bd);text-align:center;vertical-align:middle">`
           +`<div style="color:#00c9a7;font-size:10px;font-weight:700">💰 Base</div><div style="color:#00c9a7;font-size:12px;font-weight:800;margin-top:2px">$${moneyRRHH(dd.monto)}</div></td>`;
+        return;
+      }
+      if(dd.tipo==='feriado'){
+        html+=`<td style="padding:5px 5px;border:1px solid var(--bd);text-align:center;vertical-align:middle"><span style="color:#ffb020;font-size:10px;font-weight:700">🎉 Feriado</span></td>`;
+        return;
+      }
+      if(dd.tipo==='diaLibre'){
+        html+=`<td style="padding:5px 5px;border:1px solid var(--bd);text-align:center;vertical-align:middle"><span style="color:#38bdf8;font-size:10px;font-weight:700">🏖 Libre</span></td>`;
         return;
       }
       if(dd.tipo==='ausente'){
