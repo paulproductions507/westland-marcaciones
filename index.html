@@ -143,6 +143,14 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .ashdr.open .ach{transform:rotate(180deg)}
 .asbdy{display:none;padding:15px;background:var(--bg)}
 .asbdy.open{display:block}
+
+/* Panel Administrativo por pestañas */
+.atabs{display:flex;gap:6px;overflow-x:auto;padding:0 0 12px;margin:0 0 12px;border-bottom:1px solid var(--bd);-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.atabs::-webkit-scrollbar{display:none}
+.atab{flex:0 0 auto;padding:8px 13px;border-radius:999px;border:1px solid var(--bd);background:var(--sf);color:var(--mt);font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit}
+.atab.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.atab small{opacity:.75;font-weight:600;margin-left:4px}
+.asec.tab-hide{display:none!important}
 .fg{display:flex;flex-direction:column;gap:5px;margin-bottom:9px}
 .fg label{font-size:11px;color:var(--mt);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
 .fc{padding:9px 11px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);color:var(--tx);font-family:inherit;font-size:14px;outline:none;transition:border var(--t);width:100%}
@@ -722,6 +730,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
       <div class="apanel">
         <div class="aphdr" id="admin-tog"><h3>⚙️ Panel Administrativo</h3><span id="admin-ch" style="font-size:18px;color:var(--mt)">▾</span></div>
         <div class="apbdy" id="admin-body">
+          <div class="atabs" id="admin-tabs"></div>
 
           <div class="asec" id="sec-almuerzo"><div class="ashdr" data-ac="ac-alm"><span>🍽️ Almuerzo (configuración global)</span><span class="ach">▾</span></div>
           <div class="asbdy" id="ac-alm">
@@ -4408,7 +4417,7 @@ el('tsem-fijar')?.addEventListener('click',fijarSemanaTurnos);
 // Lunes–Viernes se recorre la secuencia de patrones en orden, saltando feriados (ej. martes feriado: Lun=P1, Mié=P2, Jue=P3, Vie=P4).
 // Sábado y domingo NO se tocan (se configuran a mano). Al aplicar, queda programado solo para la semana elegida arriba.
 const ROT_PATH=`${META}/turnos_rotacion`;
-let ROT={t1:'',t2:'',fijosT1:[],noJuntos:[],participantes:[],soloSemana:[],cubreSabado:[],patrones:[]};
+let ROT={t1:'',t2:'',fijosT1:[],noJuntos:[],participantes:[],soloSemana:[],cubreSabado:[],patrones:[],alternar:true,semanaBase:''};
 let _rotAbierto=false,_rotSinGuardar=false;
 const rotNorm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 function rotBuscar(colab,...claves){const u=colab.find(c=>{const t=rotNorm((c.nombre||'')+' '+(c.user||''));return claves.every(k=>t.includes(k));});return u?u.user:null;}
@@ -4445,7 +4454,8 @@ async function rotInit(){
   if(cfg){
     ROT={t1:cfg.t1||'',t2:cfg.t2||'',fijosT1:cfg.fijosT1||[],noJuntos:cfg.noJuntos||[],participantes:cfg.participantes||[],
       soloSemana:Object.values(cfg.soloSemana||{}),cubreSabado:Object.values(cfg.cubreSabado||{}),
-      patrones:Object.values(cfg.patrones||{}).map(p=>({t1:Object.values((p&&p.t1)||{})}))};
+      patrones:Object.values(cfg.patrones||{}).map(p=>({t1:Object.values((p&&p.t1)||{})})),
+      alternar:cfg.alternar!==false,semanaBase:cfg.semanaBase||''};
     _rotSinGuardar=false;
     if(cfg.soloSemana===undefined&&cfg.cubreSabado===undefined){const d=rotDefault(colab,turnos);ROT.soloSemana=d.soloSemana;ROT.cubreSabado=d.cubreSabado;_rotSinGuardar=true;}
   }else{ROT=rotDefault(colab,turnos);_rotSinGuardar=true;}
@@ -4478,6 +4488,7 @@ function rotRender(){
   h+=titulo('Nunca juntos en el mismo turno (uno en cada turno)')+grid('nj',ROT.noJuntos,part);
   h+=titulo('Solo trabajan lunes a viernes (no sábado)')+grid('solo',ROT.soloSemana,part);
   h+=titulo('Cubren el sábado en el Turno 2 (cierre), en lugar de los de arriba')+grid('cubre',ROT.cubreSabado,colab);
+  h+=titulo('Semana a semana')+`<label style="display:flex;align-items:flex-start;gap:7px;cursor:pointer;font-size:12.5px;line-height:1.45"><input type="checkbox" class="rot-ck" data-k="alt" ${ROT.alternar!==false?'checked':''} style="width:auto;accent-color:var(--ac);margin-top:2px;flex-shrink:0"><span>Rotar los patrones cada semana: lo que tocó el lunes pasa al martes, el martes al miércoles… (el último pasa al lunes) para que todos tengan equilibrio de turnos.</span></label>`;
   h+=titulo('Patrones de lunes a viernes (marcados = Turno 1, el resto = Turno 2)');
   ROT.patrones.forEach((p,i)=>{
     const errs=rotValidarPatron(p);
@@ -4500,6 +4511,7 @@ el('rot-body')?.addEventListener('change',e=>{
   else if(k==='nj')ROT.noJuntos=tog(ROT.noJuntos);
   else if(k==='solo')ROT.soloSemana=tog(ROT.soloSemana);
   else if(k==='cubre')ROT.cubreSabado=tog(ROT.cubreSabado);
+  else if(k==='alt')ROT.alternar=on;
   else if(k.startsWith('pat:')){const p=ROT.patrones[+k.slice(4)];p.t1=tog(p.t1);}
   _rotSinGuardar=true;rotRender();
 });
@@ -4508,7 +4520,7 @@ async function rotGuardar(silencioso){
   if(bad.length){toast('⚠ Corrige las reglas antes de guardar: '+bad.join(' | '),'err',8000);return false;}
   if(!ROT.t1||!ROT.t2||ROT.t1===ROT.t2){toast('Elige dos turnos distintos (Turno 1 y Turno 2)','err');return false;}
   if(!ROT.patrones.length){toast('Agrega al menos un patrón','err');return false;}
-  await set(R(db,ROT_PATH),{t1:ROT.t1,t2:ROT.t2,fijosT1:ROT.fijosT1,noJuntos:ROT.noJuntos,participantes:ROT.participantes,soloSemana:ROT.soloSemana,cubreSabado:ROT.cubreSabado,patrones:ROT.patrones.map(p=>({t1:p.t1}))});
+  await set(R(db,ROT_PATH),{t1:ROT.t1,t2:ROT.t2,fijosT1:ROT.fijosT1,noJuntos:ROT.noJuntos,participantes:ROT.participantes,soloSemana:ROT.soloSemana,cubreSabado:ROT.cubreSabado,patrones:ROT.patrones.map(p=>({t1:p.t1})),alternar:ROT.alternar!==false,semanaBase:ROT.semanaBase||null});
   _rotSinGuardar=false;if(!silencioso)toast('Rotación guardada ✓','ok');rotRender();return true;
 }
 async function rotAplicar(){
@@ -4521,13 +4533,24 @@ async function rotAplicar(){
   const lun=_turnosSemLun,dom=addDaysISO(lun,6);
   let fer=[];try{const fs=await get(R(db,FER));fer=fs.exists()?Object.values(fs.val()).map(f=>f.fecha):[];}catch(e){}
   const libres=await loadDiasLibresRango(lun,dom);
+  // Rotación semana a semana: cada semana los patrones se corren un día (lo del lunes pasa al martes, etc.)
+  let base=ROT.semanaBase,off=0,sem=0;const NP=ROT.patrones.length;
+  if(ROT.alternar!==false&&NP>1){
+    if(!base){
+      let prevRot=false;
+      try{const ps=await get(R(db,`${TURSEM}/${addDaysISO(lun,-7)}`));prevRot=ps.exists()&&Object.values(ps.val()||{}).some(d=>d&&d._meta&&d._meta.origen==='rotación automática');}catch(e){}
+      base=prevRot?addDaysISO(lun,-7):lun;
+    }
+    sem=Math.round((new Date(lun+'T00:00:00Z')-new Date(base+'T00:00:00Z'))/604800000);
+    off=((sem%NP)+NP)%NP;
+  }
   const plan=[];let idx=0;
   for(let i=0;i<5;i++){
     const dia=DIA_KEYS[i],f=addDaysISO(lun,i);
     if(fer.includes(f)){plan.push({dia,f,feriado:true,a:[],b:[],libres:[]});continue;}
-    const pat=ROT.patrones[idx%ROT.patrones.length];idx++;
+    const kPat=(((idx-off)%NP)+NP)%NP;const pat=ROT.patrones[kPat];idx++;
     const l=libres[f]||{};
-    plan.push({dia,f,pat:pat.t1,pn:((idx-1)%ROT.patrones.length)+1,
+    plan.push({dia,f,pat:pat.t1,pn:kPat+1,
       a:ROT.participantes.filter(u=>pat.t1.includes(u)&&!l[u]),
       b:ROT.participantes.filter(u=>!pat.t1.includes(u)&&!l[u]),
       libres:ROT.participantes.filter(u=>l[u])});
@@ -4546,9 +4569,10 @@ async function rotAplicar(){
     }
   }
   const alcance=plan.some(x=>x.dia==='sabado')?'Lun–Sáb':'Lun–Vie';
+  const notaRot=(ROT.alternar!==false&&NP>1)?`Semana ${sem+1} de la rotación (los patrones se corren ${off} día(s) respecto a la semana base ${fmtFechaCorta(base)})\n`:'';
   const resumen=plan.map(p=>p.feriado?`${DIA_NOMBRE[p.dia]} ${fmtFechaCorta(p.f)}: feriado (sin turnos)`:`${DIA_NOMBRE[p.dia]} ${new Date(p.f+'T00:00:00').getDate()} (${p.pn==='Sáb'?'sábado, por reglas':'patrón '+p.pn})\n   T1: ${p.a.map(rotNombre).join(', ')||'—'}\n   T2: ${p.b.map(rotNombre).join(', ')||'—'}${p.libres.length?'\n   Libres: '+p.libres.map(rotNombre).join(', '):''}`).join('\n');
   if(lun<isoD(getLunesDeSemana(null))&&!confirm(`⚠ La semana ${lun} → ${dom} YA PASÓ. Cambiarla altera cómo se calculan sus horas. ¿Seguro?`))return;
-  if(!confirm(`Se programará ${alcance} de ${fmtFechaCorta(lun)} → ${fmtFechaCorta(dom)} (${alcance==='Lun–Sáb'?'el domingo no se toca':'sábado y domingo no se tocan'}):\n\n${resumen}\n\n¿Aplicar?`))return;
+  if(!confirm(`Se programará ${alcance} de ${fmtFechaCorta(lun)} → ${fmtFechaCorta(dom)} (${alcance==='Lun–Sáb'?'el domingo no se toca':'sábado y domingo no se tocan'}):\n${notaRot}\n${resumen}\n\n¿Aplicar?`))return;
   try{
     const ts=new Date().toISOString(),nuevos={..._turnosSemData};
     const mk=T=>({tid:T===T1?ROT.t1:ROT.t2,nombre:T.nombre,inicio:T.inicio,fin:T.fin,almInicio:T.almInicio||null,duracionAlm:T.duracionAlm!==undefined?T.duracionAlm:60});
@@ -4562,6 +4586,7 @@ async function rotAplicar(){
     }
     delete _SH_CACHE[`${TURSEM}/${lun}`];_miTurnoCache={};_turnosSemData=nuevos;
     await addLog(`Turnos semana ${lun}→${dom}: rotación automática aplicada ${alcance} (por ${CU})\n${resumen}`);
+    if(ROT.alternar!==false&&NP>1&&!ROT.semanaBase){ROT.semanaBase=base;try{await set(R(db,`${ROT_PATH}/semanaBase`),base);}catch(e){}}
     toast('Rotación aplicada a la semana ✓','ok');
     renderBarraSemanaTurnos();
     Object.keys(_turnosCache||{}).forEach(x=>{renderTurnoPills(x);renderTurnoDiaBody(x);});
@@ -5858,7 +5883,36 @@ document.querySelectorAll('.ashdr').forEach(h=>{
 // Atajos "Vista semanal / Vista RRHH / Correo automático" (junto a Resumen/Detallado/Limpiar):
 // abren el Panel Administrativo, expanden esa sección puntual (cerrando otras del mismo grupo,
 // igual que un toque manual) y la llevan a la vista.
+
+// ── Panel Administrativo por pestañas (sectores). Solo muestra/oculta secciones; no mueve ni cambia su contenido.
+const ADMIN_TABS=[
+  {id:'rep',ico:'🧾',nom:'Reportes y RRHH',sec:['ac-sem','ac-rrhh','ac-em','ac-bandeja-banco']},
+  {id:'mar',ico:'🕒',nom:'Marcaciones',sec:['ac-ed','ac-pro','ac-man','ac-bor','ac-adel','ac-hbanco','ac-deuda','ac-extrap','ac-emerg','ac-descman']},
+  {id:'tur',ico:'🔀',nom:'Turnos',sec:['ac-turnos']},
+  {id:'per',ico:'👥',nom:'Personal',sec:['ac-us','ac-inv','ac-rcp','ac-baja','ac-fadm','ac-facial']},
+  {id:'reg',ico:'📏',nom:'Reglas y horarios',sec:['ac-rl','ac-hr','ac-fer']},
+  {id:'sis',ico:'🛠',nom:'Sistema',sec:['ac-alm','ac-horcol','ac-gps','ac-rsync','ac-log','ac-fbrules']}
+];
+function adminTabDe(acId){const t=ADMIN_TABS.find(t=>t.sec.includes(acId));return t?t.id:null;}
+function adminMostrarTab(id,guardar){
+  if(!ADMIN_TABS.some(t=>t.id===id))id='rep';
+  ADMIN_TABS.forEach(t=>t.sec.forEach(ac=>{
+    const h=document.querySelector(`#admin-body .ashdr[data-ac="${ac}"]`);
+    const a=h&&h.closest('.asec');
+    if(a)a.classList.toggle('tab-hide',t.id!==id);
+  }));
+  document.querySelectorAll('#admin-tabs .atab').forEach(b=>b.classList.toggle('on',b.dataset.t===id));
+  if(guardar!==false){try{localStorage.setItem('admin_tab_v1',id);}catch(e){}}
+}
+(function initAdminTabs(){
+  const bar=el('admin-tabs');if(!bar)return;
+  bar.innerHTML=ADMIN_TABS.map(t=>`<button type="button" class="atab" data-t="${t.id}">${t.ico} ${t.nom}<small>${t.sec.length}</small></button>`).join('');
+  bar.addEventListener('click',e=>{const b=e.target.closest('.atab');if(b)adminMostrarTab(b.dataset.t);});
+  let ini='rep';try{ini=localStorage.getItem('admin_tab_v1')||'rep';}catch(e){}
+  adminMostrarTab(ini,false);
+})();
 function abrirSeccionAdmin(acId){
+  { const _t=adminTabDe(acId); if(_t)adminMostrarTab(_t); }
   const panel=el('admin-body'),ch=el('admin-ch');
   if(panel)panel.style.display='block';
   if(ch)ch.textContent='▴';
