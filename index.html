@@ -3974,7 +3974,8 @@ function copiarTexto(t){
 }
 async function datosSemanaTodos(lun){
   const dom=addDaysISO(lun,6);
-  const[ts,semD,libres]=await Promise.all([get(R(db,TURNOS)),getTurnosSemana(lun,true),loadDiasLibresRango(lun,dom)]);
+  const[ts,semD,libres,fsn]=await Promise.all([get(R(db,TURNOS)),getTurnosSemana(lun,true),loadDiasLibresRango(lun,dom),get(R(db,FER)).catch(()=>null)]);
+  const fer={};try{if(fsn&&fsn.exists())Object.values(fsn.val()).forEach(f=>{if(f&&f.fecha)fer[f.fecha]=f.desc||'Feriado';});}catch(e){}
   const turnos=ts.exists()?ts.val():{};
   let colab=_turnosColabCache;
   if(!colab||!colab.length){const us=await getUsers();colab=Object.values(us||{}).filter(u=>u&&u.user&&!GERENTES.includes(u.user)).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));}
@@ -3988,7 +3989,7 @@ async function datosSemanaTodos(lun){
   const info={};ids.forEach((id,i)=>{info[id]={id,nombre:turnos[id].nombre,inicio:turnos[id].inicio,fin:turnos[id].fin,cod:codigoTurno(turnos[id].nombre,id),idx:i};});
   // Turnos que ya no existen pero quedaron guardados en una semana programada
   dias.forEach(x=>Object.keys(x.asig).forEach(u=>{const a=x.asig[u];if(a&&a.tid&&!info[a.tid])info[a.tid]={id:a.tid,nombre:a.nombre,inicio:a.inicio,fin:a.fin,cod:codigoTurno(a.nombre,a.tid),idx:Object.keys(info).length};}));
-  return{lun,dom,colab,dias,turnos,info};
+  return{lun,dom,colab,dias,turnos,info,fer};
 }
 function nombresCortos(colab){
   const base=colab.map(u=>String(u.nombre||u.user).trim().split(/\s+/));
@@ -3997,25 +3998,110 @@ function nombresCortos(colab){
   colab.forEach((u,i)=>{const p=base[i];out[u.user]=(cnt[p[0]]>1&&p[1]?p[0]+' '+p[1][0]+'.':p[0]).slice(0,9);});
   return out;
 }
-// Texto para WhatsApp: tabla en monoespaciado (bloque ```), cabe en pantalla de celular
-function textoReporteTurnos(d){
-  const cor=nombresCortos(d.colab);
-  const cod=(u,x)=>{if(x.libres[u.user])return'LIB';const a=x.asig[u.user];if(!a)return'--';return(d.info[a.tid]&&d.info[a.tid].cod)||codigoTurno(a.nombre,a.tid);};
-  const W=9,pad=(s,n)=>String(s).padEnd(n,' ');
-  let t=`📅 *TURNOS DE LA SEMANA*\n${fmtFechaCorta(d.lun)} → ${fmtFechaCorta(d.dom)}\n\n`;
-  const ab=['Lu','Ma','Mi','Ju','Vi','Sa','Do'];
-  let tb=pad('',W)+ab.map(a=>pad(a,4)).join('').trimEnd()+'\n';
-  d.colab.forEach(u=>{tb+=pad(cor[u.user],W)+d.dias.map(x=>pad(cod(u,x),4)).join('').trimEnd()+'\n';});
-  t+='```\n'+tb+'```\n';
-  const usados={};d.colab.forEach(u=>d.dias.forEach(x=>{if(!x.libres[u.user]&&x.asig[u.user]){const a=x.asig[u.user];usados[a.tid]=d.info[a.tid]||{cod:codigoTurno(a.nombre,a.tid),nombre:a.nombre,inicio:a.inicio,fin:a.fin};}}));
-  Object.values(usados).sort((a,b)=>a.idx-b.idx).forEach(i=>{t+=`*${i.cod}* = ${i.nombre} (${fmt12(i.inicio)} – ${fmt12(i.fin)})\n`;});
-  t+=`*LIB* = 🏖 Día libre · *--* = sin turno asignado\n`;
-  const lib=d.colab.map(u=>({u,dd:d.dias.filter(x=>x.libres[u.user]).map(x=>fmtFechaCorta(x.f).replace(/\./g,''))})).filter(o=>o.dd.length);
-  if(lib.length){t+=`\n🏖 *Días libres:*\n`+lib.map(o=>`• ${o.u.nombre||o.u.user}: ${o.dd.join(', ')}`).join('\n')+'\n';}
-  const pend=d.dias.filter(x=>!x.prog);
-  t+=pend.length?`\n⚠ Sin confirmar (horario base): ${pend.map(x=>DIA_PILL[DIA_KEYS.indexOf(x.dk)]).join(', ')}\n`:`\n✅ Semana confirmada.\n`;
-  t+=`\nCualquier cambio se avisa por este mismo medio.`;
-  return t;
+// Datos de UN día para los mensajes/imagen: turnos (en orden), y al FINAL libres y otra planilla (GPH).
+// Quien está libre o en otra planilla ese día NO entra en los turnos; quien no tiene turno ni libre ni GPH no se menciona.
+function datosDiaTurnos(d,x){
+  const nom=u=>u.nombre||u.user;
+  const porT={},libres=[],gph={};
+  d.colab.forEach(u=>{
+    const a=x.asig[u.user],lib=x.libres[u.user],op=otraPlanillaDe(u,x.f);
+    if(lib){(op?(gph[op]=gph[op]||[]):libres).push(nom(u));}
+    else if(a){(porT[a.tid]=porT[a.tid]||{a,names:[]}).names.push(nom(u));}
+    else if(op){(gph[op]=gph[op]||[]).push(nom(u));}
+  });
+  const turnos=Object.keys(porT).sort((p,q)=>((d.info[p]||{}).idx||0)-((d.info[q]||{}).idx||0)).map(tid=>({tid,a:porT[tid].a,names:porT[tid].names,idx:(d.info[tid]||{}).idx||0}));
+  const fer=d.fer&&d.fer[x.f]!==undefined?(d.fer[x.f]||'Feriado'):null;
+  return{turnos,libres,gph,fer,todosLibres:!turnos.length&&libres.length>0&&libres.length===d.colab.length&&!Object.keys(gph).length};
+}
+const MESES_TUR=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function textoDiaTurnos(d,x){
+  const f=new Date(x.f+'T00:00:00'),i=datosDiaTurnos(d,x);
+  let t=`📅 *${DIA_NOMBRE[x.dk].toUpperCase()} ${f.getDate()} de ${MESES_TUR[f.getMonth()]}*${x.prog?'':' _(sin confirmar)_'}\n`;
+  if(!i.turnos.length){
+    if(i.fer)t+=`\n🎉 *FERIADO*${i.fer!=='Feriado'?' — '+i.fer:''} · libre todo el equipo\n`;
+    else if(i.todosLibres)t+=`\n🏖 *LIBRE* todo el equipo\n`;
+    else if(!i.libres.length&&!Object.keys(i.gph).length)t+=`\n— Sin turnos programados\n`;
+  }
+  i.turnos.forEach((o,k)=>{t+=`\n${k===0?'🟢':'🔵'} *${String(o.a.nombre||'Turno').toUpperCase()}* (${fmt12(o.a.inicio)} – ${fmt12(o.a.fin)})\n`+o.names.map(n=>'• '+n).join('\n')+'\n';});
+  if(i.libres.length&&!i.todosLibres)t+=`\n🏖 *LIBRES:* ${i.libres.join(', ')}\n`;
+  Object.keys(i.gph).forEach(n=>{t+=`\n🏢 *${n}:* ${i.gph[n].join(', ')}\n`;});
+  return t.trimEnd();
+}
+// Mensaje con los días elegidos (uno solo o varios juntos)
+function textoReporteTurnos(d,sel){
+  const dias=d.dias.filter(x=>!sel||sel.has(x.dk));
+  if(!dias.length)return'';
+  return dias.map(x=>textoDiaTurnos(d,x)).join('\n\n━━━━━━━━━━━━\n\n')+`\n\nCualquier cambio se avisa por este mismo medio.`;
+}
+// Imagen tipo calendario (tabla cuadriculada, día por día) para los días elegidos
+async function generarImagenTurnos(d,sel){
+  const W=1080,P=28,S=2,FONT='-apple-system,Helvetica,Arial,sans-serif';
+  const dias=d.dias.filter(x=>!sel||sel.has(x.dk));
+  if(!dias.length)return null;
+  const bloques=dias.map(x=>{
+    const f=new Date(x.f+'T00:00:00'),i=datosDiaTurnos(d,x);
+    const cols=i.turnos.map(o=>({tit:o.a.nombre||'',sub:`${fmt12(o.a.inicio)} – ${fmt12(o.a.fin)}`,names:o.names,bg:TALL_TINT_MAIL[o.idx%TALL_TINT_MAIL.length]}));
+    let banner=null;
+    if(!cols.length){
+      if(i.fer)banner={txt:`🎉 FERIADO${i.fer!=='Feriado'?' — '+i.fer:''} · libre todo el equipo`,bg:'#ffe9b8',fg:'#7a4a00'};
+      else if(i.todosLibres)banner={txt:'🏖 LIBRE — todo el equipo',bg:'#ffd9d9',fg:'#a00'};
+      else if(!i.libres.length&&!Object.keys(i.gph).length)banner={txt:'Sin turnos programados',bg:'#eeeeee',fg:'#666'};
+    }
+    const tiras=[];
+    if(i.libres.length&&!i.todosLibres)tiras.push({txt:`🏖 Libres: ${i.libres.join(', ')}`,bg:'#ffd9d9',fg:'#a00'});
+    Object.keys(i.gph).forEach(n=>tiras.push({txt:`🏢 ${n}: ${i.gph[n].join(', ')}`,bg:'#e8dcff',fg:'#4b2a8a'}));
+    const titulo=`${DIA_NOMBRE[x.dk]} ${f.getDate()} de ${MESES_TUR[f.getMonth()]}${i.fer&&cols.length?'  ·  FERIADO':''}${x.prog?'':'  (sin confirmar)'}`;
+    return{titulo,cols,banner,tiras};
+  });
+  const HH=54,BAN=70,CH=62,RH=40,GAP=20,TOP=112,FOOT=84,TIRA=48;
+  let H=TOP+FOOT;
+  bloques.forEach(b=>{b.h=HH+(b.banner?BAN:(b.cols.length?CH+Math.max(...b.cols.map(c=>c.names.length),1)*RH+14:0))+b.tiras.length*TIRA;H+=b.h+GAP;});
+  const cv=document.createElement('canvas');cv.width=W*S;cv.height=H*S;
+  const c=cv.getContext('2d');c.scale(S,S);
+  c.fillStyle='#ffffff';c.fillRect(0,0,W,H);
+  const fit=(t,maxW,px,min,w)=>{let s=px;do{c.font=`${w||'700'} ${s}px ${FONT}`;if(c.measureText(t).width<=maxW||s<=min)break;s-=1;}while(s>min);return s;};
+  c.fillStyle='#00313C';c.fillRect(0,0,W,TOP-14);
+  c.fillStyle='#ffffff';c.textAlign='left';c.textBaseline='middle';
+  c.font=`800 40px ${FONT}`;c.fillText('📅 TURNOS DE LA SEMANA',P,40);
+  c.font=`500 27px ${FONT}`;c.fillStyle='#bfe9e0';c.fillText(`${fmtFechaCorta(d.lun)}  →  ${fmtFechaCorta(d.dom)}`,P,78);
+  let y=TOP;
+  bloques.forEach(b=>{
+    const x0=P,w=W-2*P;
+    c.fillStyle='#00313C';c.fillRect(x0,y,w,HH);
+    c.fillStyle='#ffffff';c.textAlign='left';fit(b.titulo,w-30,30,20,'800');c.fillText(b.titulo,x0+16,y+HH/2+1);
+    let yb=y+HH;
+    if(b.banner){
+      c.fillStyle=b.banner.bg;c.fillRect(x0,yb,w,BAN);
+      c.fillStyle=b.banner.fg;c.textAlign='center';fit(b.banner.txt,w-30,30,18,'800');c.fillText(b.banner.txt,x0+w/2,yb+BAN/2+1);
+      yb+=BAN;
+    }else if(b.cols.length){
+      const n=b.cols.length,cw=w/n,bodyH=CH+Math.max(...b.cols.map(cc=>cc.names.length),1)*RH+14;
+      b.cols.forEach((col,i)=>{
+        const cx=x0+i*cw;
+        c.fillStyle=col.bg;c.fillRect(cx,yb,cw,bodyH);
+        c.textAlign='center';c.fillStyle='#022';
+        fit(col.tit,cw-16,26,16,'800');c.fillText(col.tit,cx+cw/2,yb+22);
+        fit(col.sub,cw-16,21,13,'600');c.fillStyle='#355';c.fillText(col.sub,cx+cw/2,yb+48);
+        c.strokeStyle='rgba(0,49,60,.35)';c.lineWidth=1.5;c.beginPath();c.moveTo(cx+10,yb+CH-2);c.lineTo(cx+cw-10,yb+CH-2);c.stroke();
+        col.names.forEach((nm,j)=>{c.fillStyle='#022';fit(nm,cw-18,24,14,'600');c.fillText(nm,cx+cw/2,yb+CH+14+j*RH+RH/2-6);});
+        if(i>0){c.strokeStyle='#00313C';c.lineWidth=2;c.beginPath();c.moveTo(cx,yb);c.lineTo(cx,yb+bodyH);c.stroke();}
+      });
+      yb+=bodyH;
+    }
+    b.tiras.forEach(t=>{
+      c.fillStyle=t.bg;c.fillRect(x0,yb,w,TIRA);c.fillStyle=t.fg;c.textAlign='left';
+      fit(t.txt,w-30,25,15,'800');c.fillText(t.txt,x0+16,yb+TIRA/2+1);
+      c.strokeStyle='rgba(0,49,60,.35)';c.lineWidth=1.5;c.beginPath();c.moveTo(x0,yb);c.lineTo(x0+w,yb);c.stroke();
+      yb+=TIRA;
+    });
+    c.strokeStyle='#00313C';c.lineWidth=2;c.strokeRect(x0,y,w,b.h);
+    y+=b.h+GAP;
+  });
+  const pend=dias.filter(x=>!x.prog);
+  c.textAlign='left';c.fillStyle=pend.length?'#a60':'#087f5b';c.font=`700 23px ${FONT}`;
+  c.fillText(pend.length?`⏳ Sin confirmar (horario base): ${pend.map(x=>DIA_PILL[DIA_KEYS.indexOf(x.dk)]).join(', ')}`:'✅ Confirmado',P,y+14);
+  c.fillStyle='#456';c.font=`500 21px ${FONT}`;c.fillText('Cualquier cambio se avisa por este mismo medio.',P,y+50);
+  return await new Promise(res=>cv.toBlob(b=>res(b),'image/png'));
 }
 // HTML con tabla para el correo (estilos en línea, como el resto de correos de la app)
 function htmlReporteTurnos(d,remit){
@@ -4043,7 +4129,7 @@ function htmlReporteTurnos(d,remit){
     +`<p style="margin-top:14px;border-top:1px solid #00313C;padding-top:8px;color:#00313C;font-size:11px;font-weight:700">Notificaciones Tráfico · ${escHtml(remit)} · Westland Marcaciones · ${new Date().toLocaleString('es')}</p></div>`;
   return h;
 }
-let _tallTxt='',_tallAsunto='',_tallData=null;
+let _tallTxt='',_tallAsunto='',_tallData=null,_tallBlob=null;
 async function enviarReporteTurnosCorreo(){
   const dest=(el('tall-email').value||'').trim(),remit=(el('tall-from').value||'').trim()||TALL_FROM_DEF;
   if(!dest||!dest.includes('@')){toast('Escribe el correo de destino','err');return;}
@@ -4062,39 +4148,82 @@ async function enviarReporteTurnosCorreo(){
   }catch(e){console.error(e);toast('⛔ No se pudo enviar: '+(e.text||e.message||'revisa EmailJS'),'err',6000);}
   finally{if(btn){btn.disabled=false;btn.textContent='📧 Enviar por correo';}}
 }
+let _tallSel=null,_tallSelLun=null,_tallImgTok=0;
 async function renderTodosSemana(){
   const body=el('tcol-body');if(!body)return;
   if(!_tcolLun)_tcolLun=semanaPorDefectoLun();
   body.innerHTML='<div style="font-size:12px;color:var(--mt)">Cargando...</div>';
   try{
     const d=await datosSemanaTodos(_tcolLun);
-    _tallData=d;_tallTxt=textoReporteTurnos(d);
-    _tallAsunto=`Turnos semana ${fmtFechaCorta(d.lun)} → ${fmtFechaCorta(d.dom)}`;
+    _tallData=d;
+    _tallAsunto=`Turnos semana ${fmtFechaCorta(d.lun)} – ${fmtFechaCorta(d.dom)}`;
+    // Selección de días (por defecto: los días que tienen algo para avisar)
+    if(_tallSelLun!==d.lun||!_tallSel){
+      _tallSelLun=d.lun;
+      _tallSel=new Set(d.dias.filter(x=>{const i=datosDiaTurnos(d,x);return i.turnos.length||i.libres.length||Object.keys(i.gph).length||i.fer;}).map(x=>x.dk));
+    }
     let mail=TALL_TO_DEF,from=TALL_FROM_DEF;try{mail=localStorage.getItem(TALL_MAIL_KEY)||mail;from=localStorage.getItem(TALL_FROM_KEY)||from;}catch(e){}
     const th='padding:6px 6px;font-size:11px;color:var(--mt);text-align:center;border-bottom:2px solid var(--bd);white-space:nowrap';
     const celda=(u,x)=>{
       const b='padding:5px 6px;text-align:center;font-size:11px;border-bottom:1px solid var(--bd);border-left:1px solid var(--bd)';
-      if(x.libres[u.user])return`<td style="${b};color:var(--dn);font-weight:800;background:rgba(255,80,80,.12)">🏖 Libre</td>`;
+      const op=otraPlanillaDe(u,x.f);
+      if(x.libres[u.user]&&!op)return`<td style="${b};color:var(--dn);font-weight:800;background:rgba(255,80,80,.12)">🏖 Libre</td>`;
+      if(op)return`<td style="${b};color:#c084fc;font-weight:800;background:rgba(170,110,255,.14)">🏢 ${escHtml(op)}</td>`;
       const a=x.asig[u.user];
       if(a){const i=d.info[a.tid];return`<td style="${b};white-space:nowrap;background:${TALL_TINT[(i?i.idx:0)%TALL_TINT.length]}"><strong>${escHtml(a.nombre||'')}</strong><div style="color:var(--mt);font-size:10.5px">${fmt12(a.inicio)}–${fmt12(a.fin)}</div></td>`;}
       return`<td style="${b};color:var(--mt)">—</td>`;
     };
+    const chips=d.dias.map(x=>`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;padding:6px 10px;border:1px solid var(--bd);border-radius:20px;background:var(--bg)"><input type="checkbox" class="tall-dia" data-dk="${x.dk}" ${_tallSel.has(x.dk)?'checked':''} style="width:auto;accent-color:var(--ac)"><span>${DIA_PILL[DIA_KEYS.indexOf(x.dk)]} ${new Date(x.f+'T00:00:00').getDate()}</span></label>`).join('');
     body.innerHTML=
-      `<div class="fg2" style="margin-bottom:8px"><div class="fg"><label>De (notificaciones)</label><input type="email" class="fc" id="tall-from" value="${escHtml(from)}"></div>`
+      `<div style="background:var(--sf);border:1px solid var(--ac);border-radius:var(--rs);padding:10px 12px;margin-bottom:10px">`
+      +`<div style="font-weight:700;font-size:13px;margin-bottom:3px">💬 Mensaje para WhatsApp</div>`
+      +`<div style="font-size:11.5px;color:var(--mt);margin-bottom:8px;line-height:1.45">Marca el día (o varios) que quieres avisar. Sale Turno 1, Turno 2 y al final los libres / otra planilla. Un día = un mensaje; todos marcados = un solo mensaje.</div>`
+      +`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${chips}</div>`
+      +`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button type="button" class="btn bg bsm" id="tall-todos" style="width:auto;font-size:11px">Marcar todos</button><button type="button" class="btn bg bsm" id="tall-ninguno" style="width:auto;font-size:11px">Ninguno</button></div>`
+      +`<textarea id="tall-msg" class="fc" readonly style="width:100%;min-height:190px;font-size:12.5px;line-height:1.45;white-space:pre-wrap"></textarea>`
+      +`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn bp bsm" id="tall-copy" type="button" style="width:auto">📋 Copiar mensaje</button><button class="btn bg bsm" id="tall-wa" type="button" style="width:auto">💬 Abrir WhatsApp</button><button class="btn bg bsm" id="tall-img" type="button" style="width:auto" disabled>🖼 Imagen (tabla)</button></div>`
+      +`<div id="tall-img-box" style="margin-top:8px"></div></div>`
+      +`<details style="margin-bottom:10px"><summary style="font-size:12px;color:var(--ac);cursor:pointer;font-weight:700">📧 Enviar semana completa por correo</summary>`
+      +`<div class="fg2" style="margin:8px 0"><div class="fg"><label>De (notificaciones)</label><input type="email" class="fc" id="tall-from" value="${escHtml(from)}"></div>`
       +`<div class="fg"><label>Para</label><input type="email" class="fc" id="tall-email" value="${escHtml(mail)}"></div></div>`
-      +`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">`
-      +`<button class="btn bp bsm" id="tall-mail" style="width:auto">📧 Enviar por correo</button>`
-      +`<button class="btn bg bsm" id="tall-wa" style="width:auto">💬 WhatsApp (copia y abre)</button></div>`
+      +`<button class="btn bp bsm" id="tall-mail" style="width:auto">📧 Enviar por correo</button></details>`
       +`<div style="overflow-x:auto;border:1px solid var(--bd);border-radius:var(--rs)"><table style="border-collapse:collapse;width:100%;min-width:560px"><thead><tr><th style="${th};text-align:left;position:sticky;left:0;background:var(--sf)">Colaborador</th>`
       +d.dias.map(x=>`<th style="${th};border-left:1px solid var(--bd)">${DIA_PILL[DIA_KEYS.indexOf(x.dk)]} ${new Date(x.f+'T00:00:00').getDate()}${x.prog?' ✓':''}</th>`).join('')
       +`</tr></thead><tbody>`
       +d.colab.map(u=>`<tr><td style="padding:5px 8px;font-size:12px;font-weight:700;border-bottom:1px solid var(--bd);white-space:nowrap;position:sticky;left:0;background:var(--sf)">${escHtml(u.nombre||u.user)}</td>${d.dias.map(x=>celda(u,x)).join('')}</tr>`).join('')
       +`</tbody></table></div>`
       +`<div style="font-size:11px;color:var(--mt);margin-top:6px">✓ = día confirmado. Sin ✓ se muestra el horario base. La semana se cambia con ‹ › arriba.</div>`;
+    const refrescar=()=>{
+      _tallTxt=textoReporteTurnos(d,_tallSel);
+      el('tall-msg').value=_tallTxt||'Marca al menos un día.';
+      const bt=el('tall-img'),box=el('tall-img-box'),tok=++_tallImgTok;
+      _tallBlob=null;if(box)box.innerHTML='';
+      if(!_tallSel.size){bt.disabled=true;bt.textContent='🖼 Imagen (tabla)';return;}
+      bt.disabled=true;bt.textContent='🖼 Generando…';
+      generarImagenTurnos(d,_tallSel).then(blob=>{
+        if(tok!==_tallImgTok||!blob)return;_tallBlob=blob;
+        bt.disabled=false;bt.textContent='🖼 Imagen (tabla)';
+        const u=URL.createObjectURL(blob);
+        box.innerHTML=`<img src="${u}" alt="Turnos" style="width:100%;border:1px solid var(--bd);border-radius:var(--rs);background:#fff"><div style="font-size:11px;color:var(--mt);margin-top:4px">Vista previa de la imagen. Toca “🖼 Imagen (tabla)” para compartirla, o mantenla presionada para guardarla.</div>`;
+      }).catch(e=>{if(tok===_tallImgTok)bt.textContent='No se pudo generar la imagen';console.warn('imgTurnos',e);});
+    };
+    body.querySelectorAll('.tall-dia').forEach(cb=>cb.addEventListener('change',()=>{cb.checked?_tallSel.add(cb.dataset.dk):_tallSel.delete(cb.dataset.dk);refrescar();}));
+    el('tall-todos').addEventListener('click',()=>{d.dias.forEach(x=>_tallSel.add(x.dk));body.querySelectorAll('.tall-dia').forEach(cb=>cb.checked=true);refrescar();});
+    el('tall-ninguno').addEventListener('click',()=>{_tallSel.clear();body.querySelectorAll('.tall-dia').forEach(cb=>cb.checked=false);refrescar();});
     el('tall-from').addEventListener('change',function(){try{localStorage.setItem(TALL_FROM_KEY,this.value.trim());}catch(e){}});
     el('tall-email').addEventListener('change',function(){try{localStorage.setItem(TALL_MAIL_KEY,this.value.trim());}catch(e){}});
     el('tall-mail').addEventListener('click',enviarReporteTurnosCorreo);
-    el('tall-wa').addEventListener('click',async()=>{await copiarTexto(_tallTxt);window.open('https://wa.me/?text='+encodeURIComponent(_tallTxt),'_blank');toast('📋 Copiado y abriendo WhatsApp ✓','ok');});
+    el('tall-copy').addEventListener('click',async()=>{if(!_tallTxt){toast('Marca al menos un día','err');return;}await copiarTexto(_tallTxt);toast('📋 Mensaje copiado ✓','ok');});
+    el('tall-wa').addEventListener('click',async()=>{if(!_tallTxt){toast('Marca al menos un día','err');return;}await copiarTexto(_tallTxt);window.open('https://wa.me/?text='+encodeURIComponent(_tallTxt),'_blank');toast('📋 Copiado y abriendo WhatsApp ✓','ok');});
+    el('tall-img').addEventListener('click',async()=>{
+      if(!_tallBlob){toast('La imagen aún se está generando','');return;}
+      const file=new File([_tallBlob],`turnos_${d.lun}.png`,{type:'image/png'});
+      try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:_tallAsunto});return;}}
+      catch(e){if(e&&e.name==='AbortError')return;}
+      window.open(URL.createObjectURL(_tallBlob),'_blank');
+      toast('Mantén presionada la imagen → Compartir / Guardar','ok',6000);
+    });
+    refrescar();
   }catch(e){console.error('renderTodosSemana',e);body.innerHTML='<div style="font-size:12px;color:var(--dn)">Error al cargar.</div>';}
 }
 // Visor: el turno de UN colaborador elegido, día por día, para cualquier semana — reutiliza
