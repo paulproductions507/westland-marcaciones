@@ -4279,7 +4279,7 @@ el('tsem-fijar')?.addEventListener('click',fijarSemanaTurnos);
 // Lunes–Viernes se recorre la secuencia de patrones en orden, saltando feriados (ej. martes feriado: Lun=P1, Mié=P2, Jue=P3, Vie=P4).
 // Sábado y domingo NO se tocan (se configuran a mano). Al aplicar, queda programado solo para la semana elegida arriba.
 const ROT_PATH=`${META}/turnos_rotacion`;
-let ROT={t1:'',t2:'',fijosT1:[],noJuntos:[],participantes:[],patrones:[]};
+let ROT={t1:'',t2:'',fijosT1:[],noJuntos:[],participantes:[],soloSemana:[],cubreSabado:[],patrones:[]};
 let _rotAbierto=false,_rotSinGuardar=false;
 const rotNorm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 function rotBuscar(colab,...claves){const u=colab.find(c=>{const t=rotNorm((c.nombre||'')+' '+(c.user||''));return claves.every(k=>t.includes(k));});return u?u.user:null;}
@@ -4288,10 +4288,12 @@ function rotSiguiente(cfg){
   const n1=cfg.patrones.length?cfg.patrones[0].t1.length:Math.ceil(part.length/2);
   const prev=new Set(cfg.patrones.length?cfg.patrones[cfg.patrones.length-1].t1:[]);
   const cnt={};part.forEach(u=>cnt[u]=0);cfg.patrones.forEach(p=>p.t1.forEach(u=>{if(u in cnt)cnt[u]++;}));
+  const f2=cfg.fijosT2||[];
   const t1=[];(cfg.fijosT1||[]).forEach(u=>{if(part.includes(u))t1.push(u);});
   const nj=(cfg.noJuntos||[]).filter(u=>part.includes(u));
-  if(nj.length){const cand=nj.filter(u=>!prev.has(u));const pick=(cand.length?cand:nj).slice().sort((a,b)=>cnt[a]-cnt[b])[0];t1.push(pick);}
-  const resto=part.filter(u=>!t1.includes(u)&&!nj.includes(u));
+  const njOk=nj.filter(u=>!f2.includes(u));
+  if(njOk.length){const cand=njOk.filter(u=>!prev.has(u));const pick=(cand.length?cand:njOk).slice().sort((a,b)=>cnt[a]-cnt[b])[0];t1.push(pick);}
+  const resto=part.filter(u=>!t1.includes(u)&&!nj.includes(u)&&!f2.includes(u));
   resto.sort((a,b)=>((prev.has(a)?1:0)-(prev.has(b)?1:0))||(cnt[a]-cnt[b]));
   while(t1.length<n1&&resto.length)t1.push(resto.shift());
   return{t1};
@@ -4303,7 +4305,7 @@ function rotDefault(colab,turnos){
   const arm=rotBuscar(colab,'armando'),jg=rotBuscar(colab,'juan','gonz'),jc=rotBuscar(colab,'ceballos'),
         jo=rotBuscar(colab,'joel')||rotBuscar(colab,'thom'),ir=rotBuscar(colab,'irving')||rotBuscar(colab,'santamar'),ja=rotBuscar(colab,'jaime');
   const f=a=>a.filter(Boolean);
-  const cfg={t1,t2,fijosT1:f([arm]),noJuntos:f([jc,jo]),participantes:f([arm,jg,jc,jo,ir,ja]),patrones:[]};
+  const cfg={t1,t2,fijosT1:f([arm]),noJuntos:f([jc,jo]),participantes:f([arm,jg,jc,jo,ir,ja]),soloSemana:f([ir]),cubreSabado:f([rotBuscar(colab,'provira')]),patrones:[]};
   cfg.patrones=[{t1:f([arm,jg,jc])},{t1:f([arm,jo,ja])},{t1:f([arm,jc,jg])}];
   cfg.patrones.push(rotSiguiente(cfg));
   return cfg;
@@ -4313,13 +4315,16 @@ async function rotInit(){
   let cfg=null;try{const s=await get(R(db,ROT_PATH));if(s.exists())cfg=s.val();}catch(e){}
   if(cfg){
     ROT={t1:cfg.t1||'',t2:cfg.t2||'',fijosT1:cfg.fijosT1||[],noJuntos:cfg.noJuntos||[],participantes:cfg.participantes||[],
+      soloSemana:Object.values(cfg.soloSemana||{}),cubreSabado:Object.values(cfg.cubreSabado||{}),
       patrones:Object.values(cfg.patrones||{}).map(p=>({t1:Object.values((p&&p.t1)||{})}))};
     _rotSinGuardar=false;
+    if(cfg.soloSemana===undefined&&cfg.cubreSabado===undefined){const d=rotDefault(colab,turnos);ROT.soloSemana=d.soloSemana;ROT.cubreSabado=d.cubreSabado;_rotSinGuardar=true;}
   }else{ROT=rotDefault(colab,turnos);_rotSinGuardar=true;}
   rotRender();
 }
-function rotValidarPatron(p){
-  const errs=[],part=ROT.participantes,t1=new Set(p.t1.filter(u=>part.includes(u)));
+function rotValidarPatron(p,partOv,fijosT2){
+  const errs=[],part=partOv||ROT.participantes,t1=new Set(p.t1.filter(u=>part.includes(u)));
+  (fijosT2||[]).forEach(u=>{if(t1.has(u))errs.push(`${rotNombre(u)} debe ir en el Turno 2`);});
   ROT.fijosT1.filter(u=>part.includes(u)).forEach(u=>{if(!t1.has(u))errs.push(`${rotNombre(u)} debe ir en el Turno 1`);});
   const nj=ROT.noJuntos.filter(u=>part.includes(u));
   const a=nj.filter(u=>t1.has(u)),b=nj.filter(u=>!t1.has(u));
@@ -4337,12 +4342,14 @@ function rotRender(){
   const grid=(k,sel,lista)=>`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 10px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:7px 10px">${lista.map(u=>lbl(k,u,sel.includes(u.user))).join('')||'<span style="font-size:12px;color:var(--mt)">—</span>'}</div>`;
   const part=colab.filter(u=>ROT.participantes.includes(u.user));
   const titulo=t=>`<div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin:10px 0 5px">${t}</div>`;
-  let h=`<div style="font-size:11.5px;color:var(--mt);line-height:1.5;margin-bottom:8px">Reparte a los participantes entre el Turno 1 y el Turno 2 siguiendo una secuencia de patrones (Lun→Vie). Saltea los feriados y a quien tenga día libre. El sábado y el domingo no se tocan.${_rotSinGuardar?' <strong style="color:var(--wn)">Configuración sugerida sin guardar: revísala y toca “Guardar”.</strong>':''}</div>`;
+  let h=`<div style="font-size:11.5px;color:var(--mt);line-height:1.5;margin-bottom:8px">Reparte a los participantes entre el Turno 1 y el Turno 2 siguiendo una secuencia de patrones (Lun→Vie). Saltea los feriados y a quien tenga día libre. El sábado se arma por reglas (sin los de “solo lunes a viernes” y con quien lo cubre en el Turno 2); el domingo no se toca.${_rotSinGuardar?' <strong style="color:var(--wn)">Configuración sugerida sin guardar: revísala y toca “Guardar”.</strong>':''}</div>`;
   h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div style="font-size:11px;color:var(--mt);margin-bottom:3px">Turno 1</div><select class="fc rot-sel" data-k="t1">${optT(ROT.t1)}</select></div><div><div style="font-size:11px;color:var(--mt);margin-bottom:3px">Turno 2</div><select class="fc rot-sel" data-k="t2">${optT(ROT.t2)}</select></div></div>`;
   h+=titulo('Participantes en la rotación')+grid('part',ROT.participantes,colab);
   h+=titulo('Siempre en el Turno 1')+grid('fijos',ROT.fijosT1,part);
   h+=titulo('Nunca juntos en el mismo turno (uno en cada turno)')+grid('nj',ROT.noJuntos,part);
-  h+=titulo('Patrones (marcados = Turno 1, el resto = Turno 2)');
+  h+=titulo('Solo trabajan lunes a viernes (no sábado)')+grid('solo',ROT.soloSemana,part);
+  h+=titulo('Cubren el sábado en el Turno 2 (cierre), en lugar de los de arriba')+grid('cubre',ROT.cubreSabado,colab);
+  h+=titulo('Patrones de lunes a viernes (marcados = Turno 1, el resto = Turno 2)');
   ROT.patrones.forEach((p,i)=>{
     const errs=rotValidarPatron(p);
     const n1=p.t1.filter(u=>ROT.participantes.includes(u)).length;
@@ -4359,9 +4366,11 @@ el('rot-body')?.addEventListener('change',e=>{
   if(!t.classList.contains('rot-ck'))return;
   const k=t.dataset.k,u=t.dataset.u,on=t.checked;
   const tog=a=>{const s=new Set(a);on?s.add(u):s.delete(u);return[...s];};
-  if(k==='part'){ROT.participantes=tog(ROT.participantes);if(!on){ROT.fijosT1=ROT.fijosT1.filter(x=>x!==u);ROT.noJuntos=ROT.noJuntos.filter(x=>x!==u);ROT.patrones.forEach(p=>{p.t1=p.t1.filter(x=>x!==u);});}}
+  if(k==='part'){ROT.participantes=tog(ROT.participantes);if(!on){ROT.fijosT1=ROT.fijosT1.filter(x=>x!==u);ROT.noJuntos=ROT.noJuntos.filter(x=>x!==u);ROT.soloSemana=ROT.soloSemana.filter(x=>x!==u);ROT.patrones.forEach(p=>{p.t1=p.t1.filter(x=>x!==u);});}}
   else if(k==='fijos')ROT.fijosT1=tog(ROT.fijosT1);
   else if(k==='nj')ROT.noJuntos=tog(ROT.noJuntos);
+  else if(k==='solo')ROT.soloSemana=tog(ROT.soloSemana);
+  else if(k==='cubre')ROT.cubreSabado=tog(ROT.cubreSabado);
   else if(k.startsWith('pat:')){const p=ROT.patrones[+k.slice(4)];p.t1=tog(p.t1);}
   _rotSinGuardar=true;rotRender();
 });
@@ -4370,7 +4379,7 @@ async function rotGuardar(silencioso){
   if(bad.length){toast('⚠ Corrige las reglas antes de guardar: '+bad.join(' | '),'err',8000);return false;}
   if(!ROT.t1||!ROT.t2||ROT.t1===ROT.t2){toast('Elige dos turnos distintos (Turno 1 y Turno 2)','err');return false;}
   if(!ROT.patrones.length){toast('Agrega al menos un patrón','err');return false;}
-  await set(R(db,ROT_PATH),{t1:ROT.t1,t2:ROT.t2,fijosT1:ROT.fijosT1,noJuntos:ROT.noJuntos,participantes:ROT.participantes,patrones:ROT.patrones.map(p=>({t1:p.t1}))});
+  await set(R(db,ROT_PATH),{t1:ROT.t1,t2:ROT.t2,fijosT1:ROT.fijosT1,noJuntos:ROT.noJuntos,participantes:ROT.participantes,soloSemana:ROT.soloSemana,cubreSabado:ROT.cubreSabado,patrones:ROT.patrones.map(p=>({t1:p.t1}))});
   _rotSinGuardar=false;if(!silencioso)toast('Rotación guardada ✓','ok');rotRender();return true;
 }
 async function rotAplicar(){
@@ -4389,14 +4398,28 @@ async function rotAplicar(){
     if(fer.includes(f)){plan.push({dia,f,feriado:true,a:[],b:[],libres:[]});continue;}
     const pat=ROT.patrones[idx%ROT.patrones.length];idx++;
     const l=libres[f]||{};
-    plan.push({dia,f,pn:((idx-1)%ROT.patrones.length)+1,
+    plan.push({dia,f,pat:pat.t1,pn:((idx-1)%ROT.patrones.length)+1,
       a:ROT.participantes.filter(u=>pat.t1.includes(u)&&!l[u]),
       b:ROT.participantes.filter(u=>!pat.t1.includes(u)&&!l[u]),
       libres:ROT.participantes.filter(u=>l[u])});
   }
-  const resumen=plan.map(p=>p.feriado?`${DIA_NOMBRE[p.dia]} ${fmtFechaCorta(p.f)}: feriado (sin turnos)`:`${DIA_NOMBRE[p.dia]} ${new Date(p.f+'T00:00:00').getDate()} (patrón ${p.pn})\n   T1: ${p.a.map(rotNombre).join(', ')||'—'}\n   T2: ${p.b.map(rotNombre).join(', ')||'—'}${p.libres.length?'\n   Libres: '+p.libres.map(rotNombre).join(', '):''}`).join('\n');
+  // Sábado: por reglas, sin los que solo trabajan L–V y con quien cubre en el Turno 2 (cierre)
+  if(ROT.soloSemana.length||ROT.cubreSabado.length){
+    const f=addDaysISO(lun,5);
+    if(fer.includes(f))plan.push({dia:'sabado',f,feriado:true,a:[],b:[],libres:[]});
+    else{
+      const partSab=[...ROT.participantes.filter(u=>!ROT.soloSemana.includes(u)),...ROT.cubreSabado.filter(u=>!ROT.participantes.includes(u))];
+      const patSab=rotSiguiente({participantes:partSab,fijosT1:ROT.fijosT1,fijosT2:ROT.cubreSabado,noJuntos:ROT.noJuntos,patrones:plan.filter(x=>!x.feriado&&x.pat).map(x=>({t1:x.pat}))});
+      const eSab=rotValidarPatron(patSab,partSab,ROT.cubreSabado);
+      if(eSab.length){toast('⚠ Sábado: '+eSab.join(', '),'err',8000);return;}
+      const l=libres[f]||{};
+      plan.push({dia:'sabado',f,pn:'Sáb',a:partSab.filter(u=>patSab.t1.includes(u)&&!l[u]),b:partSab.filter(u=>!patSab.t1.includes(u)&&!l[u]),libres:partSab.filter(u=>l[u])});
+    }
+  }
+  const alcance=plan.some(x=>x.dia==='sabado')?'Lun–Sáb':'Lun–Vie';
+  const resumen=plan.map(p=>p.feriado?`${DIA_NOMBRE[p.dia]} ${fmtFechaCorta(p.f)}: feriado (sin turnos)`:`${DIA_NOMBRE[p.dia]} ${new Date(p.f+'T00:00:00').getDate()} (${p.pn==='Sáb'?'sábado, por reglas':'patrón '+p.pn})\n   T1: ${p.a.map(rotNombre).join(', ')||'—'}\n   T2: ${p.b.map(rotNombre).join(', ')||'—'}${p.libres.length?'\n   Libres: '+p.libres.map(rotNombre).join(', '):''}`).join('\n');
   if(lun<isoD(getLunesDeSemana(null))&&!confirm(`⚠ La semana ${lun} → ${dom} YA PASÓ. Cambiarla altera cómo se calculan sus horas. ¿Seguro?`))return;
-  if(!confirm(`Se programará Lun–Vie de ${fmtFechaCorta(lun)} → ${fmtFechaCorta(dom)} (sábado y domingo no se tocan):\n\n${resumen}\n\n¿Aplicar?`))return;
+  if(!confirm(`Se programará ${alcance} de ${fmtFechaCorta(lun)} → ${fmtFechaCorta(dom)} (${alcance==='Lun–Sáb'?'el domingo no se toca':'sábado y domingo no se tocan'}):\n\n${resumen}\n\n¿Aplicar?`))return;
   try{
     const ts=new Date().toISOString(),nuevos={..._turnosSemData};
     const mk=T=>({tid:T===T1?ROT.t1:ROT.t2,nombre:T.nombre,inicio:T.inicio,fin:T.fin,almInicio:T.almInicio||null,duracionAlm:T.duracionAlm!==undefined?T.duracionAlm:60});
@@ -4409,7 +4432,7 @@ async function rotAplicar(){
       await set(R(db,`${TURSEM}/${lun}/${p.dia}`),nodo);nuevos[p.dia]=nodo;
     }
     delete _SH_CACHE[`${TURSEM}/${lun}`];_miTurnoCache={};_turnosSemData=nuevos;
-    await addLog(`Turnos semana ${lun}→${dom}: rotación automática aplicada Lun–Vie (por ${CU})\n${resumen}`);
+    await addLog(`Turnos semana ${lun}→${dom}: rotación automática aplicada ${alcance} (por ${CU})\n${resumen}`);
     toast('Rotación aplicada a la semana ✓','ok');
     renderBarraSemanaTurnos();
     Object.keys(_turnosCache||{}).forEach(x=>{renderTurnoPills(x);renderTurnoDiaBody(x);});
