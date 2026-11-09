@@ -1029,6 +1029,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               <div id="tsem-libres" style="font-size:11.5px;margin-top:7px"></div>
               <button class="btn bg bsm" id="tsem-fijar" style="width:auto;font-size:11px;margin-top:8px">✅ Confirmar esta semana tal como está</button>
             </div>
+            <details id="rot-det" style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:10px">
+              <summary style="font-weight:700;font-size:13px;cursor:pointer">🎲 Rotación automática de turnos (Turno 1 / Turno 2)</summary>
+              <div id="rot-body" style="margin-top:8px"></div>
+            </details>
             <div id="turnos-tabs" style="display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px;-webkit-overflow-scrolling:touch"></div>
             <div id="turnos-list"></div>
             <div data-tpanel="__dom" style="display:none;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;margin-bottom:10px">
@@ -1323,6 +1327,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <button class="btn bp bsm" id="btn-deuda-calc" type="button" style="width:auto;margin-top:4px">🔄 Calcular lo que deben</button>
             <div id="deuda-calc" style="margin-top:10px"></div>
             <div class="fg"><label>Empiezan a reponer desde (día)</label><input type="date" class="fc" id="deuda-inicio"></div>
+            <div class="fg"><label>Hasta (último día para reponer)</label><input type="date" class="fc" id="deuda-hasta"><div style="font-size:11px;color:var(--mt);margin-top:4px;line-height:1.45">Entre “desde” y “hasta” el colaborador puede marcar su <strong>Salida Final después de su hora de salida</strong>, hasta lo que debe + 10 min de tolerancia (ej. turno 8–5 y debe 1 h: puede marcar hasta las 6:10 pm). Fuera de esas fechas rige la regla normal de 10 min.</div></div>
             <div class="fg"><label>Motivo / comentario</label><input type="text" class="fc" id="deuda-motivo" placeholder="ej. Domingo trabajaron de 11 a 5"></div>
             <button class="btn bp bsm" id="btn-deuda-add" type="button" style="width:auto;margin-top:4px">💾 Registrar horas por reponer</button>
             <div id="deuda-status" style="font-size:11px;color:var(--mt);margin-top:7px;white-space:pre-line"></div>
@@ -4192,6 +4197,7 @@ async function loadTurnosAdmin(){
   let domDefault=null;try{const d=await get(R(db,`${META}/turno_domingo_default`));domDefault=d.exists()?d.val():null;}catch(e){}
   selDom.innerHTML='<option value="">— Ninguno —</option>'+ids.map(id=>`<option value="${id}" ${id===domDefault?'selected':''}>${turnos[id].nombre} (${turnos[id].inicio}→${turnos[id].fin})</option>`).join('');
   _turnosCache=turnos;_turnosColabCache=colab;_turnosUsersCache=users;
+  try{await rotInit();}catch(e){console.warn('rotInit',e);}
   await cargarSemanaTurnos();
   // Migra en Firebase, en segundo plano, los turnos que todavía tengan el formato viejo
   ids.forEach(id=>{const t=turnos[id];if(!t.dias&&t.usuarios){set(R(db,`${TURNOS}/${id}/dias`),migrarTurnoADias(t)).catch(()=>{});}});
@@ -4267,6 +4273,157 @@ async function loadTurnosAdmin(){
 el('tsem-prev')?.addEventListener('click',async()=>{_turnosSemLun=addDaysISO(_turnosSemLun||semanaPorDefectoLun(),-7);await cargarSemanaTurnos();});
 el('tsem-next')?.addEventListener('click',async()=>{_turnosSemLun=addDaysISO(_turnosSemLun||semanaPorDefectoLun(),7);await cargarSemanaTurnos();});
 el('tsem-fijar')?.addEventListener('click',fijarSemanaTurnos);
+// ══ ROTACIÓN AUTOMÁTICA DE TURNOS (T1 / T2) ══════════════════════════════════════════════════
+// Firebase: meta_v1/turnos_rotacion = {t1,t2,fijosT1:[user],noJuntos:[user],participantes:[user],patrones:[{t1:[user]}]}
+// Cada patrón = quiénes van en el Turno 1 ese día de trabajo (el resto de participantes va en el Turno 2).
+// Lunes–Viernes se recorre la secuencia de patrones en orden, saltando feriados (ej. martes feriado: Lun=P1, Mié=P2, Jue=P3, Vie=P4).
+// Sábado y domingo NO se tocan (se configuran a mano). Al aplicar, queda programado solo para la semana elegida arriba.
+const ROT_PATH=`${META}/turnos_rotacion`;
+let ROT={t1:'',t2:'',fijosT1:[],noJuntos:[],participantes:[],patrones:[]};
+let _rotAbierto=false,_rotSinGuardar=false;
+const rotNorm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+function rotBuscar(colab,...claves){const u=colab.find(c=>{const t=rotNorm((c.nombre||'')+' '+(c.user||''));return claves.every(k=>t.includes(k));});return u?u.user:null;}
+function rotSiguiente(cfg){
+  const part=cfg.participantes||[];
+  const n1=cfg.patrones.length?cfg.patrones[0].t1.length:Math.ceil(part.length/2);
+  const prev=new Set(cfg.patrones.length?cfg.patrones[cfg.patrones.length-1].t1:[]);
+  const cnt={};part.forEach(u=>cnt[u]=0);cfg.patrones.forEach(p=>p.t1.forEach(u=>{if(u in cnt)cnt[u]++;}));
+  const t1=[];(cfg.fijosT1||[]).forEach(u=>{if(part.includes(u))t1.push(u);});
+  const nj=(cfg.noJuntos||[]).filter(u=>part.includes(u));
+  if(nj.length){const cand=nj.filter(u=>!prev.has(u));const pick=(cand.length?cand:nj).slice().sort((a,b)=>cnt[a]-cnt[b])[0];t1.push(pick);}
+  const resto=part.filter(u=>!t1.includes(u)&&!nj.includes(u));
+  resto.sort((a,b)=>((prev.has(a)?1:0)-(prev.has(b)?1:0))||(cnt[a]-cnt[b]));
+  while(t1.length<n1&&resto.length)t1.push(resto.shift());
+  return{t1};
+}
+function rotDefault(colab,turnos){
+  const ids=ordenarIdsTurnos(turnos);
+  const t1=ids.find(i=>turnos[i].inicio==='08:00'&&turnos[i].fin==='17:00')||ids[0]||'';
+  const t2=ids.find(i=>turnos[i].inicio==='09:00'&&turnos[i].fin==='18:00')||ids[1]||'';
+  const arm=rotBuscar(colab,'armando'),jg=rotBuscar(colab,'juan','gonz'),jc=rotBuscar(colab,'ceballos'),
+        jo=rotBuscar(colab,'joel')||rotBuscar(colab,'thom'),ir=rotBuscar(colab,'irving')||rotBuscar(colab,'santamar'),ja=rotBuscar(colab,'jaime');
+  const f=a=>a.filter(Boolean);
+  const cfg={t1,t2,fijosT1:f([arm]),noJuntos:f([jc,jo]),participantes:f([arm,jg,jc,jo,ir,ja]),patrones:[]};
+  cfg.patrones=[{t1:f([arm,jg,jc])},{t1:f([arm,jo,ja])},{t1:f([arm,jc,jg])}];
+  cfg.patrones.push(rotSiguiente(cfg));
+  return cfg;
+}
+async function rotInit(){
+  const colab=_turnosColabCache||[],turnos=_turnosCache||{};
+  let cfg=null;try{const s=await get(R(db,ROT_PATH));if(s.exists())cfg=s.val();}catch(e){}
+  if(cfg){
+    ROT={t1:cfg.t1||'',t2:cfg.t2||'',fijosT1:cfg.fijosT1||[],noJuntos:cfg.noJuntos||[],participantes:cfg.participantes||[],
+      patrones:Object.values(cfg.patrones||{}).map(p=>({t1:Object.values((p&&p.t1)||{})}))};
+    _rotSinGuardar=false;
+  }else{ROT=rotDefault(colab,turnos);_rotSinGuardar=true;}
+  rotRender();
+}
+function rotValidarPatron(p){
+  const errs=[],part=ROT.participantes,t1=new Set(p.t1.filter(u=>part.includes(u)));
+  ROT.fijosT1.filter(u=>part.includes(u)).forEach(u=>{if(!t1.has(u))errs.push(`${rotNombre(u)} debe ir en el Turno 1`);});
+  const nj=ROT.noJuntos.filter(u=>part.includes(u));
+  const a=nj.filter(u=>t1.has(u)),b=nj.filter(u=>!t1.has(u));
+  if(a.length>1)errs.push(`${a.map(rotNombre).join(' y ')} no pueden ir juntos en el Turno 1`);
+  if(b.length>1)errs.push(`${b.map(rotNombre).join(' y ')} no pueden ir juntos en el Turno 2`);
+  if(!t1.size)errs.push('El Turno 1 está vacío');
+  return errs;
+}
+function rotNombre(u){const c=(_turnosColabCache||[]).find(x=>x.user===u);return c?c.nombre:u;}
+function rotRender(){
+  const body=el('rot-body');if(!body)return;
+  const colab=_turnosColabCache||[],turnos=_turnosCache||{},ids=ordenarIdsTurnos(turnos);
+  const optT=sel=>ids.map(id=>`<option value="${id}" ${id===sel?'selected':''}>${escHtml(turnos[id].nombre)} (${fmt12(turnos[id].inicio)} – ${fmt12(turnos[id].fin)})</option>`).join('');
+  const lbl=(k,u,on)=>`<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12.5px;padding:2px 0"><input type="checkbox" class="rot-ck" data-k="${k}" data-u="${u.user}" ${on?'checked':''} style="width:auto;accent-color:var(--ac);flex-shrink:0"><span>${escHtml(u.nombre)}</span></label>`;
+  const grid=(k,sel,lista)=>`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 10px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:7px 10px">${lista.map(u=>lbl(k,u,sel.includes(u.user))).join('')||'<span style="font-size:12px;color:var(--mt)">—</span>'}</div>`;
+  const part=colab.filter(u=>ROT.participantes.includes(u.user));
+  const titulo=t=>`<div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.6px;margin:10px 0 5px">${t}</div>`;
+  let h=`<div style="font-size:11.5px;color:var(--mt);line-height:1.5;margin-bottom:8px">Reparte a los participantes entre el Turno 1 y el Turno 2 siguiendo una secuencia de patrones (Lun→Vie). Saltea los feriados y a quien tenga día libre. El sábado y el domingo no se tocan.${_rotSinGuardar?' <strong style="color:var(--wn)">Configuración sugerida sin guardar: revísala y toca “Guardar”.</strong>':''}</div>`;
+  h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div style="font-size:11px;color:var(--mt);margin-bottom:3px">Turno 1</div><select class="fc rot-sel" data-k="t1">${optT(ROT.t1)}</select></div><div><div style="font-size:11px;color:var(--mt);margin-bottom:3px">Turno 2</div><select class="fc rot-sel" data-k="t2">${optT(ROT.t2)}</select></div></div>`;
+  h+=titulo('Participantes en la rotación')+grid('part',ROT.participantes,colab);
+  h+=titulo('Siempre en el Turno 1')+grid('fijos',ROT.fijosT1,part);
+  h+=titulo('Nunca juntos en el mismo turno (uno en cada turno)')+grid('nj',ROT.noJuntos,part);
+  h+=titulo('Patrones (marcados = Turno 1, el resto = Turno 2)');
+  ROT.patrones.forEach((p,i)=>{
+    const errs=rotValidarPatron(p);
+    const n1=p.t1.filter(u=>ROT.participantes.includes(u)).length;
+    h+=`<div style="background:var(--sf);border:1px solid ${errs.length?'var(--dn)':'var(--bd)'};border-radius:var(--rs);padding:8px 10px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><strong style="font-size:13px">Patrón ${i+1}</strong><span style="font-size:11px;color:var(--mt)">T1: ${n1} · T2: ${part.length-n1}</span><button type="button" class="btn bd bsm" data-act="del:${i}" style="width:auto;font-size:11px;padding:3px 9px;margin-left:auto">✕</button></div>${grid('pat:'+i,p.t1,part)}${errs.length?`<div style="font-size:11.5px;color:var(--dn);margin-top:5px;font-weight:700">⚠ ${errs.map(escHtml).join(' · ')}</div>`:''}</div>`;
+  });
+  h+=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"><button type="button" class="btn bg bsm" data-act="add" style="width:auto">➕ Generar patrón siguiente (por reglas)</button><button type="button" class="btn bg bsm" data-act="addv" style="width:auto">➕ Patrón en blanco</button></div>`;
+  h+=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px"><button type="button" class="btn bg bsm" data-act="save" style="width:auto">💾 Guardar configuración</button><button type="button" class="btn bp bsm" data-act="apply" style="width:auto">▶ Aplicar a la semana de arriba</button></div>`;
+  body.innerHTML=h;
+}
+el('rot-det')?.addEventListener('toggle',()=>{_rotAbierto=el('rot-det').open;});
+el('rot-body')?.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.classList.contains('rot-sel')){ROT[t.dataset.k]=t.value;_rotSinGuardar=true;return;}
+  if(!t.classList.contains('rot-ck'))return;
+  const k=t.dataset.k,u=t.dataset.u,on=t.checked;
+  const tog=a=>{const s=new Set(a);on?s.add(u):s.delete(u);return[...s];};
+  if(k==='part'){ROT.participantes=tog(ROT.participantes);if(!on){ROT.fijosT1=ROT.fijosT1.filter(x=>x!==u);ROT.noJuntos=ROT.noJuntos.filter(x=>x!==u);ROT.patrones.forEach(p=>{p.t1=p.t1.filter(x=>x!==u);});}}
+  else if(k==='fijos')ROT.fijosT1=tog(ROT.fijosT1);
+  else if(k==='nj')ROT.noJuntos=tog(ROT.noJuntos);
+  else if(k.startsWith('pat:')){const p=ROT.patrones[+k.slice(4)];p.t1=tog(p.t1);}
+  _rotSinGuardar=true;rotRender();
+});
+async function rotGuardar(silencioso){
+  const bad=[];ROT.patrones.forEach((p,i)=>{const e=rotValidarPatron(p);if(e.length)bad.push(`Patrón ${i+1}: ${e.join(', ')}`);});
+  if(bad.length){toast('⚠ Corrige las reglas antes de guardar: '+bad.join(' | '),'err',8000);return false;}
+  if(!ROT.t1||!ROT.t2||ROT.t1===ROT.t2){toast('Elige dos turnos distintos (Turno 1 y Turno 2)','err');return false;}
+  if(!ROT.patrones.length){toast('Agrega al menos un patrón','err');return false;}
+  await set(R(db,ROT_PATH),{t1:ROT.t1,t2:ROT.t2,fijosT1:ROT.fijosT1,noJuntos:ROT.noJuntos,participantes:ROT.participantes,patrones:ROT.patrones.map(p=>({t1:p.t1}))});
+  _rotSinGuardar=false;if(!silencioso)toast('Rotación guardada ✓','ok');rotRender();return true;
+}
+async function rotAplicar(){
+  if(!_turnosSemLun)return;
+  if(_rotSinGuardar&&!(await rotGuardar(true)))return;
+  const bad=[];ROT.patrones.forEach((p,i)=>{const e=rotValidarPatron(p);if(e.length)bad.push(`Patrón ${i+1}: ${e.join(', ')}`);});
+  if(bad.length){toast('⚠ '+bad.join(' | '),'err',8000);return;}
+  const T1=_turnosCache[ROT.t1],T2=_turnosCache[ROT.t2];
+  if(!T1||!T2){toast('Los turnos elegidos ya no existen','err');return;}
+  const lun=_turnosSemLun,dom=addDaysISO(lun,6);
+  let fer=[];try{const fs=await get(R(db,FER));fer=fs.exists()?Object.values(fs.val()).map(f=>f.fecha):[];}catch(e){}
+  const libres=await loadDiasLibresRango(lun,dom);
+  const plan=[];let idx=0;
+  for(let i=0;i<5;i++){
+    const dia=DIA_KEYS[i],f=addDaysISO(lun,i);
+    if(fer.includes(f)){plan.push({dia,f,feriado:true,a:[],b:[],libres:[]});continue;}
+    const pat=ROT.patrones[idx%ROT.patrones.length];idx++;
+    const l=libres[f]||{};
+    plan.push({dia,f,pn:((idx-1)%ROT.patrones.length)+1,
+      a:ROT.participantes.filter(u=>pat.t1.includes(u)&&!l[u]),
+      b:ROT.participantes.filter(u=>!pat.t1.includes(u)&&!l[u]),
+      libres:ROT.participantes.filter(u=>l[u])});
+  }
+  const resumen=plan.map(p=>p.feriado?`${DIA_NOMBRE[p.dia]} ${fmtFechaCorta(p.f)}: feriado (sin turnos)`:`${DIA_NOMBRE[p.dia]} ${new Date(p.f+'T00:00:00').getDate()} (patrón ${p.pn})\n   T1: ${p.a.map(rotNombre).join(', ')||'—'}\n   T2: ${p.b.map(rotNombre).join(', ')||'—'}${p.libres.length?'\n   Libres: '+p.libres.map(rotNombre).join(', '):''}`).join('\n');
+  if(lun<isoD(getLunesDeSemana(null))&&!confirm(`⚠ La semana ${lun} → ${dom} YA PASÓ. Cambiarla altera cómo se calculan sus horas. ¿Seguro?`))return;
+  if(!confirm(`Se programará Lun–Vie de ${fmtFechaCorta(lun)} → ${fmtFechaCorta(dom)} (sábado y domingo no se tocan):\n\n${resumen}\n\n¿Aplicar?`))return;
+  try{
+    const ts=new Date().toISOString(),nuevos={..._turnosSemData};
+    const mk=T=>({tid:T===T1?ROT.t1:ROT.t2,nombre:T.nombre,inicio:T.inicio,fin:T.fin,almInicio:T.almInicio||null,duracionAlm:T.duracionAlm!==undefined?T.duracionAlm:60});
+    for(const p of plan){
+      const base=efectivoDia(_turnosSemData,p.dia);
+      const nodo={};
+      Object.keys(base).forEach(u=>{if(!ROT.participantes.includes(u))nodo[u]=base[u];});
+      p.a.forEach(u=>{nodo[u]=mk(T1);});p.b.forEach(u=>{nodo[u]=mk(T2);});
+      nodo._meta={por:CU,ts,origen:'rotación automática'};
+      await set(R(db,`${TURSEM}/${lun}/${p.dia}`),nodo);nuevos[p.dia]=nodo;
+    }
+    delete _SH_CACHE[`${TURSEM}/${lun}`];_miTurnoCache={};_turnosSemData=nuevos;
+    await addLog(`Turnos semana ${lun}→${dom}: rotación automática aplicada Lun–Vie (por ${CU})\n${resumen}`);
+    toast('Rotación aplicada a la semana ✓','ok');
+    renderBarraSemanaTurnos();
+    Object.keys(_turnosCache||{}).forEach(x=>{renderTurnoPills(x);renderTurnoDiaBody(x);});
+  }catch(e){toast('❌ Error: '+(e.message||e),'err',6000);}
+}
+el('rot-body')?.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;
+  if(a==='add'){ROT.patrones.push(rotSiguiente(ROT));_rotSinGuardar=true;rotRender();}
+  else if(a==='addv'){ROT.patrones.push({t1:[...ROT.fijosT1]});_rotSinGuardar=true;rotRender();}
+  else if(a.startsWith('del:')){ROT.patrones.splice(+a.slice(4),1);_rotSinGuardar=true;rotRender();}
+  else if(a==='save')await rotGuardar();
+  else if(a==='apply')await rotAplicar();
+});
+
 el('btn-crear-turno')?.addEventListener('click',async()=>{
   const nombre=(el('nt-nombre').value||'').trim(),ini=el('nt-ini').value,fin=el('nt-fin').value;
   const almInicio=el('nt-alm-ini').value||'12:00',duracionAlm=parseInt(el('nt-alm-dur').value||'60')||0;
@@ -5878,12 +6035,27 @@ async function canMark(date,user,preList){
           if(ac&&ac.hasta){const[ah,am]=String(ac.hasta).split(':').map(Number);finMin=Math.max(finMin,(ah||0)*60+(am||0));}
         }catch(e){}
       }
+      // Horas por reponer: dentro de su ventana desde–hasta, el límite se extiende con lo que aún debe
+      try{const exDeuda=await withTimeout(deudaExtraSalidaMin(user,isoD(date)),5000);if(exDeuda>0)finMin+=exDeuda;}catch(e){}
       if(nowMin>finMin+10){
         return{ok:false,msg:`No puedes marcar Salida Final: pasaron más de 10 min de tu horario de salida (${String(Math.floor(finMin/60)).padStart(2,'0')}:${String(finMin%60).padStart(2,'0')}). Contacta al encargado.`};
       }
     }
   }
   return{ok:true};
+}
+// Minutos que el colaborador aún debe y puede reponer HOY (ventana desde–hasta de sus horas por reponer).
+// Se suman a su hora de salida para el límite de la Salida Final (+10 min de tolerancia, que ya existe).
+async function deudaExtraSalidaMin(user,fechaISO){
+  const sn=await get(R(db,`${DEUDA}/${user}`));if(!sn.exists())return 0;
+  const deudas=sn.val()||{};
+  const activas=Object.values(deudas).filter(x=>x&&x.fecha&&(+x.min||0)>0&&x.hasta&&(x.inicio||sumaDiasISO(x.fecha,1))<=fechaISO&&fechaISO<=x.hasta);
+  if(!activas.length)return 0;
+  try{
+    const banco=await getBancoUser(user),almG=await loadAlmuerzoGlobal();
+    const lista=await calcularRepago(user,deudas,banco,new Map(),almG);
+    return lista.filter(x=>activas.some(a=>a.fecha===x.fecha)).reduce((t,x)=>t+Math.max(0,x.min-x.pagado),0);
+  }catch(e){return activas.reduce((t,x)=>t+(+x.min||0),0);}
 }
 function horarioCacheKey(user){return `wl_horario_cache_${user}`;}
 function getHorarioCache(user){
@@ -8485,7 +8657,7 @@ async function calcularRepago(user,deudas,banco,histMap,almGlobal){
   const desde=lista.reduce((m,x)=>{const i=x.inicio||sumaDiasISO(x.fecha,1);return i<m?i:m;},'9999-12-31');
   const tope=sumaDiasISO(desde,60),hasta=hoy<tope?hoy:tope;
   for(let f=desde;f<=hasta;f=sumaDiasISO(f,1)){
-    const pend=lista.filter(x=>(x.inicio||sumaDiasISO(x.fecha,1))<=f&&x.pagado<x.min);
+    const pend=lista.filter(x=>(x.inicio||sumaDiasISO(x.fecha,1))<=f&&(!x.hasta||f<=x.hasta)&&x.pagado<x.min);
     if(!pend.length)continue;
     const ex=await extraDiaReponer(user,f,histMap,almGlobal,banco);
     let disp=ex.min;
@@ -8560,7 +8732,7 @@ async function renderDeudaResumen(){
         ${f.lista.map(x=>{
           const r=x.min-x.pagado;
           return `<div style="font-size:11px;color:var(--mt);margin-top:4px;line-height:1.4">
-            <div style="display:flex;justify-content:space-between;gap:6px;align-items:flex-start"><span>🗓 ${escHtml(diaCortoDM(x.fecha))} — debía ${x.min} min${x.almIncl?` <span style="opacity:.8">(almuerzo ${x.almMin} min incluido)</span>`:''} · empieza a reponer ${escHtml(fmtFechaDM(x.inicio||sumaDiasISO(x.fecha,1)))}${x.motivo?' — '+escHtml(x.motivo):''}</span>
+            <div style="display:flex;justify-content:space-between;gap:6px;align-items:flex-start"><span>🗓 ${escHtml(diaCortoDM(x.fecha))} — debía ${x.min} min${x.almIncl?` <span style="opacity:.8">(almuerzo ${x.almMin} min incluido)</span>`:''} · empieza a reponer ${escHtml(fmtFechaDM(x.inicio||sumaDiasISO(x.fecha,1)))}${x.hasta?` hasta ${escHtml(fmtFechaDM(x.hasta))}`:''}${x.motivo?' — '+escHtml(x.motivo):''}</span>
             <button type="button" class="btn bg bsm" data-deuda-del="${escHtml(f.uid)}|${escHtml(x.fecha)}" style="width:auto;padding:2px 7px;font-size:10px;flex:none">🗑</button></div>
             ${x.abonos.map(a=>`<div style="color:#00c9a7;font-size:10.5px">   ➖ ${escHtml(diaCortoDM(a.fecha))}: repuso ${a.min} min</div>`).join('')}
             <div style="font-weight:700;color:${r>0?'#f59e0b':'#00c9a7'}">${r>0?`Resta ${r} min (${fmtMinHM(r)})`:'✅ Repuesta'}</div></div>`;
@@ -8631,9 +8803,10 @@ el('btn-deuda-calc')?.addEventListener('click',async()=>{
   btn.disabled=false;
 });
 el('btn-deuda-add')?.addEventListener('click',async()=>{
-  const fecha=el('deuda-fecha').value,inicio=el('deuda-inicio').value,motivo=(el('deuda-motivo').value||'').trim(),st=el('deuda-status');
+  const fecha=el('deuda-fecha').value,inicio=el('deuda-inicio').value,hasta=el('deuda-hasta').value,motivo=(el('deuda-motivo').value||'').trim(),st=el('deuda-status');
   if(!_deudaCalc||_deudaCalc.fecha!==fecha){toast('Primero pulsa “Calcular lo que deben” para ese día','err');return;}
-  if(!inicio||!motivo){toast('Completa el día de inicio y el motivo','err');return;}
+  if(!inicio||!hasta||!motivo){toast('Completa el día de inicio, el día “hasta” y el motivo','err');return;}
+  if(hasta<inicio){toast('El día “hasta” no puede ser antes del día de inicio','err');return;}
   if(inicio<=fecha){toast('El inicio de la reposición debe ser después del día en que quedaron debiendo','err');return;}
   const btn=el('btn-deuda-add');btn.disabled=true;
   try{
@@ -8643,11 +8816,11 @@ el('btn-deuda-add')?.addEventListener('click',async()=>{
       const inp=document.querySelector(`[data-deuda-min="${CSS.escape(r.user)}"]`);
       const min=parseInt(inp?inp.value:r.debe,10);
       if(!(min>0)){omitidos.push(`${r.nombre}: no debe horas`);continue;}
-      await set(R(db,`${DEUDA}/${r.user}/${fecha}`),{fecha,minBruto:r.raw,almIncl:!!_deudaCalc.almIncl,almMin:_deudaCalc.almIncl?r.credito:0,min,inicio,motivo,por:CU,ts:Date.now()});
+      await set(R(db,`${DEUDA}/${r.user}/${fecha}`),{fecha,minBruto:r.raw,almIncl:!!_deudaCalc.almIncl,almMin:_deudaCalc.almIncl?r.credito:0,min,inicio,hasta,motivo,por:CU,ts:Date.now()});
       okRows.push({user:r.user,nombre:r.nombre,min});
     }
-    if(okRows.length)await addLog(`⏱ Horas por reponer registradas (${fecha}, empiezan ${inicio}${_deudaCalc.almIncl?', almuerzo incluido':''}): ${okRows.map(r=>`${r.user} ${r.min} min`).join(', ')} — "${motivo}" (por ${CU})`);
-    if(st)st.textContent=(okRows.length?`✅ Registrado: ${okRows.map(r=>`${r.nombre} ${r.min} min`).join(', ')}. Empiezan a reponer el ${fmtFechaDM(inicio)}.`:'')+(omitidos.length?`${okRows.length?'\n':''}⚠ No registrado:\n• ${omitidos.join('\n• ')}`:'');
+    if(okRows.length)await addLog(`⏱ Horas por reponer registradas (${fecha}, empiezan ${inicio} hasta ${hasta}${_deudaCalc.almIncl?', almuerzo incluido':''}): ${okRows.map(r=>`${r.user} ${r.min} min`).join(', ')} — "${motivo}" (por ${CU})`);
+    if(st)st.textContent=(okRows.length?`✅ Registrado: ${okRows.map(r=>`${r.nombre} ${r.min} min`).join(', ')}. Reponen del ${fmtFechaDM(inicio)} al ${fmtFechaDM(hasta)}.`:'')+(omitidos.length?`${okRows.length?'\n':''}⚠ No registrado:\n• ${omitidos.join('\n• ')}`:'');
     if(okRows.length){toast('⏱ Registrado ✓','ok');el('deuda-motivo').value='';el('deuda-calc').innerHTML='';_deudaCalc=null;renderDeudaResumen();}
     else toast('⚠ No se registró a nadie','err');
   }catch(e){if(st)st.textContent='⛔ Error: '+(e.message||e);toast('⛔ No se pudo registrar','err');}
