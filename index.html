@@ -5015,7 +5015,17 @@ async function renderLog(){
 async function loadRules(){try{const s=await get(R(db,RULES));if(!s.exists())return;const v=s.val();if(v.entrada)el('r-ent').value=v.entrada;if(v.salida)el('r-sal').value=v.salida;if(v.almInicio)el('r-ai').value=v.almInicio;if(v.almFin)el('r-af').value=v.almFin;if(v.tolerancia!==undefined)el('r-tol').value=v.tolerancia;}catch(e){}}
 async function loadHorario(){try{const s=await get(R(db,HOR));if(!s.exists())return;const h=s.val();if(h.dia)el('h-dia').value=h.dia;if(h.inicio)el('h-ini').value=h.inicio;if(h.fin)el('h-fin').value=h.fin;if(h.duracionAlm!==undefined)el('h-alm').value=h.duracionAlm;}catch(e){}}
 async function loadHorariosDias(){try{const s=await get(R(db,HDIAS)),c=el('horarios-list');c.innerHTML='';if(!s.exists())return;Object.entries(s.val()).forEach(([dia,h])=>{const d=document.createElement('div');d.style.cssText='padding:6px 10px;background:var(--sf);border-radius:6px;border:1px solid var(--bd);margin-bottom:5px;font-size:13px';d.textContent=`📅 ${dia}: ${h.inicio||'—'} → ${h.fin||'—'} (alm: ${h.duracionAlm||60}min)`;c.appendChild(d);});}catch(e){}}
-async function loadFeriados(){try{const s=await get(R(db,FER)),c=el('fer-list');c.innerHTML='';if(!s.exists())return;Object.values(s.val()).forEach(f=>{const d=document.createElement('div');d.style.cssText='padding:6px 10px;background:var(--sf);border-radius:6px;border:1px solid var(--bd);margin-bottom:5px;font-size:13px';d.textContent=`📅 ${f.fecha} — ${f.desc||''}`;c.appendChild(d);});}catch(e){}}
+async function loadFeriados(){try{const s=await get(R(db,FER)),c=el('fer-list');c.innerHTML='';if(!s.exists())return;
+  Object.entries(s.val()).filter(([k,f])=>f&&f.fecha).sort((a,b)=>a[1].fecha.localeCompare(b[1].fecha)).forEach(([k,f])=>{
+    const d=document.createElement('div');d.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;background:var(--sf);border-radius:6px;border:1px solid var(--bd);margin-bottom:5px;font-size:13px';
+    const sp=document.createElement('span');sp.textContent=`📅 ${f.fecha} — ${f.desc||''}`;
+    const b=document.createElement('button');b.type='button';b.textContent='🗑 Eliminar';b.className='btn bd bsm';b.style.cssText='width:auto;font-size:11px;padding:3px 9px;flex:none';
+    b.addEventListener('click',async()=>{
+      if(!confirm(`¿Eliminar el feriado del ${f.fecha}${f.desc?' ('+f.desc+')':''}?\n\nEse día volverá a contarse como día normal en los reportes y pagos.`))return;
+      try{await remove(R(db,`${FER}/${k}`));await addLog(`Feriado eliminado: ${f.fecha}${f.desc?' ('+f.desc+')':''} (por ${CU})`);toast('Feriado eliminado ✓','ok');loadFeriados();}catch(e){toast('No se pudo eliminar','err');}
+    });
+    d.appendChild(sp);d.appendChild(b);c.appendChild(d);
+  });}catch(e){}}
 async function loadGPSCfg(){try{const s=await get(R(db,GPS));if(!s.exists())return;const v=s.val();if(v.lat)el('g-lat').value=v.lat;if(v.lon)el('g-lon').value=v.lon;}catch(e){}}
 // Helper: get current week range (Mon-Sat)
 function getCurrentWeek(){
