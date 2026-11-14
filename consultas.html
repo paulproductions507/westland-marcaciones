@@ -3204,10 +3204,12 @@ const MESEN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','
 const dEn=ts=>{const d=new Date(ts);return String(d.getDate()).padStart(2,'0')+'-'+MESEN[d.getMonth()]+'-'+d.getFullYear()};
 const zs=s=>String(s??'').replace(/[\^~\\]/g,' ');
 const gbCode=n=>'GB'+String(n).padStart(6,'0');
+// Usuario que imprime la etiqueta: el usuario de inicio de sesión abreviado (USER, ej. provira), no el nombre completo (NAME). Sale pequeño en todas las etiquetas para saber quién la tiró
+const prUser=()=>String(USER||NAME||'').trim().replace(/\s+/g,' ').slice(0,24);
 const PER=12;
 let srchTok=0,RNG=null,RNGAt=0;
 const rangeIdx=(f,t)=>{const a=[];for(let n=f;n<=t;n++)a.push(n);return a};
-function zplSheet(t,tr,name,N,first,idxs){
+function zplSheet(t,tr,name,N,first,idxs){const U=prUser();
   tr=({AUTO:'AUT ',TUNEL:'TUN ',PROFORMAS:'PRF '}[RECIBO]||'')+tr;
   const out=['^XA^CI28^PW812^LL609^LH0,0','^FO276,0^GB1,609,1^FS','^FO532,0^GB1,609,1^FS'];
   for(let r=1;r<4;r++)out.push(`^FO0,${14+r*146-8}^GB812,1,1^FS`);
@@ -3217,7 +3219,7 @@ function zplSheet(t,tr,name,N,first,idxs){
       `^FO${x+(t.length>2?100:75)},${y+14}^A0N,30,${tw}^FD${zs(tr)}^FS`,
       `^FO${x},${y+52}^BY2^BCN,44,N,N,N,A^FD${code}^FS`,
       `^FO${x},${y+102}^A0N,22,16^FD${code}^FS`,
-      `^FO${x+112},${y+98}^A0N,30,22^FB125,1,0,R^FD${n}/${N}^FS`)});
+      `^FO${x+112},${y+98}^A0N,30,22^FB125,1,0,R^FD${n}/${N}^FS`);if(U)out.push(`^FO${x},${y+125}^A0N,12,9^FD${zs(U)}^FS`)});
   out.push('^PQ1^XZ');return out.join('\n')
 }
 function sheetHTML(t,tr,name,N,first,idxs){
@@ -3231,7 +3233,8 @@ function sheetHTML(t,tr,name,N,first,idxs){
      +`<div style="position:absolute;left:${x+(t.length>2?100:75)}px;top:${y+14}px;font:700 ${tw*1.5}px Arial,sans-serif;line-height:30px;white-space:nowrap">${esc(tr)}</div>`
      +`<svg class="bcg" data-code="${code}" style="position:absolute;left:${x}px;top:${y+52}px"></svg>`
      +`<div style="position:absolute;left:${x}px;top:${y+102}px;font:700 22px 'DM Mono',monospace">${code}</div>`
-     +`<div style="position:absolute;left:${x+112}px;top:${y+98}px;width:125px;text-align:right;font:800 30px Arial,sans-serif">${n}/${N}</div>`}).join('');
+     +`<div style="position:absolute;left:${x+112}px;top:${y+98}px;width:125px;text-align:right;font:800 30px Arial,sans-serif">${n}/${N}</div>`
+     +(prUser()?`<div style="position:absolute;left:${x}px;top:${y+125}px;font:600 12px/12px Arial,sans-serif;white-space:nowrap">${esc(prUser())}</div>`:'')}).join('');
   return h+'</div></div>'
 }
 function paintPreview(box){
@@ -3327,11 +3330,11 @@ $('mlblBody').addEventListener('click',async e=>{
 });
 $('mlblBody').addEventListener('input',e=>{if(e.target.id!=='pfbQty')return;pfLb.n=Math.max(0,parseInt(e.target.value,10)||0);pfLbPaint()});
 const PZ_MAX_HOJAS=30;
-function zplPieces(p,k){
+function zplPieces(p,k){const U=prUser();
   const out=['^XA^CI28^PW812^LL609^LH0,0','^FO276,0^GB1,609,1^FS','^FO532,0^GB1,609,1^FS'];
   for(let r=1;r<4;r++)out.push(`^FO0,${14+r*146-8}^GB812,1,1^FS`);
   for(let i=0;i<k;i++){const col=i%3,row=Math.floor(i/3),x=34+col*256,y=14+row*146;
-    out.push(`^FO${x},${y}^A0N,44,32^FD${zs(p)}^FS`,`^FO${x+8},${y+54}^BY2^BCN,70,N,N,N,A^FD${zs(p)}^FS`)}
+    out.push(`^FO${x},${y}^A0N,44,32^FD${zs(p)}^FS`,`^FO${x+8},${y+54}^BY2^BCN,70,N,N,N,A^FD${zs(p)}^FS`);if(U)out.push(`^FO${x+8},${y+126}^A0N,12,9^FD${zs(U)}^FS`)}
   out.push('^PQ1^XZ');return out.join('\n')
 }
 function pzSheetHTML(p,k){
@@ -3340,7 +3343,8 @@ function pzSheetHTML(p,k){
   [1,2,3].forEach(r=>h+=`<div style="position:absolute;left:0;top:${14+r*146-8}px;width:812px;height:1px;background:#bbb"></div>`);
   for(let i=0;i<k;i++){const col=i%3,row=Math.floor(i/3),x=34+col*256,y=14+row*146;
     h+=`<div style="position:absolute;left:${x}px;top:${y}px;font:800 44px Arial,sans-serif;line-height:44px">${esc(p)}</div>`
-      +`<div style="position:absolute;left:${x+8}px;top:${y+54}px"><svg class="bcg" data-code="${esc(p)}"></svg></div>`}
+      +`<div style="position:absolute;left:${x+8}px;top:${y+54}px"><svg class="bcg" data-code="${esc(p)}"></svg></div>`
+      +(prUser()?`<div style="position:absolute;left:${x+8}px;top:${y+126}px;font:600 12px/12px Arial,sans-serif;white-space:nowrap">${esc(prUser())}</div>`:'')}
   return h+'</div></div>'
 }
 function pzBtnTxt(){const q=pzSt.q;return q>0?`🖨 Imprimir ${q} etiqueta(s) · ${Math.ceil(q/PER)} hoja(s)`:'🖨 Imprimir'}
@@ -3380,18 +3384,47 @@ $('btnPrTest').onclick=async()=>{
 
 
 // ---------- Etiqueta de bulto (libre, para todos los usuarios): estilo · producto · descripción · código de barras. 6 por hoja (2 × 3) ----------
-const BL_PER=6,BL_MAX=30;let BL=null,BLIDX=null;
+const BL_PER=6,BL_MAX=30,BL_ALM_MAX=50;let BL=null,BLIDX=null;
+// ---- Etiqueta de ALMACENAJE: una sola etiqueta grande (hoja completa 4x3) para pegar en la caja ----
+function blAlmL(b){
+  const p=String(b.p||''),m=p.length*11+46,by=m*4<=752?4:(m*3<=752?3:2);
+  const rt='REF: '+String(b.ref||''),rw=Math.max(16,Math.min(40,Math.floor(740/Math.max(1,rt.length)))),rh=Math.min(60,Math.round(rw*1.5));
+  const pw=Math.max(16,Math.min(54,Math.floor(740/Math.max(1,p.length)))),ph=Math.min(76,Math.round(pw*1.5));
+  return{by,rt,rw,rh,pw,ph}
+}
+const BL_ALM_RULES=[172,248,344,420,468,520,572];
+function blAlmZpl(b,q){
+  const L=blAlmL(b),x=30,out=['^XA^CI28^PW812^LL609^LH0,0'];
+  out.push(`^FO${x},20^BY${L.by}^BCN,112,N,N,N,A^FD${zs(b.p)}^FS`,`^FO${x},138^A0N,26,20^FD${zs(b.p)}^FS`);
+  if(prUser())out.push(`^FO300,142^A0N,22,14^FB482,1,0,R^FDUsuario: ${zs(prUser())}^FS`);
+  BL_ALM_RULES.forEach(y=>out.push(`^FO${x},${y}^GB752,2,2^FS`));
+  [0,2].forEach(d=>out.push(`^FO${x+d},182^A0N,${L.rh},${L.rw}^FD${zs(L.rt)}^FS`,`^FO${x+d},258^A0N,${L.ph},${L.pw}^FD${zs(b.p)}^FS`));
+  out.push(`^FO${x},352^A0N,30,20^FB752,2,0,L^FD${zs(b.d)}^FS`,
+    `^FO${x},430^A0N,32,22^FDENVOLTURA: ${zs(b.env)}^FS`,`^FO430,430^A0N,32,22^FDEMPAQUE: ${zs(b.emp)}^FS`,
+    `^FO${x},478^A0N,32,22^FDCOLORES:^FS`,`^FO${x},530^A0N,32,22^FDTALLAS:^FS`);
+  out.push(`^PQ${q}^XZ`);return out.join('\n')
+}
+function blAlmHTML(b){
+  const L=blAlmL(b),x=30,tx=(l,y,fs,txt,wt)=>`<div style="position:absolute;left:${l}px;top:${y}px;font:${wt} ${fs}px/${fs}px Arial,sans-serif;white-space:nowrap">${esc(txt)}</div>`;
+  let h='<div class="lbw"><div class="lbp">';
+  BL_ALM_RULES.forEach(y=>h+=`<div style="position:absolute;left:${x}px;top:${y}px;width:752px;height:2px;background:#444"></div>`);
+  h+=`<svg class="bcg" data-code="${esc(b.p)}" data-by="${L.by}" data-h="112" style="position:absolute;left:${x}px;top:20px"></svg>`
+   +tx(x,138,26,b.p,700)+(prUser()?`<div style="position:absolute;left:300px;top:142px;width:482px;text-align:right;font:600 22px/22px Arial,sans-serif;white-space:nowrap">${esc('Usuario: '+prUser())}</div>`:'')+tx(x,182,L.rh,L.rt,800)+tx(x,258,L.ph,b.p,800)
+   +`<div style="position:absolute;left:${x}px;top:352px;width:752px;height:62px;overflow:hidden;font:600 30px/31px Arial,sans-serif">${esc(b.d)}</div>`
+   +tx(x,430,32,'ENVOLTURA: '+(b.env||''),600)+tx(430,430,32,'EMPAQUE: '+(b.emp||''),600)+tx(x,478,32,'COLORES:',600)+tx(x,530,32,'TALLAS:',600);
+  return h+'</div></div>'
+}
 const blNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 function blIndex(){const m=new Map();Object.values(RECS).forEach(r=>(r.items||[]).forEach(it=>{if(!it||!it.p)return;const k=String(it.p),o=m.get(k);if(!o)m.set(k,{p:k,ref:it.ref||'',d:it.d||''});else{if(!o.ref&&it.ref)o.ref=it.ref;if(!o.d&&it.d)o.d=it.d}}));return [...m.values()]}
 function blFont(ref){const ew=Math.max(14,Math.min(32,Math.floor(340/Math.max(1,String(ref).length))));return{ew,eh:Math.round(ew*1.4)}}
-function blZpl(b,k){
+function blZpl(b,k){const U=prUser();
   const out=['^XA^CI28^PW812^LL609^LH0,0','^FO406,0^GB1,609,1^FS','^FO0,203^GB812,1,1^FS','^FO0,406^GB812,1,1^FS'];
   const {ew,eh}=blFont(b.ref);
   for(let i=0;i<k;i++){const col=i%2,row=Math.floor(i/2),x=24+col*406,y=8+row*203;
     out.push(`^FO${x},${y}^A0N,${eh},${ew}^FD${zs(b.ref)}^FS`,
       `^FO${x},${y+eh+4}^A0N,22,18^FB352,2,0,L^FD${zs(b.d)}^FS`,
       `^FO${x},${y+100}^BY2^BCN,52,N,N,N,A^FD${zs(b.p)}^FS`,
-      `^FO${x},${y+156}^A0N,28,22^FD${zs(b.p)}^FS`)}
+      `^FO${x},${y+156}^A0N,28,22^FD${zs(b.p)}^FS`);if(U)out.push(`^FO${x},${y+172}^A0N,16,11^FB352,1,0,R^FD${zs(U)}^FS`)}
   out.push('^PQ1^XZ');return out.join('\n')
 }
 function blSheetHTML(b,k){
@@ -3402,16 +3435,17 @@ function blSheetHTML(b,k){
     h+=`<div style="position:absolute;left:${x}px;top:${y}px;font:800 ${eh}px Arial,sans-serif;line-height:${eh}px;white-space:nowrap">${esc(b.ref)}</div>`
      +`<div style="position:absolute;left:${x}px;top:${y+eh+4}px;width:352px;height:50px;overflow:hidden;font:600 23px/25px Arial,sans-serif">${esc(b.d)}</div>`
      +`<svg class="bcg" data-code="${esc(b.p)}" style="position:absolute;left:${x}px;top:${y+100}px"></svg>`
-     +`<div style="position:absolute;left:${x}px;top:${y+156}px;font:700 28px/28px 'DM Mono',monospace">${esc(b.p)}</div>`}
+     +`<div style="position:absolute;left:${x}px;top:${y+156}px;font:700 28px/28px 'DM Mono',monospace">${esc(b.p)}</div>`
+     +(prUser()?`<div style="position:absolute;left:${x}px;top:${y+172}px;width:352px;text-align:right;font:600 16px/16px Arial,sans-serif">${esc(prUser())}</div>`:'')}
   return h+'</div></div>'
 }
 function blPaint(){
-  const box=$('blPrev'),k=Math.max(0,Math.min(BL_PER,BL.n)),ok=!!BL.p.trim();
-  box.innerHTML=(ok&&k)?blSheetHTML(BL,k):'<div class="msg">Escribe el producto para ver la etiqueta</div>';
+  const box=$('blPrev'),alm=BL.mode==='alm',k=alm?1:Math.max(0,Math.min(BL_PER,BL.n)),ok=!!BL.p.trim();
+  box.innerHTML=(ok&&k)?(alm?blAlmHTML(BL):blSheetHTML(BL,k)):'<div class="msg">Escribe el producto para ver la etiqueta</div>';
   const w=box.querySelector('.lbw');
   if(w){box.querySelector('.lbp').style.transform=`scale(${w.clientWidth/812})`;
-    if(typeof JsBarcode!=='undefined')box.querySelectorAll('svg.bcg').forEach(s=>{try{JsBarcode(s,s.dataset.code,{format:'CODE128',displayValue:false,height:52,width:2,margin:0})}catch(e){}})}
-  $('blPrint').textContent=(ok&&BL.n>0)?`🖨 Imprimir ${BL.n} etiqueta(s) · ${Math.ceil(BL.n/BL_PER)} hoja(s)`:'🖨 Imprimir'
+    if(typeof JsBarcode!=='undefined')box.querySelectorAll('svg.bcg').forEach(s=>{try{JsBarcode(s,s.dataset.code,{format:'CODE128',displayValue:false,height:+s.dataset.h||52,width:+s.dataset.by||2,margin:0})}catch(e){}})}
+  $('blPrint').textContent=(ok&&BL.n>0)?(alm?`🖨 Imprimir ${BL.n} etiqueta(s) de almacenaje`:`🖨 Imprimir ${BL.n} etiqueta(s) · ${Math.ceil(BL.n/BL_PER)} hoja(s)`):'🖨 Imprimir'
 }
 function blPick(h){BL.p=h.p;BL.ref=h.ref;BL.d=h.d;$('blP').value=h.p;$('blR').value=h.ref;$('blD').value=h.d;
   $('blRes').innerHTML='<div class="msg" style="color:var(--ok)">✔ Encontrado en los recibos · puedes ajustar los datos</div>';blPaint()}
@@ -3427,17 +3461,28 @@ function blSearch(){
     box.innerHTML='<div class="msg" style="color:var(--wn)">Producto no encontrado en los recibos · escribe el estilo y la descripción a mano.</div>';return}
   box.innerHTML=hits.slice(0,8).map(h=>`<div class="card" data-blp="${esc(h.p)}" style="cursor:pointer;padding:8px 10px;margin:0 0 6px"><b>${esc(h.ref||'—')}</b> · ${esc(h.p)}<div class="msg" style="margin:2px 0 0">${esc(h.d)}</div></div>`).join('')+(hits.length>8?`<div class="msg">…y ${hits.length-8} más: afina la búsqueda</div>`:'')
 }
+const BL_MSG={rec:`Recibo: etiquetas chicas, ${BL_PER} por hoja (para mercancía nueva que se va a surtir). Escribe el producto (o el estilo / descripción); si está en algún recibo se llena solo.`,
+  alm:'Almacenaje: una etiqueta grande (hoja completa) con barra, estilo, producto, descripción, envoltura y empaque, para pegar en la caja que se queda almacenada. Si el producto está en algún recibo se llena solo.'};
+function blSetMode(m){
+  BL.mode=m;BL.n=m==='alm'?1:BL_PER;$('blN').value=BL.n;
+  document.querySelectorAll('[data-bltp]').forEach(b=>b.classList.toggle('pri',b.dataset.bltp===m));
+  $('blAlmF').style.display=m==='alm'?'':'none';$('blMsg').textContent=BL_MSG[m];blPaint()
+}
 async function openBul(){
   try{await loadUploaded()}catch(e){}
-  BLIDX=null;BL={q:'',p:'',ref:'',d:'',n:BL_PER};
+  BLIDX=null;BL={q:'',p:'',ref:'',d:'',n:BL_PER,mode:'rec',env:'PZA',emp:''};
   history.pushState({c:4},'');$('mlbl').classList.remove('hide');
   $('mlblBody').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2 style="font-size:17px">Etiqueta de bulto</h2><button class="btn sm" id="blX">Cerrar</button></div>
-  <div class="msg" style="margin:4px 0 10px">Escribe el producto (o el estilo / descripción). Si está en algún recibo se llena solo; si no, escribe estilo y descripción a mano. Cada hoja trae ${BL_PER} etiquetas.</div>
+  <div class="lbl">Tipo de etiqueta</div>
+  <div id="blTp" style="display:flex;gap:8px;margin-bottom:8px"><button class="btn sm pri" data-bltp="rec" style="flex:1">Recibo</button><button class="btn sm" data-bltp="alm" style="flex:1">Almacenaje</button></div>
+  <div class="msg" id="blMsg" style="margin:4px 0 10px">${BL_MSG.rec}</div>
   <div class="lbl">Buscar producto</div><input class="f" id="blQ" type="text" inputmode="search" autocomplete="off" placeholder="Ej. 1637330">
   <div id="blRes" style="margin-top:8px"></div>
   <div class="lbl" style="margin-top:6px">Producto</div><input class="f" id="blP" type="text" autocomplete="off" maxlength="30">
   <div class="lbl" style="margin-top:6px">Estilo</div><input class="f" id="blR" type="text" autocomplete="off" maxlength="30">
   <div class="lbl" style="margin-top:6px">Descripción</div><input class="f" id="blD" type="text" autocomplete="off" maxlength="80">
+  <div id="blAlmF" style="display:none"><div class="lbl" style="margin-top:6px">Envoltura</div><input class="f" id="blE" type="text" autocomplete="off" maxlength="12" value="PZA">
+  <div class="lbl" style="margin-top:6px">Empaque (piezas por caja · opcional)</div><input class="f" id="blM" type="text" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="Si lo dejas vacío, lo escribes a mano"></div>
   <div class="lbl" style="margin-top:6px">Cantidad de etiquetas</div><input class="f" id="blN" type="number" inputmode="numeric" min="1" value="${BL_PER}">
   <div id="blPrev" style="margin-top:12px"></div>
   <button class="btn pri" id="blPrint" style="width:100%;margin-top:14px;padding:13px"></button>`;
@@ -3446,18 +3491,20 @@ async function openBul(){
 $('recBul').onclick=openBul;
 $('mlblBody').addEventListener('input',e=>{const id=e.target.id;if(!BL||!id||id[0]!=='b'||id[1]!=='l')return;const v=e.target.value;
   if(id==='blQ'){BL.q=v;blSearch();return}
-  if(id==='blP')BL.p=v;else if(id==='blR')BL.ref=v;else if(id==='blD')BL.d=v;else if(id==='blN')BL.n=Math.max(0,parseInt(v,10)||0);else return;
+  if(id==='blP')BL.p=v;else if(id==='blR')BL.ref=v;else if(id==='blD')BL.d=v;else if(id==='blN')BL.n=Math.max(0,parseInt(v,10)||0);else if(id==='blE')BL.env=v;else if(id==='blM')BL.emp=v;else return;
   blPaint()});
 $('mlblBody').addEventListener('click',async e=>{
   if(e.target.id==='blX'){history.back();return}
+  const tp=e.target.closest('[data-bltp]');if(tp&&BL){blSetMode(tp.dataset.bltp);return}
   const pk=e.target.closest('[data-blp]');if(pk&&BLIDX){const h=BLIDX.find(x=>x.p===pk.dataset.blp);if(h)blPick(h);return}
   if(e.target.id!=='blPrint')return;
   const p=(BL.p||'').trim();if(!p){toast('Escribe el producto');return}
   const q=BL.n;if(!(q>=1)){toast('Escribe una cantidad válida');return}
-  const sheets=Math.ceil(q/BL_PER);if(sheets>BL_MAX){toast(`Máximo ${BL_MAX} hojas (${BL_MAX*BL_PER} etiquetas) por envío`);return}
-  const b={p,ref:(BL.ref||'').trim(),d:(BL.d||'').trim()};
-  let zpl='';for(let r=q;r>0;r-=BL_PER)zpl+=blZpl(b,Math.min(BL_PER,r))+'\n';
-  e.target.disabled=true;try{await enqueuePrint(zpl,{tr:'BULTO '+p,t:'BULTO',n:sheets});history.back()}catch(err){toast('Error: '+(err.code||err.message));e.target.disabled=false}
+  const alm=BL.mode==='alm',sheets=alm?q:Math.ceil(q/BL_PER);
+  if(alm?q>BL_ALM_MAX:sheets>BL_MAX){toast(alm?`Máximo ${BL_ALM_MAX} etiquetas por envío`:`Máximo ${BL_MAX} hojas (${BL_MAX*BL_PER} etiquetas) por envío`);return}
+  const b={p,ref:(BL.ref||'').trim(),d:(BL.d||'').trim(),env:(BL.env||'').trim(),emp:(BL.emp||'').trim()};
+  let zpl='';if(alm)zpl=blAlmZpl(b,q)+'\n';else for(let r=q;r>0;r-=BL_PER)zpl+=blZpl(b,Math.min(BL_PER,r))+'\n';
+  e.target.disabled=true;try{await enqueuePrint(zpl,{tr:(alm?'ALMAC ':'BULTO ')+p,t:alm?'ALMAC':'BULTO',n:sheets});history.back()}catch(err){toast('Error: '+(err.code||err.message));e.target.disabled=false}
 });
 
 // ---------- Palets y embarques (global, bajo consumo de tráfico) ----------
@@ -3547,6 +3594,7 @@ async function palScan(id,raw){
 }
 function zplPalet(p){
   const st=pStores(p),tot=pBul(p),out=['^XA^CI28^PW812^LL609^LH0,0',`^FO40,18^A0N,84,66^FD${zs(p.num)}^FS`,`^FO40,110^BY3^BCN,84,N,N,N,A^FD${zs(p.num)}^FS`];
+  if(prUser())out.push(`^FO40,196^A0N,18,13^FB732,1,0,R^FDUsuario: ${zs(prUser())}^FS`);
   if(st.length>1)out.push('^FO560,24^GB220,56,56^FS','^FO574,34^A0N,38,30^FR^FDDIVISION^FS');
   out.push('^FO40,214^GB732,2,2^FS');
   st.slice(0,6).forEach((x,i)=>{const y=228+i*48;out.push(`^FO40,${y}^A0N,38,30^FD${zs(L(x.t)+(NAMES[x.t]?' - '+NAMES[x.t]:''))}^FS`,`^FO520,${y}^A0N,38,30^FB252,1,0,R^FD${x.b} bultos^FS`)});
