@@ -126,6 +126,18 @@ const sess=()=>{try{const v=JSON.parse(localStorage.getItem(KEY)||'null');return
 // Los palets de cliente (CL-xxxx, GP Juguetería) NO se reciben aquí: se reciben automáticamente con el correo "PACKING LIST #n RECIBIDO" en Consultas.
 const isCl=n=>/^CL-/i.test(String(n||''));
 const calc=e=>{let ncl=0;const cams=Object.entries(e.cam||{}).map(([cid,c])=>({cid,chofer:c.chofer||'',placa:c.placa||'',pals:Object.entries(c.pal||{}).filter(([,v])=>{if(isCl(v.n)){ncl++;return false}return true}).map(([id,v])=>({id,n:v.n,b:v.b||0})).sort((a,b)=>parseInt(dg(a.n))-parseInt(dg(b.n)))})).filter(c=>c.pals.length);const all=cams.flatMap(c=>c.pals);return{cams,all,np:all.length,nb:all.reduce((t,p)=>t+p.b,0),ncl}};
+// ---- Recepción AUTOMÁTICA: despachos que solo llevan palets de cliente (CL-). Se reciben con el correo .eml en Consultas (pm/{palet}/rcv), no aquí.
+const AUTO={};
+const allPal=e=>Object.values(e.cam||{}).flatMap(c=>Object.entries(c.pal||{}).map(([id,v])=>({id,n:v.n,b:v.b||0,cl:isCl(v.n)})));
+const autoCand=e=>!!(e&&e.desp&&!e.rec&&calc(e).np===0&&allPal(e).some(p=>p.cl));
+async function loadAuto(entries){
+  const need=entries.filter(([id,e])=>autoCand(e)&&!(id in AUTO));
+  await Promise.all(need.map(async([id,e])=>{
+    const pals=allPal(e);
+    if(e.rcv){AUTO[id]={ts:e.rcv.ts||0,by:e.rcv.by||'',man:!!e.rcv.man,pals};return}
+    const rv=await Promise.all(pals.map(p=>get(R(db,PB+'/pm/'+p.id+'/rcv')).then(s=>s.val()).catch(()=>null)));
+    if(rv.length&&rv.every(Boolean)){const last=rv.reduce((a,b)=>(b.ts||0)>=(a.ts||0)?b:a);AUTO[id]={ts:last.ts||0,by:last.by||'',pals}}
+    else AUTO[id]=null}))}
 const u2e=u=>{const uu=String(u).toLowerCase();return ['aojo'].includes(uu)?`${uu}@saks.com.pa`:`westlandoutletjugueterianivel+${uu}@gmail.com`};
 const salir=()=>{localStorage.removeItem(KEY);login()};
 const top=(t,s,b,x)=>`<div class="top">${b?'<button class="btn sm" id="bk">←</button>':''}<div class="ttl"><h1>${t}</h1><small>${s}</small></div>${x||''}<button class="btn sm" id="out">Salir</button></div>`;
@@ -201,9 +213,9 @@ async function consulta(){ses=sess();if(!ses)return login('La sesión venció. E
     const out=[];for(const [id,e] of Object.entries(EMQ)){if(!e.desp)continue;const m={};
       for(const c of Object.values(e.cam||{}))for(const pv of Object.values(c.pal||{}))for(const [k,v] of Object.entries(pv.tfs||{})){const tr=String(v.tr||'').replace(/\s+/g,'');if(!tr||!tr.includes(q))continue;const o=m[k]=m[k]||{tr,t:v.t||'',N:v.N||0,b:0,pz:v.pz||0,cn:v.cn||'',pals:[]};o.b+=v.c||0;o.pals.push(pv.n)}
       if(Object.keys(m).length)out.push({id,e,items:Object.values(m)})}
-    out.sort((a,b)=>(b.e.seq||0)-(a.e.seq||0));
+    out.sort((a,b)=>(b.e.seq||0)-(a.e.seq||0));try{await loadAuto(out.map(o=>[o.id,o.e]))}catch(x){}
     $('cm').textContent=out.length?`${out.length} despacho(s) con esa transferencia.`:'No se encontró esa transferencia en los últimos 120 días.';
-    $('cres').innerHTML=out.map(({id,e,items})=>`<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:16px">Despacho ${esc(e.num)}</b><span class="pill ${e.rec?'p-ok':'p-wn'}">${e.rec?'Recibido':'Por recibir'}</span></div><div class="msg" style="margin:2px 0 8px">Despachado ${fdt(e.desp.ts)}${e.rec?' · recibido '+fdt(e.rec.ts)+' por '+esc(e.rec.by):''}</div>${items.map(o=>`<div class="row" style="cursor:default;display:block"><div class="st">${esc(o.t)}${NAMES[o.t]?' · '+esc(NAMES[o.t]):''} · Transf. ${esc(o.tr)}${o.cn?` <span class="ds" style="display:inline">· ${esc(o.cn)}</span>`:''}</div><div class="ds">${o.b}${o.N&&o.b<o.N?' de '+o.N:''} bulto(s) en este despacho · ${fmt0(o.pz)} pzas</div><div style="margin-top:6px">${[...new Set(o.pals)].map(n=>`<span class="chp">${esc(n)}</span>`).join('')}</div><button class="btn sm" style="margin-top:8px" data-pr="${esc(id)}|${esc(o.tr)}">Ver productos</button></div>`).join('')}</div>`).join('')};
+    $('cres').innerHTML=out.map(({id,e,items})=>`<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:16px">Despacho ${esc(e.num)}</b><span class="pill ${(e.rec||AUTO[id])?'p-ok':'p-wn'}">${e.rec?'Recibido':AUTO[id]?'Recibido · auto':'Por recibir'}</span></div><div class="msg" style="margin:2px 0 8px">Despachado ${fdt(e.desp.ts)}${(e.rec||AUTO[id])?' · recibido '+fdt((e.rec||AUTO[id]).ts)+' por '+esc((e.rec||AUTO[id]).by):''}</div>${items.map(o=>`<div class="row" style="cursor:default;display:block"><div class="st">${esc(o.t)}${NAMES[o.t]?' · '+esc(NAMES[o.t]):''} · Transf. ${esc(o.tr)}${o.cn?` <span class="ds" style="display:inline">· ${esc(o.cn)}</span>`:''}</div><div class="ds">${o.b}${o.N&&o.b<o.N?' de '+o.N:''} bulto(s) en este despacho · ${fmt0(o.pz)} pzas</div><div style="margin-top:6px">${[...new Set(o.pals)].map(n=>`<span class="chp">${esc(n)}</span>`).join('')}</div><button class="btn sm" style="margin-top:8px" data-pr="${esc(id)}|${esc(o.tr)}">Ver productos</button></div>`).join('')}</div>`).join('')};
   $('cb').onclick=run;$('cq').onkeydown=ev=>{if(ev.key==='Enter')run()};$('cq').focus();
   $('a').onclick=async ev=>{const b=ev.target.closest('[data-pr]');if(!b)return;const [id,tr]=b.dataset.pr.split('|');b.disabled=true;b.textContent='Cargando…';
     try{if(!CTOK)CTOK=(await get(R(db,'meta_v1/comprador_cfg/token'))).val();if(!CTOK)throw 0;
@@ -219,18 +231,24 @@ document.addEventListener('click',e=>{const tr=e.target.closest('.tbl tr');if(!t
 async function list(){ses=sess();if(!ses)return login('La sesión venció. Entra otra vez.');
   $('a').onclick=null;$('a').innerHTML=top(tab==='r'?'Historial':'Por recibir',who(),1,'<button class="btn sm" id="rf">↻</button>')+'<div class="wrap"><div class="card msg" style="margin:0">Cargando despachos…</div></div>';$('out').onclick=salir;$('rf').onclick=list;$('bk').onclick=home;
   try{EM=(await get(query(R(db,PB+'/emb'),orderByKey(),startAt('e'+(Date.now()-45*864e5))))).val()||{}}catch(e){$('a').innerHTML+=`<div class="wrap"><div class="card msg err">No se pudo cargar: ${esc(e.code||e.message)}</div></div>`;return}
-  const A=Object.entries(EM),P=A.filter(([,e])=>e.desp&&!e.rec&&calc(e).np>0).sort((a,b)=>(b[1].seq||0)-(a[1].seq||0)),Rc=A.filter(([,e])=>e.rec).sort((a,b)=>(b[1].rec.ts||0)-(a[1].rec.ts||0));
+  for(const k in AUTO)if(!AUTO[k])delete AUTO[k];
+  const A=Object.entries(EM);try{await loadAuto(A)}catch(x){}
+  const rts=([id,e])=>e.rec?(e.rec.ts||0):((AUTO[id]&&AUTO[id].ts)||0);
+  const P=A.filter(([,e])=>e.desp&&!e.rec&&calc(e).np>0).sort((a,b)=>(b[1].seq||0)-(a[1].seq||0)),Rc=A.filter(([id,e])=>e.rec||AUTO[id]).sort((a,b)=>rts(b)-rts(a));
   const tt=P.reduce((t,[,e])=>{const c=calc(e);t.p+=c.np;t.b+=c.nb;return t},{p:0,b:0});
   const stat=(n,l)=>`<div><div class="big">${n}</div><div class="lbl">${l}</div></div>`;
   const rowP=([id,e])=>{const c=calc(e),pr=prog(id),m=pr?Object.values(pr.chk||{}).filter(Boolean).length:0;return`<div class="row" data-o="${id}"><div><div class="st">Despacho ${esc(e.num)}</div><div class="ds">${fdt((e.desp&&e.desp.ts)||e.ts)} · ${c.cams.length} camión(es) · ${esc(c.cams.map(k=>k.chofer).filter(Boolean).join(', '))}</div></div><div style="text-align:right"><span class="pill ${m?'p-wn':'p-no'}">${m?`En curso ${m}/${c.np}`:`${c.np} palets`}</span><div class="ds" style="margin-top:4px">${c.nb} bultos</div></div></div>`};
-  const rowR=([id,e])=>{const r=e.rec,nf=(r.falt||[]).length;return`<div class="row" data-r="${id}"><div><div class="st">Despacho ${esc(e.num)}</div><div class="ds">${esc(r.by)} · ${fdt(r.ts)}</div></div><div style="text-align:right"><span class="pill ${nf?'p-er':'p-ok'}">${nf?nf+' faltante(s)':'Completa'}</span><div class="ds" style="margin-top:4px">${r.mail==='ok'?'✉️ correo enviado':'✉️ sin enviar'}</div></div></div>`};
+  const rowA=([id,e])=>{const a=AUTO[id];return`<div class="row" data-r="${id}"><div><div class="st">Despacho ${esc(e.num)} <span class="pill p-wn" style="font-size:10px;padding:2px 7px;vertical-align:middle">CLIENTE</span></div><div class="ds">${esc(a.by||'—')} · ${fdt(a.ts)}</div></div><div style="text-align:right"><span class="pill p-ok">Completa</span><div class="ds" style="margin-top:4px">${a.man?'✋ recibido manual':'🤖 recepción automática'}</div></div></div>`};
+  const rowR=([id,e])=>{if(!e.rec)return rowA([id,e]);const r=e.rec,nf=(r.falt||[]).length;return`<div class="row" data-r="${id}"><div><div class="st">Despacho ${esc(e.num)}</div><div class="ds">${esc(r.by)} · ${fdt(r.ts)}</div></div><div style="text-align:right"><span class="pill ${nf?'p-er':'p-ok'}">${nf?nf+' faltante(s)':'Completa'}</span><div class="ds" style="margin-top:4px">${r.mail==='ok'?'✉️ correo enviado':'✉️ sin enviar'}</div></div></div>`};
   $('a').innerHTML=top(tab==='r'?'Historial':'Por recibir',who(),1,'<button class="btn sm" id="rf">↻</button>')+`<div class="wrap"><div class="card hero">${stat(P.length,'Despachos por recibir')}${stat(tt.p,'Palets')}${stat(tt.b,'Bultos')}</div>
   <div class="tabs"><button class="tab ${tab==='p'?'on':''}" data-t="p">📥 Por recibir (${P.length})</button><button class="tab ${tab==='r'?'on':''}" data-t="r">✅ Recibidos (${Rc.length})</button></div>
   ${tab==='p'?(P.length?P.map(rowP).join(''):'<div class="card msg">No hay despachos pendientes por recibir.</div>'):(Rc.length?Rc.map(rowR).join(''):'<div class="card msg">Aún no hay recepciones registradas.</div>')}</div>`;
   $('out').onclick=salir;$('rf').onclick=list;$('bk').onclick=home;
   $('a').onclick=ev=>{const t=ev.target.closest('[data-t]');if(t){tab=t.dataset.t;list();return}const d=ev.target.closest('[data-o]');if(d)return open(d.dataset.o);const r=ev.target.closest('[data-r]');if(r)recDet(r.dataset.r)}}
 
-function recDet(id){const e=EM[id],r=e.rec,c=calc(e),got=Object.keys(r.pals||{}).length,fl=c.all.filter(p=>!(r.pals&&r.pals[p.id])),d=r.t0?Math.max(1,Math.round((r.ts-r.t0)/6e4)):0;
+function recAuto(id){const e=EM[id],a=AUTO[id],tb=a.pals.reduce((t,p)=>t+p.b,0);
+  ask(`<h3>Despacho ${esc(e.num)}</h3><div class="msg">Recibió ${esc(a.by||'—')} · ${fdt(a.ts)}</div><div class="card" style="margin-top:10px"><b>${a.pals.length}</b> palet(s) de cliente · ${tb} bultos</div><div style="margin-top:8px">${a.pals.map(p=>`<span class="chp">${esc(p.n)} · ${p.b}</span>`).join('')}</div><div class="msg" style="margin-top:10px">${a.man?'✋ Marcado como recibido manualmente en Consultas.':'🤖 Recepción automática: se registró con el correo (.eml) de recibido de GP Juguetería. Estos palets de cliente no se reciben con la pistola.'}</div>`)}
+function recDet(id){if(AUTO[id]&&!EM[id].rec)return recAuto(id);const e=EM[id],r=e.rec,c=calc(e),got=Object.keys(r.pals||{}).length,fl=c.all.filter(p=>!(r.pals&&r.pals[p.id])),d=r.t0?Math.max(1,Math.round((r.ts-r.t0)/6e4)):0;
   ask(`<h3>Despacho ${esc(e.num)}</h3><div class="msg">Recibió ${esc(r.by)} · ${fdt(r.ts)}${d?' · '+d+' min':''}</div><div class="card" style="margin-top:10px"><b>${got}</b> de ${c.np} palets recibidos · ${c.nb} bultos esperados</div>
   ${fl.length?`<div class="msg err">Faltantes: ${fl.map(p=>esc(p.n)+' ('+p.b+' b.)').join(', ')}</div>`:'<div class="msg" style="color:var(--ok)">Sin diferencias</div>'}${(r.extra||[]).length?`<div class="msg err">Escaneados que no pertenecen: ${r.extra.map(esc).join(', ')}</div>`:''}${r.nota?`<div class="msg">Observaciones: ${esc(r.nota)}</div>`:''}<div class="msg">Correo: ${r.mail==='ok'?'enviado':'no se pudo enviar'}</div>`,
   !ses.adm?null:async()=>{try{await correo(e,c,r);await update(R(db,PB),{[`emb/${id}/rec/mail`]:'ok'});r.mail='ok';flash('ok','Correo reenviado',' ')}catch(x){flash('er','No se pudo enviar','Revisa la configuración de correo')}},'✉️ Reenviar correo')}

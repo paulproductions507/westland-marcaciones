@@ -397,7 +397,35 @@ td .bar,.tile .bar{height:16px!important;margin-top:4px!important}
 (function(){var d=document.documentElement,ua=navigator.userAgent||'',tc=(navigator.maxTouchPoints||0)>1;
 var mob=/iPhone|iPod|Android.+Mobile|Windows Phone|Mobile/i.test(ua),tab=!mob&&(/iPad|Tablet|Android/i.test(ua)||(/Macintosh/.test(ua)&&tc));
 d.dataset.device=mob?'mobile':tab?'tablet':'desktop';try{if(localStorage.getItem('conFxSeed')!=='slide-v25'){localStorage.setItem('conFx','slide');localStorage.setItem('conFxSeed','slide-v25')}d.dataset.fx=localStorage.getItem('conFx')||'slide'}catch(e){d.dataset.fx='slide'}try{if(localStorage.getItem('conNoMove')==='1')d.dataset.nomove='1'}catch(e){}
-function z(){var w=window.innerWidth;d.dataset.size=w<640?'s':w<1000?'m':'l'}z();window.addEventListener('resize',z)})();</script></head>
+function z(){var w=window.innerWidth;d.dataset.size=w<640?'s':w<1000?'m':'l'}z();window.addEventListener('resize',z)})();</script><style id="prScCss">
+.prov{position:fixed;inset:0;z-index:140;background:#000b;display:flex;align-items:center;justify-content:center;padding:20px;animation:prFade .2s both}
+.prcard{--c:var(--ok);width:100%;max-width:340px;max-height:88vh;overflow:auto;background:var(--bg2);color:var(--tx);border:1px solid var(--bd);border-radius:20px;padding:24px 20px 18px;text-align:center;box-shadow:0 18px 50px #000a;animation:prPop .45s cubic-bezier(.2,1.3,.4,1) both}
+.prcard.er{--c:var(--dn)}.prcard.wn{--c:var(--wn)}
+.pric{width:68px;height:68px;margin:0 auto 10px;display:block;animation:prPop .5s cubic-bezier(.2,1.4,.4,1) both}
+.prc{fill:none;stroke:var(--c);stroke-width:3;stroke-dasharray:151;stroke-dashoffset:151;animation:prDraw .6s .05s ease forwards}
+.prk{fill:none;stroke:var(--c);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:50;stroke-dashoffset:50;animation:prDraw .4s .5s ease forwards}
+.prt{font-weight:800;font-size:18px;margin:2px 0 4px}
+.prb{font-size:13px;color:var(--mt);line-height:1.45;text-align:left;margin:6px 0 2px}
+.prb b{color:var(--tx)}
+.prdf{text-align:left;font-size:12.5px;margin:6px 0;padding:8px 10px;border-radius:10px;background:var(--sf);border:1px solid var(--bd)}
+.prdf s{text-decoration:line-through;opacity:.6}.prdf em{font-style:normal;color:var(--ok);font-weight:800}
+.prbtns{display:flex;gap:8px;justify-content:center;margin-top:16px}
+.prok{background:var(--c);color:#04210f;border:0;border-radius:12px;padding:12px 38px;font:800 15px inherit;cursor:pointer;box-shadow:0 6px 18px #0004;min-width:120px}
+.prcard.er .prok{color:#fff}
+html[data-theme=light] .prcard.ok .prok{color:#fff}
+.prno{background:transparent;color:var(--tx);border:1px solid var(--bd);border-radius:12px;padding:12px 18px;font:700 14px inherit;cursor:pointer}
+@keyframes prFade{from{opacity:0}to{opacity:1}}
+@keyframes prPop{0%{opacity:0;transform:scale(.7)}100%{opacity:1;transform:scale(1)}}
+@keyframes prDraw{to{stroke-dashoffset:0}}
+.scov{position:fixed;inset:0;z-index:130;background:#000d;display:flex;align-items:center;justify-content:center;padding:12px}
+.scbox{width:100%;max-width:520px;max-height:96vh;overflow:auto;background:var(--bg2);color:var(--tx);border:1px solid var(--bd);border-radius:18px;padding:12px}
+.sctop{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.scmsg{font-size:12.5px;color:var(--mt);margin:6px 0 8px;line-height:1.4}
+.scvid{position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:4/3}
+.scvid video{width:100%;height:100%;object-fit:contain;display:block}
+.scg{position:absolute;inset:16% 5%;border:2px dashed #2de2c9cc;border-radius:10px;pointer-events:none}
+</style>
+</head>
 <body>
 <div id="stSheet" class="stsheet hide"><div class="stbox"><div class="sthd"><b>Filtrar por tienda</b><button type="button" id="stSheetX" class="btn sm">✕</button></div><div id="stSheetList"></div></div></div>
 <div id="cfgSheet" class="stsheet hide"><div class="stbox"><div class="sthd"><b>Configuración</b><button type="button" id="cfgX" class="btn sm">✕</button></div>
@@ -3242,12 +3270,22 @@ function paintPreview(box){
   if(typeof JsBarcode==='undefined')return;
   box.querySelectorAll('svg.bcg').forEach(s=>JsBarcode(s,s.dataset.code,{format:'CODE128',displayValue:false,height:44,width:2,margin:0}))
 }
+// ---------- Modal de resultado (mismo estilo/animación en oscuro y claro). El usuario siempre confirma con OK ----------
+function prModal({k='ok',title='',body='',ok='OK',no='',onOk=null}){
+  const old=document.getElementById('prOv');if(old)old.remove();
+  const ic=k==='ok'?'M14 27l8 8 16-17':k==='er'?'M18 18l16 16M34 18L18 34':'M26 14v17M26 38v1';
+  const o=document.createElement('div');o.id='prOv';o.className='prov';
+  o.innerHTML=`<div class="prcard ${k}" role="alertdialog"><svg class="pric" viewBox="0 0 52 52"><circle class="prc" cx="26" cy="26" r="24"/><path class="prk" d="${ic}"/></svg><div class="prt">${esc(title)}</div>${body?`<div class="prb">${body}</div>`:''}<div class="prbtns">${no?`<button type="button" class="prno" data-n>${esc(no)}</button>`:''}<button type="button" class="prok" data-y>${esc(ok)}</button></div></div>`;
+  document.body.appendChild(o);try{navigator.vibrate&&navigator.vibrate(k==='ok'?40:[80,60,80])}catch(e){}
+  o.addEventListener('click',e=>{const y=e.target.closest('[data-y]'),n=e.target.closest('[data-n]');if(!y&&!n)return;o.remove();if(y&&onOk)onOk()});
+  const b=o.querySelector('[data-y]');if(b)b.focus()
+}
 async function enqueuePrint(zpl,meta){
   const id='j'+Date.now()+Math.floor(Math.random()*1000);let off=null,tm=null;
   await set(R(db,`${PRQ}/pend/${id}`),{zpl,...meta,u:USER,by:NAME,ts:Date.now(),rec:RECIBO||''});
   toast('🖨 Enviado a la cola de impresión…');
-  off=onValue(R(db,`${PRQ}/done/${id}`),s=>{const v=s.val();if(!v)return;if(off)off();clearTimeout(tm);toast(v.status==='ok'?'✅ Impreso':'⚠️ No se pudo imprimir: '+v.status)});
-  tm=setTimeout(()=>{if(off)off();toast('⏳ La estación de impresión no responde. ¿Está abierta la PC con el puente?')},25000)
+  off=onValue(R(db,`${PRQ}/done/${id}`),s=>{const v=s.val();if(!v)return;if(off)off();clearTimeout(tm);v.status==='ok'?prModal({k:'ok',title:'Impresión exitosa.'}):prModal({k:'er',title:'No se pudo imprimir',body:esc(String(v.status))})});
+  tm=setTimeout(()=>{if(off)off();prModal({k:'wn',title:'La impresora no responde',body:'La estación de impresión no contestó. ¿Está abierta la PC con el puente de impresión?'})},25000)
 }
 // índice global de bultos (todos los recibos)
 async function loadRanges(){
@@ -3389,21 +3427,24 @@ const BL_PER=6,BL_MAX=30,BL_ALM_MAX=50;let BL=null,BLIDX=null;
 function blAlmL(b){
   const p=String(b.p||''),m=p.length*11+46,by=m*4<=752?4:(m*3<=752?3:2);
   // Fuente 0 de la Zebra (condensada en negrita, la misma de las etiquetas de la caja): sin ancho fijo para que mantenga su proporción original
-  const rt='REF: '+String(b.ref||''),rh=Math.min(60,Math.floor(740/(Math.max(1,rt.length)*0.52)));
+  const rt='REF: '+String(b.ref||''),rh=Math.min(68,Math.floor(740/(Math.max(1,rt.length)*0.52)));
   const ph=Math.min(70,Math.floor(740/(Math.max(1,p.length)*0.52)));
-  const n=String(b.d||'').length,dh=n<=56?48:(n<=70?40:34);
-  return{by,rt,rh,ph,dh}
+  // Descripción: UNA sola línea. Se elige la letra más grande que quepa en 752 pts (≈0.40·alto por carácter); si aun así no cabe, se corta
+  const ds=String(b.d||'').replace(/\s+/g,' ').trim();let dh=30,dt=ds;
+  for(const h of [48,40,34,30]){if(ds.length*h*0.40<=752){dh=h;break}}
+  const mx=Math.floor(752/(dh*0.40));if(dt.length>mx)dt=dt.slice(0,mx).trim();
+  return{by,rt,rh,ph,dh,dt}
 }
 const BL_ALM_RULES=[178,248,330,432,482,530,578];
 const prStamp=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes())};
 function blAlmZpl(b,q){
   const L=blAlmL(b),x=30,u=prUser(),out=['^XA^CI28^PW812^LL609^LH0,0'];
-  out.push(`^FO${x},16^BY${L.by}^BCN,100,N,N,N,A^FD${zs(b.p)}^FS`,`^FO${x},122^A0N,26^FD${zs(b.p)}^FS`);
+  out.push(`^FO${x},16^BY${L.by}^BCN,100,N,N,N,A^FD${zs(b.p)}^FS`,`^FO${x},124^AEN,28,15^FD${zs(b.p)}^FS`);
   if(u)out.push(`^FO300,116^A0N,30^FB482,1,0,R^FDUsuario: ${zs(u)}^FS`);
   out.push(`^FO300,148^A0N,24^FB482,1,0,R^FD${prStamp()}^FS`);
   BL_ALM_RULES.forEach(y=>out.push(`^FO${x},${y}^GB752,2,2^FS`));
-  out.push(`^FO${x},186^A0N,${L.rh}^FD${zs(L.rt)}^FS`,`^FO${x},254^A0N,${L.ph}^FD${zs(b.p)}^FS`,
-    `^FO${x},336^A0N,${L.dh}^FB752,2,0,L^FD${zs(b.d)}^FS`,
+  out.push(`^FO${x},181^A0N,${L.rh}^FD${zs(L.rt)}^FS`,`^FO${x},254^A0N,${L.ph}^FD${zs(b.p)}^FS`,
+    `^FO${x},${330+Math.round((102-L.dh)/2)-4}^A0N,${L.dh}^FB752,1,0,L^FD${zs(L.dt)}^FS`,
     `^FO${x},444^A0N,34^FDENVOLTURA: ${zs(b.env)}^FS`,`^FO430,444^A0N,34^FDEMPAQUE: ${zs(b.emp)}^FS`,
     `^FO${x},492^A0N,34^FDCOLORES: ${zs(b.col)}^FS`,`^FO${x},540^A0N,34^FDTALLAS: ${zs(b.tal)}^FS`);
   out.push(`^PQ${q}^XZ`);return out.join('\n')
@@ -3416,9 +3457,9 @@ function blAlmHTML(b){
   let h='<div class="lbw"><div class="lbp">';
   BL_ALM_RULES.forEach(y=>h+=`<div style="position:absolute;left:${x}px;top:${y}px;width:752px;height:2px;background:#444"></div>`);
   h+=`<svg class="bcg" data-code="${esc(b.p)}" data-by="${L.by}" data-h="100" style="position:absolute;left:${x}px;top:16px"></svg>`
-   +tx(x,122,26,b.p)+(u?rt(116,30,'Usuario: '+u):'')+rt(148,24,prStamp())
-   +tx(x,186,L.rh,L.rt)+tx(x,254,L.ph,b.p)
-   +`<div style="position:absolute;left:${x}px;top:336px;width:${Math.round(752/.84)}px;height:${L.dh*2}px;overflow:hidden;font:800 ${L.dh}px/${L.dh}px ${ff};${sx}">${esc(b.d)}</div>`
+   +`<div style="position:absolute;left:${x}px;top:124px;font:400 28px/28px 'DM Mono','Courier New',monospace;letter-spacing:.5px;white-space:nowrap">${esc(b.p)}</div>`+(u?rt(116,30,'Usuario: '+u):'')+rt(148,24,prStamp())
+   +tx(x,181,L.rh,L.rt)+tx(x,254,L.ph,b.p)
+   +`<div style="position:absolute;left:${x}px;top:${330+Math.round((102-L.dh)/2)-4}px;width:${Math.round(752/.84)}px;height:${L.dh+4}px;overflow:hidden;white-space:nowrap;font:800 ${L.dh}px/${L.dh}px ${ff};${sx}">${esc(L.dt)}</div>`
    +tx(x,444,34,'ENVOLTURA: '+(b.env||''))+tx(430,444,34,'EMPAQUE: '+(b.emp||''))+tx(x,492,34,'COLORES: '+(b.col||''))+tx(x,540,34,'TALLAS: '+(b.tal||''));
   return h+'</div></div>'
 }
@@ -3486,6 +3527,7 @@ async function openBul(){
   <div class="msg" id="blMsg" style="margin:4px 0 10px">${BL_MSG.rec}</div>
   <div class="lbl">Buscar producto</div><input class="f" id="blQ" type="text" inputmode="search" autocomplete="off" placeholder="Ej. 1637330">
   <div id="blRes" style="margin-top:8px"></div>
+  <button class="btn sm" id="blScan" type="button" style="width:100%;margin-top:6px">📷 Escanear pantalla del sistema (actualizar datos)</button>
   <div class="lbl" style="margin-top:6px">Producto</div><input class="f" id="blP" type="text" autocomplete="off" maxlength="30">
   <div class="lbl" style="margin-top:6px">Estilo</div><input class="f" id="blR" type="text" autocomplete="off" maxlength="30">
   <div class="lbl" style="margin-top:6px">Descripción</div><input class="f" id="blD" type="text" autocomplete="off" maxlength="80">
@@ -3507,6 +3549,7 @@ $('mlblBody').addEventListener('click',async e=>{
   if(e.target.id==='blX'){history.back();return}
   const tp=e.target.closest('[data-bltp]');if(tp&&BL){blSetMode(tp.dataset.bltp);return}
   const pk=e.target.closest('[data-blp]');if(pk&&BLIDX){const h=BLIDX.find(x=>x.p===pk.dataset.blp);if(h)blPick(h);return}
+  if(e.target.id==='blScan'){blScanOpen();return}
   if(e.target.id!=='blPrint')return;
   const p=(BL.p||'').trim();if(!p){toast('Escribe el producto');return}
   const q=BL.n;if(!(q>=1)){toast('Escribe una cantidad válida');return}
@@ -3516,6 +3559,84 @@ $('mlblBody').addEventListener('click',async e=>{
   let zpl='';if(alm)zpl=blAlmZpl(b,q)+'\n';else for(let r=q;r>0;r-=BL_PER)zpl+=blZpl(b,Math.min(BL_PER,r))+'\n';
   e.target.disabled=true;try{await enqueuePrint(zpl,{tr:(alm?'ALMAC ':'BULTO ')+p,t:alm?'ALMAC':'BULTO',n:sheets});history.back()}catch(err){toast('Error: '+(err.code||err.message));e.target.disabled=false}
 });
+
+// ---------- Escáner con cámara: lee la pantalla "Producto - INV" y actualiza la etiqueta SOLO si el producto coincide ----------
+const scNorm=s=>String(s||'').toUpperCase().replace(/\s+/g,' ').trim();
+function scWords(d){let w=d.words;if(!w||!w.length){w=[];(d.blocks||[]).forEach(b=>(b.paragraphs||[]).forEach(p=>(p.lines||[]).forEach(l=>(l.words||[]).forEach(x=>w.push(x)))))}return w}
+function scParse(W,raw){
+  const w=W.map(x=>({t:String(x.text||'').trim(),x0:x.bbox.x0,x1:x.bbox.x1,y0:x.bbox.y0,y1:x.bbox.y1})).filter(x=>x.t);
+  w.forEach(x=>{x.cx=(x.x0+x.x1)/2;x.cy=(x.y0+x.y1)/2;x.h=x.y1-x.y0});
+  const nz=s=>s.toLowerCase().replace(/[^a-z]/g,''),H={};
+  for(const x of w){const k=nz(x.t);
+    if(!H.cod&&/^cod/.test(k))H.cod=x;else if(!H.d&&/^desc/.test(k))H.d=x;else if(!H.col&&/^color/.test(k))H.col=x;
+    else if(!H.tal&&/^tall/.test(k))H.tal=x;else if(!H.ref&&/^ref/.test(k))H.ref=x;else if(!H.img&&/^imag/.test(k))H.img=x}
+  const hs=Object.entries(H);if(!H.cod||!H.d||hs.length<3)return{err:'No ubiqué el encabezado de la tabla (Cod. · Desc. · Colores · Ref. Supl. · Talla). Acércate un poco y que se vea completo.'};
+  const my=hs.map(([,x])=>x.cy).sort((a,b)=>a-b)[Math.floor(hs.length/2)],hh=hs.reduce((a,[,x])=>a+x.h,0)/hs.length;
+  const hd=hs.filter(([,x])=>Math.abs(x.cy-my)<hh*1.6);if(hd.length<3||!hd.some(([k])=>k==='cod'))return{err:'El encabezado salió desordenado. Vuelve a enfocar la tabla.'};
+  const hy=Math.max(...hd.map(([,x])=>x.y1)),hset=new Set(hd.map(([,x])=>x));
+  const dat=w.filter(x=>!hset.has(x)&&x.cy>hy&&x.cy<hy+hh*3.6);
+  if(!dat.length)return{err:'No vi la fila del producto debajo del encabezado.'};
+  const mh=dat.map(x=>x.h).sort((a,b)=>a-b)[Math.floor(dat.length/2)],gap=mh*2.5;
+  dat.sort((a,b)=>a.x0-b.x0);const cl=[];
+  for(const x of dat){const c=cl[cl.length-1];if(c&&x.x0-c.x1<gap){c.w.push(x);c.x1=Math.max(c.x1,x.x1)}else cl.push({w:[x],x0:x.x0,x1:x.x1})}
+  const out={};
+  for(const c of cl){const cx=(c.x0+c.x1)/2;let best=null,bd=1e9;for(const [k,x] of hd){const dd=Math.abs(x.cx-cx);if(dd<bd){bd=dd;best=k}}
+    c.w.sort((a,b)=>(Math.round(a.cy/(mh*.7))-Math.round(b.cy/(mh*.7)))||a.x0-b.x0);
+    out[best]=((out[best]?out[best]+' ':'')+c.w.map(x=>x.t).join(' ')).trim()}
+  let code=(out.cod||'').replace(/[Oo]/g,'0').replace(/[Il|]/g,'1').replace(/\D/g,'');
+  return{code,d:out.d||'',col:out.col||'',ref:(out.ref||'').replace(/\s+/g,''),tal:out.tal||'',raw}
+}
+function scDiff(r){
+  const cur={ref:BL.ref||'',d:BL.d||'',col:BL.col||'',tal:BL.tal||''},ch=[];
+  const F=[['ref','Estilo (Ref. Supl.)'],['d','Descripción'],['col','Colores'],['tal','Tallas']];
+  for(const [k,lb] of F){const nv=String(r[k]||'').trim();if(!nv)continue;const a=scNorm(cur[k]),b=scNorm(nv);if(a===b)continue;
+    // el sistema recorta la descripción a 25 letras: si lo leído es solo el inicio de la actual, no es un cambio
+    if(k==='d'&&a&&a.startsWith(b))continue;
+    ch.push({k,lb,from:cur[k],to:nv})}
+  return ch
+}
+function scClose(){const o=document.getElementById('scOv');if(!o)return;if(o._st)o._st.getTracks().forEach(x=>x.stop());o.remove()}
+function scApply(r){
+  const raw=String(r.raw||'').replace(/\D/g,''),cur=(BL.p||'').trim();
+  if(!r.code&&!(cur&&raw.includes(cur))){prModal({k:'er',title:'No leí el producto',body:'No pude leer el número de producto en la pantalla. Acércate, evita reflejos y vuelve a intentar.'});return}
+  const code=r.code||cur;
+  if(cur&&code!==cur&&!raw.includes(cur)){prModal({k:'er',title:'El producto no coincide',body:`La pantalla muestra el producto <b>${esc(code)}</b> y la etiqueta es del producto <b>${esc(cur)}</b>.<br><br>No se cambió nada. Si es el mismo producto, vuelve a escanear.`});return}
+  const ch=scDiff(r),first=!cur;
+  if(!ch.length&&!first){prModal({k:'ok',title:'Sin cambios',body:`El producto <b>${esc(cur)}</b> está igual que en el sistema.`});return}
+  const body=(first?`<div class="prdf">Producto: <em>${esc(code)}</em></div>`:'')+ch.map(c=>`<div class="prdf"><b>${esc(c.lb)}</b><br>${c.from?`<s>${esc(c.from)}</s> → `:'(vacío) → '}<em>${esc(c.to)}</em></div>`).join('');
+  prModal({k:'wn',title:`${ch.length+(first?1:0)} cambio(s) encontrados`,body:body+'<div class="prb">Revisa que lo leído sea correcto antes de aplicar.</div>',ok:'Aplicar',no:'Cancelar',onOk:()=>{
+    if(first){BL.p=code;$('blP').value=code}
+    ch.forEach(c=>{BL[c.k]=c.to;const el=$({ref:'blR',d:'blD',col:'blC',tal:'blT'}[c.k]);if(el)el.value=c.to});
+    blPaint();toast('✅ Etiqueta actualizada')}})
+}
+async function scRead(cv,msg){
+  const W=1800,k=Math.min(2,W/cv.width),c2=document.createElement('canvas');c2.width=Math.round(cv.width*k);c2.height=Math.round(cv.height*k);
+  const g=c2.getContext('2d');g.drawImage(cv,0,0,c2.width,c2.height);
+  const im=g.getImageData(0,0,c2.width,c2.height),d=im.data,hist=new Uint32Array(256);
+  for(let i=0;i<d.length;i+=4){const y=(d[i]*.299+d[i+1]*.587+d[i+2]*.114)|0;d[i]=y;hist[y]++}
+  const n=c2.width*c2.height;let a=0,lo=0,hi=255;for(let i=0;i<256;i++){a+=hist[i];if(a>n*.01){lo=i;break}}a=0;for(let i=255;i>=0;i--){a+=hist[i];if(a>n*.01){hi=i;break}}
+  const sc=255/Math.max(40,hi-lo);for(let i=0;i<d.length;i+=4){const v=Math.max(0,Math.min(255,(d[i]-lo)*sc));d[i]=d[i+1]=d[i+2]=v}g.putImageData(im,0,0);
+  msg('Cargando lector…');await loadLib('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',()=>window.Tesseract);
+  const wk=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text')msg('Leyendo… '+Math.round(m.progress*100)+'%')}});
+  try{await wk.setParameters({tessedit_pageseg_mode:'11'});const r=await wk.recognize(c2);return scParse(scWords(r.data),r.data.text||'')}finally{wk.terminate().catch(()=>{})}
+}
+async function blScanOpen(){
+  if(!BL||document.getElementById('scOv'))return;
+  const o=document.createElement('div');o.id='scOv';o.className='scov';
+  o.innerHTML=`<div class="scbox"><div class="sctop"><b>📷 Escanear pantalla</b><button class="btn sm" type="button" id="scX">Cerrar</button></div>
+  <div class="scmsg" id="scMsg">Apunta a la pantalla “Producto - INV”: que se vea el encabezado (Cod. · Desc. · Colores · Ref. Supl. · Talla) y la fila del producto. Sin reflejos y con la mano firme.</div>
+  <div class="scvid"><video id="scV" playsinline muted autoplay></video><div class="scg"></div></div>
+  <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" type="button" id="scGo" style="flex:2">📸 Leer</button><label class="btn" style="flex:1;text-align:center;cursor:pointer">📁 Foto<input type="file" id="scF" accept="image/*" capture="environment" style="display:none"></label></div></div>`;
+  document.body.appendChild(o);
+  const msg=s=>{const e=$('scMsg');if(e)e.textContent=s},v=$('scV');let busy=false;
+  const run=async cv=>{if(busy)return;busy=true;$('scGo').disabled=true;try{const r=await scRead(cv,msg);if(!document.getElementById('scOv'))return;if(r.err){msg('⚠ '+r.err);return}scClose();scApply(r)}catch(e){msg('⚠ '+(e&&e.message||e))}finally{busy=false;const b=$('scGo');if(b)b.disabled=false}};
+  try{o._st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});v.srcObject=o._st}
+  catch(e){msg('No se pudo abrir la cámara (permiso o navegador). Usa el botón “Foto”.')}
+  o.addEventListener('click',async e=>{
+    if(e.target.id==='scX'){scClose();return}
+    if(e.target.id==='scGo'){if(!v.videoWidth){msg('La cámara aún no está lista.');return}const cv=document.createElement('canvas');cv.width=v.videoWidth;cv.height=v.videoHeight;cv.getContext('2d').drawImage(v,0,0);run(cv)}});
+  $('scF').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{const bm=await createImageBitmap(f),cv=document.createElement('canvas');cv.width=bm.width;cv.height=bm.height;cv.getContext('2d').drawImage(bm,0,0);run(cv)}catch(x){msg('No pude abrir la foto.')}}
+}
 
 // ---------- Palets y embarques (global, bajo consumo de tráfico) ----------
 // Diseño: la lista solo escucha resúmenes pequeños (pm / emb, limitados a los más recientes).
