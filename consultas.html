@@ -424,6 +424,11 @@ html[data-theme=light] .prcard.ok .prok{color:#fff}
 .scvid{position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:4/3}
 .scvid video{width:100%;height:100%;object-fit:contain;display:block}
 .scg{position:absolute;inset:16% 5%;border:2px dashed #2de2c9cc;border-radius:10px;pointer-events:none}
+.scov{padding:0!important;align-items:stretch!important}
+.scbox{max-width:none!important;max-height:none!important;height:100%;border-radius:0!important;display:flex;flex-direction:column;padding:10px 10px calc(10px + env(safe-area-inset-bottom))!important}
+.scvid{flex:1;min-height:0;aspect-ratio:auto!important}
+.scvid video{object-fit:cover!important}
+.scbt{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-top:10px}
 </style>
 </head>
 <body>
@@ -3424,44 +3429,56 @@ $('btnPrTest').onclick=async()=>{
 // ---------- Etiqueta de bulto (libre, para todos los usuarios): estilo · producto · descripción · código de barras. 6 por hoja (2 × 3) ----------
 const BL_PER=6,BL_MAX=30,BL_ALM_MAX=50;let BL=null,BLIDX=null;
 // ---- Etiqueta de ALMACENAJE: una sola etiqueta grande (hoja completa 4x3) para pegar en la caja ----
-function blAlmL(b){
-  const p=String(b.p||''),m=p.length*11+46,by=m*4<=752?4:(m*3<=752?3:2);
-  // Fuente 0 de la Zebra (condensada en negrita, la misma de las etiquetas de la caja): sin ancho fijo para que mantenga su proporción original
-  const rt='REF: '+String(b.ref||''),rh=Math.min(68,Math.floor(740/(Math.max(1,rt.length)*0.52)));
-  const ph=Math.min(70,Math.floor(740/(Math.max(1,p.length)*0.52)));
-  // Descripción: UNA sola línea. Se elige la letra más grande que quepa en 752 pts (≈0.40·alto por carácter); si aun así no cabe, se corta
-  const ds=String(b.d||'').replace(/\s+/g,' ').trim();let dh=30,dt=ds;
-  for(const h of [48,40,34,30]){if(ds.length*h*0.40<=752){dh=h;break}}
-  const mx=Math.floor(752/(dh*0.40));if(dt.length>mx)dt=dt.slice(0,mx).trim();
-  return{by,rt,rh,ph,dh,dt}
-}
-const BL_ALM_RULES=[178,248,330,432,482,530,578];
 const prStamp=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes())};
+// ---- Réplica de la etiqueta original de GP (100x76 mm, 812x609 pts). Texto condensado dibujado como imagen: lo que ves en pantalla es lo que sale impreso.
+// Medidas tomadas de las fotos de la etiqueta original (altura de letra "cap", ancho relativo, líneas y márgenes).
+const AL_FF='Arial,Helvetica,"Liberation Sans",sans-serif',AL_RULES=[337,421,486,529,565,601],AL_X0=56,AL_X1=774;
+function blAlmBy(p){const m=String(p||'').length*11+46;return m*4<=700?4:(m*3<=700?3:2)}
+function blAlmCanvas(b){
+  const cv=document.createElement('canvas');cv.width=812;cv.height=609;const g=cv.getContext('2d');
+  g.fillStyle='#fff';g.fillRect(0,0,812,609);g.fillStyle='#000';g.textBaseline='alphabetic';
+  const font=(cap,bold,mono)=>{g.font=(bold?'bold ':'')+(cap/(mono?0.57:0.716))+'px '+(mono?'"Courier New",monospace':AL_FF)};
+  const mw=(s,cap,bold)=>{font(cap,bold);return g.measureText(s).width};
+  // texto condensado: sx = factor horizontal; thick = engrosado en puntos de impresora
+  const T=(s,x,base,cap,sx,o)=>{o=o||{};s=String(s==null?'':s);if(!s)return;const bold=o.bold!==false;font(cap,bold,o.mono);
+    let w=g.measureText(s).width*sx;if(o.maxW&&w>o.maxW){sx*=o.maxW/w;w=o.maxW}
+    g.save();g.translate(o.right?x-w:x,base);g.scale(sx,1);const th=o.thick||0;for(let d=0;d<=th;d++)g.fillText(s,d/sx,0);g.restore()};
+  const u=prUser();
+  T(b.p,44,187,15,1,{bold:false,mono:true});                       // número bajo el código de barras: normal, tenue
+  if(u)T('Usuario: '+u,AL_X1,187,14,.62,{right:true,thick:1});
+  T(prStamp(),AL_X1,206,12,.62,{right:true,bold:false,thick:1});
+  T('REF: '+(b.ref||''),58,335,72,.34,{thick:3,maxW:700});          // referencia: alta y angosta
+  T(b.p,AL_X0,417,61,.565,{thick:2,maxW:700});                      // producto
+  let d=String(b.d||'').replace(/\s+/g,' ').trim(),W=AL_X1-AL_X0-6,sx=.79;                  // descripción: una línea
+  const nat=mw(d,31,false);
+  if(nat*.79<=W)sx=.79;else if(nat*.58<=W)sx=W/nat;else{sx=.58;while(d.length>1&&mw(d,31,false)*.58>W)d=d.slice(0,-1).trim()}
+  T(d,AL_X0,471,31,sx,{bold:false,thick:1});
+  T('ENVOLTURA: '+(b.env||''),72,525,22,.64,{bold:false,thick:1,maxW:340});
+  T('EMPAQUE: '+(b.emp||''),438,525,22,.64,{bold:false,thick:1,maxW:330});
+  T('COLORES: '+(b.col||''),72,561,22,.64,{bold:false,thick:1,maxW:690});
+  T('TALLAS: '+(b.tal||''),72,597,22,.64,{bold:false,thick:1,maxW:690});
+  AL_RULES.forEach(y=>g.fillRect(AL_X0,y,AL_X1-AL_X0,2));
+  // binarizar (1 bit) para que la vista previa sea idéntica a la impresión
+  const im=g.getImageData(0,0,812,609),dd=im.data;for(let i=0;i<dd.length;i+=4){const v=dd[i]<150?0:255;dd[i]=dd[i+1]=dd[i+2]=v;dd[i+3]=255}g.putImageData(im,0,0);
+  return cv
+}
+// imagen -> ^GFA (hex con compresión ZPL: ":" repite la fila anterior, "," rellena de ceros)
+function gfaOf(w,h,black){
+  const bpr=Math.ceil(w/8);let prev='',out='';
+  for(let y=0;y<h;y++){let row='';for(let bx=0;bx<bpr;bx++){let v=0;for(let k=0;k<8;k++){v<<=1;const x=bx*8+k;if(x<w&&black(x,y))v|=1}row+=(v<16?'0':'')+v.toString(16).toUpperCase()}
+    if(row===prev){out+=':';continue}prev=row;
+    let r=row;while(r.length>=2&&r.endsWith('00'))r=r.slice(0,-2);
+    out+=r.length===0?',':(r.length<row.length?r+',':r)}
+  return `^GFA,${bpr*h},${bpr*h},${bpr},${out}`
+}
 function blAlmZpl(b,q){
-  const L=blAlmL(b),x=30,u=prUser(),out=['^XA^CI28^PW812^LL609^LH0,0'];
-  out.push(`^FO${x},16^BY${L.by}^BCN,100,N,N,N,A^FD${zs(b.p)}^FS`,`^FO${x},124^AEN,28,15^FD${zs(b.p)}^FS`);
-  if(u)out.push(`^FO300,116^A0N,30^FB482,1,0,R^FDUsuario: ${zs(u)}^FS`);
-  out.push(`^FO300,148^A0N,24^FB482,1,0,R^FD${prStamp()}^FS`);
-  BL_ALM_RULES.forEach(y=>out.push(`^FO${x},${y}^GB752,2,2^FS`));
-  out.push(`^FO${x},181^A0N,${L.rh}^FD${zs(L.rt)}^FS`,`^FO${x},254^A0N,${L.ph}^FD${zs(b.p)}^FS`,
-    `^FO${x},${330+Math.round((102-L.dh)/2)-4}^A0N,${L.dh}^FB752,1,0,L^FD${zs(L.dt)}^FS`,
-    `^FO${x},444^A0N,34^FDENVOLTURA: ${zs(b.env)}^FS`,`^FO430,444^A0N,34^FDEMPAQUE: ${zs(b.emp)}^FS`,
-    `^FO${x},492^A0N,34^FDCOLORES: ${zs(b.col)}^FS`,`^FO${x},540^A0N,34^FDTALLAS: ${zs(b.tal)}^FS`);
-  out.push(`^PQ${q}^XZ`);return out.join('\n')
+  const cv=blAlmCanvas(b),px=cv.getContext('2d').getImageData(0,0,812,609).data;
+  const gf=gfaOf(812,609,(x,y)=>px[(y*812+x)*4]<128),by=blAlmBy(b.p);
+  return ['^XA^CI28^PW812^LL609^LH0,0','^FO0,0'+gf+'^FS',`^FO44,25^BY${by}^BCN,128,N,N,N,A^FD${zs(b.p)}^FS`,`^PQ${q}^XZ`].join('\n')
 }
 function blAlmHTML(b){
-  // La vista previa imita la fuente condensada de la Zebra con una tipografía angosta; la etiqueta impresa usa la fuente real de la impresora
-  const L=blAlmL(b),x=30,u=prUser(),ff="'Arial Narrow','Roboto Condensed',Arial,sans-serif",sx='transform:scaleX(.84);transform-origin:0 0;',
-    tx=(l,y,fs,txt)=>`<div style="position:absolute;left:${l}px;top:${y}px;font:800 ${fs}px/${fs}px ${ff};white-space:nowrap;${sx}">${esc(txt)}</div>`,
-    rt=(y,fs,txt)=>`<div style="position:absolute;left:300px;top:${y}px;width:482px;text-align:right;font:800 ${fs}px/${fs}px ${ff};white-space:nowrap;transform:scaleX(.84);transform-origin:100% 0">${esc(txt)}</div>`;
-  let h='<div class="lbw"><div class="lbp">';
-  BL_ALM_RULES.forEach(y=>h+=`<div style="position:absolute;left:${x}px;top:${y}px;width:752px;height:2px;background:#444"></div>`);
-  h+=`<svg class="bcg" data-code="${esc(b.p)}" data-by="${L.by}" data-h="100" style="position:absolute;left:${x}px;top:16px"></svg>`
-   +`<div style="position:absolute;left:${x}px;top:124px;font:400 28px/28px 'DM Mono','Courier New',monospace;letter-spacing:.5px;white-space:nowrap">${esc(b.p)}</div>`+(u?rt(116,30,'Usuario: '+u):'')+rt(148,24,prStamp())
-   +tx(x,181,L.rh,L.rt)+tx(x,254,L.ph,b.p)
-   +`<div style="position:absolute;left:${x}px;top:${330+Math.round((102-L.dh)/2)-4}px;width:${Math.round(752/.84)}px;height:${L.dh+4}px;overflow:hidden;white-space:nowrap;font:800 ${L.dh}px/${L.dh}px ${ff};${sx}">${esc(L.dt)}</div>`
-   +tx(x,444,34,'ENVOLTURA: '+(b.env||''))+tx(430,444,34,'EMPAQUE: '+(b.emp||''))+tx(x,492,34,'COLORES: '+(b.col||''))+tx(x,540,34,'TALLAS: '+(b.tal||''));
-  return h+'</div></div>'
+  const cv=blAlmCanvas(b);
+  return `<div class="lbw"><div class="lbp"><img src="${cv.toDataURL('image/png')}" style="position:absolute;left:0;top:0;width:812px;height:609px"><svg class="bcg" data-code="${esc(b.p)}" data-by="${blAlmBy(b.p)}" data-h="128" style="position:absolute;left:44px;top:25px"></svg></div></div>`
 }
 const blNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 function blIndex(){const m=new Map();Object.values(RECS).forEach(r=>(r.items||[]).forEach(it=>{if(!it||!it.p)return;const k=String(it.p),o=m.get(k);if(!o)m.set(k,{p:k,ref:it.ref||'',d:it.d||''});else{if(!o.ref&&it.ref)o.ref=it.ref;if(!o.d&&it.d)o.d=it.d}}));return [...m.values()]}
@@ -3570,19 +3587,26 @@ function scParse(W,raw){
   for(const x of w){const k=nz(x.t);
     if(!H.cod&&/^cod/.test(k))H.cod=x;else if(!H.d&&/^desc/.test(k))H.d=x;else if(!H.col&&/^color/.test(k))H.col=x;
     else if(!H.tal&&/^tall/.test(k))H.tal=x;else if(!H.ref&&/^ref/.test(k))H.ref=x;else if(!H.img&&/^imag/.test(k))H.img=x}
-  const hs=Object.entries(H);if(!H.cod||!H.d||hs.length<3)return{err:'No ubiqué el encabezado de la tabla (Cod. · Desc. · Colores · Ref. Supl. · Talla). Acércate un poco y que se vea completo.'};
+  const hs=Object.entries(H);if(!H.cod||!H.d||hs.length<3)return{err:'No ubiqué el encabezado de la tabla (Cod. · Desc. · Colores · Ref. Supl. · Talla). Que se vea completo y derecho.'};
   const my=hs.map(([,x])=>x.cy).sort((a,b)=>a-b)[Math.floor(hs.length/2)],hh=hs.reduce((a,[,x])=>a+x.h,0)/hs.length;
-  const hd=hs.filter(([,x])=>Math.abs(x.cy-my)<hh*1.6);if(hd.length<3||!hd.some(([k])=>k==='cod'))return{err:'El encabezado salió desordenado. Vuelve a enfocar la tabla.'};
-  const hy=Math.max(...hd.map(([,x])=>x.y1)),hset=new Set(hd.map(([,x])=>x));
-  const dat=w.filter(x=>!hset.has(x)&&x.cy>hy&&x.cy<hy+hh*3.6);
-  if(!dat.length)return{err:'No vi la fila del producto debajo del encabezado.'};
-  const mh=dat.map(x=>x.h).sort((a,b)=>a-b)[Math.floor(dat.length/2)],gap=mh*2.5;
-  dat.sort((a,b)=>a.x0-b.x0);const cl=[];
-  for(const x of dat){const c=cl[cl.length-1];if(c&&x.x0-c.x1<gap){c.w.push(x);c.x1=Math.max(c.x1,x.x1)}else cl.push({w:[x],x0:x.x0,x1:x.x1})}
-  const out={};
-  for(const c of cl){const cx=(c.x0+c.x1)/2;let best=null,bd=1e9;for(const [k,x] of hd){const dd=Math.abs(x.cx-cx);if(dd<bd){bd=dd;best=k}}
-    c.w.sort((a,b)=>(Math.round(a.cy/(mh*.7))-Math.round(b.cy/(mh*.7)))||a.x0-b.x0);
-    out[best]=((out[best]?out[best]+' ':'')+c.w.map(x=>x.t).join(' ')).trim()}
+  const hd=hs.filter(([,x])=>Math.abs(x.cy-my)<hh*1.8);if(hd.length<3||!hd.some(([k])=>k==='cod'))return{err:'El encabezado salió desordenado. Vuelve a enfocar la tabla.'};
+  // "Ref. Supl." viene en dos líneas: "Supl." forma parte del encabezado de Ref
+  const hb={};hd.forEach(([k,x])=>hb[k]={x0:x.x0,x1:x.x1,y1:x.y1});
+  const sp=w.find(x=>hb.ref&&/^supl/.test(nz(x.t))&&Math.abs(x.cx-(hb.ref.x0+hb.ref.x1)/2)<hh*3&&x.cy>my-hh);
+  if(sp){hb.ref.x0=Math.min(hb.ref.x0,sp.x0);hb.ref.x1=Math.max(hb.ref.x1,sp.x1);hb.ref.y1=Math.max(hb.ref.y1,sp.y1)}
+  const hy=Math.max(...Object.values(hb).map(x=>x.y1)),hset=new Set([...hd.map(([,x])=>x),sp].filter(Boolean));
+  // filas de datos: líneas consecutivas debajo del encabezado (la descripción puede ocupar 2 o 3 líneas)
+  const cand=w.filter(x=>!hset.has(x)&&x.cy>hy).sort((a,b)=>a.cy-b.cy);
+  if(!cand.length)return{err:'No vi la fila del producto debajo del encabezado.'};
+  const mh=Math.max(10,cand.slice(0,4).map(x=>x.h).sort((a,b)=>a-b)[0]);
+  if(cand[0].cy-hy>hh*3.5)return{err:'No vi la fila del producto debajo del encabezado.'};
+  const lines=[];for(const x of cand){const l=lines[lines.length-1];if(l&&Math.abs(x.cy-l.cy)<mh*.7){l.w.push(x);l.cy=(l.cy*(l.w.length-1)+x.cy)/l.w.length}else lines.push({cy:x.cy,w:[x]})}
+  const dat=[];let last=null;for(const l of lines){if(last!==null&&l.cy-last>mh*2.2)break;dat.push(...l.w);last=l.cy}
+  // límites de columna: punto medio entre el final de un encabezado y el inicio del siguiente
+  const cols=Object.entries(hb).sort((a,b)=>a[1].x0-b[1].x0),bd=[];
+  for(let i=0;i<cols.length-1;i++)bd.push((cols[i][1].x1+cols[i+1][1].x0)/2);
+  const out={};dat.sort((a,b)=>(Math.round(a.cy/(mh*.7))-Math.round(b.cy/(mh*.7)))||a.x0-b.x0);
+  for(const x of dat){let i=0;while(i<bd.length&&x.cx>bd[i])i++;const k=cols[i][0];out[k]=((out[k]?out[k]+' ':'')+x.t).trim()}
   let code=(out.cod||'').replace(/[Oo]/g,'0').replace(/[Il|]/g,'1').replace(/\D/g,'');
   return{code,d:out.d||'',col:out.col||'',ref:(out.ref||'').replace(/\s+/g,''),tal:out.tal||'',raw}
 }
@@ -3624,20 +3648,20 @@ async function blScanOpen(){
   if(!BL||document.getElementById('scOv'))return;
   const o=document.createElement('div');o.id='scOv';o.className='scov';
   o.innerHTML=`<div class="scbox"><div class="sctop"><b>📷 Escanear pantalla</b><button class="btn sm" type="button" id="scX">Cerrar</button></div>
-  <div class="scmsg" id="scMsg">Apunta a la pantalla “Producto - INV”: que se vea el encabezado (Cod. · Desc. · Colores · Ref. Supl. · Talla) y la fila del producto. Sin reflejos y con la mano firme.</div>
-  <div class="scvid"><video id="scV" playsinline muted autoplay></video><div class="scg"></div></div>
-  <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" type="button" id="scGo" style="flex:2">📸 Leer</button><label class="btn" style="flex:1;text-align:center;cursor:pointer">📁 Foto<input type="file" id="scF" accept="image/*" capture="environment" style="display:none"></label></div></div>`;
+  <div class="scmsg" id="scMsg">Opción 1: abre una <b>captura de pantalla</b> de “Producto - INV” (botón 🖼 Galería): es la más precisa. Opción 2: apunta la cámara a la pantalla con la tabla completa (Cod. · Desc. · Colores · Ref. Supl. · Talla).</div>
+  <div class="scvid"><video id="scV" playsinline muted autoplay></video></div>
+  <div class="scbt"><button class="btn pri" type="button" id="scGo">📸 Leer con cámara</button><label class="btn" style="text-align:center;cursor:pointer">🖼 Galería / captura<input type="file" id="scF" accept="image/*" style="display:none"></label></div></div>`;
   document.body.appendChild(o);
-  const msg=s=>{const e=$('scMsg');if(e)e.textContent=s},v=$('scV');let busy=false;
-  const run=async cv=>{if(busy)return;busy=true;$('scGo').disabled=true;try{const r=await scRead(cv,msg);if(!document.getElementById('scOv'))return;if(r.err){msg('⚠ '+r.err);return}scClose();scApply(r)}catch(e){msg('⚠ '+(e&&e.message||e))}finally{busy=false;const b=$('scGo');if(b)b.disabled=false}};
-  try{o._st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});v.srcObject=o._st}
-  catch(e){msg('No se pudo abrir la cámara (permiso o navegador). Usa el botón “Foto”.')}
-  o.addEventListener('click',async e=>{
+  const msg=s=>{const e=$('scMsg');if(e)e.innerHTML=s},v=$('scV');let busy=false;
+  const run=async cv=>{if(busy)return;busy=true;$('scGo').disabled=true;try{const r=await scRead(cv,msg);if(!document.getElementById('scOv'))return;if(r.err){msg('⚠ '+esc(r.err));return}scClose();scApply(r)}catch(e){msg('⚠ '+esc(e&&e.message||String(e)))}finally{busy=false;const b=$('scGo');if(b)b.disabled=false}};
+  try{o._st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:2560},height:{ideal:1440}},audio:false});v.srcObject=o._st;
+    try{const tr=o._st.getVideoTracks()[0],cp=tr.getCapabilities?tr.getCapabilities():{};if(cp.focusMode&&cp.focusMode.includes('continuous'))await tr.applyConstraints({advanced:[{focusMode:'continuous'}]})}catch(x){}}
+  catch(e){msg('No se pudo abrir la cámara (permiso o navegador). Usa <b>🖼 Galería / captura</b>.')}
+  o.addEventListener('click',e=>{
     if(e.target.id==='scX'){scClose();return}
     if(e.target.id==='scGo'){if(!v.videoWidth){msg('La cámara aún no está lista.');return}const cv=document.createElement('canvas');cv.width=v.videoWidth;cv.height=v.videoHeight;cv.getContext('2d').drawImage(v,0,0);run(cv)}});
-  $('scF').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{const bm=await createImageBitmap(f),cv=document.createElement('canvas');cv.width=bm.width;cv.height=bm.height;cv.getContext('2d').drawImage(bm,0,0);run(cv)}catch(x){msg('No pude abrir la foto.')}}
+  $('scF').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{const bm=await createImageBitmap(f),cv=document.createElement('canvas');cv.width=bm.width;cv.height=bm.height;cv.getContext('2d').drawImage(bm,0,0);run(cv)}catch(x){msg('No pude abrir la imagen.')}}
 }
-
 // ---------- Palets y embarques (global, bajo consumo de tráfico) ----------
 // Diseño: la lista solo escucha resúmenes pequeños (pm / emb, limitados a los más recientes).
 // El detalle de bultos (pb) solo se escucha del palet que está abierto, y se suelta al cerrarlo.
