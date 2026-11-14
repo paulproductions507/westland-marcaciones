@@ -2153,17 +2153,17 @@ const upcOf=(()=>{let M=null;return p=>{if(!M){M={};for(const id of Object.keys(
 
 /* ---------- lectura del PDF "Surtido" del Gestor de Bodega (pantalla que se imprime) ---------- */
 function parseGestor(t){
-  if(!/Solic\s+Reser\s+Desp\s+Bultos\s+Etiquetar/i.test(t))return null;
+  if(!(/Solic\w*\s+Reser\w*\s+Desp/i.test(t)||/Prod\s*\/\s*Ref\s+INV/i.test(t)))return null; /* tolerante: el Pocket (Android) imprime la tabla más angosta y a veces sin Bultos/Etiquetar */
   const g=re=>{const m=t.match(re);return m?m[1].trim():''};
   const tr=g(/Transferencia\s*#?\s*(\d{5,})/i),fs=g(/Fecha solicitad[oa]:?\s*([\d\/]+\s+[\d:]+\s*[AP]?M?)/i),org=g(/Origen\s*(\[.*?\].*?)\s+Destino/i),des=g(/Destino\s*(\[.*?\].*?)\s+Nota/i),nota=g(/Nota:?\s*(.*?)\s*(?:C[óo]d\.?\s*BARRA|$)/i),tot=+g(/Total unidades surtidas\s*(\d+)/i)||0;
-  const h=t.search(/Descripci[óo]n\s+Ubicaci[óo]n/i);if(!tr||h<0)return null;
+  let h=t.search(/Descripci[óo]n\s+Ubicaci[óo]n/i);if(h<0)h=t.search(/Prod\s*\/\s*Ref/i);if(!tr||h<0)return null;
   let b=t.slice(h).replace(/^Descripci[óo]n\s+Ubicaci[óo]n/i,'');const e=b.search(/REBAJA|Total unidades/i);if(e>0)b=b.slice(0,e);
-  const re=/(?:([A-Z0-9][A-Z0-9\-\/\.]{3,})\s+)?(?<!\d)(\d{7})(?!\d)\s+(-?\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)(?=\s|$)/g,ms=[...b.matchAll(re)];
+  const re=/(?:([A-Z0-9][A-Z0-9\-\/\.]{3,})\s+)?(?<!\d)(\d{7})(?!\d)\s+(-?\d+)\s+(\d+)\s+(\d+)(?:\s+(\d+))?(?:\s+(\d+))?(?=\s|$)/g,ms=[...b.matchAll(re)]; /* Desp y Bultos son cajitas editables: en el PDF del Pocket pueden venir vacías */
   const lines=ms.map((m,i)=>{let rest=b.slice(m.index+m[0].length,ms[i+1]?ms[i+1].index:b.length).trim(),ub='';
     const u=rest.match(/^(.*?)\s*((?:[A-Z0-9]{1,8}-\s*){3,}[A-Z0-9]*)(?:\s.*)?$/);
     if(u&&/\d-\s*[A-Z]{3,}/.test(u[2]+' ')){rest=u[1].trim();ub=u[2].replace(/\s+/g,'').replace(/-[A-Z]$/,'-')}
     if(!ub)rest=rest.replace(/\s+(?:[A-Z]\s+){0,3}%(?:\s+[A-Z])?$/,'').trim();
-    return{ref:m[1]||'',p:m[2],inv:+m[3],sol:+m[4],res:+m[5],desp:+m[6],bul:+m[7],pr:0,ub,d:rest}});
+    return{ref:m[1]||'',p:m[2],inv:+m[3],sol:+m[4],res:+m[5],desp:m[7]==null?0:+(m[6]||0),bul:m[7]==null?+(m[6]||0):+m[7],pr:0,ub,d:rest.replace(/[▼▲\s]+$/,'').trim()}}); /* si solo viene un número tras Reser, es Bultos (Desp vacío) */
   if(!lines.length)return null;
   const ts=parseTs(fs),dd=lines.reduce((a,l)=>a+l.desp,0);
   return{tr,ts,tsSrc:'sol',tsSol:ts,tsAuto:ts,sur:'',surRaw:'',suru:'',org,des,nota,t:guessStore(des)||guessStore(nota),lines,tot,src:'auto',det:0,rc:'',bul:lines.reduce((a,l)=>a+l.bul,0),pend:dd===0?1:0}}
@@ -2475,12 +2475,12 @@ async function auReadFile(f){
   if((!a.tr||!a.lines.length)&&ROWTXT&&txt!==ROWTXT){const a2=parseTransfer(ROWTXT);if(a2.tr&&a2.lines.length>(a.lines||[]).length)a=a2}
   if(!a.tr){const fm=String(f.name||'').match(/(?:^|[^\d])(\d{7,9})(?!\d)/);if(fm)a.tr=fm[1]}
   const sm=String(f.name||'').match(/^(S\d{1,2})[_\-\s]/i);if(sm&&!a.t)a.t=sm[1].toUpperCase();
-  a.file=f.name;a.pg=LASTPG;return a}
+  a.file=f.name;a.pg=LASTPG;a.raw=ROWTXT&&ROWTXT.length>txt.length/2&&!a.lines.length?(txt.slice(0,120)+' ‖ '+ROWTXT.slice(0,120)):txt;return a}
 async function auUploadMany(fl){
   if(!fl.length)return;await auLoadDir();AUQUE=[];const ok=[],dup=[],bad=[];
   for(let i=0;i<fl.length;i++){const f=fl[i];$('auMsg').textContent=`Leyendo ${i+1} de ${fl.length}: ${f.name}…`;
     try{const a=await auReadFile(f);
-      if(!a.tr||!a.lines.length){bad.push(`${f.name}: no pude leer ${!a.tr?'el número de transferencia':'las líneas'}`);continue}
+      if(!a.tr||!a.lines.length){bad.push(`${f.name}: no pude leer ${!a.tr?'el número de transferencia':'las líneas'} (leí ${(a.raw||'').length} caracteres: “${String(a.raw||'').replace(/\s+/g,' ').slice(0,220)}”)`);continue}
       if(a.src==='tun'){bad.push(`${f.name}: es un documento de Túnel (súbelo en Transferencias → Túnel)`);continue}
       a.src='auto';auMapSur(a);
       if(a.pend&&a.t){const r=await auSavePend(a);if(r==='ok'||r==='okm'||r==='mine')ok.push(a.tr);else if(r==='inc'||r==='anu'||r==='sur')bad.push(`${a.tr}: ya fue ${r==='inc'?'chequeada y despachada':r==='sur'?'surtida (falta chequear)':'anulada'}, no se puede volver a cargar`);else dup.push(a.tr)}
@@ -3445,8 +3445,8 @@ function blAlmCanvas(b){
     g.save();g.translate(o.right?x-w:x,base);g.scale(sx,1);const th=o.thick||0;for(let d=0;d<=th;d++)g.fillText(s,d/sx,0);g.restore()};
   const u=prUser();
   T(b.p,44,187,15,1,{bold:false,mono:true});                       // número bajo el código de barras: normal, tenue
-  if(u)T('Usuario: '+u,AL_X1,187,14,.62,{right:true,thick:1});
-  T(prStamp(),AL_X1,206,12,.62,{right:true,bold:false,thick:1});
+  if(u)T('Usuario: '+u,AL_X1-4,192,23,.78,{right:true,thick:1,maxW:340});   // usuario: más grande; al ser alineado a la derecha crece hacia la izquierda
+  T(prStamp(),AL_X1-4,222,20,.78,{right:true,bold:false,thick:1,maxW:340});
   T('REF: '+(b.ref||''),58,335,72,.34,{thick:3,maxW:700});          // referencia: alta y angosta
   T(b.p,AL_X0,417,61,.565,{thick:2,maxW:700});                      // producto
   let d=String(b.d||'').replace(/\s+/g,' ').trim(),W=AL_X1-AL_X0-6,sx=.79;                  // descripción: una línea
@@ -3581,15 +3581,19 @@ $('mlblBody').addEventListener('click',async e=>{
 const scNorm=s=>String(s||'').toUpperCase().replace(/\s+/g,' ').trim();
 function scWords(d){let w=d.words;if(!w||!w.length){w=[];(d.blocks||[]).forEach(b=>(b.paragraphs||[]).forEach(p=>(p.lines||[]).forEach(l=>(l.words||[]).forEach(x=>w.push(x)))))}return w}
 function scParse(W,raw){
-  const w=W.map(x=>({t:String(x.text||'').trim(),x0:x.bbox.x0,x1:x.bbox.x1,y0:x.bbox.y0,y1:x.bbox.y1})).filter(x=>x.t);
+  /* el OCR pega palabras con el borde de la tabla ("Talla.|Imagen", "Colores.|"): se parten en la barra */
+  const w=[];W.forEach(x=>{const t=String(x.text||'').trim();if(!t)return;const ps=t.split('|').filter(z=>z.trim()),tl=t.replace(/\|/g,'').length||1;
+    if(t.indexOf('|')<0||ps.length<=1){const q=ps.length?ps[0].trim():'';if(q&&/[A-Za-z0-9]/.test(q))w.push({t:q,cf:x.confidence,x0:x.bbox.x0,x1:x.bbox.x1,y0:x.bbox.y0,y1:x.bbox.y1});return}
+    let c=x.bbox.x0;const wd=x.bbox.x1-x.bbox.x0;ps.forEach(z=>{const q=z.trim(),l=wd*q.length/tl;if(/[A-Za-z0-9]/.test(q))w.push({t:q,x0:c,x1:c+l,y0:x.bbox.y0,y1:x.bbox.y1});c+=l})});
   w.forEach(x=>{x.cx=(x.x0+x.x1)/2;x.cy=(x.y0+x.y1)/2;x.h=x.y1-x.y0});
-  const nz=s=>s.toLowerCase().replace(/[^a-z]/g,''),H={};
-  for(const x of w){const k=nz(x.t);
-    if(!H.cod&&/^cod/.test(k))H.cod=x;else if(!H.d&&/^desc/.test(k))H.d=x;else if(!H.col&&/^color/.test(k))H.col=x;
-    else if(!H.tal&&/^tall/.test(k))H.tal=x;else if(!H.ref&&/^ref/.test(k))H.ref=x;else if(!H.img&&/^imag/.test(k))H.img=x}
-  const hs=Object.entries(H);if(!H.cod||!H.d||hs.length<3)return{err:'No ubiqué el encabezado de la tabla (Cod. · Desc. · Colores · Ref. Supl. · Talla). Que se vea completo y derecho.'};
+  w.forEach(x=>{x.cx=(x.x0+x.x1)/2;x.cy=(x.y0+x.y1)/2;x.h=x.y1-x.y0});
+  const nz=s=>s.toLowerCase().replace(/0/g,'o').replace(/[1|]/g,'l').replace(/5/g,'s').replace(/[^a-z]/g,''),H={};
+  for(const x of w){const k=nz(x.t);if(k.length<2)continue;
+    if(!H.cod&&(/^cod/.test(k)||k==='cd'||k==='cod'))H.cod=x;else if(!H.d&&(/^desc|^dese|^desg|^dcsc/.test(k)||k==='desc'))H.d=x;else if(!H.col&&/^colo|^colr|^co[l]or/.test(k))H.col=x;
+    else if(!H.tal&&/^tal[l]?a?$|^tall/.test(k))H.tal=x;else if(!H.ref&&/^ref/.test(k))H.ref=x;else if(!H.img&&/^i?mag|^ima/.test(k))H.img=x}
+  const hs=Object.entries(H);if(!H.cod||hs.length<3)return scLoose(w,raw,'No ubiqué el encabezado de la tabla (Cod. · Desc. · Colores · Ref. Supl. · Talla). Que se vea completo y derecho.');
   const my=hs.map(([,x])=>x.cy).sort((a,b)=>a-b)[Math.floor(hs.length/2)],hh=hs.reduce((a,[,x])=>a+x.h,0)/hs.length;
-  const hd=hs.filter(([,x])=>Math.abs(x.cy-my)<hh*1.8);if(hd.length<3||!hd.some(([k])=>k==='cod'))return{err:'El encabezado salió desordenado. Vuelve a enfocar la tabla.'};
+  const hd=hs.filter(([,x])=>Math.abs(x.cy-my)<hh*2.6);if(hd.length<3||!hd.some(([k])=>k==='cod'))return scLoose(w,raw,'El encabezado salió desordenado. Vuelve a enfocar la tabla.');
   // "Ref. Supl." viene en dos líneas: "Supl." forma parte del encabezado de Ref
   const hb={};hd.forEach(([k,x])=>hb[k]={x0:x.x0,x1:x.x1,y1:x.y1});
   const sp=w.find(x=>hb.ref&&/^supl/.test(nz(x.t))&&Math.abs(x.cx-(hb.ref.x0+hb.ref.x1)/2)<hh*3&&x.cy>my-hh);
@@ -3607,9 +3611,19 @@ function scParse(W,raw){
   for(let i=0;i<cols.length-1;i++)bd.push((cols[i][1].x1+cols[i+1][1].x0)/2);
   const out={};dat.sort((a,b)=>(Math.round(a.cy/(mh*.7))-Math.round(b.cy/(mh*.7)))||a.x0-b.x0);
   for(const x of dat){let i=0;while(i<bd.length&&x.cx>bd[i])i++;const k=cols[i][0];out[k]=((out[k]?out[k]+' ':'')+x.t).trim()}
+  /* si el OCR no vio el encabezado de "Ref. Supl.", la referencia (solo números/letras con dígitos) queda al final de Desc. o Colores */
+  if(!hb.ref){for(const k of ['col','d']){const ts=String(out[k]||'').split(' ').filter(Boolean),i=ts.findIndex(z=>/^(?:\d{4,8}|[A-Z]{1,3}\d{3,}[A-Z0-9\-]*)$/.test(z));if(i>=0){out.ref=ts[i];ts.splice(i,1);out[k]=ts.join(' ');break}}}
   let code=(out.cod||'').replace(/[Oo]/g,'0').replace(/[Il|]/g,'1').replace(/\D/g,'');
   return{code,d:out.d||'',col:out.col||'',ref:(out.ref||'').replace(/\s+/g,''),tal:out.tal||'',raw}
 }
+/* respaldo cuando no se ve el encabezado: toma el código de 7 dígitos, la descripción (palabras junto al código) y la referencia (número suelto) */
+function scLoose(w,raw,err){
+  const fx=t=>t.replace(/[Oo]/g,'0').replace(/[Il|]/g,'1'),cw=w.find(x=>/^\d{7}$/.test(fx(x.t)));
+  if(!cw)return{err};
+  const code=fx(cw.t),hh=Math.max(10,cw.h),near=w.filter(x=>x!==cw&&Math.abs(x.cy-cw.cy)<hh*4.5&&x.x0>cw.x0-hh*2);
+  const ref=near.find(x=>/^(?:\d{4,8}|[A-Z]{1,3}\d{3,}[A-Z0-9\-]*)$/.test(x.t)&&fx(x.t)!==code),
+    ds=near.filter(x=>x!==ref&&(x.cf==null||x.cf>=55)&&/^[A-Za-zÁÉÍÓÚáéíóúÑñ'’\-\.]{2,}$/.test(x.t)&&!/^(cod|desc|colores|talla|imagen|ref|supl)\.?$/i.test(x.t)).sort((a,b)=>(Math.round(a.cy/(hh*.8))-Math.round(b.cy/(hh*.8)))||a.x0-b.x0).map(x=>x.t);
+  return{code,d:ds.join(' ').slice(0,60),col:'',ref:ref?ref.t:'',tal:'',raw,loose:1}}
 function scDiff(r){
   const cur={ref:BL.ref||'',d:BL.d||'',col:BL.col||'',tal:BL.tal||''},ch=[];
   const F=[['ref','Estilo (Ref. Supl.)'],['d','Descripción'],['col','Colores'],['tal','Tallas']];
@@ -3633,16 +3647,35 @@ function scApply(r){
     ch.forEach(c=>{BL[c.k]=c.to;const el=$({ref:'blR',d:'blD',col:'blC',tal:'blT'}[c.k]);if(el)el.value=c.to});
     blPaint();toast('✅ Etiqueta actualizada')}})
 }
-async function scRead(cv,msg){
-  const W=1800,k=Math.min(2,W/cv.width),c2=document.createElement('canvas');c2.width=Math.round(cv.width*k);c2.height=Math.round(cv.height*k);
-  const g=c2.getContext('2d');g.drawImage(cv,0,0,c2.width,c2.height);
+function scPrep(cv,rot,bin){
+  /* rot = grados en sentido horario. El Pocket suele fotografiarse de lado: se prueban los giros hasta ubicar la tabla */
+  const q=rot===90||rot===270,W=1800,sw=q?cv.height:cv.width,k=Math.min(2,W/sw),c2=document.createElement('canvas');
+  c2.width=Math.round((q?cv.height:cv.width)*k);c2.height=Math.round((q?cv.width:cv.height)*k);
+  const g=c2.getContext('2d');g.translate(c2.width/2,c2.height/2);g.rotate(rot*Math.PI/180);g.drawImage(cv,-cv.width*k/2,-cv.height*k/2,cv.width*k,cv.height*k);g.setTransform(1,0,0,1,0,0);
   const im=g.getImageData(0,0,c2.width,c2.height),d=im.data,hist=new Uint32Array(256);
   for(let i=0;i<d.length;i+=4){const y=(d[i]*.299+d[i+1]*.587+d[i+2]*.114)|0;d[i]=y;hist[y]++}
   const n=c2.width*c2.height;let a=0,lo=0,hi=255;for(let i=0;i<256;i++){a+=hist[i];if(a>n*.01){lo=i;break}}a=0;for(let i=255;i>=0;i--){a+=hist[i];if(a>n*.01){hi=i;break}}
   const sc=255/Math.max(40,hi-lo);for(let i=0;i<d.length;i+=4){const v=Math.max(0,Math.min(255,(d[i]-lo)*sc));d[i]=d[i+1]=d[i+2]=v}g.putImageData(im,0,0);
+  if(bin){/* umbral adaptativo (media local): con reflejos y trama de pantalla lee mucho mejor que el contraste simple */
+    const w=c2.width,h=c2.height,gr=new Uint8Array(w*h),I=new Float64Array((w+1)*(h+1));
+    for(let i=0;i<w*h;i++)gr[i]=d[i*4];
+    for(let y=0;y<h;y++){let rs=0;for(let x=0;x<w;x++){rs+=gr[y*w+x];I[(y+1)*(w+1)+x+1]=I[y*(w+1)+x+1]+rs}}
+    const r=Math.max(10,Math.round(14*k+8));
+    for(let y=0;y<h;y++){const y0=Math.max(0,y-r),y1=Math.min(h-1,y+r);for(let x=0;x<w;x++){const x0=Math.max(0,x-r),x1=Math.min(w-1,x+r);
+      const m=(I[(y1+1)*(w+1)+x1+1]-I[y0*(w+1)+x1+1]-I[(y1+1)*(w+1)+x0]+I[y0*(w+1)+x0])/((x1-x0+1)*(y1-y0+1)),v=gr[y*w+x]>m-12?255:0,o=(y*w+x)*4;d[o]=d[o+1]=d[o+2]=v}}
+    g.putImageData(im,0,0)}
+  return c2}
+async function scRead(cv,msg){
   msg('Cargando lector…');await loadLib('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',()=>window.Tesseract);
   const wk=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text')msg('Leyendo… '+Math.round(m.progress*100)+'%')}});
-  try{await wk.setParameters({tessedit_pageseg_mode:'11'});const r=await wk.recognize(c2);return scParse(scWords(r.data),r.data.text||'')}finally{wk.terminate().catch(()=>{})}
+  try{await wk.setParameters({tessedit_pageseg_mode:'11'});
+    const rots=cv.width>cv.height?[270,90,0,180]:[0,270,90,180],order=[];rots.forEach(r=>order.push([r,1]));rots.slice(0,3).forEach(r=>order.push([r,0]));let best=null;
+    for(let i=0;i<order.length;i++){msg(`Leyendo… intento ${i+1} de ${order.length}`);
+      const r=await wk.recognize(scPrep(cv,order[i][0],order[i][1])),p=scParse(scWords(r.data),r.data.text||'');
+      if(!p.err&&!p.loose)return p;                       // lectura completa por encabezado
+      if(!p.err&&p.loose&&(!best||!best.loose))best=p;    // respaldo sin encabezado: se guarda por si ningún giro lo logra completo
+      else if(p.err&&!best)best={err:p.err}}
+    return best||{err:'No pude leer la pantalla.'}}finally{wk.terminate().catch(()=>{})}
 }
 async function blScanOpen(){
   if(!BL||document.getElementById('scOv'))return;
