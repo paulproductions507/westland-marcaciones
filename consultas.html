@@ -596,6 +596,7 @@ const NAMES={S4:"Los Pueblos",S5:"San Miguelito",S6:"Los Andes",S7:"Albrook Mall
 const pctF=(a,b)=>{a=+a||0;b=+b||0;if(b<=0)return 0;if(a>=b)return 100;const v=Math.round(a/b*1000)/10;return Math.min(99.9,Math.max(a>0?0.1:0,v))};
 const pctT=(a,b)=>{const v=pctF(a,b);return (Number.isInteger(v)?v:v.toFixed(1))+'%'};
 const PSEUDO={AUTO:'PEDIDOS AUTOMÁTICOS',TUNEL:'TÚNEL',PROFORMAS:'PROFORMAS'},TUID='TUNEL',PFID='PROFORMAS',isPs=id=>!!PSEUDO[id];
+let PSCUT={};   // por AUTO / TUNEL: días con despacho (days), pendientes y el pendiente más antiguo (old)
 const LN=t=>NAMES[t]?`${L(t)} · ${NAMES[t]}`:L(t);
 const ckey=c=>(String(c.c||'')+'~'+String(c.pos||'')).toLowerCase().replace(/[^a-z0-9~]+/g,'_');
 const hasCli=p=>Object.values(CLI).some(c=>c.p===p);
@@ -627,7 +628,11 @@ async function showRecList(){
   $('v-stat').classList.add('hide');$('v-auto').classList.add('hide');$('v-pro').classList.add('hide');$('v-pdn').classList.add('hide');$('v-pal').classList.add('hide');$('v-pkl').classList.add('hide');$('mst').classList.add('hide');
   if(offLog)offLog();if(offCli)offCli();if(offDsp)offDsp();if(offDspt)offDspt();if(offTrf)offTrf();if(offTb)offTb();if(offDs)offDs();if(offBg)offBg();offDspt=null;offLog=offCli=offDsp=offTrf=offTb=offDs=offBg=null;cur=null;RECIBO=null;$('recAdm').classList.toggle('hide',!ISADM);$('recAdm2').classList.toggle('hide',!ISADM);$('recAdm3').classList.toggle('hide',!ISADM);
   $('v-recibo').classList.add('hide');if(!document.body.dataset.home&&$('v-home').classList.contains('hide'))$('v-rec').classList.remove('hide');$('btnHome').classList.add('hide');PALBACK=null;$('btnPal').classList.add('hide');$('btnPkl').classList.add('hide');$('btnRecBack').classList.add('hide');$('bar').classList.add('hide');$('ttl').textContent='Centro de distribución Westland';
-  await loadUploaded();for(const k in PSEUDO)if(RECS[k])PROV[k]=PSEUDO[k];await migrateAuto(Object.keys(RECS));autoProv().then(ch=>{if(ch&&!$('v-rec').classList.contains('hide'))showRecList()});try{const ab=(await get(R(db,AUB))).val()||{};AUPEND={n:0,it:0,pz:0};Object.values(ab).forEach(m=>{if(m&&(m.st==='new'||m.st==='sur')){AUPEND.n++;AUPEND.it+=m.n||0;AUPEND.pz+=m.pz||0}})}catch(e){}
+  await loadUploaded();for(const k in PSEUDO)if(RECS[k])PROV[k]=PSEUDO[k];await migrateAuto(Object.keys(RECS));autoProv().then(ch=>{if(ch&&!$('v-rec').classList.contains('hide'))showRecList()});try{const ab=(await get(R(db,AUB))).val()||{};AUPEND={n:0,it:0,pz:0};PSCUT={AUTO:{days:new Set(),old:0},TUNEL:{days:new Set(),old:0}};Object.values(ab).forEach(m=>{if(m&&(m.st==='new'||m.st==='sur')){AUPEND.n++;AUPEND.it+=m.n||0;AUPEND.pz+=m.pz||0}
+    if(!m)return;const o=PSCUT[m.mode==='tun'?'TUNEL':'AUTO'],tun=m.mode==='tun';
+    /* día de despacho de la transferencia: sello del packing > chequeo > surtido; las del flujo anterior (ya despachadas en el Gestor) cuentan por su fecha de carga */
+    const dt=m.st==='inc'?(m.pkc||m.cts||(typeof m.inc==='number'?m.inc:0)||m.dts||m.ts||0):(!tun&&m.st==='new'&&m.pend!==1?(m.ts||0):0);if(dt)o.days.add(ymd(dt));
+    if(m.st==='sur'||(m.st==='new'&&(tun||m.pend===1))){const q=m.ts||m.dts||0;if(q&&(!o.old||q<o.old))o.old=q}})}catch(e){}
   if(AUPEND.n&&!RECS[AUID]){RECS[AUID]={items:[]};PROV[AUID]=PSEUDO[AUID]}
   const allIds=Object.keys(RECS),PSD={};
   for(const id of allIds.filter(isPs)){try{const [sn,dn2]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);const m={},dd=dn2.val()||{},it=RECS[id].items||[];Object.values(sn.val()||{}).forEach(e=>{if(e.bd||e.nb)return;m[e.p+'|'+e.t]=(m[e.p+'|'+e.t]||0)+(e.q||0)});PSD[id]=(id===PFID&&it.length===0)||it.length>0&&it.every(x=>dd[x.p]&&Object.entries(x.s||{}).every(([t,a])=>t==='BODEGA'||(m[x.p+'|'+t]||0)>=a))}catch(e){}}
@@ -636,7 +641,7 @@ async function showRecList(){
   const ids=allIds.filter(id=>dn(id)===(recTab==='c')).sort((a,b)=>{const p=(isPs(b)?1:0)-(isPs(a)?1:0);if(p)return p;const fd=id=>FECHAS[id]||'',nm=(x,y)=>String(y).localeCompare(String(x),undefined,{numeric:true});
     if(recSort==='old')return fd(a).localeCompare(fd(b))||nm(b,a);if(recSort==='prov')return (PROV[a]||'~').localeCompare(PROV[b]||'~','es')||nm(b,a);if(recSort==='num')return nm(a,b);return fd(b).localeCompare(fd(a))||nm(a,b)});
   if(!ids.length){$('recList').innerHTML=`<div class="msg">${recTab==='c'?'Aún no hay recibos completados.':'No hay recibos en proceso.'}</div>`;return}
-  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="flex:1 1 230px;min-width:0;overflow-wrap:anywhere">${PROV[id]?`<div class="sora" style="font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:27px;font-weight:800;color:#fff;line-height:1.15;margin-bottom:4px;letter-spacing:-.01em">${esc(PROV[id])}</div>`:'<div class="msg" style="margin:0 0 4px;color:var(--wn)">Sin proveedor</div>'}<div class="lbl">Recibo</div><div class="sora" style="font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:26px;font-weight:800;letter-spacing:-.01em;color:var(--tx)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos · ${fmt(it.reduce((a,x)=>a+(x.rec||0),0))} piezas</div>${COMP[id]?`<div class="msg" style="margin:2px 0 0">✔ Completado · ${fdt(COMP[id].ts)} · ${esc(COMP[id].n||'')}</div>`:PSD[id]?'<div class="msg" style="margin:2px 0 0">✔ Completado · 100% surtido y despachado</div>':''}<div class="msg" id="ri-${id}" style="margin:2px 0 0;color:var(--tx)">Ítems …</div><div class="msg" id="rp-${id}" style="margin:2px 0 0;color:var(--tx)"></div>${id===AUID&&AUPEND.n?`<div class="msg" style="margin:2px 0 0;color:var(--wn)">⏳ ${fmt(AUPEND.n)} transferencia(s) por surtir o chequear · ${fmt(AUPEND.pz)} pzas</div>`:''}${RECDEP[id]?`<div class="msg" style="margin:2px 0 0">🏷 Departamento: <b>${esc(RECDEP[id])}</b></div>`:''}<div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}${FDSP[id]?' · 🚚 Despacho: '+fdate(FDSP[id]):''}</div></div><div style="text-align:right;display:flex;gap:14px;flex:none;margin-left:auto"><div><div class="big" id="ra-${id}" style="font:800 22px 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--tx)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar" style="height:16px;margin-top:10px"><i id="rb-${id}" style="width:0;background:var(--tx)"></i></div><div class="bar" style="height:16px;margin-top:6px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">${COMP[id]?`<button class="btn sm" data-reopenrec="${id}">↩ Reabrir</button>`:''}<button class="btn sm" data-fecharec="${id}">📅 Fecha y departamento</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
+  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="flex:1 1 230px;min-width:0;overflow-wrap:anywhere">${PROV[id]?`<div class="sora" style="font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:27px;font-weight:800;color:#fff;line-height:1.15;margin-bottom:4px;letter-spacing:-.01em">${esc(PROV[id])}</div>`:'<div class="msg" style="margin:0 0 4px;color:var(--wn)">Sin proveedor</div>'}<div class="lbl">Recibo</div><div class="sora" style="font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:26px;font-weight:800;letter-spacing:-.01em;color:var(--tx)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos · ${fmt(it.reduce((a,x)=>a+(x.rec||0),0))} piezas</div>${COMP[id]?`<div class="msg" style="margin:2px 0 0">✔ Completado · ${fdt(COMP[id].ts)} · ${esc(COMP[id].n||'')}</div>`:PSD[id]?'<div class="msg" style="margin:2px 0 0">✔ Completado · 100% surtido y despachado</div>':''}<div class="msg" id="ri-${id}" style="margin:2px 0 0;color:var(--tx)">Ítems …</div><div class="msg" id="rp-${id}" style="margin:2px 0 0;color:var(--tx)"></div>${id===AUID&&AUPEND.n?`<div class="msg" style="margin:2px 0 0;color:var(--wn)">⏳ ${fmt(AUPEND.n)} transferencia(s) por surtir o chequear · ${fmt(AUPEND.pz)} pzas</div>`:''}${RECDEP[id]?`<div class="msg" style="margin:2px 0 0">🏷 Departamento: <b>${esc(RECDEP[id])}</b></div>`:''}<div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}${FDSP[id]?' · 🚚 Despacho: '+fdate(FDSP[id]):''}</div>${ageBox(id,dn(id))}</div><div style="text-align:right;display:flex;gap:14px;flex:none;margin-left:auto"><div><div class="big" id="ra-${id}" style="font:800 22px 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--tx)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar" style="height:16px;margin-top:10px"><i id="rb-${id}" style="width:0;background:var(--tx)"></i></div><div class="bar" style="height:16px;margin-top:6px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">${COMP[id]?`<button class="btn sm" data-reopenrec="${id}">↩ Reabrir</button>`:''}<button class="btn sm" data-fecharec="${id}">📅 Fecha y departamento</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
   const GP={};let PROG={};try{PROG=(await get(R(db,'meta_v1/consultas_prog'))).val()||{}}catch(e){}
   for(const id of ids){try{let g=PROG[id];
     if(!g||g.si===undefined||g.A===undefined){ // primera vez para este recibo: se calcula una sola vez y se guarda el resumen
@@ -1347,6 +1352,29 @@ const nowLocal=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezone
 const toLocalIn=ts=>{const d=new Date(ts);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
 const fdate=f=>{const d=new Date(f+'T00:00:00');return isNaN(d)?f:d.toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'})};
 const fdt=ts=>new Date(ts).toLocaleString('es',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+// ---------- Tiempo transcurrido (recibos, túnel y pedidos automáticos) ----------
+// Recibos normales: días desde la fecha de ingreso (en proceso: hasta hoy · completado: hasta la fecha de despacho o de completado).
+// Túnel y pedidos automáticos: nunca se cierran (son reposiciones diarias), así que se miden desde el ÚLTIMO despacho.
+const AGE_WARN=15,AGE_ALERT=30,AGE_WARN_AU=3,AGE_ALERT_AU=7;   // días: amarillo / rojo (recibos · túnel y automáticos)
+function dayNum(x){const d=typeof x==='number'?new Date(x):new Date(x+'T00:00:00');return isNaN(d)?null:Math.round(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5)}
+function daysBetween(a,b){const x=dayNum(a),y=dayNum(b);return x==null||y==null?null:Math.max(0,y-x)}
+function ageTxt(n){if(n==null)return'—';if(n===0)return'0 días';if(n<30)return n===1?'1 día':n+' días';const m=Math.floor(n/30),r=n%30;return `${n} días (${m} ${m===1?'mes':'meses'}${r?' '+r+' d':''})`}
+function ageSty(n,au){const w=au?AGE_WARN_AU:AGE_WARN,a=au?AGE_ALERT_AU:AGE_ALERT;return n>=a?'color:var(--dn);font-weight:800':n>=w?'color:var(--wn);font-weight:700':'color:var(--tx)'}
+function ageInner(k,from,au){const f=/^\d{9,}$/.test(String(from))?+from:from,n=daysBetween(f,today());if(n==null)return'';const st=ageSty(n,au);
+  if(k==='p')return `<span style="${st}">⏱ ${ageTxt(n)} en proceso${n>=AGE_ALERT?' · ⚠ más de un mes: hay que culminarlo':n>=AGE_WARN?' · revisar':''}</span>`;
+  if(k==='u')return `<span style="${st}">🚚 Último despacho: ${fdate(f)} · ${n===0?'hoy':'hace '+ageTxt(n)}${n>=AGE_ALERT_AU?' · ⚠ sin despachar':''}</span>`;
+  if(k==='o')return `<span style="${st}">⏳ Pendiente más antiguo: hace ${ageTxt(n)} (${fdate(ymd(f))})</span>`;return''}
+function ageBox(id,done){
+  if(isPs(id)){const o=PSCUT[id];if(!o)return'';const days=[...o.days].sort(),last=days[days.length-1],prev=days[days.length-2];let h='';
+    h+=last?`<div class="msg" data-agek="u" data-agefrom="${last}" style="margin:2px 0 0">${ageInner('u',last,1)}</div>`:`<div class="msg" style="margin:2px 0 0;color:var(--wn)">🚚 Sin despachos registrados todavía</div>`;
+    if(prev)h+=`<div class="msg" style="margin:2px 0 0">↔ Entre los 2 últimos despachos: ${ageTxt(daysBetween(prev,last))}</div>`;
+    if(o.old)h+=`<div class="msg" data-agek="o" data-agefrom="${o.old}" style="margin:2px 0 0">${ageInner('o',String(o.old),1)}</div>`;
+    return h}
+  const ing=FECHAS[id];if(!ing)return `<div class="msg" style="margin:2px 0 0;color:var(--wn)">⏱ Sin fecha de ingreso: ponla en “Fecha y departamento” para medir el tiempo</div>`;
+  if(done){const fin=FDSP[id]||(COMP[id]&&COMP[id].ts?ymd(COMP[id].ts):'');if(!fin)return'';return `<div class="msg" style="margin:2px 0 0">⏱ Duró ${ageTxt(daysBetween(ing,fin))} · ingreso → ${FDSP[id]?'despacho':'completado'}</div>`}
+  return `<div class="msg" data-agek="p" data-agefrom="${ing}" style="margin:2px 0 0">${ageInner('p',ing,0)}</div>`}
+// Suma un día más cada día, sin recargar la pantalla
+setInterval(()=>{try{document.querySelectorAll('#recList [data-agek]').forEach(el=>{el.innerHTML=ageInner(el.dataset.agek,el.dataset.agefrom,el.dataset.agek==='p'?0:1)})}catch(e){}},300000);
 function ask(title,fields,okTxt,cb){
   $('maskBody').innerHTML=`<h2 style="font-size:18px;margin-bottom:4px">${esc(title)}</h2>${fields.map(f=>`<div class="lbl" style="margin-top:12px">${esc(f.label)}</div>${f.type==='select'?`<select class="f" id="ask_${f.k}">${f.opts.map(o=>`<option value="${o[0]}" ${o[0]===f.value?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`:`<input class="f" id="ask_${f.k}" type="${f.type}" value="${esc(f.value||'')}" placeholder="${esc(f.ph||'')}" ${f.list?`list="dl_${f.k}"`:''}>${f.list?`<datalist id="dl_${f.k}">${f.list.map(o=>`<option value="${esc(o)}">`).join('')}</datalist>`:''}`}`).join('')}<div style="display:flex;gap:10px;margin-top:16px"><button class="btn" id="askNo" style="flex:1">Cancelar</button><button class="btn pri" id="askOk" style="flex:1">${esc(okTxt)}</button></div>`;
   askCb=cb;$('mask').classList.remove('hide')}
@@ -3439,6 +3467,13 @@ $('mlblBody').addEventListener('click',async e=>{
 const PB='meta_v1/consultas_palets',BULK='meta_v1/consultas_bultos';
 let PM={},EMB={},palOn=false,palOpen=null,PBO={},palOff=null,PMISS={},keepScan=null,scanQ=Promise.resolve();
 const DSC={},embOpenSet=new Set();
+// PM solo escucha los palets de las últimas 2 semanas. Un packing list puede llevar palets más viejos: sin leerlos nunca se vería como "Recibido" y se quedaría en Despachado/en tránsito.
+const PMX={},PMXF={};let pmxBusy=false;
+async function pmxLoad(){if(pmxBusy)return;const ids=new Set(),now=Date.now();
+  for(const e of Object.values(EMB)){if(!e||!e.desp||e.rcv)continue;for(const c of Object.values(e.cam||{}))for(const id of Object.keys(c.pal||{})){if(PM[id])continue;const x=PMX[id];if(PMXF[id]&&now-PMXF[id]<60000)continue;if(!x||(!x.rcv&&!x._miss&&now-(x._t||0)>120000))ids.add(id)}}
+  if(!ids.size)return;pmxBusy=true;let n=0;
+  try{await Promise.all([...ids].map(async id=>{try{const v=(await get(R(db,`${PB}/pm/${id}`))).val();PMX[id]=v?{...v,_t:Date.now()}:{_miss:1,_t:Date.now()};delete PMXF[id];n++}catch(x){PMXF[id]=Date.now()}}))}
+  finally{pmxBusy=false}if(n)renderPal()}
 const embLocked=e=>!!e&&(e.st==='enviado'||!!e.desp);
 let palDelMode=false,palDelChk=false,palFresh=new Set(),palBumpT=0,palFbT=null,_ac=null;
 // Ventana de trabajo: semana actual + semana anterior (lunes 00:00 a hoy). Lo anterior es historial informativo, no se escucha.
@@ -3593,8 +3628,8 @@ async function cmpTok(){if(CMPTOK)return CMPTOK;let t=null;try{t=(await get(R(db
   return CMPTOK=t}
 const cmpUrl=t=>new URL('comprador.html',location.href).href+'#'+t;
 async function cmpCopy(msg){const url=cmpUrl(await cmpTok());try{await navigator.clipboard.writeText(url);toast(msg||'✅ Link del comprador copiado')}catch(e){prompt('Link para el comprador (cópialo y reenvíalo):',url)}}
-function cmpRc(e,strict){if(e.rcv)return e.rcv;if(!e.desp)return null;const ps=embCalc(e).cams.flatMap(c=>c.pals);if(!ps.length)return null;let ts=0,by='';
-  for(const pl of ps){const p=PM[pl.id];if(!p)return strict?undefined:null;const r=p.rcv;if(!r)return null;if((r.ts||0)>=ts){ts=r.ts||0;by=r.by||''}}return{ts,by}}
+function cmpRc(e,strict){if(e.rcv)return e.rcv;if(e.rec)return{ts:e.rec.ts||0,by:e.rec.by||''};if(!e.desp)return null;const ps=embCalc(e).cams.flatMap(c=>c.pals);if(!ps.length)return null;let ts=0,by='';
+  for(const pl of ps){const p=PM[pl.id]||PMX[pl.id];if(!p)return strict?undefined:null;const r=p.rcv;if(!r)return null;if((r.ts||0)>=ts){ts=r.ts||0;by=r.by||''}}return{ts,by}}
 function cmpSt(e,strict){if(!e||!e.desp)return'';const r=cmpRc(e,strict);return r===undefined?undefined:r?'R':'D'}
 async function cmpLines(rec){const c=CMPLOG[rec];if(c&&Date.now()-c.at<60000)return c;
   let log={};try{log=(await get(R(db,`meta_v1/consultas/${rec}/log`))).val()||{}}catch(e){}
@@ -3659,7 +3694,7 @@ async function cmpRemove(eid){const e=EMB[eid];if(!e||!e.cmp)return;
 function cmpPend(e){if(!e||!e.desp)return false;if(!e.cmp)return true;const s=cmpSt(e,true);return s!==undefined&&e.cmp.st!==s}
 // Al despachar se publica SOLO ese packing list (un único envío, sin republicar los demás)
 async function cmpAuto(id){for(let i=0;i<24&&!(EMB[id]&&EMB[id].desp);i++)await new Promise(r=>setTimeout(r,250));
-  const ok=await cmpPublish(id,true);toast(ok?'🛒 Publicado en el portal del comprador':'⚠ No se pudo publicar en el portal; avisa al administrador');
+  let ok=false;for(let i=0;i<3&&!ok;i++){ok=await cmpPublish(id,true);if(!ok)await new Promise(r=>setTimeout(r,1500))}toast(ok?'🛒 Publicado en el portal del comprador':'⚠ No se pudo publicar en el portal; avisa al administrador');
   // Abre solo el mensaje para el comprador (listo para copiar y pegar); espera a que llegue el estado publicado para incluir el link
   for(let i=0;i<12&&!(EMB[id]&&EMB[id].cmp);i++)await new Promise(r=>setTimeout(r,250));
   try{await cmpMsg(id)}catch(x){}}
@@ -3685,20 +3720,27 @@ async function cmpMsg(id){const e=EMB[id];if(!e||!e.desp)return;const c=embCalc(
   const tipos=Object.entries(tp).map(([k,o])=>`${o.n} ${(P[k]||[k,k])[o.n===1?0:1]} ${(P[k]||['','',''])[2]} — ${fmt(o.pz)} pzas · ${fmt(o.b)} bultos`.replace('  ',' '));
   const cliS=cli.length?cli.slice(0,12).concat(cli.length>12?['y '+(cli.length-12)+' más']:[]):[];
   const cierre=link?`Pueden consultar el detalle por producto en el portal: ${link}`:'';
-  const adj='Adjunto encontrarán el PDF y el Excel con el detalle por producto.';
+  const adj=link?'En el portal pueden descargar el Excel y el PDF con el detalle por producto (botón Exportar).':'Adjunto encontrarán el Excel con el detalle por producto.';
   const firma=`Quedamos atentos.\nSaludos cordiales,\n${NAME||''}`.trim();
   const subj=`Despacho ${e.num} · ${rec?'Recibido en Bodega CF':'En tránsito a Bodega CF'} · ${fmt(c.tb)} bultos · ${fmt(c.tp)} piezas`;
   const plain=['Buen día, estimado comprador y equipo:','',intro,'',res,'','Distribución por tienda:',...tiendas.map(x=>'• '+x),'','Por tipo de documento:',...tipos.map(x=>'• '+x),...(cliS.length?['','Clientes (Cristal):',...cliS.map(x=>'• '+x)]:[]),'',adj,...(cierre?['',cierre]:[]),'',firma].join('\n');
   const ul=a=>`<ul style="margin:4px 0 10px 18px;padding:0">${a.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
   const html=`<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#1c2b36"><p>Buen día, estimado comprador y equipo:</p><p>${esc(intro)}</p><p>${esc(res)}</p><p><b>Distribución por tienda:</b></p>${ul(tiendas)}<p><b>Por tipo de documento:</b></p>${ul(tipos)}${cliS.length?`<p><b>Clientes (Cristal):</b></p>${ul(cliS)}`:''}<p>${esc(adj)}</p>${cierre?`<p>Pueden consultar el detalle por producto en el portal: <a href="${esc(link)}">${esc(link)}</a></p>`:''}<p>Quedamos atentos.<br>Saludos cordiales,<br>${esc(NAME||'')}</p></div>`;
   const ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;z-index:99999;background:#000b;display:flex;align-items:flex-end;justify-content:center';
-  ov.innerHTML=`<div style="background:#fff;color:#1c2b36;width:100%;max-width:680px;max-height:90vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column"><div style="padding:12px 14px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #d9e1e8"><b style="flex:1;font-size:15px">💬 Mensaje para el comprador · ${esc(e.num)}</b><button type="button" class="btn sm" data-m="x">✕</button></div><div style="padding:10px 14px;border-bottom:1px solid #d9e1e8;font-size:13px"><b>Asunto:</b> ${esc(subj)}</div><div style="padding:14px;overflow:auto;flex:1">${html}</div><div style="padding:10px 14px;border-top:1px solid #d9e1e8;display:flex;gap:8px"><button type="button" class="btn pri" data-m="c" style="flex:2">📋 Copiar mensaje</button><button type="button" class="btn" data-m="s" style="flex:1">Asunto</button></div></div>`;
+  ov.innerHTML=`<div style="background:#fff;color:#1c2b36;width:100%;max-width:680px;max-height:90vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column"><div style="padding:12px 14px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #d9e1e8"><b style="flex:1;font-size:15px">💬 Mensaje para el comprador · ${esc(e.num)}</b><button type="button" class="btn sm" data-m="x">✕</button></div><div style="padding:10px 14px;border-bottom:1px solid #d9e1e8;font-size:13px"><b>Asunto:</b> ${esc(subj)}</div><div style="padding:14px;overflow:auto;flex:1">${html}</div><div style="padding:10px 14px;border-top:1px solid #d9e1e8;display:flex;gap:8px"><button type="button" class="btn pri" data-m="c" style="flex:2">📋 Copiar mensaje</button><button type="button" class="btn" data-m="s" style="flex:1">Asunto</button></div><div style="padding:0 14px 12px;display:flex;gap:8px"><button type="button" class="btn pri" data-m="sh" style="flex:2">📎 Enviar con Excel adjunto</button><button type="button" class="btn" data-m="xl" style="flex:1">⬇ Excel</button></div></div>`;
+  embXlsxC(id,e).catch(()=>{});
   const clip=async(h,p,okm)=>{try{if(h&&window.ClipboardItem&&navigator.clipboard.write)await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([h],{type:'text/html'}),'text/plain':new Blob([p],{type:'text/plain'})})]);else await navigator.clipboard.writeText(p);toast(okm)}catch(x){try{await navigator.clipboard.writeText(p);toast(okm)}catch(y){prompt('Copia el texto:',p)}}};
   ov.addEventListener('click',ev=>{const b=ev.target.closest('[data-m]');if(ev.target===ov||(b&&b.dataset.m==='x')){ov.remove();return}
     if(b&&b.dataset.m==='c')clip(html,plain,'✅ Mensaje copiado: pégalo en tu correo');
-    if(b&&b.dataset.m==='s')clip('',subj,'✅ Asunto copiado')});
+    if(b&&b.dataset.m==='s')clip('',subj,'✅ Asunto copiado');
+    if(b&&(b.dataset.m==='sh'||b.dataset.m==='xl'))embExcelShare(id,b.dataset.m==='sh',{title:subj,text:plain})});
   document.body.appendChild(ov)}
-function cmpSync(){if(!ISADM)return;for(const [id,e] of Object.entries(EMB)){if(!e||!e.cmp||!e.desp||cmpBusy.has(id))continue;const s=cmpSt(e,true);if(s!==undefined&&e.cmp.st!==s)cmpPublish(id,true)}}
+// Ley: todo packing list despachado o recibido se publica solo (si nunca se publicó, o si cambió de Despachado a Recibido). El botón "Publicar" queda solo como respaldo.
+let cmpQ=Promise.resolve();const cmpQd=new Set(),cmpFail={},cmpDone={};
+function cmpSync(){if(!ISADM)return;
+  for(const [id,e] of Object.entries(EMB)){if(!e||!e.desp||cmpBusy.has(id)||cmpQd.has(id))continue;if(cmpFail[id]&&Date.now()-cmpFail[id]<120000)continue;
+    const s=cmpSt(e,true);if(s===undefined)continue;
+    if((!e.cmp||e.cmp.st!==s)&&!(cmpDone[id]&&cmpDone[id].s===s&&Date.now()-cmpDone[id].at<60000)){cmpQd.add(id);cmpQ=cmpQ.then(async()=>{try{const ok=await cmpPublish(id,true);if(ok)cmpDone[id]={s,at:Date.now()};else cmpFail[id]=Date.now()}catch(x){cmpFail[id]=Date.now()}finally{cmpQd.delete(id)}})}}}
 function embPrint(id){const e=EMB[id],w=window.open('','_blank');if(!w){toast('Permite ventanas emergentes para imprimir');return}
   w.document.write(`<!doctype html><meta charset="utf-8"><title>${esc(e.num)}</title><body style="margin:20px">${embHTML(e)}</body>`);w.document.close();w.focus();setTimeout(()=>w.print(),400)}
 
@@ -3720,7 +3762,15 @@ async function embXlsx(eid,e){
   const name=`packing_list_${e.num}.xlsx`,b64=XLSX.write(wb,{type:'base64',bookType:'xlsx'});
   return{name,b64,uri:'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'+b64}}
 function embXlsxFile(adj){const bin=atob(adj.b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new File([u],adj.name,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})}
-let MAILADJ=null;
+let MAILADJ=null;const XLC={};
+function embXlsxC(id,e){const c=XLC[id];if(c&&Date.now()-c.at<120000)return c.p;const p=embXlsx(id,e);XLC[id]={at:Date.now(),p};p.catch(()=>{delete XLC[id]});return p}
+// Excel del packing list: en el celular abre el menú de compartir (Correo/Outlook/WhatsApp) con el archivo ya adjunto; si no se puede, lo descarga.
+async function embExcelShare(id,share,o){const e=EMB[id];if(!e)return;o=o||{};
+  try{if(!XLC[id])toast('Preparando el Excel…');const adj=await embXlsxC(id,e),f=embXlsxFile(adj);
+    if(share&&navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:o.title||`Despacho ${e.num}`,text:o.text||`Despacho ${e.num}`});return}catch(x){if(x&&x.name==='AbortError')return}}
+    const u=URL.createObjectURL(f),a=document.createElement('a');a.href=u;a.download=adj.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(u);a.remove()},1500);
+    toast('📎 Excel descargado ('+adj.name+'): adjúntalo a tu correo')}
+  catch(x){toast('No se pudo preparar el Excel: '+(x.message||x))}}
 async function embMail(id){
   const e=EMB[id];let bad;try{bad=await embReady(e)}catch(err){toast('Error: '+(err.code||err.message));return}
   if(bad){alert(bad);return}
@@ -3736,10 +3786,10 @@ async function embMail(id){
       const EMAIL_SERVICE_ID='service_gqk1da3';
       const P={to_email:to,cc_email:cc,subject:`Despacho ${e.num} · ${c.cams.length} camión(es) · ${c.tb} bultos · ${c.tp} piezas`,html_content:embHTML(e),message:`Aviso de despacho ${e.num}: ${c.tb} bultos, ${c.tp} piezas, ${c.cams.length} camión(es).`,saludo:'',periodo:e.num,timestamp:new Date().toLocaleString('es')};
       /* Adjunto: variable "packing_xlsx" (data URI). En la plantilla de EmailJS debe existir un adjunto de tipo variable con ese nombre. */
-      let sinAdj=!adj;
-      if(adj){try{await emailjs.send(EMAIL_SERVICE_ID,cfg.templateId,{...P,packing_xlsx:adj.uri,packing_name:adj.name})}catch(e1){await emailjs.send(EMAIL_SERVICE_ID,cfg.templateId,P);sinAdj=true}}
+      let sinAdj=!adj,adjErr='';
+      if(adj){try{await emailjs.send(EMAIL_SERVICE_ID,cfg.templateId,{...P,packing_xlsx:adj.uri,packing_name:adj.name})}catch(e1){adjErr=String(e1&&(e1.text||e1.message)||e1||'').slice(0,140);console.warn('EmailJS rechazó el adjunto:',e1);await emailjs.send(EMAIL_SERVICE_ID,cfg.templateId,P);sinAdj=true}}
       else await emailjs.send(EMAIL_SERVICE_ID,cfg.templateId,P);
-      await update(R(db,PB),{[`emb/${id}/st`]:'enviado',[`emb/${id}/mail`]:{to,cc,ts:Date.now(),u:NAME,adj:sinAdj?0:1},cfg:{to,cc}});toast(sinAdj?'✅ Correo enviado SIN adjunto (el servicio no aceptó el Excel)':'✅ Correo enviado con Excel adjunto')
+      await update(R(db,PB),{[`emb/${id}/st`]:'enviado',[`emb/${id}/mail`]:{to,cc,ts:Date.now(),u:NAME,adj:sinAdj?0:1},cfg:{to,cc}});toast(sinAdj?'✅ Correo enviado SIN adjunto'+(adjErr?' · motivo: '+adjErr:' (el servicio no aceptó el Excel)')+' · usa 📎 Excel para adjuntarlo tú':'✅ Correo enviado con Excel adjunto')
     }catch(err){toast('No se pudo enviar: '+(err.text||err.code||err.message));
       /* Respaldo: si el servicio automático falla (p. ej. cuenta Outlook suspendida), abre tu app de correo con todo precargado. */
       setTimeout(async()=>{if(confirm('El envío automático falló:\n'+(err.text||err.code||err.message||'')+'\n\n¿Abrir tu app de correo con el resumen y los destinatarios ya cargados para enviarlo tú mismo?')){
@@ -3789,17 +3839,26 @@ async function embScan(eid,cid,raw){
   try{await update(R(db,PB),{[`pm/${pid}/emb`]:{e:eid,c:cid},[`emb/${eid}/cam/${cid}/pal/${pid}`]:{n:pl.num,b:pl.nb||0,tfs:pl.tfs||{},o:Date.now(),g:pl.cl?(pl.gpl||''):null}});const pos=Object.keys((((EMB[eid]||{}).cam||{})[cid]||{}).pal||{}).length+1;toast(`✅ Palet ${pos} (${pl.num}) cargado · ${pBul(pl)} bultos`)}catch(err){toast('Error: '+(err.code||err.message))}
 }
 let palTab='n',pklTab='n',pklSel=null,palKind='a';
+// Recepción por palet: explica por qué un packing list sigue "en tránsito" (todos sus palets deben estar recibidos)
+function pkmDiag(c,e,rc){const rows=c.cams.flatMap((x,i)=>x.pals.map(pl=>{const p=PM[pl.id]||PMX[pl.id];
+    const ok=!!(p&&p.rcv),st=!p?'⏳ consultando…':p._miss?'❓ el palet ya no existe en la app':p.rcv?`📥 Recibido · ${esc(p.rcv.by||'')}${p.rcv.ts?' · '+fdt(p.rcv.ts):''}`:'⏳ Sin recibir';
+    return{ok,h:`<tr><td>${i+1}</td><td>${esc(pl.num)}</td><td>${st}</td></tr>`}}));
+  if(!rows.length)return'';const falta=rows.filter(r=>!r.ok).length;
+  const ncl=c.cams.reduce((t,x)=>t+x.pals.filter(pl=>/^CL-/i.test(String(pl.num||''))).length,0),nn=rows.length-ncl,r0=e.rec;
+  const recMsg=r0?`📋 Recepción: recibido por ${esc(r0.by||'')} · ${fdt(r0.ts||0)}${(r0.falt||[]).length?' · con faltantes: '+esc(r0.falt.join(', ')):''}`:!nn?'⚠ No aparece en Recepción: solo lleva palets de cliente (CL-), que se reciben por el correo de GP, no ahí':'📋 Aparece en Recepción › Por recibir (ahí se ven los despachos de los últimos 45 días)';
+  return `<div class="lbl" style="margin-top:10px">Recepción por palet</div><div class="msg">${recMsg}</div>${rc?'':`<div class="msg" style="color:var(--wn)">Sigue en tránsito: faltan ${falta} de ${rows.length} palet(s) por marcar como recibidos.</div>`}<div class="scroll"><table><tr><th>Cam.</th><th>Palet</th><th>Estado</th></tr>${rows.map(r=>r.h).join('')}</table></div>`}
 function pkmHTML(id,e,rc){const c=embCalc(e);
   return `<div class="pkhd"><b>✅ ${esc(e.num)}</b><span class="pill p-ok">${rc?'Recibido':'Despachado'}</span><span class="msg" style="margin:0;flex:1">· ${fdt(e.desp.ts)}</span><button type="button" class="btn sm" id="pkmX">✕</button></div>
   <div class="msg">Preparó ${esc(e.n||e.u||'')} · Despachó <b>${esc(e.desp.n||e.desp.u||'')}</b> · ${fdt(e.desp.ts)}${e.mail?' · correo enviado a '+esc(e.mail.to||''):''}</div>
       ${c.cams.map((x,i)=>`<div class="crow"><b>Camión ${i+1} · ${esc(x.chofer||'—')} · ${esc(x.placa||'—')}</b> <span class="msg" style="margin:0">${x.pals.length} palets · ${fmt(x.b)} bultos · ${fmt(x.pz)} pzas</span><div class="msg" style="margin:4px 0 0">${x.pals.map(pl=>esc(pl.num)).join(' · ')}</div></div>`).join('')}
       ${c.st.length?`<div class="scroll"><table><tr><th>Tienda</th><th class="n">Docs.</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${c.st.map(s=>`<tr><td>${esc(LN(s.t))}</td><td class="n">${s.tf}</td><td class="n">${fmt(s.b)}</td><td class="n">${fmt(s.pz)}</td></tr>`).join('')}<tr><td><b>TOTAL</b></td><td class="n"><b>${c.tf.length}</b></td><td class="n"><b>${fmt(c.tb)}</b></td><td class="n"><b>${fmt(c.tp)}</b></td></tr></table></div>`:''}
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button><button class="btn sm" data-email="${id}">✉ Reenviar correo</button><button class="btn sm" data-cmsg="${id}">💬 Mensaje comprador</button>${ISADM?`<button class="btn sm" data-ecmp="${id}">🛒 ${e.cmp?'Republicar':'Publicar'} en comprador</button>${e.cmp?`<button class="btn sm" data-ecmpx="${id}">⛔ Quitar</button>`:''}`:''}${ISADM?`<button class="btn sm" data-eundesp="${id}">↩ Revertir despacho</button>`:''}</div>`}
+      ${pkmDiag(c,e,rc)}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button><button class="btn sm" data-email="${id}">✉ Reenviar correo</button><button class="btn sm" data-exl="${id}">📎 Excel</button>${ISADM&&!rc?`<button class="btn sm" data-ercv="${id}">📥 Marcar recibido</button>`:''}<button class="btn sm" data-cmsg="${id}">💬 Mensaje comprador</button>${ISADM?`<button class="btn sm" data-ecmp="${id}">🛒 ${e.cmp?'Republicar':'Publicar'} en comprador</button>${e.cmp?`<button class="btn sm" data-ecmpx="${id}">⛔ Quitar</button>`:''}`:''}${ISADM?`<button class="btn sm" data-eundesp="${id}">↩ Revertir despacho</button>`:''}</div>`}
 function pkmRefresh(){const m=$('mpkl');if(m.classList.contains('hide'))return;const e=pklSel&&EMB[pklSel];
   if(!e||!e.desp){m.classList.add('hide');pklSel=null;return}
-  const rc=(()=>{if(e.rcv)return e.rcv;const ps=embCalc(e).cams.flatMap(c=>c.pals);if(!ps.length)return null;let ts=0,by='';for(const pl of ps){const r=(PM[pl.id]||{}).rcv;if(!r)return null;if((r.ts||0)>=ts){ts=r.ts||0;by=r.by||''}}return{ts,by}})();
+  const rc=(()=>{if(e.rcv)return e.rcv;if(e.rec)return{ts:e.rec.ts||0,by:e.rec.by||''};const ps=embCalc(e).cams.flatMap(c=>c.pals);if(!ps.length)return null;let ts=0,by='';for(const pl of ps){const r=(PM[pl.id]||PMX[pl.id]||{}).rcv;if(!r)return null;if((r.ts||0)>=ts){ts=r.ts||0;by=r.by||''}}return{ts,by}})();
   const sc=$('mpklBody').scrollTop;$('mpklBody').innerHTML=pkmHTML(pklSel,e,rc);$('mpklBody').scrollTop=sc}
-function pkmOpen(id){pklSel=id;history.pushState({c:6},'');$('mpkl').classList.remove('hide');pkmRefresh();renderPal()}
+function pkmOpen(id){pklSel=id;try{embXlsxC(id,EMB[id]).catch(()=>{})}catch(x){}history.pushState({c:6},'');$('mpkl').classList.remove('hide');pkmRefresh();renderPal()}
 function pkmClose(){if($('mpkl').classList.contains('hide'))return;history.back()}
 
 $('palKind').addEventListener('click',e=>{const b=e.target.closest('[data-pk2]');if(b){palKind=b.dataset.pk2;renderPal()}});
@@ -3822,7 +3881,7 @@ function renderPal(){
     $('palTotal').innerHTML=T.length?`<div class="card" style="border-color:var(--ac)"><div class="slbl">Total acumulado (informativo) · semana actual y anterior</div><div style="display:flex;gap:22px;flex-wrap:wrap">${big(tb,'bultos en palets')}${big(T.length,'palets')}${big(cam,'bultos en camión')}${big(tb-cam,'por despachar')}</div><div class="msg" style="margin:10px 0 0">${Object.entries(sto).map(([t,b])=>esc(L(t))+' <b>'+b+'</b>').join(' · ')}</div></div>`:''}
   const embSorted=Object.entries(EMB).sort((a,b)=>(b[1].seq||0)-(a[1].seq||0));
   // Recibido = packing list despachado cuyos palets ya fueron confirmados como recibidos (correo + usuario que recibe)
-  const embRc=e=>{if(e.rcv)return e.rcv;if(!e.desp)return null;const ps=embCalc(e).cams.flatMap(c=>c.pals);if(!ps.length)return null;let ts=0,by='';for(const pl of ps){const r=(PM[pl.id]||{}).rcv;if(!r)return null;if((r.ts||0)>=ts){ts=r.ts||0;by=r.by||''}}return{ts,by}};
+  const embRc=e=>{if(e.rcv)return e.rcv;if(e.rec)return{ts:e.rec.ts||0,by:e.rec.by||''};if(!e.desp)return null;const ps=embCalc(e).cams.flatMap(c=>c.pals);if(!ps.length)return null;let ts=0,by='';for(const pl of ps){const r=(PM[pl.id]||PMX[pl.id]||{}).rcv;if(!r)return null;if((r.ts||0)>=ts){ts=r.ts||0;by=r.by||''}}return{ts,by}};
   const eN=embSorted.filter(([id,e])=>!e.desp),eRc=embSorted.filter(([id,e])=>e.desp&&embRc(e)),eD=embSorted.filter(([id,e])=>e.desp&&!embRc(e));
   $('pklTabs').innerHTML=`<button class="btn sm ${pklTab==='n'?'pri':''}" data-ptk="n" style="flex:1">🆕 Nuevos (${eN.length})</button><button class="btn sm ${pklTab==='d'?'pri':''}" data-ptk="d" style="flex:1">🚚 Despachados (${eD.length})</button><button class="btn sm ${pklTab==='r'?'pri':''}" data-ptk="r" style="flex:1">📥 Recibidos (${eRc.length})</button>`;
   $('embDone').innerHTML=(()=>{if(pklTab==='n')return'';const D=pklTab==='r'?eRc:eD;if(!D.length)return `<div class="msg">${pklTab==='r'?'Aún no hay packing list recibidos.':'Aún no hay packing list despachados.'}</div>`;
@@ -3840,7 +3899,7 @@ function renderPal(){
       ${x.pals.map(pl=>`<div class="prow" style="justify-content:space-between"><span class="tv">Palet ${pl.pos} (${esc(pl.num)}${pl.g?' · PL GP #'+esc(String(pl.g)):''})</span><span class="msg" style="margin:0">${pStores(pl).map(s=>esc(L(s.t))+' '+s.b).join(' · ')}</span>${(env||e.comp)?'':`<button class="btn sm" data-erm="${id}|${x.cid}|${pl.id}">✕</button>`}</div>`).join('')}</div>`).join('')}
     ${c.st.length?`<div class="scroll"><table><tr><th>Tienda</th><th class="n">Docs.</th><th class="n">Bultos</th><th class="n">Pzas</th></tr>${c.st.map(s=>`<tr><td>${esc(LN(s.t))}</td><td class="n">${s.tf}</td><td class="n">${fmt(s.b)}</td><td class="n">${fmt(s.pz)}</td></tr>`).join('')}<tr><td><b>TOTAL</b></td><td class="n"><b>${c.tf.length}</b></td><td class="n"><b>${fmt(c.tb)}</b></td><td class="n"><b>${fmt(c.tp)}</b></td></tr></table></div>`:''}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${(env||e.comp)?'':`<button class="btn sm" data-ecn="${id}">🚛 Camiones: ${c.cams.length}</button><button class="btn pri sm" data-ecomp="${id}">✔ Completar packing list</button>`}${(e.comp&&!env)?`<button class="btn sm" data-eopen="${id}">↩ Reabrir packing list</button>`:''}${e.comp?`<button class="btn pri sm" data-edesp="${id}">🚚 Despachar</button>`:''}<button class="btn sm" data-eprint="${id}">🖨 Lista de empaque</button>${(e.comp||env)?`<button class="btn pri sm" data-email="${id}">✉ ${env?'Reenviar':'Enviar'} correo</button>`:''}${ISADM&&!env&&!e.desp?`<button class="btn sm" data-edel="${id}">🗑 Eliminar</button>`:''}</div></details>`}).join('')||`<div class="msg">${embSorted.length?'No hay packing list en curso.':'Aún no hay embarques.'}</div>`;
-  cmpSync();
+  pmxLoad();cmpSync();
   if(keepScan){const i=document.querySelector(`[data-escan="${keepScan}"]`);if(i)i.focus();keepScan=null}
 }
 function openPalView(w){$('v-rec').classList.add('hide');$('v-recibo').classList.add('hide');$('btnPal').classList.toggle('hide',w!=='pkl');$('btnPkl').classList.toggle('hide',w!=='pal');$('btnRecBack').classList.toggle('hide',!PALBACK);$('v-pal').classList.toggle('hide',w!=='pal');$('v-pkl').classList.toggle('hide',w!=='pkl');$('btnHome').classList.remove('hide');$('ttl').textContent=w==='pal'?'Palets':'Packing list';window.scrollTo(0,0);startPal();renderPal()}
@@ -4011,6 +4070,9 @@ $('palwrap').addEventListener('click',async e=>{
   const po=e.target.closest('[data-po]');if(po){openPal(po.dataset.po);return}
   const c1=e.target.closest('[data-cmpone]');if(c1){e.stopPropagation();c1.disabled=true;if(await cmpPublish(c1.dataset.cmpone))toast('✅ Publicado en el portal del comprador');renderPal();return}
   const cg=e.target.closest('[data-cmpgrp]');if(cg){cmpGroup(cg.dataset.cmpgrp);return}
+  const exl=e.target.closest('[data-exl]');if(exl){e.stopPropagation();embExcelShare(exl.dataset.exl,true);return}
+  const rcvb=e.target.closest('[data-ercv]');if(rcvb){e.stopPropagation();const id=rcvb.dataset.ercv,x=EMB[id];if(!x||!confirm(`¿Marcar ${x.num} como RECIBIDO?\n\nSolo hazlo si la mercancía ya llegó a la Bodega CF aunque la recepción no haya cerrado todos sus palets.`))return;
+    try{await update(R(db,`${PB}/emb/${id}`),{rcv:{ts:Date.now(),by:NAME||USER,man:1}});toast('📥 '+x.num+' marcado como recibido')}catch(err){toast('Error: '+(err.code||err.message))}return}
   const cmg=e.target.closest('[data-cmsg]');if(cmg){e.stopPropagation();cmpMsg(cmg.dataset.cmsg);return}
   const ptk=e.target.closest('[data-ptk]');if(ptk){pklTab=ptk.dataset.ptk;pklSel=null;renderPal();return}
   if(e.target.closest('#pkmX')||e.target.id==='mpkl'){pkmClose();return}
