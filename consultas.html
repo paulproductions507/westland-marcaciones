@@ -3388,30 +3388,32 @@ const BL_PER=6,BL_MAX=30,BL_ALM_MAX=50;let BL=null,BLIDX=null;
 // ---- Etiqueta de ALMACENAJE: una sola etiqueta grande (hoja completa 4x3) para pegar en la caja ----
 function blAlmL(b){
   const p=String(b.p||''),m=p.length*11+46,by=m*4<=752?4:(m*3<=752?3:2);
-  const rt='REF: '+String(b.ref||''),rw=Math.max(16,Math.min(40,Math.floor(740/Math.max(1,rt.length)))),rh=Math.min(60,Math.round(rw*1.5));
-  const pw=Math.max(16,Math.min(54,Math.floor(740/Math.max(1,p.length)))),ph=Math.min(76,Math.round(pw*1.5));
-  return{by,rt,rw,rh,pw,ph}
+  const rt='REF: '+String(b.ref||''),rw=Math.max(16,Math.min(40,Math.floor(740/Math.max(1,rt.length)))),rh=Math.min(56,Math.round(rw*1.5));
+  const pw=Math.max(16,Math.min(54,Math.floor(740/Math.max(1,p.length)))),ph=Math.min(70,Math.round(pw*1.5));
+  const n=String(b.d||'').length,dh=n<=56?48:(n<=70?40:32),dw=Math.round(dh*0.67);
+  return{by,rt,rw,rh,pw,ph,dh,dw}
 }
-const BL_ALM_RULES=[172,248,344,420,468,520,572];
+const BL_ALM_RULES=[156,226,308,410,460,508,556];
 function blAlmZpl(b,q){
-  const L=blAlmL(b),x=30,out=['^XA^CI28^PW812^LL609^LH0,0'];
-  out.push(`^FO${x},20^BY${L.by}^BCN,112,N,N,N,A^FD${zs(b.p)}^FS`,`^FO${x},138^A0N,26,20^FD${zs(b.p)}^FS`);
-  if(prUser())out.push(`^FO300,142^A0N,22,14^FB482,1,0,R^FDUsuario: ${zs(prUser())}^FS`);
+  const L=blAlmL(b),x=30,u=prUser(),out=['^XA^CI28^PW812^LL609^LH0,0'];
+  out.push(`^FO${x},16^BY${L.by}^BCN,100,N,N,N,A^FD${zs(b.p)}^FS`,`^FO${x},122^A0N,26,20^FD${zs(b.p)}^FS`);
+  if(u)out.push(`^FO300,120^A0N,30,20^FB482,1,0,R^FDUsuario: ${zs(u)}^FS`);
   BL_ALM_RULES.forEach(y=>out.push(`^FO${x},${y}^GB752,2,2^FS`));
-  [0,2].forEach(d=>out.push(`^FO${x+d},182^A0N,${L.rh},${L.rw}^FD${zs(L.rt)}^FS`,`^FO${x+d},258^A0N,${L.ph},${L.pw}^FD${zs(b.p)}^FS`));
-  out.push(`^FO${x},352^A0N,30,20^FB752,2,0,L^FD${zs(b.d)}^FS`,
-    `^FO${x},430^A0N,32,22^FDENVOLTURA: ${zs(b.env)}^FS`,`^FO430,430^A0N,32,22^FDEMPAQUE: ${zs(b.emp)}^FS`,
-    `^FO${x},478^A0N,32,22^FDCOLORES:^FS`,`^FO${x},530^A0N,32,22^FDTALLAS:^FS`);
+  [0,2].forEach(d=>out.push(`^FO${x+d},164^A0N,${L.rh},${L.rw}^FD${zs(L.rt)}^FS`,`^FO${x+d},232^A0N,${L.ph},${L.pw}^FD${zs(b.p)}^FS`,
+    `^FO${x+d},314^A0N,${L.dh},${L.dw}^FB752,2,0,L^FD${zs(b.d)}^FS`));
+  out.push(`^FO${x},422^A0N,32,22^FDENVOLTURA: ${zs(b.env)}^FS`,`^FO430,422^A0N,32,22^FDEMPAQUE: ${zs(b.emp)}^FS`,
+    `^FO${x},470^A0N,32,22^FDCOLORES:^FS`,`^FO${x},518^A0N,32,22^FDTALLAS:^FS`);
   out.push(`^PQ${q}^XZ`);return out.join('\n')
 }
 function blAlmHTML(b){
-  const L=blAlmL(b),x=30,tx=(l,y,fs,txt,wt)=>`<div style="position:absolute;left:${l}px;top:${y}px;font:${wt} ${fs}px/${fs}px Arial,sans-serif;white-space:nowrap">${esc(txt)}</div>`;
+  const L=blAlmL(b),x=30,u=prUser(),tx=(l,y,fs,txt,wt)=>`<div style="position:absolute;left:${l}px;top:${y}px;font:${wt} ${fs}px/${fs}px Arial,sans-serif;white-space:nowrap">${esc(txt)}</div>`;
   let h='<div class="lbw"><div class="lbp">';
   BL_ALM_RULES.forEach(y=>h+=`<div style="position:absolute;left:${x}px;top:${y}px;width:752px;height:2px;background:#444"></div>`);
-  h+=`<svg class="bcg" data-code="${esc(b.p)}" data-by="${L.by}" data-h="112" style="position:absolute;left:${x}px;top:20px"></svg>`
-   +tx(x,138,26,b.p,700)+(prUser()?`<div style="position:absolute;left:300px;top:142px;width:482px;text-align:right;font:600 22px/22px Arial,sans-serif;white-space:nowrap">${esc('Usuario: '+prUser())}</div>`:'')+tx(x,182,L.rh,L.rt,800)+tx(x,258,L.ph,b.p,800)
-   +`<div style="position:absolute;left:${x}px;top:352px;width:752px;height:62px;overflow:hidden;font:600 30px/31px Arial,sans-serif">${esc(b.d)}</div>`
-   +tx(x,430,32,'ENVOLTURA: '+(b.env||''),600)+tx(430,430,32,'EMPAQUE: '+(b.emp||''),600)+tx(x,478,32,'COLORES:',600)+tx(x,530,32,'TALLAS:',600);
+  h+=`<svg class="bcg" data-code="${esc(b.p)}" data-by="${L.by}" data-h="100" style="position:absolute;left:${x}px;top:16px"></svg>`
+   +tx(x,122,26,b.p,700)+(u?`<div style="position:absolute;left:300px;top:120px;width:482px;text-align:right;font:600 30px/30px Arial,sans-serif;white-space:nowrap">${esc('Usuario: '+u)}</div>`:'')
+   +tx(x,164,L.rh,L.rt,800)+tx(x,232,L.ph,b.p,800)
+   +`<div style="position:absolute;left:${x}px;top:314px;width:752px;height:${L.dh*2}px;overflow:hidden;font:800 ${L.dh}px/${L.dh}px Arial,sans-serif">${esc(b.d)}</div>`
+   +tx(x,422,32,'ENVOLTURA: '+(b.env||''),600)+tx(430,422,32,'EMPAQUE: '+(b.emp||''),600)+tx(x,470,32,'COLORES:',600)+tx(x,518,32,'TALLAS:',600);
   return h+'</div></div>'
 }
 const blNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
