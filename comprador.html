@@ -219,7 +219,7 @@ const TK='cmpTheme';
 const setTheme=t=>{document.documentElement.dataset.theme=t;$('tg').textContent=t==='dark'?'☀ Claro':'☾ Oscuro';try{localStorage.setItem(TK,t)}catch(e){}};
 setTheme(document.documentElement.dataset.theme==='light'?'light':'dark');
 $('tg').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
-let SN={},db,TOK='',IDX={},PL=null,ROWS=[],VIEW=[],SORT={k:'t',d:1},BUSY=false;
+let SN={},db,TOK='',DK='',IDX={},PL=null,ROWS=[],VIEW=[],SORT={k:'t',d:1},BUSY=false;
 
 const dn=n=>String(n||'').replace(/^EMB-/i,'DSP-');let PLID=null;
 const COLS=[
@@ -253,12 +253,14 @@ function fail(m){$('bk').classList.add('hide');$('sub').textContent='';$('app').
 
 async function init(){
   const t=(location.hash.slice(1).split('/')[0]||new URLSearchParams(location.search).get('t')||'').trim();
-  if(!/^[A-Za-z0-9_-]{16,64}$/.test(t)){fail('Enlace no válido');return}
+  if(!/^[A-Za-z0-9_-]{5,64}$/.test(t)){fail('Enlace no válido');return}
   TOK=t;
   try{
     const app=initializeApp(FB),auth=getAuth(app);db=getDatabase(app);
     if(!auth.currentUser)await signInAnonymously(auth);
-    IDX=(await get(ref(db,`${CMPB}/${TOK}/idx`))).val()||{};Object.values(IDX).forEach(x=>{if(x)x.num=dn(x.num)});
+    DK=TOK;
+    if(TOK.length<16){const a=(await get(ref(db,`${CMPB}/${TOK}/a`))).val();if(typeof a!=='string'||!a){fail('Enlace no válido o desactivado');return}DK=a}
+    IDX=(await get(ref(db,`${CMPB}/${DK}/idx`))).val()||{};Object.values(IDX).forEach(x=>{if(x)x.num=dn(x.num)});
     if(!Object.keys(IDX).length){fail('Este enlace no tiene lista de empaque publicados o fue desactivado');return}
     route();
   }catch(e){fail('No se pudo abrir ('+(e.code||e.message)+')')}
@@ -293,7 +295,7 @@ function showList(){
 /* ---------- DETALLE ---------- */
 async function openPL(id,sec){PLID=id;
   $('app').innerHTML='<div class="card msg">Cargando lista de empaque…</div>';
-  try{const v=(await get(ref(db,`${CMPB}/${TOK}/pl/${id}`))).val();
+  try{const v=(await get(ref(db,`${CMPB}/${DK}/pl/${id}`))).val();
     if(!v){fail('Ese lista de empaque ya no está disponible');return}
     v.num=dn(v.num);PL=v;SN={};(v.stores||[]).forEach(s=>{if(s.t&&s.tn)SN[s.t]=s.tn});ROWS=Object.values(v.rows||{}).map(norm1);SORT={k:'t',d:1};paintPL();if(sec&&document.querySelector('#app [data-sec="'+sec+'"]'))hmGo(sec)}
   catch(e){fail('No se pudo abrir ('+(e.code||e.message)+')')}
@@ -553,7 +555,7 @@ async function loadAll(){
   $('app').innerHTML=`<div class="card msg" id="ldg">Cargando despachos… 0/${ids.length}</div>`;
   const keep=SN;
   await Promise.all(ids.map(async id=>{
-    try{const v=(await get(ref(db,`${CMPB}/${TOK}/pl/${id}`))).val();
+    try{const v=(await get(ref(db,`${CMPB}/${DK}/pl/${id}`))).val();
       if(v){SN={};(v.stores||[]).forEach(x=>{if(x.t&&x.tn)SN[x.t]=x.tn});
         Object.values(v.rows||{}).forEach(r=>out.push({...norm1(r),pid:id,pn:v.num||IDX[id].num,pts:v.ts||0}))}}catch(e){}
     done++;const l=$('ldg');if(l)l.textContent=`Cargando despachos… ${done}/${ids.length}`}));

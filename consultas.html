@@ -3388,32 +3388,38 @@ const BL_PER=6,BL_MAX=30,BL_ALM_MAX=50;let BL=null,BLIDX=null;
 // ---- Etiqueta de ALMACENAJE: una sola etiqueta grande (hoja completa 4x3) para pegar en la caja ----
 function blAlmL(b){
   const p=String(b.p||''),m=p.length*11+46,by=m*4<=752?4:(m*3<=752?3:2);
-  const rt='REF: '+String(b.ref||''),rw=Math.max(16,Math.min(40,Math.floor(740/Math.max(1,rt.length)))),rh=Math.min(56,Math.round(rw*1.5));
-  const pw=Math.max(16,Math.min(54,Math.floor(740/Math.max(1,p.length)))),ph=Math.min(70,Math.round(pw*1.5));
-  const n=String(b.d||'').length,dh=n<=56?48:(n<=70?40:32),dw=Math.round(dh*0.67);
-  return{by,rt,rw,rh,pw,ph,dh,dw}
+  // Fuente 0 de la Zebra (condensada en negrita, la misma de las etiquetas de la caja): sin ancho fijo para que mantenga su proporción original
+  const rt='REF: '+String(b.ref||''),rh=Math.min(60,Math.floor(740/(Math.max(1,rt.length)*0.52)));
+  const ph=Math.min(70,Math.floor(740/(Math.max(1,p.length)*0.52)));
+  const n=String(b.d||'').length,dh=n<=56?48:(n<=70?40:34);
+  return{by,rt,rh,ph,dh}
 }
-const BL_ALM_RULES=[156,226,308,410,460,508,556];
+const BL_ALM_RULES=[178,248,330,432,482,530,578];
+const prStamp=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes())};
 function blAlmZpl(b,q){
   const L=blAlmL(b),x=30,u=prUser(),out=['^XA^CI28^PW812^LL609^LH0,0'];
-  out.push(`^FO${x},16^BY${L.by}^BCN,100,N,N,N,A^FD${zs(b.p)}^FS`,`^FO${x},122^A0N,26,20^FD${zs(b.p)}^FS`);
-  if(u)out.push(`^FO300,120^A0N,30,20^FB482,1,0,R^FDUsuario: ${zs(u)}^FS`);
+  out.push(`^FO${x},16^BY${L.by}^BCN,100,N,N,N,A^FD${zs(b.p)}^FS`,`^FO${x},122^A0N,26^FD${zs(b.p)}^FS`);
+  if(u)out.push(`^FO300,116^A0N,30^FB482,1,0,R^FDUsuario: ${zs(u)}^FS`);
+  out.push(`^FO300,148^A0N,24^FB482,1,0,R^FD${prStamp()}^FS`);
   BL_ALM_RULES.forEach(y=>out.push(`^FO${x},${y}^GB752,2,2^FS`));
-  [0,2].forEach(d=>out.push(`^FO${x+d},164^A0N,${L.rh},${L.rw}^FD${zs(L.rt)}^FS`,`^FO${x+d},232^A0N,${L.ph},${L.pw}^FD${zs(b.p)}^FS`,
-    `^FO${x+d},314^A0N,${L.dh},${L.dw}^FB752,2,0,L^FD${zs(b.d)}^FS`));
-  out.push(`^FO${x},422^A0N,32,22^FDENVOLTURA: ${zs(b.env)}^FS`,`^FO430,422^A0N,32,22^FDEMPAQUE: ${zs(b.emp)}^FS`,
-    `^FO${x},470^A0N,32,22^FDCOLORES:^FS`,`^FO${x},518^A0N,32,22^FDTALLAS:^FS`);
+  out.push(`^FO${x},186^A0N,${L.rh}^FD${zs(L.rt)}^FS`,`^FO${x},254^A0N,${L.ph}^FD${zs(b.p)}^FS`,
+    `^FO${x},336^A0N,${L.dh}^FB752,2,0,L^FD${zs(b.d)}^FS`,
+    `^FO${x},444^A0N,34^FDENVOLTURA: ${zs(b.env)}^FS`,`^FO430,444^A0N,34^FDEMPAQUE: ${zs(b.emp)}^FS`,
+    `^FO${x},492^A0N,34^FDCOLORES: ${zs(b.col)}^FS`,`^FO${x},540^A0N,34^FDTALLAS: ${zs(b.tal)}^FS`);
   out.push(`^PQ${q}^XZ`);return out.join('\n')
 }
 function blAlmHTML(b){
-  const L=blAlmL(b),x=30,u=prUser(),tx=(l,y,fs,txt,wt)=>`<div style="position:absolute;left:${l}px;top:${y}px;font:${wt} ${fs}px/${fs}px Arial,sans-serif;white-space:nowrap">${esc(txt)}</div>`;
+  // La vista previa imita la fuente condensada de la Zebra con una tipografía angosta; la etiqueta impresa usa la fuente real de la impresora
+  const L=blAlmL(b),x=30,u=prUser(),ff="'Arial Narrow','Roboto Condensed',Arial,sans-serif",sx='transform:scaleX(.84);transform-origin:0 0;',
+    tx=(l,y,fs,txt)=>`<div style="position:absolute;left:${l}px;top:${y}px;font:800 ${fs}px/${fs}px ${ff};white-space:nowrap;${sx}">${esc(txt)}</div>`,
+    rt=(y,fs,txt)=>`<div style="position:absolute;left:300px;top:${y}px;width:482px;text-align:right;font:800 ${fs}px/${fs}px ${ff};white-space:nowrap;transform:scaleX(.84);transform-origin:100% 0">${esc(txt)}</div>`;
   let h='<div class="lbw"><div class="lbp">';
   BL_ALM_RULES.forEach(y=>h+=`<div style="position:absolute;left:${x}px;top:${y}px;width:752px;height:2px;background:#444"></div>`);
   h+=`<svg class="bcg" data-code="${esc(b.p)}" data-by="${L.by}" data-h="100" style="position:absolute;left:${x}px;top:16px"></svg>`
-   +tx(x,122,26,b.p,700)+(u?`<div style="position:absolute;left:300px;top:120px;width:482px;text-align:right;font:600 30px/30px Arial,sans-serif;white-space:nowrap">${esc('Usuario: '+u)}</div>`:'')
-   +tx(x,164,L.rh,L.rt,800)+tx(x,232,L.ph,b.p,800)
-   +`<div style="position:absolute;left:${x}px;top:314px;width:752px;height:${L.dh*2}px;overflow:hidden;font:800 ${L.dh}px/${L.dh}px Arial,sans-serif">${esc(b.d)}</div>`
-   +tx(x,422,32,'ENVOLTURA: '+(b.env||''),600)+tx(430,422,32,'EMPAQUE: '+(b.emp||''),600)+tx(x,470,32,'COLORES:',600)+tx(x,518,32,'TALLAS:',600);
+   +tx(x,122,26,b.p)+(u?rt(116,30,'Usuario: '+u):'')+rt(148,24,prStamp())
+   +tx(x,186,L.rh,L.rt)+tx(x,254,L.ph,b.p)
+   +`<div style="position:absolute;left:${x}px;top:336px;width:${Math.round(752/.84)}px;height:${L.dh*2}px;overflow:hidden;font:800 ${L.dh}px/${L.dh}px ${ff};${sx}">${esc(b.d)}</div>`
+   +tx(x,444,34,'ENVOLTURA: '+(b.env||''))+tx(430,444,34,'EMPAQUE: '+(b.emp||''))+tx(x,492,34,'COLORES: '+(b.col||''))+tx(x,540,34,'TALLAS: '+(b.tal||''));
   return h+'</div></div>'
 }
 const blNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -3472,7 +3478,7 @@ function blSetMode(m){
 }
 async function openBul(){
   try{await loadUploaded()}catch(e){}
-  BLIDX=null;BL={q:'',p:'',ref:'',d:'',n:BL_PER,mode:'rec',env:'PZA',emp:''};
+  BLIDX=null;BL={q:'',p:'',ref:'',d:'',n:BL_PER,mode:'rec',env:'PZA',emp:'',col:'',tal:''};
   history.pushState({c:4},'');$('mlbl').classList.remove('hide');
   $('mlblBody').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2 style="font-size:17px">Etiqueta de bulto</h2><button class="btn sm" id="blX">Cerrar</button></div>
   <div class="lbl">Tipo de etiqueta</div>
@@ -3484,7 +3490,9 @@ async function openBul(){
   <div class="lbl" style="margin-top:6px">Estilo</div><input class="f" id="blR" type="text" autocomplete="off" maxlength="30">
   <div class="lbl" style="margin-top:6px">Descripción</div><input class="f" id="blD" type="text" autocomplete="off" maxlength="80">
   <div id="blAlmF" style="display:none"><div class="lbl" style="margin-top:6px">Envoltura</div><input class="f" id="blE" type="text" autocomplete="off" maxlength="12" value="PZA">
-  <div class="lbl" style="margin-top:6px">Empaque (piezas por caja · opcional)</div><input class="f" id="blM" type="text" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="Si lo dejas vacío, lo escribes a mano"></div>
+  <div class="lbl" style="margin-top:6px">Empaque (piezas por caja · opcional)</div><input class="f" id="blM" type="text" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="Si lo dejas vacío, lo escribes a mano">
+  <div class="lbl" style="margin-top:6px">Colores (opcional)</div><input class="f" id="blC" type="text" autocomplete="off" maxlength="40" placeholder="Vacío = se escribe a mano">
+  <div class="lbl" style="margin-top:6px">Tallas (opcional)</div><input class="f" id="blT" type="text" autocomplete="off" maxlength="40" placeholder="Vacío = se escribe a mano"></div>
   <div class="lbl" style="margin-top:6px">Cantidad de etiquetas</div><input class="f" id="blN" type="number" inputmode="numeric" min="1" value="${BL_PER}">
   <div id="blPrev" style="margin-top:12px"></div>
   <button class="btn pri" id="blPrint" style="width:100%;margin-top:14px;padding:13px"></button>`;
@@ -3493,7 +3501,7 @@ async function openBul(){
 $('recBul').onclick=openBul;
 $('mlblBody').addEventListener('input',e=>{const id=e.target.id;if(!BL||!id||id[0]!=='b'||id[1]!=='l')return;const v=e.target.value;
   if(id==='blQ'){BL.q=v;blSearch();return}
-  if(id==='blP')BL.p=v;else if(id==='blR')BL.ref=v;else if(id==='blD')BL.d=v;else if(id==='blN')BL.n=Math.max(0,parseInt(v,10)||0);else if(id==='blE')BL.env=v;else if(id==='blM')BL.emp=v;else return;
+  if(id==='blP')BL.p=v;else if(id==='blR')BL.ref=v;else if(id==='blD')BL.d=v;else if(id==='blN')BL.n=Math.max(0,parseInt(v,10)||0);else if(id==='blE')BL.env=v;else if(id==='blM')BL.emp=v;else if(id==='blC')BL.col=v;else if(id==='blT')BL.tal=v;else return;
   blPaint()});
 $('mlblBody').addEventListener('click',async e=>{
   if(e.target.id==='blX'){history.back();return}
@@ -3504,7 +3512,7 @@ $('mlblBody').addEventListener('click',async e=>{
   const q=BL.n;if(!(q>=1)){toast('Escribe una cantidad válida');return}
   const alm=BL.mode==='alm',sheets=alm?q:Math.ceil(q/BL_PER);
   if(alm?q>BL_ALM_MAX:sheets>BL_MAX){toast(alm?`Máximo ${BL_ALM_MAX} etiquetas por envío`:`Máximo ${BL_MAX} hojas (${BL_MAX*BL_PER} etiquetas) por envío`);return}
-  const b={p,ref:(BL.ref||'').trim(),d:(BL.d||'').trim(),env:(BL.env||'').trim(),emp:(BL.emp||'').trim()};
+  const b={p,ref:(BL.ref||'').trim(),d:(BL.d||'').trim(),env:(BL.env||'').trim(),emp:(BL.emp||'').trim(),col:(BL.col||'').trim(),tal:(BL.tal||'').trim()};
   let zpl='';if(alm)zpl=blAlmZpl(b,q)+'\n';else for(let r=q;r>0;r-=BL_PER)zpl+=blZpl(b,Math.min(BL_PER,r))+'\n';
   e.target.disabled=true;try{await enqueuePrint(zpl,{tr:(alm?'ALMAC ':'BULTO ')+p,t:alm?'ALMAC':'BULTO',n:sheets});history.back()}catch(err){toast('Error: '+(err.code||err.message));e.target.disabled=false}
 });
@@ -3677,7 +3685,21 @@ async function cmpTok(){if(CMPTOK)return CMPTOK;let t=null;try{t=(await get(R(db
   if(!t){t=Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>'abcdefghijklmnopqrstuvwxyz0123456789'[b%36]).join('');await set(R(db,'meta_v1/comprador_cfg/token'),t)}
   return CMPTOK=t}
 const cmpUrl=t=>new URL('comprador.html',location.href).href+'#'+t;
-async function cmpCopy(msg){const url=cmpUrl(await cmpTok());try{await navigator.clipboard.writeText(url);toast(msg||'✅ Link del comprador copiado')}catch(e){prompt('Link para el comprador (cópialo y reenvíalo):',url)}}
+// Link corto: comprador.html#codigo (8 letras/números). El código es un alias guardado en meta_v1/comprador/{codigo}/a que apunta al token largo; el link largo sigue funcionando igual.
+const CMP_SHORT_FILE='comprador.html';let CMPSHORT=null;
+async function cmpShortCode(){
+  if(CMPSHORT)return CMPSHORT;
+  const tok=await cmpTok();let c=null;
+  try{c=(await get(R(db,'meta_v1/comprador_cfg/short'))).val()}catch(e){}
+  if(c){const a=(await get(R(db,`${CMPB}/${c}/a`))).val();if(a!==tok)await set(R(db,`${CMPB}/${c}/a`),tok)}
+  else{for(let i=0;i<5&&!c;i++){
+    const k=Array.from(crypto.getRandomValues(new Uint8Array(8)),b=>'abcdefghjkmnpqrstuvwxyz23456789'[b%31]).join('');
+    if((await get(R(db,`${CMPB}/${k}/a`))).val())continue;
+    await set(R(db,`${CMPB}/${k}/a`),tok);await set(R(db,'meta_v1/comprador_cfg/short'),k);c=k}}
+  if(!c)throw new Error('sin código');
+  return CMPSHORT=c}
+async function cmpLink(){try{return new URL(CMP_SHORT_FILE,location.href).href+'#'+await cmpShortCode()}catch(e){return cmpUrl(await cmpTok())}}
+async function cmpCopy(msg,long){const url=long?cmpUrl(await cmpTok()):await cmpLink();try{await navigator.clipboard.writeText(url);toast(msg||(long?'✅ Link largo del comprador copiado':'✅ Link del comprador copiado'))}catch(e){prompt('Link para el comprador (cópialo y reenvíalo):',url)}}
 function cmpRc(e,strict){if(e.rcv)return e.rcv;if(e.rec)return{ts:e.rec.ts||0,by:e.rec.by||''};if(!e.desp)return null;const ps=embCalc(e).cams.flatMap(c=>c.pals);if(!ps.length)return null;let ts=0,by='';
   for(const pl of ps){const p=PM[pl.id]||PMX[pl.id];if(!p)return strict?undefined:null;const r=p.rcv;if(!r)return null;if((r.ts||0)>=ts){ts=r.ts||0;by=r.by||''}}return{ts,by}}
 function cmpSt(e,strict){if(!e||!e.desp)return'';const r=cmpRc(e,strict);return r===undefined?undefined:r?'R':'D'}
@@ -3756,10 +3778,10 @@ async function cmpGroup(tab){const nm=tab==='r'?'recibidos':'despachados';
   let ok=0;for(const [id] of D){toast(`Publicando ${ok+1} de ${D.length}…`);if(await cmpPublish(id,true))ok++}
   toast(`✅ ${ok} de ${D.length} publicados`)}
 function cmpBar(D,tab){if(!ISADM)return'';const nm=tab==='r'?'recibidos':'despachados',pend=D.filter(([id,e])=>cmpPend(e)).length;
-  return `<div class="card" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:12px"><span class="msg" style="margin:0;flex:1;min-width:150px">🛒 Portal del comprador · ${nm}: <b>${D.length-pend}</b> de ${D.length} al día</span><button class="btn sm pri" data-cmpgrp="${tab}" ${pend?'':'disabled'}>Publicar ${nm}${pend?' ('+pend+')':''}</button><button class="btn sm" data-ecmplink="1">🔗 Copiar link</button><button class="btn sm" data-clfix="1">🔧 Piezas Cristal</button></div>`}
+  return `<div class="card" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:12px"><span class="msg" style="margin:0;flex:1;min-width:150px">🛒 Portal del comprador · ${nm}: <b>${D.length-pend}</b> de ${D.length} al día</span><button class="btn sm pri" data-cmpgrp="${tab}" ${pend?'':'disabled'}>Publicar ${nm}${pend?' ('+pend+')':''}</button><button class="btn sm" data-ecmplink="1">🔗 Copiar link</button><button class="btn sm" data-ecmplink="L">Link largo</button><button class="btn sm" data-clfix="1">🔧 Piezas Cristal</button></div>`}
 // Mensaje listo para copiar y pegar en el correo al comprador (según estatus y contenido del despacho)
 async function cmpMsg(id){const e=EMB[id];if(!e||!e.desp)return;const c=embCalc(e),rc=cmpRc(e),rec=!!rc;
-  let link='';if(e.cmp){try{link=cmpUrl(await cmpTok())}catch(x){}}
+  let link='';if(e.cmp){try{link=await cmpLink()}catch(x){}}
   const day=ts=>new Date(ts).toLocaleDateString('es',{day:'numeric',month:'long',year:'numeric'});
   const P={Transferencia:['transferencia','transferencias','a tiendas'],Proforma:['proforma','proformas','de clientes'],'Movimiento interno':['movimiento interno','movimientos internos','entre bodegas']};
   const tp={};c.tf.forEach(a=>{const k=docTipo(a),o=tp[k]=tp[k]||{n:0,b:0,pz:0};o.n++;o.b+=a.b;o.pz+=a.pz});
@@ -4150,7 +4172,7 @@ $('palwrap').addEventListener('click',async e=>{
   const cf=e.target.closest('[data-clfix]');if(cf){cf.disabled=true;toast('Revisando piezas de Cristal…');try{const r=await clFixPz();alert(r.fx?`✔ Piezas recuperadas en ${r.fx} documento(s) de Cristal.`+(r.sin?`\n⚠ ${r.sin} documento(s) siguen sin piezas: no tienen el dato guardado. Sube sus correos .eml (despacho o recibido); puedes elegir todos a la vez y se aplican solos a cada packing list.`:''):(r.sin?`⚠ ${r.sin} documento(s) de Cristal no tienen piezas guardadas. Sube sus correos .eml (despacho o recibido), todos a la vez; se aplican solos a cada packing list.`:'✔ Todo Cristal ya tiene piezas.'));setTimeout(()=>{for(const [id,x] of Object.entries(EMB))if(x&&x.cmp&&x.desp)cmpPublish(id,true)},2500)}catch(err){toast('Error: '+(err.code||err.message))}cf.disabled=false;return}
   const cp=e.target.closest('[data-ecmp]');if(cp){if(await cmpPublish(cp.dataset.ecmp))await cmpCopy('✅ Publicado · link del comprador copiado');return}
   const cx=e.target.closest('[data-ecmpx]');if(cx){cmpRemove(cx.dataset.ecmpx);return}
-  const cl=e.target.closest('[data-ecmplink]');if(cl){cmpCopy();return}
+  const cl=e.target.closest('[data-ecmplink]');if(cl){cmpCopy(null,cl.dataset.ecmplink==='L');return}
   const rm=e.target.closest('[data-erm]');if(rm){const [eid,cid,pid]=rm.dataset.erm.split('|');if(embLocked(EMB[eid]))return;try{await update(R(db,PB),{[`pm/${pid}/emb`]:null,[`emb/${eid}/cam/${cid}/pal/${pid}`]:null});toast('Palet descargado del camión')}catch(err){toast('Error: '+(err.code||err.message))}return}
   const d=e.target.closest('[data-edel]');if(d){const id=d.dataset.edel;if(!confirm('¿Eliminar este embarque? Sus palets quedan libres.'))return;const up={[`emb/${id}`]:null};Object.entries(PM).forEach(([pid,p])=>{if(p.emb&&p.emb.e===id)up[`pm/${pid}/emb`]=null});try{await update(R(db,PB),up);toast('Embarque eliminado')}catch(err){toast('Error: '+(err.code||err.message))}}
 });
