@@ -26,14 +26,24 @@ n1=bt.match(/Distribuir:\s*(\d+)/);n2=bt.match(/Surtidas?:\s*(\d+)/);n3=bt.match
 if(!RF){em=tx(pn.querySelector('.panel-heading label')).match(/Estilo:\s*(.*)$/);RF=em?em[1].trim():''}
 CD.push({t:m[1],dp:n3?+n3[1]:0,di:n1?+n1[1]:0,su:n2?+n2[1]:0,tr:an?(an.getAttribute('data-id')||tx(an)):((bt.match(/Transferencia:\s*(\d+)/)||[])[1]||'')})}
 o={k:'ts',dist:(location.search.match(/distributionId=(\d+)/i)||[])[1]||(((d.querySelector('a[href*="istributionId="]')||{}).href||'').match(/istributionId=(\d+)/)||[])[1]||'',p:PC,ref:RF,c:CD}}
+else if(d.getElementById('myTables')&&/Proforma/i.test(tx(d.getElementById('myTables')))&&/Cliente/i.test(tx(d.getElementById('myTables')))){
+t=d.getElementById('myTables');var PR=[],RW2=[],pf1,pr1,rc1,rf1,an1,hi;
+try{if(window.jQuery&&jQuery.fn.dataTable&&jQuery.fn.dataTable.isDataTable(t)){RW2=jQuery(t).DataTable().rows().nodes().toArray()}}catch(e){RW2=[]}
+if(!RW2.length)RW2=[].slice.call(t.tBodies[0]?t.tBodies[0].rows:[]);
+for(i=0;i<RW2.length;i++){c=RW2[i].cells;if(!c||c.length<12)continue;pf1=tx(c[1]);if(!/^\d{3,}$/.test(pf1))continue;hi=c[5]?c[5].querySelector('input[name=qtyRequest]'):null;
+PR.push({pf:pf1,pos:tx(c[2]),c:tx(c[3]),re:tx(c[4]),sol:hi?hi.value:tx(c[5]),su:tx(c[7]),de:tx(c[8]),f:tx(c[11])})}
+if(!PR.length){alert('No encontré proformas en esta pantalla');return}
+an1=d.querySelector('a.anchorDetail');pr1=an1?(an1.getAttribute('data-id')||tx(an1)):((location.search.match(/product=(\d+)/i)||[])[1]||'');
+rc1=(location.search.match(/recibo=(\d+)/i)||[])[1]||((d.querySelector('input[name=recibo]')||{}).value||'');
+rf1=tx(d.querySelector('.table-responsive label'))||decodeURIComponent((location.search.match(/referencia=([^&]*)/i)||[])[1]||'').trim();
+o={k:'pf',p:pr1,rc:rc1,ref:rf1,rows:PR}}
 else{var TB=null,TL=d.querySelectorAll('table'),im,I2;
 for(i=0;i<TL.length;i++){if(/^\s*Cod\./i.test(tx(TL[i]))&&/Ref\.?\s*Supl/i.test(tx(TL[i]))&&TL[i].rows.length>1){TB=TL[i];break}}
-if(!TB){alert('Puente: abre la pantalla de Surtido de una transferencia, el listado de transferencias por agregar, Liberación y reasignación, la Distribución del túnel manual, el Surtido del producto o Producto - INV (etiqueta)');return}
+if(!TB){alert('Puente: abre la pantalla de Surtido de una transferencia, el listado de transferencias por agregar, Liberación y reasignación, la Distribución del túnel manual, el Surtido del producto, las Proformas del producto (Cristal) o Producto - INV (etiqueta)');return}
 c=TB.rows[1].cells;o={k:'pi',c:tx(c[0]),d:tx(c[1]),l:tx(c[2]),r:tx(c[3]),t:tx(c[4])};
 im=d.querySelector('#mimodal.in img.recibir-imagen')||d.querySelector('img.imagen');
 if(im&&im.src&&!/sin_imagen/i.test(im.src)){I2=new Image();I2.crossOrigin='anonymous';
 I2.onload=function(){try{var w=I2.naturalWidth,h=I2.naturalHeight,s=Math.min(1,380/Math.max(w,h)),cv=d.createElement('canvas'),cx;cv.width=Math.max(1,Math.round(w*s));cv.height=Math.max(1,Math.round(h*s));cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);cx.drawImage(I2,0,0,cv.width,cv.height);o.i=cv.toDataURL('image/jpeg',.6)}catch(e){}send(o)};
 I2.onerror=function(){send(o)};I2.src=im.currentSrc||im.src;return}}
 send(o)}catch(e){alert('Puente: '+e.message)}}
-
 BMCODE(U)})();

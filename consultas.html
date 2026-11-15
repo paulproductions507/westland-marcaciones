@@ -2581,9 +2581,20 @@ n1=bt.match(/Distribuir:\s*(\d+)/);n2=bt.match(/Surtidas?:\s*(\d+)/);n3=bt.match
 if(!RF){em=tx(pn.querySelector('.panel-heading label')).match(/Estilo:\s*(.*)$/);RF=em?em[1].trim():''}
 CD.push({t:m[1],dp:n3?+n3[1]:0,di:n1?+n1[1]:0,su:n2?+n2[1]:0,tr:an?(an.getAttribute('data-id')||tx(an)):((bt.match(/Transferencia:\s*(\d+)/)||[])[1]||'')})}
 o={k:'ts',dist:(location.search.match(/distributionId=(\d+)/i)||[])[1]||(((d.querySelector('a[href*="istributionId="]')||{}).href||'').match(/istributionId=(\d+)/)||[])[1]||'',p:PC,ref:RF,c:CD}}
+else if(d.getElementById('myTables')&&/Proforma/i.test(tx(d.getElementById('myTables')))&&/Cliente/i.test(tx(d.getElementById('myTables')))){
+t=d.getElementById('myTables');var PR=[],RW2=[],pf1,pr1,rc1,rf1,an1,hi;
+try{if(window.jQuery&&jQuery.fn.dataTable&&jQuery.fn.dataTable.isDataTable(t)){RW2=jQuery(t).DataTable().rows().nodes().toArray()}}catch(e){RW2=[]}
+if(!RW2.length)RW2=[].slice.call(t.tBodies[0]?t.tBodies[0].rows:[]);
+for(i=0;i<RW2.length;i++){c=RW2[i].cells;if(!c||c.length<12)continue;pf1=tx(c[1]);if(!/^\d{3,}$/.test(pf1))continue;hi=c[5]?c[5].querySelector('input[name=qtyRequest]'):null;
+PR.push({pf:pf1,pos:tx(c[2]),c:tx(c[3]),re:tx(c[4]),sol:hi?hi.value:tx(c[5]),su:tx(c[7]),de:tx(c[8]),f:tx(c[11])})}
+if(!PR.length){alert('No encontré proformas en esta pantalla');return}
+an1=d.querySelector('a.anchorDetail');pr1=an1?(an1.getAttribute('data-id')||tx(an1)):((location.search.match(/product=(\d+)/i)||[])[1]||'');
+rc1=(location.search.match(/recibo=(\d+)/i)||[])[1]||((d.querySelector('input[name=recibo]')||{}).value||'');
+rf1=tx(d.querySelector('.table-responsive label'))||decodeURIComponent((location.search.match(/referencia=([^&]*)/i)||[])[1]||'').trim();
+o={k:'pf',p:pr1,rc:rc1,ref:rf1,rows:PR}}
 else{var TB=null,TL=d.querySelectorAll('table'),im,I2;
 for(i=0;i<TL.length;i++){if(/^\s*Cod\./i.test(tx(TL[i]))&&/Ref\.?\s*Supl/i.test(tx(TL[i]))&&TL[i].rows.length>1){TB=TL[i];break}}
-if(!TB){alert('Puente: abre la pantalla de Surtido de una transferencia, el listado de transferencias por agregar, Liberación y reasignación, la Distribución del túnel manual, el Surtido del producto o Producto - INV (etiqueta)');return}
+if(!TB){alert('Puente: abre la pantalla de Surtido de una transferencia, el listado de transferencias por agregar, Liberación y reasignación, la Distribución del túnel manual, el Surtido del producto, las Proformas del producto (Cristal) o Producto - INV (etiqueta)');return}
 c=TB.rows[1].cells;o={k:'pi',c:tx(c[0]),d:tx(c[1]),l:tx(c[2]),r:tx(c[3]),t:tx(c[4])};
 im=d.querySelector('#mimodal.in img.recibir-imagen')||d.querySelector('img.imagen');
 if(im&&im.src&&!/sin_imagen/i.test(im.src)){I2=new Image();I2.crossOrigin='anonymous';
@@ -2643,6 +2654,7 @@ function brOpenRec(id,p){
 async function brNew(o){
   if(o.k==='tm')return tmImport(o);
   if(o.k==='ts')return tsImport(o);
+  if(o.k==='pf')return crImport(o);
   return piImport(o)}
 /* 1) Túnel manual: la distribución del Compras Manager entra como un recibo (TM + número), con las mismas tiendas y el mismo flujo de surtido */
 async function tmImport(o){
@@ -2720,6 +2732,44 @@ async function tsImport(o){
   const ok=info.filter(x=>x.pend>0);
   if(!ok.length){toast('Este producto ya está surtido por completo en: '+info.map(x=>brKind(x.id)).join(', '));return}
   ask('¿Dónde surtir este producto? · '+p,[{k:'id',label:'Del más reciente al más viejo',type:'select',value:ok[0].id,opts:ok.map(x=>[x.id,`${brKind(x.id)} · ${x.f?fdate(x.f):'sin fecha'} · por surtir ${fmt(x.pend)} pzas`])}],'Surtir',async v=>{await tsApply(v.id,p,cards,o)})}
+/* 2b) Proformas del producto (Cristal): lo surtido por proforma/cliente en el Gestor se suma a la parte Cristal del producto, con el mismo mecanismo de "clientes" (pedido, surtido y # de proforma).
+   Las tiendas se surten por su lado (Surtido del producto); si Cristal aún no está, el producto queda en parcial y al cargar las proformas se completa. */
+async function crApply(id,p,rows,o){
+  if(COMP[id]){toast('El '+brKind(id)+' está completado: reábrelo antes de surtir');return}
+  if(!ONLINE){toast(NOCON);return}
+  const it=(RECS[id]&&RECS[id].items||[]).find(x=>String(x.p)===p);if(!it){toast('Producto no encontrado en '+brKind(id));return}
+  const base=`meta_v1/consultas/${id}`;let cli={},lg={};
+  try{cli=(await get(R(db,base+'/clientes'))).val()||{};lg=(await get(R(db,base+'/log'))).val()||{}}catch(e){toast('No pude leer los clientes y el surtido actual');return}
+  const done={};let manual=0;Object.values(lg).forEach(e=>{if(String(e.p)===p&&e.t==='CRISTAL'&&!e.bd&&!e.nb){if(e.ck)done[e.ck]=(done[e.ck]||0)+(e.q||0);else manual+=(e.q||0)}});
+  const totSol=rows.reduce((a,r)=>a+r.sol,0),totSu=rows.reduce((a,r)=>a+r.su,0),cr=it.s.CRISTAL||0,msg=[];
+  if(manual>0&&!confirm(`Ya hay ${fmt(manual)} pzas de Cristal surtidas sin cliente en ${brKind(id)}. Si sigues, las proformas se suman encima y se podría duplicar.\n\n¿Cargar las proformas de todos modos?`))return;
+  const ts=Date.now(),d=ymd(ts);let n=0,pz=0,ya=0,nw=0,up=0;
+  try{
+    for(const r of rows){
+      const key=ckey({c:r.c,pos:r.pos}),ex=Object.entries(cli).find(([k,c])=>c&&c.p===p&&ckey(c)===key);
+      if(!ex){const cid='pf'+(r.pf||ts)+'_'+p;const o2={p,c:r.c,q:r.sol,pos:r.pos,ro:'',pf:r.pf,ts,u:USER};await set(R(db,base+'/clientes/'+cid),o2);cli[cid]=o2;nw++}
+      else if((ex[1].q||0)!==r.sol){await update(R(db,base+'/clientes/'+ex[0]),{q:r.sol,ts,u:USER});ex[1].q=r.sol;up++}
+      const pend=Math.max(0,r.sol-(done[key]||0)),q=Math.min(r.su,pend);
+      if(q<=0){if(r.su>0&&pend===0)ya++;continue}
+      await push(R(db,base+'/log'),{p,r:it.ref||strv(o.ref),t:'CRISTAL',q,tr:r.pf,u:USER,n:NAME,ts,d,ck:key,cn:r.c,pos:r.pos||'',ro:'',br:1});
+      n++;pz+=q}
+    try{await remove(R(db,'meta_v1/consultas_prog/'+id))}catch(e){}}
+  catch(err){toast('Error al cargar proformas: '+(err.code||err.message));return}
+  if(cr!==totSol)msg.push(`Cristal en la app: ${fmt(cr)} · pedido en las proformas del Gestor: ${fmt(totSol)}`);
+  if(totSu<totSol)msg.push(`En el Gestor falta surtir ${fmt(totSol-totSu)} pzas de las proformas (surtido ${fmt(totSu)} de ${fmt(totSol)})`);
+  toast(n?`✅ ${brKind(id)}: ${n} proforma(s) cargadas · ${fmt(pz)} pzas de Cristal${nw?` · ${nw} cliente(s) nuevos`:''}${up?` · ${up} pedido(s) ajustados al Gestor`:''}`:(ya?'ℹ Las proformas ya estaban surtidas en '+brKind(id):'ℹ El Gestor no trae nada surtido en las proformas todavía'));
+  if(msg.length)alert('Revisa estas diferencias (se cargó lo surtido hasta donde la app lo pedía):\n'+msg.join('\n'));
+  brOpenRec(id,p)}
+async function crImport(o){
+  try{await loadUploaded()}catch(e){}
+  const p=String(o.p||'').replace(/\D/g,''),rows=(o.rows||[]).map(r=>({pf:String(r.pf||'').replace(/[^\w-]/g,''),pos:strv(r.pos),c:strv(r.c),sol:parseInt(r.sol,10)||0,su:parseInt(r.su,10)||0})).filter(r=>r.c&&r.sol>0);
+  if(!/^\d{5,9}$/.test(p)||!rows.length){toast('No leí el producto ni las proformas de esta pantalla');return}
+  const has=id=>(!isPs(id)||id===TUID)&&((RECS[id]&&RECS[id].items)||[]).some(x=>String(x.p)===p&&(x.s.CRISTAL||0)>0),rc=String(o.rc||'').replace(/\D/g,'');
+  if(rc&&has(rc))return crApply(rc,p,rows,o);
+  const ids=Object.keys(RECS).filter(has);
+  if(!ids.length){toast('Este producto no tiene parte de Cristal en ningún recibo ni túnel cargado en la app');return}
+  ids.sort((a,b)=>String(FECHAS[b]||'').localeCompare(String(FECHAS[a]||'')));
+  ask('¿Dónde cargar las proformas de Cristal? · '+p,[{k:'id',label:'Del más reciente al más viejo',type:'select',value:ids[0],opts:ids.map(id=>{const it=RECS[id].items.find(x=>String(x.p)===p);return[id,`${brKind(id)} · ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'} · Cristal ${fmt(it.s.CRISTAL||0)} pzas`]})}],'Cargar',async v=>{await crApply(v.id,p,rows,o)})}
 /* 3) Etiqueta de producto: toma código, descripción, colores, referencia del suplidor y talla de "Producto - INV" y guarda la imagen para que todos la vean */
 let PIIMG={};
 function piOpenImg(p){
@@ -2761,7 +2811,7 @@ function gestorHash(){
   const m=location.hash.match(/^#gestor=([\w\-=]+)$/);if(!m)return;let o;   // el base64 puede terminar en = (relleno)
   try{o=JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')))))}catch(e){toast('No pude leer los datos del Gestor');return}
   try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
-  if(o&&(o.k==='tm'||o.k==='ts'||o.k==='pi')){setTimeout(()=>brNew(o).catch(e=>toast('Error: '+(e.message||e))),400);return}
+  if(o&&(o.k==='tm'||o.k==='ts'||o.k==='pi'||o.k==='pf')){setTimeout(()=>brNew(o).catch(e=>toast('Error: '+(e.message||e))),400);return}
   HOMEBACK=true;HMLAST=ISADM?['trf']:[];NAVK=ISADM?'auto':'aut';openAu('auto');$('btnHome').textContent='Menú';setTimeout(()=>auImportGestor(o).catch(e=>toast('Error: '+(e.message||e))),400)}
 /* Copiar el código del Puente (botón permanente en Gestión + el de la tarjeta Subir PDF) */
 async function copyPuente(){
