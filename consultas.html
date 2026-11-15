@@ -2209,7 +2209,8 @@ function auTabs(){
    <button class="btn sm ${AUV==='mine'?'pri':''}" data-aut="mine">👤 Mis transferencias (${fmt(mineP().length)})</button>
    ${ISADM?`<button class="btn sm" data-aut="brm" title="El puente lee distinto según tu rol">🧭 Puente: ${brMode()==='sur'?'Surtidor':'Administrador'}</button>`:''}
    <button class="btn sm ${AUUP?'pri':''}" data-aut="up">⬆ Subir PDF</button>
-   <button class="btn sm" data-aut="ref" title="Actualizar">⟳</button></div>`}
+   <button class="btn sm" data-aut="ref" title="Actualizar">⟳</button>
+   <button class="btn sm" data-aut="bmcopy" title="Copia el código del Puente para pegarlo como marcador en el Chrome" style="margin-left:auto">🔗 Copiar Puente</button></div>`}
 
 /* ---------- Vista del administrador / encargado ---------- */
 let AUGT='asg0';
@@ -2745,7 +2746,14 @@ function gestorHash(){
   try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
   if(o&&(o.k==='tm'||o.k==='ts'||o.k==='pi')){setTimeout(()=>brNew(o).catch(e=>toast('Error: '+(e.message||e))),400);return}
   HOMEBACK=true;HMLAST=ISADM?['trf']:[];NAVK=ISADM?'auto':'aut';openAu('auto');$('btnHome').textContent='Menú';setTimeout(()=>auImportGestor(o).catch(e=>toast('Error: '+(e.message||e))),400)}
-{const b=$('gbCopy');if(b)b.onclick=async()=>{const c=gestorBM();try{await navigator.clipboard.writeText(c);$('gbMsg').textContent='✅ Código copiado. Pégalo como dirección (URL) de un marcador llamado Puente.'}catch(e){window.prompt('Copia este código completo:',c)}}}
+/* Copiar el código del Puente (botón permanente en Gestión + el de la tarjeta Subir PDF) */
+async function copyPuente(){
+  const c=gestorBM();let ok=false;
+  try{await navigator.clipboard.writeText(c);ok=true}catch(e){
+    try{const ta=document.createElement('textarea');ta.value=c;ta.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(ta);ta.focus();ta.select();ok=document.execCommand('copy');ta.remove()}catch(e2){}}
+  if(ok){toast('✅ Código del Puente copiado. Pégalo como dirección (URL) de un marcador llamado Puente.');const m=$('gbMsg');if(m)m.textContent='✅ Código copiado. Pégalo como dirección (URL) de un marcador llamado Puente.'}
+  else window.prompt('Copia este código completo:',c)}
+{const b=$('gbCopy');if(b)b.onclick=copyPuente}
 async function auReadFile(f){
   const txt=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)?await pdfText(f):await imgText(f);let a=parseTransfer(txt);
   if((!a.tr||!a.lines.length)&&ROWTXT&&txt!==ROWTXT){const a2=parseTransfer(ROWTXT);if(a2.tr&&a2.lines.length>(a.lines||[]).length)a=a2}
@@ -2909,6 +2917,7 @@ box.addEventListener('click',async e=>{
     else if(k==='up'){AUUP=!AUUP;auPaint()}
     else if(k==='brm'){const n=brMode()==='sur'?'asg':'sur';try{localStorage.setItem('conBrMode',n)}catch(x){}toast(n==='sur'?'🧭 Puente como SURTIDOR: lee lo despachado (Desp.) y te lo asigna a ti':'🧭 Puente como ADMINISTRADOR: lee Solicitado y Reservado y lo deja por asignar');auPaint()}
     else if(k==='ref'){auHome()}
+    else if(k==='bmcopy'){copyPuente()}
     else if(k==='don'){AUDON=!AUDON;auPaint()}
     else if(k==='back'){AUCUR='';AUOP='';auPaint();window.scrollTo(0,0)}
     return}
