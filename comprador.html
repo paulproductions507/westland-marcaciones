@@ -221,6 +221,8 @@ setTheme(document.documentElement.dataset.theme==='light'?'light':'dark');
 $('tg').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
 let SN={},db,TOK='',DK='',IDX={},PL=null,ROWS=[],VIEW=[],SORT={k:'t',d:1},BUSY=false;
 
+/* En el comprador la tienda Cristal se muestra como "Clientes" */
+const TL=t=>/^\s*cristal\s*$/i.test(String(t==null?'':t))?'Clientes':t,TLS=t=>String(t||'').replace(/\bcristal\b/gi,'Clientes');
 const dn=n=>String(n||'').replace(/^EMB-/i,'DSP-');let PLID=null;
 const COLS=[
  {k:'t',h:'Tienda'},{k:'tr',h:'N.º de documento'},{k:'v',h:'Proveedor'},{k:'e',h:'Estilo'},{k:'p',h:'Producto',mono:1},{k:'d',h:'Descripción',w:380},{k:'q',h:'Piezas',n:1},
@@ -281,9 +283,9 @@ function showList(){
       <select id="ls" style="flex:0 1 200px"><option value="">Todos los estados</option><option value="D">Despachado</option><option value="R">Recibido</option></select></div>
     <div class="tiles" id="lst"></div>`;
   const draw=()=>{const q=norm($('lq').value),s=$('ls').value;
-    const r=all.filter(([,v])=>(!s||(v.st==='R'?'R':'D')===s)&&(!q||norm(v.num+' '+(v.sl||'')).includes(q)));
+    const r=all.filter(([,v])=>(!s||(v.st==='R'?'R':'D')===s)&&(!q||norm(v.num+' '+(v.sl||'')+' '+TLS(v.sl||'')).includes(q)));
     $('lst').innerHTML=r.map(([id,v])=>{const rc=v.st==='R';
-      const ch=v.sl?String(v.sl).split(',').filter(Boolean).map(x=>`<span class="sc">${esc(x)}</span>`).join(''):`<span>${fmt(v.ns)} tienda(s)</span>`;
+      const ch=v.sl?String(v.sl).split(',').filter(Boolean).map(x=>`<span class="sc">${esc(TL(x.trim()))}</span>`).join(''):`<span>${fmt(v.ns)} tienda(s)</span>`;
       return `<div class="tile ${rc?'':'tr'}" data-id="${esc(id)}"><div class="hd"><b>${esc(v.num)}</b><small>${rc?'Recibido':'En tránsito · despachado'}</small></div>
         <div class="bd"><div class="big"><div><b>${v.tp?fmt(v.tp):'—'}</b><span>Piezas</span></div><div><b>${fmt(v.tf)}</b><span>Docs.</span></div></div>
           Despachado <b class="d">${fdt(v.ts)}</b><br>${rc?'Recibido <b class="d">'+fdt(v.rts)+'</b>':'Pendiente de recibir'}</div>
@@ -311,7 +313,7 @@ function paintPL(){
   const opt=k=>[...new Set(ROWS.map(r=>r[k]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'es',{numeric:true}));
   const sel=(id,l,a)=>`<select id="${id}"><option value="">${l}</option>${a.map(x=>`<option>${esc(x)}</option>`).join('')}</select>`;
   const byV=grp(ROWS,r=>r.v),byT=grp(ROWS,r=>r.ty);
-  const tieH=`<div class="rsb"><h2>Distribución por tienda</h2>${v.stores.map(s=>{const pc=(s.pz||0)/tp*100;return `<div class="sb"><div class="lb">${esc(s.t)}${s.tn?'<br><small style="color:var(--mt);font-weight:400">'+esc(s.tn)+'</small>':''}</div><div class="tr"><i style="width:${Math.max(1,pc).toFixed(1)}%"></i></div><div class="vl"><b>${pc.toFixed(1)}%</b> · ${fmt(s.pz)} pzas · ${fmt(s.tf)} doc.</div></div>`}).join('')}</div>`;
+  const tieH=`<div class="rsb"><h2>Distribución por tienda</h2>${v.stores.map(s=>{const pc=(s.pz||0)/tp*100;return `<div class="sb"><div class="lb">${esc(TL(s.t))}${s.tn?'<br><small style="color:var(--mt);font-weight:400">'+esc(s.tn)+'</small>':''}</div><div class="tr"><i style="width:${Math.max(1,pc).toFixed(1)}%"></i></div><div class="vl"><b>${pc.toFixed(1)}%</b> · ${fmt(s.pz)} pzas · ${fmt(s.tf)} doc.</div></div>`}).join('')}</div>`;
   const proH=`<div class="rsb"><h2>Distribución por proveedor</h2>${byV.map(g=>{const pc=g.q/tp*100;return `<div class="sb"><div class="lb ${g.k===SP?'sp':''}">${esc(g.k)}</div><div class="tr"><i style="width:${Math.max(1,pc).toFixed(1)}%"></i></div><div class="vl"><b>${pc.toFixed(1)}%</b> · ${fmt(g.q)} pzas · ${fmt(g.rf.size)} ref.</div></div>`}).join('')}
     <div class="info">Tipología: ${byT.map(g=>`<span class="chip ty ${tyCls(g.k)}">${esc(g.k)} · ${fmt(g.q)} pzas</span>`).join(' ')}</div></div>`;
   const RSV={all:tieH+proH,tie:tieH,pro:proH};
@@ -346,14 +348,14 @@ function render(){
   const q=norm($('q').value).split(/\s+/).filter(Boolean),fk=$('fk').value,fx=$('fx').value,fm=+$('fm').value||0;
   VIEW=ROWS.filter(r=>{
     if(fk&&fk!=='q'&&fx&&r[fk]!==fx)return false;if(fk==='q'&&fm&&(r.q||0)<fm)return false;
-    if(q.length){const h=norm([r.t,r.tn,r.tr,r.cn,r.td,r.ty,r.rc,r.v,r.e,r.p,r.d,r.u].join(' '));if(!q.every(w=>h.includes(w)))return false}
+    if(q.length){const h=norm([r.t,TL(r.t),r.tn,r.tr,r.cn,r.td,r.ty,r.rc,r.v,r.e,r.p,r.d,r.u].join(' '));if(!q.every(w=>h.includes(w)))return false}
     return true});
   const k=SORT.k,d=SORT.d,num=COLS.find(c=>c.k===k).n;
   VIEW.sort((a,b)=>d*(num?(a[k]||0)-(b[k]||0):String(a[k]||'').localeCompare(String(b[k]||''),'es',{numeric:true})));
   COLS.forEach(c=>{const a=$('ar_'+c.k);if(a)a.textContent=c.k===k?(d>0?'▲':'▼'):''});
   $('cnt').textContent=`${fmt(VIEW.length)} de ${fmt(ROWS.length)} líneas`;
   $('tb').innerHTML=VIEW.length?VIEW.map(r=>`<tr>${COLS.map(c=>{const v=r[c.k];let s;
-    if(c.k==='t')s=`<span class="chip T">${esc(v)}</span>`;
+    if(c.k==='t')s=`<span class="chip T">${esc(TL(v))}</span>`;
     else if(c.k==='tr')s=esc(v||'—')+(r.pa?'<span class="chip pa">Parcial</span>':'');
     else if(c.k==='td')s=`<span class="chip ty">${esc(v)}</span>`;
     else if(c.k==='ty')s=`<span class="chip ty ${tyCls(v)}">${esc(v)}</span>`;
@@ -393,7 +395,7 @@ async function excel(){
     [['Bultos (informativo)',v.tb],['Camiones (informativo)',(v.cams||[]).length]].forEach(x=>{body(s1,r,x,[null,'#,##0'],0);s1.getCell(r,1).font={italic:true,color:{argb:GR},size:10.5};s1.getCell(r,2).font={italic:true,color:{argb:GR},size:10.5};r++});
     r+=1;sub(s1,r,'Distribución por tienda',6);r++;
     head(s1,r,['Tienda','Nombre','Documentos','Piezas','% del total','Participación']);r++;
-    v.stores.forEach((s,i)=>{const pc=(s.pz||0)/tp;body(s1,r,[s.t,s.tn||'',s.tf||0,s.pz||0,pc,'█'.repeat(Math.max(1,Math.round(pc*30)))],[null,null,'#,##0','#,##0','0.0%',null],i);s1.getCell(r,6).font={color:{argb:PET},size:10};r++});
+    v.stores.forEach((s,i)=>{const pc=(s.pz||0)/tp;body(s1,r,[TL(s.t),s.tn||'',s.tf||0,s.pz||0,pc,'█'.repeat(Math.max(1,Math.round(pc*30)))],[null,null,'#,##0','#,##0','0.0%',null],i);s1.getCell(r,6).font={color:{argb:PET},size:10};r++});
     total(s1,r,['TOTAL','',v.tf||0,v.tp||0,1,''],[null,null,'#,##0','#,##0','0.0%',null]);r+=2;
     sub(s1,r,'Por proveedor',6);r++;
     head(s1,r,['Proveedor','','Referencias','Piezas','% del total','Participación']);s1.mergeCells(r,1,r,2);r++;
@@ -411,7 +413,7 @@ async function excel(){
     band(s2,1,`Lista de empaque ${v.num} · Detalle de productos`,11,NAVY,14);
     s2.mergeCells(2,1,2,11);const t2=s2.getCell(2,1);t2.value=`${ST[v.st]||'Despachado'} · despachado ${fdt(v.ts)}${v.st==='R'?' · recibido '+fdt(v.rts):''}  ·  ${fmt(rowsAll.length)} líneas`;t2.font={italic:true,color:{argb:GR},size:10};
     head(s2,4,H,'left');
-    rowsAll.forEach((x,i)=>body(s2,5+i,[x.t,String(x.tr||'—'),x.v,x.e||'',String(x.p||''),x.d||'',x.q||0,x.td||'—',x.cn||'',x.ty,x.rc||'—'],[null,'@',null,null,'@',null,'#,##0',null,null,null,null],i));
+    rowsAll.forEach((x,i)=>body(s2,5+i,[TL(x.t),String(x.tr||'—'),x.v,x.e||'',String(x.p||''),x.d||'',x.q||0,x.td||'—',x.cn||'',x.ty,x.rc||'—'],[null,'@',null,null,'@',null,'#,##0',null,null,null,null],i));
     const last=4+rowsAll.length;
     total(s2,last+1,['TOTAL','','','','','',{formula:`SUBTOTAL(109,G5:G${last})`,result:rowsAll.reduce((a,x)=>a+(x.q||0),0)},'','','',''],[null,null,null,null,null,null,'#,##0',null,null,null,null]);
     s2.autoFilter={from:{row:4,column:1},to:{row:Math.max(5,last),column:11}};
@@ -453,7 +455,7 @@ function pdf(){
   doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Distribución por tienda',M,y+3);
   const pcs=v.stores.map(s=>(s.pz||0)/tp);
   doc.autoTable({...base,startY:y+5,head:[['Tienda','Nombre','Docs.','Piezas','% del total','Participación']],
-    body:[...v.stores.map((s,i)=>[s.t,s.tn||'',fmt(s.tf),fmt(s.pz),pc1(pcs[i]),'']),[{content:'TOTAL',styles:{fontStyle:'bold',fillColor:LT}},{content:'',styles:{fillColor:LT}},{content:fmt(v.tf),styles:{fontStyle:'bold',fillColor:LT,halign:'right'}},{content:fmt(v.tp),styles:{fontStyle:'bold',fillColor:LT,halign:'right'}},{content:'100.0%',styles:{fontStyle:'bold',fillColor:LT,halign:'right'}},{content:'',styles:{fillColor:LT}}]],
+    body:[...v.stores.map((s,i)=>[TL(s.t),s.tn||'',fmt(s.tf),fmt(s.pz),pc1(pcs[i]),'']),[{content:'TOTAL',styles:{fontStyle:'bold',fillColor:LT}},{content:'',styles:{fillColor:LT}},{content:fmt(v.tf),styles:{fontStyle:'bold',fillColor:LT,halign:'right'}},{content:fmt(v.tp),styles:{fontStyle:'bold',fillColor:LT,halign:'right'}},{content:'100.0%',styles:{fontStyle:'bold',fillColor:LT,halign:'right'}},{content:'',styles:{fillColor:LT}}]],
     columnStyles:{0:{cellWidth:22},1:{cellWidth:50},2:{halign:'right',cellWidth:22},3:{halign:'right',cellWidth:28},4:{halign:'right',cellWidth:26},5:{cellWidth:'auto'}},
     didDrawCell:d=>{if(d.section==='body'&&d.column.index===5&&d.row.index<pcs.length){const w=(d.cell.width-3)*pcs[d.row.index];doc.setFillColor(...PET);doc.rect(d.cell.x+1.5,d.cell.y+d.cell.height/2-1.6,Math.max(.6,w),3.2,'F')}}});
   // Proveedor y tipología
@@ -540,8 +542,8 @@ $('app').addEventListener('click',e=>{const b=e.target.closest('[data-home]');if
   const k=b.dataset.home;if(k==='desp'){openDsp();return}location.hash=TOK+'/'+({docs:'_docs',prods:'_prods',kpi:'_kpi'}[k])});
 function openDsp(){$('dspQ').value='';dspDraw();$('dspSheet').classList.remove('hide')}
 function dspDraw(){const q=norm($('dspQ').value),all=Object.entries(IDX).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
-  const r=all.filter(([,v])=>!q||norm(v.num+' '+(v.sl||'')).includes(q));
-  $('dspL').innerHTML=r.map(([id,v])=>{const rc=v.st==='R';return `<div class="dpr" data-id="${esc(id)}"><div><b>${esc(v.num)}</b><small>${rc?'Recibido':'En tránsito'} · ${fdt(v.ts)}</small><div class="dps">${String(v.sl||'').split(',').map(x=>x.trim()).filter(x=>x&&!/^cristal$/i.test(x)).map(x=>`<span class="sc">${esc(x)}</span>`).join('')}</div></div><div class="dpq"><b>${v.tp?fmt(v.tp):'—'}</b><small>piezas</small></div></div>`}).join('')||'<div class="msg">Sin resultados</div>'}
+  const r=all.filter(([,v])=>!q||norm(v.num+' '+(v.sl||'')+' '+TLS(v.sl||'')).includes(q));
+  $('dspL').innerHTML=r.map(([id,v])=>{const rc=v.st==='R';return `<div class="dpr" data-id="${esc(id)}"><div><b>${esc(v.num)}</b><small>${rc?'Recibido':'En tránsito'} · ${fdt(v.ts)}</small><div class="dps">${String(v.sl||'').split(',').map(x=>x.trim()).filter(Boolean).map(x=>`<span class="sc">${esc(TL(x))}</span>`).join('')}</div></div><div class="dpq"><b>${v.tp?fmt(v.tp):'—'}</b><small>piezas</small></div></div>`}).join('')||'<div class="msg">Sin resultados</div>'}
 $('dspQ').addEventListener('input',dspDraw);
 $('dspSheet').addEventListener('click',e=>{if(e.target.id==='dspSheet'||e.target.id==='dspX'){$('dspSheet').classList.add('hide');return}
   const c=e.target.closest('.dpr');if(c&&c.dataset.id){$('dspSheet').classList.add('hide');location.hash=TOK+'/'+c.dataset.id}});
@@ -574,7 +576,7 @@ async function showDocs(){
     const R=D.filter(x=>(!ty||x.td===ty)&&(!q.length||q.every(w=>norm([x.tr,x.t,x.cn,x.td,[...x.pl.values()].join(' ')].join(' ')).includes(w))))
       .sort((a,b)=>String(a.td).localeCompare(String(b.td))||String(b.tr).localeCompare(String(a.tr),'es',{numeric:true}));
     $('dcnt').textContent=`${fmt(R.length)} de ${fmt(D.length)} documentos`+(R.length>300?' · mostrando los primeros 300, afina la búsqueda':'');
-    $('dtb').innerHTML=R.slice(0,300).map(x=>`<tr data-id="${esc([...x.pl.keys()][0])}" style="cursor:pointer"><td><span class="chip ty">${esc(x.td)}</span></td><td>${esc(x.tr||'—')}${x.pa?'<span class="chip pa">Parcial</span>':''}</td><td><span class="chip T">${esc(x.t)}</span></td><td>${esc(x.cn)}</td><td class="n">${fmt(x.q)}</td><td>${esc([...x.pl.values()].join(', '))}</td></tr>`).join('')||'<tr><td colspan="6" class="msg">Sin resultados</td></tr>'};
+    $('dtb').innerHTML=R.slice(0,300).map(x=>`<tr data-id="${esc([...x.pl.keys()][0])}" style="cursor:pointer"><td><span class="chip ty">${esc(x.td)}</span></td><td>${esc(x.tr||'—')}${x.pa?'<span class="chip pa">Parcial</span>':''}</td><td><span class="chip T">${esc(TL(x.t))}</span></td><td>${esc(x.cn)}</td><td class="n">${fmt(x.q)}</td><td>${esc([...x.pl.values()].join(', '))}</td></tr>`).join('')||'<tr><td colspan="6" class="msg">Sin resultados</td></tr>'};
   $('dq').oninput=draw;$('dt').onchange=draw;draw();
   $('dtb').onclick=e=>{const r=e.target.closest('tr[data-id]');if(r)location.hash=TOK+'/'+r.dataset.id}}
 
@@ -587,7 +589,7 @@ async function showProds(){
     if(!q.length){$('pcnt').textContent=`${fmt(A.length)} líneas en ${fmt(Object.keys(IDX).length)} despachos · escribe para buscar`;$('ptb').innerHTML='<tr><td colspan="7" class="msg">Escribe un código, estilo o descripción</td></tr>';return}
     const R=A.filter(r=>q.every(w=>norm([r.p,r.e,r.d,r.u].join(' ')).includes(w)));
     $('pcnt').textContent=`${fmt(R.length)} líneas · ${fmt(R.reduce((a,r)=>a+(r.q||0),0))} piezas`+(R.length>400?' · mostrando las primeras 400':'');
-    $('ptb').innerHTML=R.slice(0,400).map(r=>`<tr data-id="${esc(r.pid)}" style="cursor:pointer"><td class="mono">${esc(r.p)}</td><td>${esc(r.e)}</td><td>${esc(r.d)}</td><td><span class="chip T">${esc(r.t)}</span></td><td>${esc(r.tr||'—')}</td><td class="n">${fmt(r.q)}</td><td>${esc(r.pn)}</td></tr>`).join('')||'<tr><td colspan="7" class="msg">Sin resultados</td></tr>'};
+    $('ptb').innerHTML=R.slice(0,400).map(r=>`<tr data-id="${esc(r.pid)}" style="cursor:pointer"><td class="mono">${esc(r.p)}</td><td>${esc(r.e)}</td><td>${esc(r.d)}</td><td><span class="chip T">${esc(TL(r.t))}</span></td><td>${esc(r.tr||'—')}</td><td class="n">${fmt(r.q)}</td><td>${esc(r.pn)}</td></tr>`).join('')||'<tr><td colspan="7" class="msg">Sin resultados</td></tr>'};
   $('pq').oninput=draw;draw();
   $('ptb').onclick=e=>{const r=e.target.closest('tr[data-id]');if(r)location.hash=TOK+'/'+r.dataset.id}}
 
@@ -603,7 +605,7 @@ function showKpi(){
   $('app').innerHTML=`<div class="sum"><div><b>${fmt(all.length)}</b><span>Despachos</span></div><div><b>${fmt(rec)}</b><span>Recibidos</span></div><div><b>${fmt(all.length-rec)}</b><span>En tránsito</span></div><div><b>${fmt(tp)}</b><span>Piezas</span></div></div>
    <div class="two"><div class="card"><h2>Piezas por despacho (últimos 12)</h2>${bars(last.map(([,v])=>[v.num,v.tp||0,v.st==='R'?'Recibido':'En tránsito']),Math.max(...last.map(([,v])=>v.tp||0),1),'pzas')}</div>
    <div class="card"><h2>Piezas por mes</h2>${bars(meses.map(([k,n])=>[k,n]),Math.max(...meses.map(x=>x[1]),1),'pzas')}</div></div>
-   <div class="card"><h2>Despachos por tienda</h2>${bars(tiendas.map(([t,n])=>[t,n]),Math.max(...tiendas.map(x=>x[1]),1),'despachos')}</div>`}
+   <div class="card"><h2>Despachos por tienda</h2>${bars(tiendas.map(([t,n])=>[TL(t),n]),Math.max(...tiendas.map(x=>x[1]),1),'despachos')}</div>`}
 init();
 </script>
 </body>

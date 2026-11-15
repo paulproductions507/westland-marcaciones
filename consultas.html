@@ -1937,7 +1937,7 @@ function auMapSur(a){
   if(h){a.suru=h.u;a.sur=h.n}else a.sur=''}
 function parseTransfer(t){
   t=t.replace(/\s+/g,' ');{const gs=parseGestor(t);if(gs)return gs}{const er=parseErp(t);if(er&&er.lines.length)return er}const g=re=>{const m=t.match(re);return m?m[1].trim():''};
-  const tr=g(/Transferencia\s*#?\s*(\d{5,})/i),fs=g(/Fecha solicitad[oa]:?\s*([\d\/]+\s+[\d:]+\s*[AP]?M?)/i),sur=g(/Surtidor:?\s*([^\s]+)/i),org=g(/Origen\s*(\[.*?\].*?)\s+Destino/i),des=g(/Destino\s*(\[.*?\].*?)\s+Nota/i),nota=g(/Nota:?\s*(.*?)\s*(?:C[óo]d\.?\s*BARRA|$)/i),tot=+g(/Total unidades surtidas\s*(\d+)/i)||0;
+  const tr=g(/Transferencia\s*#?\s*(\d{5,})/i),fs=g(/Fecha solicitad[oa]:?\s*([\d\/]+\s+[\d:]+\s*[AP]?M?)/i),sur=g(/Surtidor:?\s*([^\s]+)/i),org=g(/Origen\s*(\[.*?\].*?)\s+Destino/i),des=g(/Destino\s*(\[.*?\].*?)\s+Nota/i),nota=notaC(g(/Nota:?\s*(.*)$/i)),tot=+g(/Total unidades surtidas\s*(\d+)/i)||0;
   const i0=t.search(/Descripci[óo]n/i);let b=i0>=0?t.slice(i0+11):t;const e=b.search(/REBAJA|Total unidades/i);if(e>0)b=b.slice(0,e);
   const re=/(?:([A-Z0-9][A-Z0-9\-\/\.]{3,})\s+)?(?<!\d)(\d{7})(?!\d)\s+(-?\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+(?:\.\d+)?)/g,ms=[...b.matchAll(re)];
   const lines=ms.map((m,i)=>({ref:m[1]||'',p:m[2],inv:+m[3],sol:+m[4],res:+m[5],desp:+m[6],bul:+m[7],pr:+m[8],d:b.slice(m.index+m[0].length,ms[i+1]?ms[i+1].index:b.length).replace(/[▼▲\s]+$/,'').trim()}));
@@ -1996,7 +1996,7 @@ function auRender(){
    ${a.est&&!/despach/i.test(a.est)?`<div class="msg" style="color:var(--wn)">⚠ El estatus en el PDF es “${esc(a.est)}”, no Despachada. Es normal: el despacho que cuenta es el del surtidor en el Gestor, y en Visión se despacha después. La fecha que ves puede ser la de solicitud; pon en “Fecha y hora” cuándo la despachó el surtidor.</div>`:''}
    ${a.tsSrc==='imp'?`<div class="msg" style="color:var(--wn)">⚠ El Gestor de Bodega no trae fecha de despacho. Se tomó la fecha de impresión del PDF (${fdt(a.tsAuto)}) y no la de solicitud (${fdt(a.tsSol)}). Si no corresponde, corrígela en “Fecha y hora”.</div>`:''}
    ${tun?`<div class="msg">${a.rc&&RECS[a.rc]?`El recibo #${esc(a.rc)} está en la app: la transferencia se asigna a ese recibo y sus productos reciben el número de transferencia. Los productos que no estén en ese recibo pasan al recibo TÚNEL.`:a.rc?`El recibo #${esc(a.rc)} no está en la app: la transferencia se agrega al recibo TÚNEL; cuando subas ese recibo, usa “Trasladar productos…” para moverla a su origen con su número de transferencia.`:'Escribe el número de recibo para mapearlo.'}</div>`:''}
-   <div class="msg">Destino: ${esc(a.des||'—')} · Origen: ${esc(a.org||'—')}${a.nota?' · Nota: '+esc(a.nota):''}</div>
+   <div class="msg">Destino: ${esc(a.des||'—')} · Origen: ${esc(a.org||'—')}${notaC(a.nota)?' · Nota: '+esc(notaC(a.nota)):''}</div>
    ${a.manual?`<div class="card" style="margin:10px 0;padding:10px"><div class="lbl">Agregar producto</div><div style="display:flex;gap:8px;margin-top:6px"><input class="f" id="auMCode" placeholder="Producto, estilo o código de barras" autocomplete="off" style="flex:1"><input class="f" id="auMQty" type="number" min="1" placeholder="Cant." style="width:80px"><button class="btn pri sm" id="auMAdd">＋</button></div></div>`:''}
    <div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th>Descripción</th><th class="n">Desp.</th><th class="n">Bultos</th>${tun?'<th>Relación con recibos</th>':''}<th></th></tr>${rows}</table></div>
    <div class="msg">${fmt(a.lines.length)} líneas · <b>${fmt(sum)}</b> piezas despachadas · ${fmt(bu)} bultos en el Gestor${a.tot&&a.tot!==sum?` · <span style="color:var(--wn)">⚠ el Gestor indica ${fmt(a.tot)} unidades surtidas</span>`:''}</div>
@@ -2152,10 +2152,12 @@ const surtOf=m=>{const q=wkQ(m.tr);return sumL(m.lines,l=>Math.min(Math.max(0,+q
 const upcOf=(()=>{let M=null;return p=>{if(!M){M={};for(const id of Object.keys(RECS)){if(isPs(id))continue;for(const x of (RECS[id].items||[]))if(x.upc&&!M[x.p])M[x.p]=x.upc}}return M[p]||''}})();
 
 /* ---------- lectura del PDF "Surtido" del Gestor de Bodega (pantalla que se imprime) ---------- */
+/* La nota del Gestor es solo la línea "Viene Transf# … PASILLO# … PEDIDOS AUTOMATICOS …": se corta antes del resto de la pantalla (Cód. BARRA, Prod / Ref, etc.) */
+function notaC(n){let x=String(n||'').replace(/\s+/g,' ');const i=x.search(/\s*(?:C\s*[óo]\s*d\.?\s*(?:BARRA|Producto)|Surtir todo|Prod\s*\/\s*Ref\b)/i);if(i>=0)x=x.slice(0,i);return x.trim()}
 function parseGestor(t){
   if(!(/Solic\w*\s+Reser\w*\s+Desp/i.test(t)||/Prod\s*\/\s*Ref\s+INV/i.test(t)))return null; /* tolerante: el Pocket (Android) imprime la tabla más angosta y a veces sin Bultos/Etiquetar */
   const g=re=>{const m=t.match(re);return m?m[1].trim():''};
-  const tr=g(/Transferencia\s*#?\s*(\d{5,})/i),fs=g(/Fecha solicitad[oa]:?\s*([\d\/]+\s+[\d:]+\s*[AP]?M?)/i),org=g(/Origen\s*(\[.*?\].*?)\s+Destino/i),des=g(/Destino\s*(\[.*?\].*?)\s+Nota/i),nota=g(/Nota:?\s*(.*?)\s*(?:C[óo]d\.?\s*BARRA|$)/i),tot=+g(/Total unidades surtidas\s*(\d+)/i)||0;
+  const tr=g(/Transferencia\s*#?\s*(\d{5,})/i),fs=g(/Fecha solicitad[oa]:?\s*([\d\/]+\s+[\d:]+\s*[AP]?M?)/i),org=g(/Origen\s*(\[.*?\].*?)\s+Destino/i),des=g(/Destino\s*(\[.*?\].*?)\s+Nota/i),nota=notaC(g(/Nota:?\s*(.*)$/i)),tot=+g(/Total unidades surtidas\s*(\d+)/i)||0;
   let h=t.search(/Descripci[óo]n\s+Ubicaci[óo]n/i);if(h<0)h=t.search(/Prod\s*\/\s*Ref/i);if(!tr||h<0)return null;
   let b=t.slice(h).replace(/^Descripci[óo]n\s+Ubicaci[óo]n/i,'');const e=b.search(/REBAJA|Total unidades/i);if(e>0)b=b.slice(0,e);
   const re=/(?:([A-Z0-9][A-Z0-9\-\/\.]{3,})\s+)?(?<!\d)(\d{7})(?!\d)\s+(-?\d+)\s+(\d+)\s+(\d+)(?:\s+(\d+))?(?:\s+(\d+))?(?=\s|$)/g,ms=[...b.matchAll(re)]; /* Desp y Bultos son cajitas editables: en el PDF del Pocket pueden venir vacías */
@@ -2378,7 +2380,7 @@ function auDetail(tr){
   return `${AUOP?'':`<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><button class="btn sm" data-aut="back">← ${window._auMode==='autosur'?'Transferencias':(AUD.asg[tr]||{}).u===USER?'Mis transferencias':'Volver'}</button>${isPend(m)&&(AUD.asg[tr]||{}).u===USER?`<button class="btn sm" data-qall="*">✔ Surtir todo (reservado)</button>`:''}${isPend(m)&&((AUD.asg[tr]||{}).u===USER||ISADM)?`<button class="btn sm pri" data-aufin="${esc(tr)}">✔ Completar surtido</button>`:''}</div>`}
    ${AUOP?'':`<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="font:800 24px 'Inter';color:#fff;line-height:1.15">#${esc(m.tr)}</div><div style="flex:none">${auPill(inf.k,inf)}</div></div>
     <div style="color:var(--ac);font-weight:700;margin-top:3px">${esc(LN(m.t))}</div><div class="msg" style="margin:3px 0 0">${m.pas?'Pasillo '+esc(m.pas)+' · ':''}Solicitada ${fdt(m.ts)}</div>${(AUD.asg[tr]||{}).n?`<div class="msg" style="margin:2px 0 0">👤 ${esc(AUD.asg[tr].n)}</div>`:''}
-    <div class="msg" style="margin:2px 0 0">${esc(m.org||'')} → ${esc(m.des||'')}</div>${m.nota?`<div class="msg" style="margin:2px 0 0">Nota: ${esc(m.nota)}</div>`:''}
+    <div class="msg" style="margin:2px 0 0">${esc(m.org||'')} → ${esc(m.des||'')}</div>${notaC(m.nota)?`<div class="msg" style="margin:2px 0 0">Nota: ${esc(notaC(m.nota))}</div>`:''}
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px"><div><div class="lbl">Solicitado</div><b style="font-size:20px">${fmt(sol)}</b></div><div><div class="lbl">Reservado</div><b style="font-size:20px;color:var(--wn)">${fmt(res)}</b></div><div><div class="lbl">Surtido</div><b id="auSur" style="font-size:20px;color:var(--ok)">${fmt(sur)}</b></div></div>
     <div style="margin-top:12px;display:flex;justify-content:space-between;font-weight:800"><span id="auItm">${inf.idone}/${inf.items} ítems</span><span id="auPct">${pctT(inf.sdone,inf.pz)}</span></div><div class="bar" style="margin-top:6px"><i id="auBar" style="width:${inf.pc}%"></i></div>
     ${sol!==res&&isPend(m)?`<div class="msg" style="color:var(--wn)">⚠ Hay líneas con lo reservado distinto a lo solicitado. La base es lo reservado, pero puedes surtir más si el inventario (INV) lo tiene.</div>`:''}</div>
@@ -2499,7 +2501,7 @@ function auRenderPend(){
     <div><div class="lbl">Tienda destino</div><select class="f" data-af="t"><option value="">Elige…</option>${BASE_ST.map(t=>`<option value="${t}" ${a.t===t?'selected':''}>${esc(LN(t))}</option>`).join('')}</select></div>
     <div><div class="lbl">Fecha de solicitud</div><input class="f" type="datetime-local" data-af="ts" value="${toLocalIn(a.ts)}"></div></div>
    ${!a.t?`<div class="msg" style="color:var(--wn)">⚠ No reconocí la tienda de “${esc(a.des||'—')}”. Elígela antes de guardar.</div>`:''}
-   <div class="msg">Destino: ${esc(a.des||'—')} · Origen: ${esc(a.org||'—')}${a.nota?' · Nota: '+esc(a.nota):''}</div>
+   <div class="msg">Destino: ${esc(a.des||'—')} · Origen: ${esc(a.org||'—')}${notaC(a.nota)?' · Nota: '+esc(notaC(a.nota)):''}</div>
    <div class="scroll"><table><tr><th>Estilo</th><th>Producto</th><th>Descripción</th><th class="n">Inv.</th><th class="n">Solic.</th><th class="n">Reser.</th><th>Ubicación</th></tr>${rows}</table></div>
    <div class="msg">${fmt(a.lines.length)} líneas · Solicitado <b>${fmt(sl)}</b> · Reservado <b>${fmt(rs)}</b></div>
    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" id="auSave" style="flex:1">Guardar como pendiente por surtir</button><button class="btn" id="auCancel">Omitir</button></div></div>`}
@@ -3586,14 +3588,15 @@ function scParse(W,raw){
     if(t.indexOf('|')<0||ps.length<=1){const q=ps.length?ps[0].trim():'';if(q&&/[A-Za-z0-9]/.test(q))w.push({t:q,cf:x.confidence,x0:x.bbox.x0,x1:x.bbox.x1,y0:x.bbox.y0,y1:x.bbox.y1});return}
     let c=x.bbox.x0;const wd=x.bbox.x1-x.bbox.x0;ps.forEach(z=>{const q=z.trim(),l=wd*q.length/tl;if(/[A-Za-z0-9]/.test(q))w.push({t:q,x0:c,x1:c+l,y0:x.bbox.y0,y1:x.bbox.y1});c+=l})});
   w.forEach(x=>{x.cx=(x.x0+x.x1)/2;x.cy=(x.y0+x.y1)/2;x.h=x.y1-x.y0});
+  for(let i=w.length-1;i>=0;i--){const x=w[i];if(/^tall?a\W*imagen$/i.test(x.t)){const m=x.x0+(x.x1-x.x0)*.45;w.splice(i,1,{...x,t:'Talla.',x1:m},{...x,t:'Imagen',x0:m})}}
   w.forEach(x=>{x.cx=(x.x0+x.x1)/2;x.cy=(x.y0+x.y1)/2;x.h=x.y1-x.y0});
   const nz=s=>s.toLowerCase().replace(/0/g,'o').replace(/[1|]/g,'l').replace(/5/g,'s').replace(/[^a-z]/g,''),H={};
   for(const x of w){const k=nz(x.t);if(k.length<2)continue;
     if(!H.cod&&(/^cod/.test(k)||k==='cd'||k==='cod'))H.cod=x;else if(!H.d&&(/^desc|^dese|^desg|^dcsc/.test(k)||k==='desc'))H.d=x;else if(!H.col&&/^colo|^colr|^co[l]or/.test(k))H.col=x;
     else if(!H.tal&&/^tal[l]?a?$|^tall/.test(k))H.tal=x;else if(!H.ref&&/^ref/.test(k))H.ref=x;else if(!H.img&&/^i?mag|^ima/.test(k))H.img=x}
-  const hs=Object.entries(H);if(!H.cod||hs.length<3)return scLoose(w,raw,'No ubiqué el encabezado de la tabla (Cod. · Desc. · Colores · Ref. Supl. · Talla). Que se vea completo y derecho.');
+  const hs=Object.entries(H);if(!H.cod||hs.length<3)return{err:'No ubiqué el encabezado de la tabla (Cod. · Desc. · Colores · Ref. Supl. · Talla). Que se vea completo y derecho.'};
   const my=hs.map(([,x])=>x.cy).sort((a,b)=>a-b)[Math.floor(hs.length/2)],hh=hs.reduce((a,[,x])=>a+x.h,0)/hs.length;
-  const hd=hs.filter(([,x])=>Math.abs(x.cy-my)<hh*2.6);if(hd.length<3||!hd.some(([k])=>k==='cod'))return scLoose(w,raw,'El encabezado salió desordenado. Vuelve a enfocar la tabla.');
+  const hd=hs.filter(([,x])=>Math.abs(x.cy-my)<hh*2.6);if(hd.length<3||!hd.some(([k])=>k==='cod'))return{err:'El encabezado salió desordenado. Vuelve a enfocar la tabla.'};
   // "Ref. Supl." viene en dos líneas: "Supl." forma parte del encabezado de Ref
   const hb={};hd.forEach(([k,x])=>hb[k]={x0:x.x0,x1:x.x1,y1:x.y1});
   const sp=w.find(x=>hb.ref&&/^supl/.test(nz(x.t))&&Math.abs(x.cx-(hb.ref.x0+hb.ref.x1)/2)<hh*3&&x.cy>my-hh);
@@ -3610,24 +3613,52 @@ function scParse(W,raw){
   const cols=Object.entries(hb).sort((a,b)=>a[1].x0-b[1].x0),bd=[];
   for(let i=0;i<cols.length-1;i++)bd.push((cols[i][1].x1+cols[i+1][1].x0)/2);
   const out={};dat.sort((a,b)=>(Math.round(a.cy/(mh*.7))-Math.round(b.cy/(mh*.7)))||a.x0-b.x0);
-  for(const x of dat){let i=0;while(i<bd.length&&x.cx>bd[i])i++;const k=cols[i][0];out[k]=((out[k]?out[k]+' ':'')+x.t).trim()}
+  for(const x of dat){let i=0;while(i<bd.length&&x.cx>bd[i])i++;if(i>=bd.length&&x.cx>cols[i][1].x1+hh*.6)continue;const k=cols[i][0];out[k]=((out[k]?out[k]+' ':'')+x.t).trim()}
   /* si el OCR no vio el encabezado de "Ref. Supl.", la referencia (solo números/letras con dígitos) queda al final de Desc. o Colores */
   if(!hb.ref){for(const k of ['col','d']){const ts=String(out[k]||'').split(' ').filter(Boolean),i=ts.findIndex(z=>/^(?:\d{4,8}|[A-Z]{1,3}\d{3,}[A-Z0-9\-]*)$/.test(z));if(i>=0){out.ref=ts[i];ts.splice(i,1);out[k]=ts.join(' ');break}}}
   let code=(out.cod||'').replace(/[Oo]/g,'0').replace(/[Il|]/g,'1').replace(/\D/g,'');
-  return{code,d:out.d||'',col:out.col||'',ref:(out.ref||'').replace(/\s+/g,''),tal:out.tal||'',raw}
+  const hx=[...hd.map(([,x])=>x),sp].filter(Boolean);
+  return{code,d:out.d||'',col:out.col||'',ref:(out.ref||'').replace(/\s+/g,''),tal:out.tal||'',raw,hdr:{x0:Math.min(...hx.map(x=>x.x0)),x1:Math.max(...hx.map(x=>x.x1)),y0:Math.min(...hx.map(x=>x.y0)),y1:Math.max(...hx.map(x=>x.y1)),hh},hw:hd.map(([k,x])=>({k,cx:x.cx,cy:x.cy}))}
 }
-/* respaldo cuando no se ve el encabezado: toma el código de 7 dígitos, la descripción (palabras junto al código) y la referencia (número suelto) */
-function scLoose(w,raw,err){
-  const fx=t=>t.replace(/[Oo]/g,'0').replace(/[Il|]/g,'1'),cw=w.find(x=>/^\d{7}$/.test(fx(x.t)));
-  if(!cw)return{err};
-  const code=fx(cw.t),hh=Math.max(10,cw.h),near=w.filter(x=>x!==cw&&Math.abs(x.cy-cw.cy)<hh*4.5&&x.x0>cw.x0-hh*2);
-  const ref=near.find(x=>/^(?:\d{4,8}|[A-Z]{1,3}\d{3,}[A-Z0-9\-]*)$/.test(x.t)&&fx(x.t)!==code),
-    ds=near.filter(x=>x!==ref&&(x.cf==null||x.cf>=55)&&/^[A-Za-zÁÉÍÓÚáéíóúÑñ'’\-\.]{2,}$/.test(x.t)&&!/^(cod|desc|colores|talla|imagen|ref|supl)\.?$/i.test(x.t)).sort((a,b)=>(Math.round(a.cy/(hh*.8))-Math.round(b.cy/(hh*.8)))||a.x0-b.x0).map(x=>x.t);
-  return{code,d:ds.join(' ').slice(0,60),col:'',ref:ref?ref.t:'',tal:'',raw,loose:1}}
+/* Lee la tabla por su cuadrícula (sin depender de que el OCR entienda el encabezado): busca las líneas verticales largas que forman las columnas
+   de \"Cod. · Desc. · Colores · Ref. Supl. · Talla · Imagen\", las líneas horizontales (arriba, bajo el encabezado, abajo) y devuelve cada celda de la fila de datos.
+   Así no se mezcla nada de fuera de la tabla (cuadro de producto, \"VISION PRIMAVERA\", inventario) ni el texto de la columna Imagen. g = gris (0-255), w×h. */
+function scGrid(g,w,h){
+  const T=140,minL=Math.max(30,Math.round(h*.02)),cand=[];
+  for(let x=0;x<w;x++){let best=0,b0=0,b1=0,run=0,r0=0,gap=0;
+    for(let y=0;y<h;y++){if(g[y*w+x]<T){if(!run)r0=y;run++;gap=0;if(run>best){best=run;b0=r0;b1=y}}else if(run&&++gap>2){run=0;gap=0}}
+    if(best>=minL){const l=cand[cand.length-1];if(l&&x-l.e<=2){l.e=x;if(best>l.len){l.len=best;l.y0=b0;l.y1=b1}}else cand.push({s:x,e:x,len:best,y0:b0,y1:b1})}}
+  let grp=[];for(const c of cand){const g1=cand.filter(d=>Math.abs(d.y0-c.y0)<=10&&Math.abs(d.y1-c.y1)<=10);if(g1.length>grp.length)grp=g1}
+  if(grp.length<5||grp.length>9)return null;
+  const top=Math.min(...grp.map(c=>c.y0)),bot=Math.max(...grp.map(c=>c.y1)),XA=grp[0].s,XB=grp[grp.length-1].e,hl=[];
+  for(let y=Math.max(0,top-4);y<=Math.min(h-1,bot+4);y++){let c=0;for(let x=XA;x<=XB;x++)if(g[y*w+x]<T)c++;
+    if(c/(XB-XA+1)>=.7){const l=hl[hl.length-1];if(l&&y-l.e<=2)l.e=y;else hl.push({s:y,e:y})}}
+  if(hl.length<3)return null;
+  const hb=hl[1],bt=hl[2],ya=hb.e+3,yb=bt.s-3;if(yb-ya<8)return null;
+  const EXP=['cod','d','col','ref','tal','img'],cells=[];
+  for(let i=0;i<grp.length-1;i++){const xa=grp[i].e+2,xb=grp[i+1].s-2;if(xb-xa>10)cells.push({xa,xb})}
+  if(cells.length<5||cells.length>6)return null;cells.forEach((c,i)=>c.k=EXP[i]);
+  return{cells:cells.filter(c=>c.k!=='img'),ya,yb,hs:yb-ya}}
+async function scCells(wk,c2,gd){
+  const out={};
+  for(const c of gd.cells){const cw=c.xb-c.xa+1,ch=gd.yb-gd.ya+1,s=gd.hs<70?3:gd.hs<160?2:1.5,pad=14,cv=document.createElement('canvas');
+    cv.width=Math.round(cw*s)+pad*2;cv.height=Math.round(ch*s)+pad*2;const x=cv.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,cv.width,cv.height);
+    x.drawImage(c2,c.xa,gd.ya,cw,ch,pad,pad,Math.round(cw*s),Math.round(ch*s));
+    const dig=c.k==='cod',alf=c.k==='ref';
+    await wk.setParameters({tessedit_pageseg_mode:dig||alf?'7':'6',tessedit_char_whitelist:dig?'0123456789':alf?'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-./':''});
+    const r=await wk.recognize(cv);let t=String(r.data.text||'').replace(/[|_\[\]{}=~`]/g,' ').replace(/\s+/g,' ').trim();
+    const cf=r.data.confidence||0;
+    if(c.k==='cod'){t=t.replace(/\D/g,'');if(!/^\d{5,9}$/.test(t)){out.bad=1;break}}   // si el código no sale, la imagen está girada: se prueba otro giro
+    else if(c.k==='ref')t=t.replace(/\s+/g,'');
+    else if(t.replace(/[^A-Za-z0-9]/g,'').length<2||cf<45)t='';          // celda vacía o ruido: queda vacía
+    out[c.k]=t}
+  await wk.setParameters({tessedit_char_whitelist:'',tessedit_pageseg_mode:'11'});
+  if(out.bad)return null;
+  return{code:out.cod||'',d:out.d||'',col:out.col||'',ref:out.ref||'',tal:out.tal||'',grid:1}}
 function scDiff(r){
   const cur={ref:BL.ref||'',d:BL.d||'',col:BL.col||'',tal:BL.tal||''},ch=[];
-  const F=[['ref','Estilo (Ref. Supl.)'],['d','Descripción'],['col','Colores'],['tal','Tallas']];
-  for(const [k,lb] of F){const nv=String(r[k]||'').trim();if(!nv)continue;const a=scNorm(cur[k]),b=scNorm(nv);if(a===b)continue;
+  const F=[['ref','Estilo (Ref. Supl. = suplidor)'],['d','Descripción'],['col','Colores'],['tal','Tallas']];
+  for(const [k,lb] of F){const nv=String(r[k]||'').trim();if(!nv){if(r.grid&&(k==='col'||k==='tal')&&scNorm(cur[k]))ch.push({k,lb,from:cur[k],to:''});continue}const a=scNorm(cur[k]),b=scNorm(nv);if(a===b)continue;
     // el sistema recorta la descripción a 25 letras: si lo leído es solo el inicio de la actual, no es un cambio
     if(k==='d'&&a&&a.startsWith(b))continue;
     ch.push({k,lb,from:cur[k],to:nv})}
@@ -3641,7 +3672,7 @@ function scApply(r){
   if(cur&&code!==cur&&!raw.includes(cur)){prModal({k:'er',title:'El producto no coincide',body:`La pantalla muestra el producto <b>${esc(code)}</b> y la etiqueta es del producto <b>${esc(cur)}</b>.<br><br>No se cambió nada. Si es el mismo producto, vuelve a escanear.`});return}
   const ch=scDiff(r),first=!cur;
   if(!ch.length&&!first){prModal({k:'ok',title:'Sin cambios',body:`El producto <b>${esc(cur)}</b> está igual que en el sistema.`});return}
-  const body=(first?`<div class="prdf">Producto: <em>${esc(code)}</em></div>`:'')+ch.map(c=>`<div class="prdf"><b>${esc(c.lb)}</b><br>${c.from?`<s>${esc(c.from)}</s> → `:'(vacío) → '}<em>${esc(c.to)}</em></div>`).join('');
+  const body=(first?`<div class="prdf">Producto: <em>${esc(code)}</em></div>`:'')+ch.map(c=>`<div class="prdf"><b>${esc(c.lb)}</b><br>${c.from?`<s>${esc(c.from)}</s> → `:'(vacío) → '}<em>${c.to?esc(c.to):'(vacío)'}</em></div>`).join('');
   prModal({k:'wn',title:`${ch.length+(first?1:0)} cambio(s) encontrados`,body:body+'<div class="prb">Revisa que lo leído sea correcto antes de aplicar.</div>',ok:'Aplicar',no:'Cancelar',onOk:()=>{
     if(first){BL.p=code;$('blP').value=code}
     ch.forEach(c=>{BL[c.k]=c.to;const el=$({ref:'blR',d:'blD',col:'blC',tal:'blT'}[c.k]);if(el)el.value=c.to});
@@ -3670,11 +3701,17 @@ async function scRead(cv,msg){
   const wk=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text')msg('Leyendo… '+Math.round(m.progress*100)+'%')}});
   try{await wk.setParameters({tessedit_pageseg_mode:'11'});
     const rots=cv.width>cv.height?[270,90,0,180]:[0,270,90,180],order=[];rots.forEach(r=>order.push([r,1]));rots.slice(0,3).forEach(r=>order.push([r,0]));let best=null;
+    // 1) por cuadrícula: lee solo las celdas de la tabla (lo más preciso)
+    for(let i=0;i<order.length;i++){msg(`Buscando la tabla… intento ${i+1} de ${order.length}`);
+      try{const c2=scPrep(cv,order[i][0],order[i][1]),im=c2.getContext('2d').getImageData(0,0,c2.width,c2.height).data,gr=new Uint8Array(c2.width*c2.height);
+        for(let j=0;j<gr.length;j++)gr[j]=im[j*4];
+        const gd=scGrid(gr,c2.width,c2.height);
+        if(gd){msg('Leyendo cada celda de la tabla…');const rc=await scCells(wk,c2,gd);if(rc&&(rc.code||rc.d))return rc}}catch(e){console.warn('rejilla',e)}}
+    // 2) sin cuadrícula visible (foto torcida): lectura por columnas, solo con lo que quede bajo el encabezado de la tabla
     for(let i=0;i<order.length;i++){msg(`Leyendo… intento ${i+1} de ${order.length}`);
-      const r=await wk.recognize(scPrep(cv,order[i][0],order[i][1])),p=scParse(scWords(r.data),r.data.text||'');
-      if(!p.err&&!p.loose)return p;                       // lectura completa por encabezado
-      if(!p.err&&p.loose&&(!best||!best.loose))best=p;    // respaldo sin encabezado: se guarda por si ningún giro lo logra completo
-      else if(p.err&&!best)best={err:p.err}}
+      const c2=scPrep(cv,order[i][0],order[i][1]),r=await wk.recognize(c2),p=scParse(scWords(r.data),r.data.text||'');
+      if(p.err){if(!best)best={err:p.err};continue}
+      return p}
     return best||{err:'No pude leer la pantalla.'}}finally{wk.terminate().catch(()=>{})}
 }
 async function blScanOpen(){
