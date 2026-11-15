@@ -2578,7 +2578,11 @@ if(im&&im.src&&!/sin_imagen/i.test(im.src)){I2=new Image();I2.crossOrigin='anony
 I2.onload=function(){try{var w=I2.naturalWidth,h=I2.naturalHeight,s=Math.min(1,380/Math.max(w,h)),cv=d.createElement('canvas'),cx;cv.width=Math.max(1,Math.round(w*s));cv.height=Math.max(1,Math.round(h*s));cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);cx.drawImage(I2,0,0,cv.width,cv.height);o.i=cv.toDataURL('image/jpeg',.6)}catch(e){}send(o)};
 I2.onerror=function(){send(o)};I2.src=im.currentSrc||im.src;return}}
 send(o)}catch(e){alert('Puente: '+e.message)}}
-function gestorBM(){return 'javascript:('+BMCODE.toString().replace(/\s*\n\s*/g,' ')+')('+JSON.stringify(location.origin+location.pathname)+')'}
+/* Marcador CORTO: cabe en el Chrome del celular (Pocket). Carga puente.js (mismo folder que esta app) y lo ejecuta. */
+function gestorBM(){const app=location.origin+location.pathname,js=app.replace(/[^\/]*$/,'')+'puente.js';
+  return 'javascript:(function(){window.__PUENTE_U='+JSON.stringify(app)+';var s=document.createElement("script");s.src='+JSON.stringify(js)+'+"?t="+Date.now();s.onerror=function(){alert("Puente: no pude cargar puente.js")};(document.head||document.documentElement).appendChild(s)})()'}
+/* Versión completa (solo para computadora; en el celular se corta) */
+function gestorBMFull(){return 'javascript:('+BMCODE.toString().replace(/\s*\n\s*/g,' ')+')('+JSON.stringify(location.origin+location.pathname)+')'}
 function gestorToA(o){
   const lines=(o.l||[]).map(r=>({ref:String(r.r||''),p:String(r.p||''),inv:+r.i||0,sol:+r.s||0,res:+r.v||0,desp:+r.d||0,bul:+r.b||0,pr:0,ub:String(r.u||''),d:String(r.n||'')})).filter(l=>/^\d{5,9}$/.test(l.p));
   const tr=String(o.tr||'').replace(/\D/g,''),des=String(o.des||''),nota=notaC(o.nota),ts=parseTs(String(o.fs||'')),dd=lines.reduce((a,l)=>a+l.desp,0);
