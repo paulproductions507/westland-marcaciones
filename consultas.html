@@ -474,7 +474,7 @@ html[data-theme=light] .prcard.ok .prok{color:#fff}
         <b>Fase 1 · Administrador:</b> abre la transferencia en el Gestor y toca <b>Puente</b>. La app guarda solo lo <b>Solicitado y Reservado</b> (aunque ya hayas dado “Surtir todo”) y la deja <b>por asignar</b>. Luego reasignas con la pestaña <b>🔁 Reasignar</b> (PDF de Liberación del Gestor).<br>
         <b>Fase 2 · Surtidor:</b> en el Gestor da “Surtir todo” (o ajusta cantidades) y toca <b>Puente</b>. La app abre directo <b>tu</b> transferencia con lo despachado cargado; si algo queda en cero debes poner el motivo. Primero presiona <b>Completar surtido</b> en el Gestor y, si no da error, completa aquí.<br>
         Si el administrador también surte, usa el botón <b>🧭 Puente</b> de arriba para cambiar de rol.<br>
-        <b>Instalación:</b> <b>1)</b> Toca <i>Copiar código del puente</i>. <b>2)</b> En el Chrome guarda cualquier página como marcador ⭐ con el nombre <b>Puente</b>. <b>3)</b> Edita ese marcador, pega el código en la dirección (URL) y elige la carpeta <b>Barra de favoritos</b> (Ctrl+Shift+B la muestra). <b>4)</b> Con la transferencia abierta en el Gestor, haz clic en <b>Puente</b> (en la Pocket escribe <b>Puente</b> en la barra de direcciones y elige la ⭐). <b>Un solo Puente:</b> reconoce solo la pantalla donde estás — <i>Surtido</i> de una transferencia, <i>Transferencias por agregar</i> (compara con la app y avisa cuáles faltan) y <i>Liberación y reasignación</i> (con transferencias marcadas y un surtidor elegido = reasignar; sin marcar = revalidar). Como cambió el código, copia el código del puente y actualiza el marcador una sola vez. La app usa la sesión iniciada en ese dispositivo.</div>
+        <b>Instalación:</b> <b>1)</b> Toca <i>Copiar código del puente</i>. <b>2)</b> En el Chrome guarda cualquier página como marcador ⭐ con el nombre <b>Puente</b>. <b>3)</b> Edita ese marcador, pega el código en la dirección (URL) y elige la carpeta <b>Barra de favoritos</b> (Ctrl+Shift+B la muestra). <b>4)</b> Con la transferencia abierta en el Gestor, haz clic en <b>Puente</b> (en la Pocket escribe <b>Puente</b> en la barra de direcciones y elige la ⭐). <b>Un solo Puente:</b> reconoce solo la pantalla donde estás — <i>Surtido</i> de una transferencia, <i>Transferencias por agregar</i> (compara con la app y avisa cuáles faltan) y <i>Liberación y reasignación</i> (con transferencias marcadas y un surtidor elegido = reasignar; sin marcar = revalidar), <i>Distribución del túnel manual</i> (administrador: la agrega como un recibo TM + número), <i>Surtido del producto</i> (pasa lo surtido por tienda con su transferencia al recibo o túnel que elijas) y <i>Producto - INV</i> (llena la etiqueta de almacenaje y guarda la imagen). Como cambió el código, copia el código del puente y actualiza el marcador una sola vez. La app usa la sesión iniciada en ese dispositivo.</div>
         <button class="btn sm" type="button" id="gbCopy" style="margin-top:8px">📋 Copiar código del puente</button><div class="msg" id="gbMsg"></div></details></div>
     <div id="pfCard" class="card hide"><h3 style="font-size:16px">Proformas (clientes)</h3><div class="msg" style="margin-bottom:8px">1) Sube el PDF de la proforma (Productos de Proforma #…): se leen el número, los productos, lo solicitado y lo despachado. También puedes usar la plantilla Excel (producto y cantidad). 2) Completa el número de proforma, el cliente y el surtidor. 3) Las piezas descuentan del saldo de Bodega del recibo donde está el producto y suman a la producción del surtidor. Si un código se excede, pasa a Diferencias para auditoría. Los productos sin recibo van al recibo PROFORMAS: quedan asignados, surtidos y despachados al 100% (como los pedidos automáticos) para generar las etiquetas, hasta que subas su recibo y los trasladen.</div><button class="btn sm" id="pfTpl" style="width:100%">⬇ Descargar plantilla (Excel)</button><div class="lbl" style="margin-top:10px">PDF de la proforma (o plantilla Excel)</div><input class="f" type="file" id="pfFile" accept=".pdf,.xlsx,.xls,.csv"><div class="msg" id="pfMsg"></div></div>
     <div id="auReview"></div><div id="auAuto"></div><div class="card" id="auOldCard"><div class="slbl" id="auListT">Transferencias cargadas</div><div id="auList"></div></div></div>
@@ -2542,7 +2542,7 @@ async function auSavePend(a){
   return 'ok'}
 /* ---------- Puente con el Gestor de Bodega: un marcador lee la pantalla de Surtido y manda los datos a esta app ---------- */
 /* Un solo marcador: reconoce la pantalla del Gestor donde estás (Surtido / Por agregar / Liberación y reasignación) */
-function BMCODE(U){try{var d=document,tx=function(e){return e?e.textContent.replace(/\s+/g,' ').trim():''},g=function(i){return tx(d.getElementById(i))},o=null,i,c,x,m,L,R,t,H,rows,tr,cb,s2,E,dest,st;
+function BMCODE(U){try{var send=function(o){var j=btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_'),u=U+'#gestor='+j;if(!window.open(u,'_blank'))location.href=u},d=document,tx=function(e){return e?e.textContent.replace(/\s+/g,' ').trim():''},g=function(i){return tx(d.getElementById(i))},o=null,i,c,x,m,L,R,t,H,rows,tr,cb,s2,E,dest,st;
 t=d.getElementById('MainContent_gvTransferDetail');
 if(t&&g('MainContent_lblTransferNumber')){L=[];R=t.rows;for(i=1;i<R.length;i++){c=R[i].cells;if(c.length<10)continue;x=function(k){var e=c[k];if(!e)return'';var n=e.querySelector('input[type=number],input[type=text]');return n?n.value:tx(e)};m=x(2).match(/^(?:(\S+)\s+)?(\d{5,9})$/);if(!m)continue;L.push({r:m[1]||'',p:m[2],i:x(3),s:x(4),v:x(5),d:x(6),b:x(7),n:x(9),u:x(10)})}if(!L.length){alert('No encontré productos en esta pantalla');return}o={tr:g('MainContent_lblTransferNumber'),fs:g('MainContent_lblCaptureRequestedDate'),org:g('MainContent_lblOrigin'),des:g('MainContent_lblDestiny'),nota:g('MainContent_LblNote'),tot:g('MainContent_lblTotalUnitsDispatched'),l:L}}
 else if(d.getElementById('MainContent_gvTransferAssigned')){t=d.getElementById('MainContent_gvTransferAssigned');H={};for(i=0;i<t.rows[0].cells.length;i++)H[tx(t.rows[0].cells[i]).toLowerCase()]=i;rows=[];dest='';s2=d.getElementById('MainContent_ddlEmployeeAssigned');E=d.getElementById('MainContent_gvEmployee');
@@ -2552,8 +2552,31 @@ if(!rows.length){alert('No encontré transferencias en esta lista');return}o={k:
 else if(d.getElementById('MainContent_gvTransfer')){t=d.getElementById('MainContent_gvTransfer');H={};for(i=0;i<t.rows[0].cells.length;i++)H[tx(t.rows[0].cells[i]).toLowerCase()]=i;rows=[];
 for(i=1;i<t.rows.length;i++){c=t.rows[i].cells;tr=tx(c[H['transf']]).replace(/\D/g,'');if(!/^\d{7,9}$/.test(tr))continue;rows.push({t:tr,n:tx(c[H['notas']]),np:tx(c[H['cant productos']]),pz:tx(c[H['cant piezas']]),des:tx(c[H['inv destino']]),fs:tx(c[H['fecha solicitado']])})}
 if(!rows.length){alert('No encontré transferencias en esta lista');return}o={k:'add',rows:rows}}
-else{alert('Puente: abre la pantalla de Surtido de una transferencia, el listado de transferencias por agregar o Liberación y reasignación');return}
-var j=btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_'),u=U+'#gestor='+j;if(!window.open(u,'_blank'))location.href=u}catch(e){alert('Puente: '+e.message)}}
+else if(d.getElementById('DisTablas')){t=d.getElementById('DisTablas');var RW=[],HC,TM=[],q1,cr1,SK=[],kk,ci,rr;
+try{if(window.jQuery&&jQuery.fn.dataTable&&jQuery.fn.dataTable.isDataTable(t)){RW=jQuery(t).DataTable().rows().nodes().toArray()}}catch(e){RW=[]}
+if(!RW.length)RW=[].slice.call(t.tBodies[0]?t.tBodies[0].rows:[]);
+HC=t.tHead&&t.tHead.rows[0]?t.tHead.rows[0].cells:t.rows[0].cells;H={};
+for(i=0;i<HC.length;i++){kk=tx(HC[i]).toLowerCase();H[kk]=i;if(/^\d{1,2}$/.test(kk)||kk==='ec'||kk==='crt')SK.push(kk);if(/^descrip/.test(kk))H.desc=i}
+for(i=0;i<RW.length;i++){c=RW[i].cells;if(!c||c.length<10)continue;m=tx(c[H['producto']]);if(!/^\d{5,9}$/.test(m))continue;rr={r:tx(c[H['ref. suplidor']]),p:m,d:tx(c[H.desc]),pr:tx(c[H['precio']]),iv:tx(c[H['inventario']]),dis:tx(c[H['dis']]),s:{}};
+for(ci=0;ci<SK.length;ci++)rr.s[SK[ci]]=tx(c[H[SK[ci]]]);TM.push(rr)}
+if(!TM.length){alert('No encontré productos en la tabla de distribución');return}
+q1=d.getElementById('DistributionId');cr1=(d.body.innerText.match(/CREADOR\.?\s*([\w.\-]+)/i)||[])[1]||'';
+o={k:'tm',id:q1?q1.value:((location.search.match(/DistributionId=(\d+)/i)||[])[1]||''),cr:cr1,rows:TM}}
+else if(d.querySelector('.panel-heading h2')&&/^S\s*#\d+\s*-\s*\d{5,9}/.test(tx(d.querySelector('.panel-heading h2')))){var CD=[],PC='',RF='',HS=d.querySelectorAll('.panel-heading h2'),pn,bt,an,n1,n2,n3,em;
+for(i=0;i<HS.length;i++){m=tx(HS[i]).match(/^S\s*#(\d+)\s*-\s*(\d{5,9})/);if(!m)continue;pn=HS[i].closest('.panel');if(!pn)continue;bt=tx(pn.querySelector('.panel-body p')||pn);an=pn.querySelector('a[data-id]');
+n1=bt.match(/Distribuir:\s*(\d+)/);n2=bt.match(/Surtidas?:\s*(\d+)/);n3=bt.match(/Disponible:\s*(-?\d+)/);PC=m[2];
+if(!RF){em=tx(pn.querySelector('.panel-heading label')).match(/Estilo:\s*(.*)$/);RF=em?em[1].trim():''}
+CD.push({t:m[1],dp:n3?+n3[1]:0,di:n1?+n1[1]:0,su:n2?+n2[1]:0,tr:an?(an.getAttribute('data-id')||tx(an)):((bt.match(/Transferencia:\s*(\d+)/)||[])[1]||'')})}
+o={k:'ts',dist:(location.search.match(/distributionId=(\d+)/i)||[])[1]||(((d.querySelector('a[href*="istributionId="]')||{}).href||'').match(/istributionId=(\d+)/)||[])[1]||'',p:PC,ref:RF,c:CD}}
+else{var TB=null,TL=d.querySelectorAll('table'),im,I2;
+for(i=0;i<TL.length;i++){if(/^\s*Cod\./i.test(tx(TL[i]))&&/Ref\.?\s*Supl/i.test(tx(TL[i]))&&TL[i].rows.length>1){TB=TL[i];break}}
+if(!TB){alert('Puente: abre la pantalla de Surtido de una transferencia, el listado de transferencias por agregar, Liberación y reasignación, la Distribución del túnel manual, el Surtido del producto o Producto - INV (etiqueta)');return}
+c=TB.rows[1].cells;o={k:'pi',c:tx(c[0]),d:tx(c[1]),l:tx(c[2]),r:tx(c[3]),t:tx(c[4])};
+im=d.querySelector('#mimodal.in img.recibir-imagen')||d.querySelector('img.imagen');
+if(im&&im.src&&!/sin_imagen/i.test(im.src)){I2=new Image();I2.crossOrigin='anonymous';
+I2.onload=function(){try{var w=I2.naturalWidth,h=I2.naturalHeight,s=Math.min(1,380/Math.max(w,h)),cv=d.createElement('canvas'),cx;cv.width=Math.max(1,Math.round(w*s));cv.height=Math.max(1,Math.round(h*s));cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);cx.drawImage(I2,0,0,cv.width,cv.height);o.i=cv.toDataURL('image/jpeg',.6)}catch(e){}send(o)};
+I2.onerror=function(){send(o)};I2.src=im.currentSrc||im.src;return}}
+send(o)}catch(e){alert('Puente: '+e.message)}}
 function gestorBM(){return 'javascript:('+BMCODE.toString().replace(/\s*\n\s*/g,' ')+')('+JSON.stringify(location.origin+location.pathname)+')'}
 function gestorToA(o){
   const lines=(o.l||[]).map(r=>({ref:String(r.r||''),p:String(r.p||''),inv:+r.i||0,sol:+r.s||0,res:+r.v||0,desp:+r.d||0,bul:+r.b||0,pr:0,ub:String(r.u||''),d:String(r.n||'')})).filter(l=>/^\d{5,9}$/.test(l.p));
@@ -2592,10 +2615,135 @@ async function auBridgeSur(a,raw){
   try{await update(R(db,AUW+'/'+tr),{br:1,u:USER,ts:Date.now()});(AUD.wk[tr]=AUD.wk[tr]||{}).br=1}catch(e){}
   AUCUR=tr;AUOP='';AUV=ISADM?'adm':'mine';await auLoad();AUCUR=tr;auPaint();window.scrollTo(0,0);
   toast(`✅ ${tr} abierta: ${Object.keys(ps).length} producto(s) cargados del Gestor${nz?` · ${nz} en cero (pide motivo)`:''}. Primero “Completar surtido” en el Gestor; luego aquí.`)}
+/* ---------- Puente · Túnel manual (Compras Manager) · Surtido del producto y Etiqueta de producto (Gestor GP) ---------- */
+const BRNORM=s=>String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+const brKind=id=>String(id).startsWith('TM')?'Túnel manual '+String(id).slice(2):'Recibo '+id;
+function brOpenRec(id,p){
+  $('v-home').classList.add('hide');delete document.body.dataset.home;HOMEBACK=false;$('btnHome').textContent='Recibos';
+  selectRecibo(id);
+  if(p)setTimeout(()=>{if(byProd&&byProd[p])openProd(p)},900)}
+async function brNew(o){
+  if(o.k==='tm')return tmImport(o);
+  if(o.k==='ts')return tsImport(o);
+  return piImport(o)}
+/* 1) Túnel manual: la distribución del Compras Manager entra como un recibo (TM + número), con las mismas tiendas y el mismo flujo de surtido */
+async function tmImport(o){
+  if(!ISADM){toast('Solo el administrador puede agregar un túnel manual');return}
+  const did=String(o.id||'').replace(/\D/g,'');if(!did){toast('No leí el número de distribución en la pantalla');return}
+  try{await loadUploaded()}catch(e){}
+  const id='TM'+did,items=[],seen=new Set(),MAP={EC:'ECOM',CRT:'CRISTAL'},shown=new Set(),prev={};let lost=0,dif=0;
+  if(RECS[id])RECS[id].items.forEach(x=>prev[x.p]=x);
+  /* la pantalla del túnel solo muestra algunas tiendas (hasta la 12): las demás (13, 14) se conservan de lo ya cargado y se completan con el Surtido del producto */
+  for(const r of (o.rows||[]))for(const k of Object.keys(r.s||{})){const K=String(k).toUpperCase().trim();shown.add(MAP[K]||(/^\d{1,2}$/.test(K)?'S'+parseInt(K,10):''))}
+  for(const r of (o.rows||[])){
+    const p=String(r.p||'').replace(/\D/g,'');if(!/^\d{5,9}$/.test(p)||seen.has(p))continue;seen.add(p);
+    const s={};BASE_ST.forEach(t=>s[t]=0);
+    for(const [k,v] of Object.entries(r.s||{})){const q=Math.max(0,Math.round(numv(v))),K=String(k).toUpperCase().trim(),t=MAP[K]||(/^\d{1,2}$/.test(K)?'S'+parseInt(K,10):'');
+      if(t&&BASE_ST.includes(t))s[t]+=q;else if(q>0)lost+=q}
+    if(prev[p])for(const t of BASE_ST){if(!shown.has(t)&&t!=='BODEGA')s[t]=(prev[p].s&&prev[p].s[t])||0}
+    const dtSum=BASE_ST.filter(t=>t!=='CRISTAL').reduce((a,t)=>a+s[t],0),cr=s.CRISTAL,dis=Math.round(numv(r.dis)),rec=Math.max(dis,dtSum+cr);
+    if(dis>dtSum+cr)dif++;
+    const sal=Math.max(0,rec-dtSum),sc=Math.max(0,sal-cr);s.BODEGA=sc;
+    items.push({n:items.length+1,ref:strv(r.r),p,d:strv(r.d),pb:0,pr:numv(r.pr),rec,sal,dt:dtSum,upc:'',cr,sc,dep:'',div:'',lin:'',sub:'',s})}
+  if(!items.length){toast('No encontré productos en la tabla de distribución');return}
+  const ex=!!RECS[id],pz=items.reduce((a,x)=>a+x.dt+x.cr,0);
+  if(!confirm(`${ex?'Se ACTUALIZARÁ':'Se agregará'} el túnel manual ${did}: ${items.length} productos · ${fmt(pz)} pzas para tiendas.${dif?`\nEn ${dif} producto(s) "Dis" trae más piezas que las tiendas que muestra la pantalla (normalmente tiendas 13 y 14). Esa diferencia queda como saldo y se pasa a su tienda al traer el Surtido del producto.`:''}${lost?`\n⚠ ${fmt(lost)} pzas de columnas que no son tienda de la app (ej. tienda 10) no se cargaron.`:''}${ex?'\nEl surtido ya registrado se conserva.':''}\n¿Continuar?`))return;
+  const fecha=today(),now=Date.now();
+  try{
+    await set(R(db,'meta_v1/consultas_recs/'+id),{items,by:USER,ts:now,file:'Túnel manual '+did,fecha,tm:1,cr:strv(o.cr)});
+    RECS[id]={items,up:true};
+    if(!ex){await set(R(db,'meta_v1/consultas_fechas/'+id),fecha);FECHAS[id]=fecha;try{await remove(R(db,'meta_v1/consultas_prog/'+id));await remove(R(db,'meta_v1/consultas_comp/'+id));delete COMP[id]}catch(e2){}}
+    else{try{await remove(R(db,'meta_v1/consultas_prog/'+id))}catch(e2){}}
+    toast(`✅ Túnel manual ${did} ${ex?'actualizado':'agregado'}: ${items.length} productos`);
+    brOpenRec(id,'')}
+  catch(err){toast('Error: '+(err.code||err.message))}}
+/* 2) Surtido del producto: pasa lo surtido en el Gestor (por tienda, con su transferencia) al recibo o túnel que elijas */
+async function tsApply(id,p,cards,o){
+  if(COMP[id]){toast('El '+brKind(id)+' está completado: reábrelo antes de surtir');return}
+  const base=`meta_v1/consultas/${id}`;let it=(RECS[id]&&RECS[id].items||[]).find(x=>String(x.p)===p);if(!it){toast('Producto no encontrado en '+brKind(id));return}
+  const adj=[];
+  if(String(id).startsWith('TM')){
+    /* en el túnel manual, lo que dice "Distribuir" en el Gestor manda: si una tienda (ej. 13) pide más de lo cargado, se completa con el saldo del producto */
+    const its=RECS[id].items.map(x=>({...x,s:{...x.s}})),x2=its.find(x=>String(x.p)===p);let ch=false;
+    for(const c of cards){const w=x2.s[c.t]||0,m=Math.min(Math.max(0,c.di-w),x2.s.BODEGA||0);
+      if(m>0){x2.s[c.t]=w+m;x2.s.BODEGA-=m;x2.sc=x2.s.BODEGA;x2.sal=Math.max(0,(x2.sal||0)-m);x2.dt=(x2.dt||0)+m;adj.push(`${L(c.t)} +${m}`);ch=true}}
+    if(ch){try{await set(R(db,'meta_v1/consultas_recs/'+id+'/items'),its);RECS[id].items=its;it=x2}catch(err){toast('Error al ajustar tiendas: '+(err.code||err.message));return}}}
+  let lg={};try{lg=(await get(R(db,base+'/log'))).val()||{}}catch(e){toast('No pude leer el surtido actual');return}
+  const done={};Object.values(lg).forEach(e=>{if(String(e.p)===p)done[e.t]=(done[e.t]||0)+(e.q||0)});
+  const ts=Date.now(),d=ymd(ts),dif=[];let n=0,pz=0,ya=0;
+  try{
+    for(const c of cards){
+      const w=it.s[c.t]||0;if(c.di!==w)dif.push(`${L(c.t)}: Gestor ${c.di} · app ${w}`);
+      if(!c.tr)continue;
+      const pend=Math.max(0,w-(done[c.t]||0)),q=Math.min(c.su,pend);
+      if(q<=0){if(c.su>0&&pend===0)ya++;continue}
+      await push(R(db,base+'/log'),{p,r:it.ref||strv(o.ref),t:c.t,q,tr:c.tr,u:USER,n:NAME,ts,d,br:1});
+      await set(R(db,base+'/trf/'+c.t),{tr:c.tr,u:USER,n:NAME,ts});
+      n++;pz+=q}
+    try{await remove(R(db,'meta_v1/consultas_prog/'+id))}catch(e){}}
+  catch(err){toast('Error al surtir: '+(err.code||err.message));return}
+  toast(n?`✅ ${brKind(id)}: ${n} tienda(s) surtidas · ${fmt(pz)} pzas, cada una con su transferencia${adj.length?' · tiendas completadas desde el saldo: '+adj.join(', '):''}`:(ya?'ℹ Ya estaba surtido en '+brKind(id):'ℹ El Gestor no trae nada surtido todavía'));
+  if(dif.length)alert('Diferencias entre el Gestor y la app (se cargó lo surtido hasta donde la app lo pedía):\n'+dif.join('\n'));
+  brOpenRec(id,p)}
+async function tsImport(o){
+  try{await loadUploaded()}catch(e){}
+  const p=String(o.p||'').replace(/\D/g,''),cards=(o.c||[]).map(c=>({t:'S'+parseInt(c.t,10),di:+c.di||0,su:+c.su||0,tr:String(c.tr||'').replace(/\D/g,'')})).filter(c=>BASE_ST.includes(c.t));
+  if(!/^\d{5,9}$/.test(p)||!cards.length){toast('No leí el producto ni las tiendas de esta pantalla');return}
+  const has=id=>!isPs(id)&&((RECS[id]&&RECS[id].items)||[]).some(x=>String(x.p)===p),dist=String(o.dist||'').replace(/\D/g,'');
+  if(dist&&has('TM'+dist))return tsApply('TM'+dist,p,cards,o);
+  const ids=Object.keys(RECS).filter(has);
+  if(!ids.length){toast('Este producto no está en ningún recibo ni túnel cargado en la app');return}
+  const info=[];
+  for(const id of ids){
+    let lg={};try{lg=(await get(R(db,`meta_v1/consultas/${id}/log`))).val()||{}}catch(e){}
+    const it=RECS[id].items.find(x=>String(x.p)===p),done={};Object.values(lg).forEach(e=>{if(String(e.p)===p)done[e.t]=(done[e.t]||0)+(e.q||0)});
+    info.push({id,pend:cards.reduce((a,c)=>a+Math.max(0,(it.s[c.t]||0)-(done[c.t]||0)),0),f:FECHAS[id]||''})}
+  info.sort((a,b)=>String(b.f).localeCompare(String(a.f)));
+  const ok=info.filter(x=>x.pend>0);
+  if(!ok.length){toast('Este producto ya está surtido por completo en: '+info.map(x=>brKind(x.id)).join(', '));return}
+  ask('¿Dónde surtir este producto? · '+p,[{k:'id',label:'Del más reciente al más viejo',type:'select',value:ok[0].id,opts:ok.map(x=>[x.id,`${brKind(x.id)} · ${x.f?fdate(x.f):'sin fecha'} · por surtir ${fmt(x.pend)} pzas`])}],'Surtir',async v=>{await tsApply(v.id,p,cards,o)})}
+/* 3) Etiqueta de producto: toma código, descripción, colores, referencia del suplidor y talla de "Producto - INV" y guarda la imagen para que todos la vean */
+let PIIMG={};
+function piOpenImg(p){
+  const u=PIIMG[p];if(!u)return;const v=document.createElement('div');v.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  v.innerHTML=`<img src="${u}" style="max-width:94vw;max-height:86vh;border-radius:12px;background:#fff"><button class="btn sm" type="button" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:14px">Cerrar</button>`;
+  v.onclick=()=>v.remove();document.body.appendChild(v)}
+async function piShow(p){
+  let u=PIIMG[p];
+  if(!u){try{const v=(await get(R(db,'meta_v1/consultas_img/'+p))).val();u=(v&&v.i)||'';if(u)PIIMG[p]=u}catch(e){}}
+  const box=$('piBox');if(!box||!BL||BL.p!==p)return;
+  box.innerHTML=u?`<button class="btn sm" type="button" data-piimg="${esc(p)}" style="width:100%">🖼 Ver imagen del producto</button>`:''}
+async function piApply(p){
+  try{const v=(await get(R(db,'meta_v1/consultas_prods/'+p))).val();
+    if(v&&BL&&BL.p===p){
+      if(v.r){BL.ref=v.r;$('blR').value=v.r}if(v.d){BL.d=v.d;$('blD').value=v.d}
+      if(v.c){BL.col=v.c;$('blC').value=v.c}if(v.t){BL.tal=v.t;$('blT').value=v.t}
+      blPaint()}}catch(e){}
+  piShow(p)}
+async function piImport(o){
+  const p=String(o.c||'').replace(/\D/g,'');if(!/^\d{5,9}$/.test(p)){toast('No leí el código del producto en la pantalla');return}
+  await openBul();blSetMode('alm');
+  BLIDX=BLIDX||blIndex();
+  const ex=BLIDX.find(x=>x.p===p),nd=strv(o.d),od=ex?ex.d:'',a=BRNORM(od),b=BRNORM(nd);let d=nd||od,msg;
+  if(ex&&a&&(!b||a===b||a.startsWith(b))){d=od;msg='✔ Descripción idéntica a la del sistema'}
+  else if(ex&&a)msg='⚠ La descripción cambió: se usó la del Gestor ('+(od.length>40?od.slice(0,40)+'…':od)+' → '+nd+')';
+  else msg='ℹ Producto nuevo: no estaba en los recibos, se tomó todo del Gestor';
+  BL.q=p;BL.p=p;BL.ref=strv(o.r)||(ex?ex.ref:'');BL.d=d;BL.col=strv(o.l);BL.tal=strv(o.t);
+  $('blQ').value=p;$('blP').value=BL.p;$('blR').value=BL.ref;$('blD').value=BL.d;$('blC').value=BL.col;$('blT').value=BL.tal;
+  $('blRes').innerHTML=`<div class="msg" style="color:var(--ok)">${esc(msg)} · empaque queda para escribirlo a mano</div>`;
+  blPaint();toast(msg);
+  const tsn=Date.now();
+  try{
+    await set(R(db,'meta_v1/consultas_prods/'+p),{r:BL.ref,d:BL.d,c:BL.col,t:BL.tal,by:USER,ts:tsn});
+    if(o.i){await set(R(db,'meta_v1/consultas_img/'+p),{i:o.i,by:USER,ts:tsn});PIIMG[p]=o.i}}
+  catch(err){toast('No se pudo guardar el producto/imagen: '+(err.code||err.message))}
+  piShow(p)}
+$('mlblBody').addEventListener('click',e=>{const b=e.target.closest('[data-piimg]');if(b)piOpenImg(b.dataset.piimg)});
 function gestorHash(){
   const m=location.hash.match(/^#gestor=([\w\-=]+)$/);if(!m)return;let o;   // el base64 puede terminar en = (relleno)
   try{o=JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')))))}catch(e){toast('No pude leer los datos del Gestor');return}
   try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+  if(o&&(o.k==='tm'||o.k==='ts'||o.k==='pi')){setTimeout(()=>brNew(o).catch(e=>toast('Error: '+(e.message||e))),400);return}
   HOMEBACK=true;HMLAST=ISADM?['trf']:[];NAVK=ISADM?'auto':'aut';openAu('auto');$('btnHome').textContent='Menú';setTimeout(()=>auImportGestor(o).catch(e=>toast('Error: '+(e.message||e))),400)}
 {const b=$('gbCopy');if(b)b.onclick=async()=>{const c=gestorBM();try{await navigator.clipboard.writeText(c);$('gbMsg').textContent='✅ Código copiado. Pégalo como dirección (URL) de un marcador llamado Puente.'}catch(e){window.prompt('Copia este código completo:',c)}}}
 async function auReadFile(f){
@@ -3653,7 +3801,7 @@ function blPaint(){
   $('blPrint').textContent=(ok&&BL.n>0)?(alm?`🖨 Imprimir ${BL.n} etiqueta(s) de almacenaje`:`🖨 Imprimir ${BL.n} etiqueta(s) · ${Math.ceil(BL.n/BL_PER)} hoja(s)`):'🖨 Imprimir'
 }
 function blPick(h){BL.p=h.p;BL.ref=h.ref;BL.d=h.d;$('blP').value=h.p;$('blR').value=h.ref;$('blD').value=h.d;
-  $('blRes').innerHTML='<div class="msg" style="color:var(--ok)">✔ Encontrado en los recibos · puedes ajustar los datos</div>';blPaint()}
+  $('blRes').innerHTML='<div class="msg" style="color:var(--ok)">✔ Encontrado en los recibos · puedes ajustar los datos</div>';blPaint();piApply(h.p)}
 function blSearch(){
   const raw=BL.q.trim(),q=blNorm(raw),box=$('blRes');
   if(q.length<2){box.innerHTML='';return}
@@ -3682,7 +3830,7 @@ async function openBul(){
   <div id="blTp" style="display:flex;gap:8px;margin-bottom:8px"><button class="btn sm pri" data-bltp="rec" style="flex:1">Recibo</button><button class="btn sm" data-bltp="alm" style="flex:1">Almacenaje</button></div>
   <div class="msg" id="blMsg" style="margin:4px 0 10px">${BL_MSG.rec}</div>
   <div class="lbl">Buscar producto</div><input class="f" id="blQ" type="text" inputmode="search" autocomplete="off" placeholder="Ej. 1637330">
-  <div id="blRes" style="margin-top:8px"></div>
+  <div id="blRes" style="margin-top:8px"></div><div id="piBox" style="margin-top:6px"></div>
   <button class="btn sm" id="blScan" type="button" style="width:100%;margin-top:6px">📷 Escanear pantalla del sistema (actualizar datos)</button>
   <div class="lbl" style="margin-top:6px">Producto</div><input class="f" id="blP" type="text" autocomplete="off" maxlength="30">
   <div class="lbl" style="margin-top:6px">Estilo</div><input class="f" id="blR" type="text" autocomplete="off" maxlength="30">
