@@ -663,6 +663,12 @@ async function migrateAuto(ids){
     try{const dd=(await get(R(db,`meta_v1/consultas/${id}/desp`))).val()||{},v=Object.values(dd);
       if(v.length&&v.every(x=>x.au)){const o={u:AUTO_U,n:AUTO_N,ts:v[0].ts||Date.now(),au:1};await set(R(db,'meta_v1/consultas_comp/'+id),o);COMP[id]=o}}catch(e){}}
 }
+const isTMid=id=>/^TM\d+$/.test(String(id));
+function tmHead(tm){
+  if(recTmOpen)return `<div class="card row" style="display:flex;align-items:center;gap:10px"><button class="btn sm" type="button" data-tmgrp="0">← Recibos</button><div class="sora" style="font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:22px;font-weight:800;color:#fff">✍️ Túnel manual · ${fmt(tm.length)}</div></div><div class="msg" style="margin:0 0 6px">Elige el túnel manual. El más reciente va primero.</div>`;
+  if(!tm.length)return'';
+  const nw=tm.slice().sort((a,b)=>String(FECHAS[b]||'').localeCompare(String(FECHAS[a]||''))||String(b).localeCompare(String(a),undefined,{numeric:true}))[0],pz=tm.reduce((a,id)=>a+((RECS[id]&&RECS[id].items)||[]).reduce((b,x)=>b+(x.rec||0),0),0);
+  return `<div class="card row" style="display:block;cursor:pointer" data-tmgrp="1"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div class="sora" style="font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:27px;font-weight:800;color:#fff;line-height:1.15;margin-bottom:4px">✍️ TÚNEL MANUAL</div><div class="msg" style="margin:2px 0 0">${fmt(tm.length)} túnel(es) ${recTab==='c'?'completado(s)':'en proceso'} · más reciente: <b>${esc(String(nw).slice(2))}</b>${FECHAS[nw]?' · '+fdate(FECHAS[nw]):''}</div></div><div class="big" style="font:800 28px 'Inter',sans-serif;color:var(--tx)">›</div></div></div>`}
 async function showRecList(){
   ensureWorked();
   $('v-stat').classList.add('hide');$('v-auto').classList.add('hide');$('v-pro').classList.add('hide');$('v-pdn').classList.add('hide');$('v-pal').classList.add('hide');$('v-pkl').classList.add('hide');$('mst').classList.add('hide');
@@ -678,10 +684,13 @@ async function showRecList(){
   for(const id of allIds.filter(isPs)){try{const [sn,dn2]=await Promise.all([get(R(db,`meta_v1/consultas/${id}/log`)),get(R(db,`meta_v1/consultas/${id}/desp`))]);const m={},dd=dn2.val()||{},it=RECS[id].items||[];Object.values(sn.val()||{}).forEach(e=>{if(e.bd||e.nb)return;m[e.p+'|'+e.t]=(m[e.p+'|'+e.t]||0)+(e.q||0)});PSD[id]=(id===PFID&&it.length===0)||it.length>0&&it.every(x=>dd[x.p]&&Object.entries(x.s||{}).every(([t,a])=>t==='BODEGA'||(m[x.p+'|'+t]||0)>=a))}catch(e){}}
   if(AUPEND.n)delete PSD[AUID];const dn=id=>!!COMP[id]||!!PSD[id];const nC=allIds.filter(dn).length;
   $('recTabs').innerHTML=`<button class="btn sm ${recTab==='a'?'pri':''}" data-rtab="a">En proceso (${allIds.length-nC})</button><button class="btn sm ${recTab==='c'?'pri':''}" data-rtab="c">Completados (${nC})</button><label class="btn sm" title="Ordenar recibos" style="position:relative;flex:0 0 auto;margin:0;padding:8px 14px;font-size:17px;line-height:1">⇅<select class="f" id="recSortSel" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px"><option value="new">Más recientes</option><option value="old">Más antiguos</option><option value="prov">Proveedor A–Z</option><option value="num">Número de recibo</option></select></label>`;$('recSortSel').value=recSort;
-  const ids=allIds.filter(id=>dn(id)===(recTab==='c')).sort((a,b)=>{const p=(isPs(b)?1:0)-(isPs(a)?1:0);if(p)return p;const fd=id=>FECHAS[id]||'',nm=(x,y)=>String(y).localeCompare(String(x),undefined,{numeric:true});
+  const ids0=allIds.filter(id=>dn(id)===(recTab==='c')).sort((a,b)=>{const p=(isPs(b)?1:0)-(isPs(a)?1:0);if(p)return p;const fd=id=>FECHAS[id]||'',nm=(x,y)=>String(y).localeCompare(String(x),undefined,{numeric:true});
     if(recSort==='old')return fd(a).localeCompare(fd(b))||nm(b,a);if(recSort==='prov')return (PROV[a]||'~').localeCompare(PROV[b]||'~','es')||nm(b,a);if(recSort==='num')return nm(a,b);return fd(b).localeCompare(fd(a))||nm(a,b)});
-  if(!ids.length){$('recList').innerHTML=`<div class="msg">${recTab==='c'?'Aún no hay recibos completados.':'No hay recibos en proceso.'}</div>`;return}
-  $('recList').innerHTML=ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="flex:1 1 230px;min-width:0;overflow-wrap:anywhere">${PROV[id]?`<div class="sora" style="font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:27px;font-weight:800;color:#fff;line-height:1.15;margin-bottom:4px;letter-spacing:-.01em">${esc(PROV[id])}</div>`:'<div class="msg" style="margin:0 0 4px;color:var(--wn)">Sin proveedor</div>'}<div class="lbl">Recibo</div><div class="sora" style="font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:26px;font-weight:800;letter-spacing:-.01em;color:var(--tx)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos · ${fmt(it.reduce((a,x)=>a+(x.rec||0),0))} piezas</div>${COMP[id]?`<div class="msg" style="margin:2px 0 0">✔ Completado · ${fdt(COMP[id].ts)} · ${esc(COMP[id].n||'')}</div>`:PSD[id]?'<div class="msg" style="margin:2px 0 0">✔ Completado · 100% surtido y despachado</div>':''}<div class="msg" id="ri-${id}" style="margin:2px 0 0;color:var(--tx)">Ítems …</div><div class="msg" id="rp-${id}" style="margin:2px 0 0;color:var(--tx)"></div>${id===AUID&&AUPEND.n?`<div class="msg" style="margin:2px 0 0;color:var(--wn)">⏳ ${fmt(AUPEND.n)} transferencia(s) por surtir o chequear · ${fmt(AUPEND.pz)} pzas</div>`:''}${RECDEP[id]?`<div class="msg" style="margin:2px 0 0">🏷 Departamento: <b>${esc(RECDEP[id])}</b></div>`:''}<div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}${FDSP[id]?' · 🚚 Despacho: '+fdate(FDSP[id]):''}</div>${ageBox(id,dn(id))}</div><div style="text-align:right;display:flex;gap:14px;flex:none;margin-left:auto"><div><div class="big" id="ra-${id}" style="font:800 22px 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--tx)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar" style="height:16px;margin-top:10px"><i id="rb-${id}" style="width:0;background:var(--tx)"></i></div><div class="bar" style="height:16px;margin-top:6px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">${COMP[id]?`<button class="btn sm" data-reopenrec="${id}">↩ Reabrir</button>`:''}<button class="btn sm" data-fecharec="${id}">📅 Fecha y departamento</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
+  /* Túneles manuales (TM + número): se agrupan en una sola tarjeta que abre su propio listado, como las transferencias de Pedidos automáticos */
+  if(recTmOpen&&!ids0.some(isTMid))recTmOpen=false;
+  const tmAll=ids0.filter(isTMid),ids=recTmOpen?tmAll:ids0.filter(id=>!isTMid(id));
+  if(!ids.length&&!tmAll.length){$('recList').innerHTML=`<div class="msg">${recTab==='c'?'Aún no hay recibos completados.':'No hay recibos en proceso.'}</div>`;return}
+  $('recList').innerHTML=tmHead(tmAll)+ids.map(id=>{const it=RECS[id].items;return `<div class="card row" style="display:block;cursor:pointer" data-rec="${id}"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="flex:1 1 230px;min-width:0;overflow-wrap:anywhere">${PROV[id]?`<div class="sora" style="font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:27px;font-weight:800;color:#fff;line-height:1.15;margin-bottom:4px;letter-spacing:-.01em">${esc(PROV[id])}</div>`:'<div class="msg" style="margin:0 0 4px;color:var(--wn)">Sin proveedor</div>'}<div class="lbl">Recibo</div><div class="sora" style="font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:26px;font-weight:800;letter-spacing:-.01em;color:var(--tx)">#${id}</div><div class="msg" style="margin:2px 0 0">${fmt(it.length)} referencias · ${fmt(storesFor(it).length)} destinos · ${fmtB(totBul(it))} bultos · ${fmt(it.reduce((a,x)=>a+(x.rec||0),0))} piezas</div>${COMP[id]?`<div class="msg" style="margin:2px 0 0">✔ Completado · ${fdt(COMP[id].ts)} · ${esc(COMP[id].n||'')}</div>`:PSD[id]?'<div class="msg" style="margin:2px 0 0">✔ Completado · 100% surtido y despachado</div>':''}<div class="msg" id="ri-${id}" style="margin:2px 0 0;color:var(--tx)">Ítems …</div><div class="msg" id="rp-${id}" style="margin:2px 0 0;color:var(--tx)"></div>${id===AUID&&AUPEND.n?`<div class="msg" style="margin:2px 0 0;color:var(--wn)">⏳ ${fmt(AUPEND.n)} transferencia(s) por surtir o chequear · ${fmt(AUPEND.pz)} pzas</div>`:''}${RECDEP[id]?`<div class="msg" style="margin:2px 0 0">🏷 Departamento: <b>${esc(RECDEP[id])}</b></div>`:''}<div class="msg" style="margin:2px 0 0">📅 Ingreso: ${FECHAS[id]?fdate(FECHAS[id]):'sin fecha'}${FDSP[id]?' · 🚚 Despacho: '+fdate(FDSP[id]):''}</div>${ageBox(id,dn(id))}</div><div style="text-align:right;display:flex;gap:14px;flex:none;margin-left:auto"><div><div class="big" id="ra-${id}" style="font:800 22px 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--tx)">…</div><div class="lbl">surtido</div></div><div><div class="big" id="da-${id}" style="font:800 22px 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f5a623">…</div><div class="lbl">despacho</div></div></div></div><div class="bar" style="height:16px;margin-top:10px"><i id="rb-${id}" style="width:0;background:var(--tx)"></i></div><div class="bar" style="height:16px;margin-top:6px"><i id="db-${id}" style="width:0;background:#f5a623"></i></div>${ISADM?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">${COMP[id]?`<button class="btn sm" data-reopenrec="${id}">↩ Reabrir</button>`:''}<button class="btn sm" data-fecharec="${id}">📅 Fecha y departamento</button>${RECS[id].up?`<button class="btn sm" data-delrec="${id}">🗑 Quitar</button>`:''}</div>`:''}</div>`}).join('');
   const GP={};let PROG={};try{PROG=(await get(R(db,'meta_v1/consultas_prog'))).val()||{}}catch(e){}
   for(const id of ids){try{let g=PROG[id];
     if(!g||g.si===undefined||g.A===undefined){ // primera vez para este recibo: se calcula una sola vez y se guarda el resumen
@@ -702,6 +711,7 @@ async function showRecList(){
 $('recTabs').addEventListener('change',e=>{if(e.target.id!=='recSortSel')return;recSort=e.target.value;try{localStorage.setItem('recSort',recSort)}catch(x){}showRecList()});
 $('recTabs').addEventListener('click',e=>{const b=e.target.closest('[data-rtab]');if(b){recTab=b.dataset.rtab;showRecList()}});
 $('recList').addEventListener('click',async e=>{
+  const tg=e.target.closest('[data-tmgrp]');if(tg){recTmOpen=tg.dataset.tmgrp==='1';showRecList();window.scrollTo(0,0);return}
   const ro=e.target.closest('[data-reopenrec]');
   if(ro){e.stopPropagation();const id=ro.dataset.reopenrec;if(!confirm(`¿Reabrir el recibo ${id}? Vuelve a la lista En proceso.`))return;try{await remove(R(db,'meta_v1/consultas_comp/'+id));delete COMP[id];recTab='a';toast('Recibo reabierto');showRecList()}catch(err){toast('Error: '+(err.code||err.message))}return}
   const fe=e.target.closest('[data-fecharec]');
@@ -750,13 +760,15 @@ onAuthStateChanged(auth,async u=>{
     if(!u){try{await signInAnonymously(auth)}catch(err){showGate('No se pudo abrir el acceso temporal ('+(err.code||err.message)+'). Avisa al administrador.')}return}
     startTemp();return}
   if(!u||u.isAnonymous){
-    if(!u){$('gmsg').textContent='Verificando sesión…';await new Promise(r=>setTimeout(r,2500));if(auth.currentUser&&!auth.currentUser.isAnonymous)return}
+    if(!u){$('gmsg').textContent='Verificando sesión…';await new Promise(r=>setTimeout(r,900));if(auth.currentUser&&!auth.currentUser.isAnonymous)return}
     showGate('Inicia sesión con tu usuario y contraseña de Marcaciones.');$('glogin').style.display='block';$('glink').style.display='inline-block';
     if(u&&u.isAnonymous&&!$('gpick').innerHTML)openTempPicker();return}
   STARTED=true;
   USER=emailToUser(u.email);NAME=USER;ISADM=ADMINS.includes(USER);applyRole();
-  try{const s=await get(R(db,'users_v1'));if(s.exists()){const m=Object.values(s.val()).find(x=>x&&x.user===USER);if(m&&m.nombre)NAME=m.nombre}}catch(e){}
-  $('who').textContent=`${NAME} · ${ISADM?'Administrador':'Surtidor'}`;
+  /* Arranque rápido: la app se abre al instante. El nombre sale de la memoria del equipo y se refresca en segundo plano (antes se esperaba a bajar toda la tabla de usuarios). */
+  try{const cn=localStorage.getItem('cons_nm_'+USER);if(cn)NAME=cn}catch(e){}
+  const paintWho=()=>{$('who').textContent=`${NAME} · ${ISADM?'Administrador':'Surtidor'}`};paintWho();
+  get(R(db,'users_v1')).then(s=>{if(!s.exists())return;const m=Object.values(s.val()).find(x=>x&&x.user===USER);if(m&&m.nombre){NAME=m.nombre;try{localStorage.setItem('cons_nm_'+USER,NAME)}catch(e){}paintWho()}}).catch(()=>{});
   $('gate').classList.add('hide');$('app').classList.remove('hide');startCtrl();
   showRecList();showHome();navRestore();gestorHash();
   if(ISADM)setTimeout(histMig,3000);
@@ -1387,7 +1399,7 @@ async function saveBultos(key){
 
 
 // ---------- Fechas y ventana de captura ----------
-let FDSP={},FECHAS={},askCb=null,dspWhen=null,COMP={},recTab='a',recSort=(()=>{try{return localStorage.getItem('recSort')||'new'}catch(e){return'new'}})(),PROV={},RECDEP={};
+let FDSP={},FECHAS={},askCb=null,dspWhen=null,COMP={},recTab='a',recTmOpen=false,recSort=(()=>{try{return localStorage.getItem('recSort')||'new'}catch(e){return'new'}})(),PROV={},RECDEP={};
 const nowLocal=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
 const toLocalIn=ts=>{const d=new Date(ts);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
 const fdate=f=>{const d=new Date(f+'T00:00:00');return isNaN(d)?f:d.toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'})};
@@ -2625,6 +2637,7 @@ const BRNORM=s=>String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u
 const brKind=id=>String(id).startsWith('TM')?'Túnel manual '+String(id).slice(2):'Recibo '+id;
 function brOpenRec(id,p){
   $('v-home').classList.add('hide');delete document.body.dataset.home;HOMEBACK=false;$('btnHome').textContent='Recibos';
+  if(isTMid(id))recTmOpen=true;
   selectRecibo(id);
   if(p)setTimeout(()=>{if(byProd&&byProd[p])openProd(p)},900)}
 async function brNew(o){
@@ -4884,7 +4897,7 @@ $('hmSecs').addEventListener('click',e=>{const b=e.target.closest('[data-hm]');i
   if(def.ch){HMPATH.push(k);buildHome();window.scrollTo(0,0);return}
   if(def.modal){$(def.b).click();return} // ventanas emergentes: el menú queda detrás
   $('v-home').classList.add('hide');delete document.body.dataset.home;
-  if(k==='rec'){HOMEBACK=false;$('btnHome').textContent='Recibos';showRecList();return}
+  if(k==='rec'){HOMEBACK=false;recTmOpen=false;$('btnHome').textContent='Recibos';showRecList();return}
   HMLAST=HMPATH.slice();NAVK=k;HOMEBACK=true;$(def.b).click();$('btnHome').textContent='Menú'});
 
 // ---------- recordar dónde estaba la persona al actualizar la página ----------
