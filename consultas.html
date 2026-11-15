@@ -468,7 +468,11 @@ html[data-theme=light] .prcard.ok .prok{color:#fff}
     <div id="v-auto" class="hide"><div id="auTabs"></div><div class="card" id="auUpCard"><h3 id="auUpT" style="font-size:16px">Cargar transferencia del Gestor de Bodega</h3>
       <div class="msg" id="auUpM">Sube el PDF (o una captura PNG/JPG) de la pantalla de Chequeo. La app lee la transferencia, la tienda y los productos; tú revisas y guardas.</div>
       <select class="f hide" id="auSrc"><option value="auto">⚡ Automático (pedido automático)</option><option value="tun">🚇 Túnel (transferencia de un recibo)</option></select>
-      <div class="lbl" style="margin-top:10px">PDF o captura</div><input class="f" type="file" id="auFile" accept=".pdf,image/*" multiple><div class="msg" id="auMsg"></div></div>
+      <div class="lbl" style="margin-top:10px">PDF o captura</div><input class="f" type="file" id="auFile" accept=".pdf,image/*" multiple><div class="msg" id="auMsg"></div>
+      <details id="gbBox" style="margin-top:12px"><summary class="msg" style="cursor:pointer;margin:0">🔗 Puente con el Gestor (sin subir PDF)</summary>
+        <div class="msg" style="margin-top:8px">Un marcador en el Chrome que lee la pantalla de <b>Surtido</b> del Gestor (transferencia, productos, Solic., Reser., Desp.) y la envía a esta app, asignada a quien la manda.<br>
+        <b>1)</b> Toca <i>Copiar código del puente</i>. <b>2)</b> En el Chrome (Pocket o PC) guarda cualquier página como marcador ⭐ con el nombre <b>Puente</b>. <b>3)</b> Edita ese marcador y pega el código en el campo de la dirección (URL). <b>4)</b> En el Gestor, con la transferencia abierta (después de <i>Surtir todo</i>, antes de <i>Completar surtido</i>) abre el marcador: en la PC desde la barra de favoritos; en la Pocket escribe <b>Puente</b> en la barra de direcciones y elige la sugerencia con la ⭐.</div>
+        <button class="btn sm" type="button" id="gbCopy" style="margin-top:8px">📋 Copiar código del puente</button><div class="msg" id="gbMsg"></div></details></div>
     <div id="pfCard" class="card hide"><h3 style="font-size:16px">Proformas (clientes)</h3><div class="msg" style="margin-bottom:8px">1) Sube el PDF de la proforma (Productos de Proforma #…): se leen el número, los productos, lo solicitado y lo despachado. También puedes usar la plantilla Excel (producto y cantidad). 2) Completa el número de proforma, el cliente y el surtidor. 3) Las piezas descuentan del saldo de Bodega del recibo donde está el producto y suman a la producción del surtidor. Si un código se excede, pasa a Diferencias para auditoría. Los productos sin recibo van al recibo PROFORMAS: quedan asignados, surtidos y despachados al 100% (como los pedidos automáticos) para generar las etiquetas, hasta que subas su recibo y los trasladen.</div><button class="btn sm" id="pfTpl" style="width:100%">⬇ Descargar plantilla (Excel)</button><div class="lbl" style="margin-top:10px">PDF de la proforma (o plantilla Excel)</div><input class="f" type="file" id="pfFile" accept=".pdf,.xlsx,.xls,.csv"><div class="msg" id="pfMsg"></div></div>
     <div id="auReview"></div><div id="auAuto"></div><div class="card" id="auOldCard"><div class="slbl" id="auListT">Transferencias cargadas</div><div id="auList"></div></div></div>
     <div id="v-pdn" class="hide"><div id="pdFil"></div><div id="pdBody"></div></div>
@@ -751,7 +755,7 @@ onAuthStateChanged(auth,async u=>{
   try{const s=await get(R(db,'users_v1'));if(s.exists()){const m=Object.values(s.val()).find(x=>x&&x.user===USER);if(m&&m.nombre)NAME=m.nombre}}catch(e){}
   $('who').textContent=`${NAME} · ${ISADM?'Administrador':'Surtidor'}`;
   $('gate').classList.add('hide');$('app').classList.remove('hide');startCtrl();
-  showRecList();showHome();navRestore();
+  showRecList();showHome();navRestore();gestorHash();
   if(ISADM)setTimeout(histMig,3000);
 });
 
@@ -2472,6 +2476,27 @@ async function auSavePend(a){
     await set(R(db,uk),{u:ex?ex.u:USER,n:ex?ex.n:NAME,ts:ex?ex.ts:nt,d:ex?ex.d:ymd(nt),tr:a.tr,t:a.t,m:'auto',pg:a.pg||(ex&&ex.pg)||0,it:lines.length,pz,dsp:a.ts,f:a.file||''})}catch(e){console.warn('registro de carga',e)}
   if(!ISADM){await auSelfAssign(a.tr);return 'okm'}
   return 'ok'}
+/* ---------- Puente con el Gestor de Bodega: un marcador lee la pantalla de Surtido y manda los datos a esta app ---------- */
+function gestorBM(){
+  const code=`(function(){try{var d=document,g=function(i){var e=d.getElementById(i);return e?e.textContent.replace(/\\s+/g,' ').trim():''},t=d.getElementById('MainContent_gvTransferDetail');if(!t||!g('MainContent_lblTransferNumber')){alert('Abre primero la pantalla de Surtido de una transferencia');return}var L=[],R=t.rows,i,c,x,m;for(i=1;i<R.length;i++){c=R[i].cells;if(c.length<10)continue;x=function(k){var e=c[k];if(!e)return'';var n=e.querySelector('input[type=number],input[type=text]');return n?n.value:e.textContent.replace(/\\s+/g,' ').trim()};m=x(2).match(/^(?:(\\S+)\\s+)?(\\d{5,9})$/);if(!m)continue;L.push({r:m[1]||'',p:m[2],i:x(3),s:x(4),v:x(5),d:x(6),b:x(7),n:x(9),u:x(10)})}if(!L.length){alert('No encontré productos en esta pantalla');return}var o={tr:g('MainContent_lblTransferNumber'),fs:g('MainContent_lblCaptureRequestedDate'),org:g('MainContent_lblOrigin'),des:g('MainContent_lblDestiny'),nota:g('MainContent_LblNote'),tot:g('MainContent_lblTotalUnitsDispatched'),l:L};var j=btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\\+/g,'-').replace(/\\//g,'_'),u='${location.origin}${location.pathname}#gestor='+j;if(!window.open(u,'_blank'))location.href=u}catch(e){alert('Puente: '+e.message)}})();`;
+  return 'javascript:'+code}
+function gestorToA(o){
+  const lines=(o.l||[]).map(r=>({ref:String(r.r||''),p:String(r.p||''),inv:+r.i||0,sol:+r.s||0,res:+r.v||0,desp:+r.d||0,bul:+r.b||0,pr:0,ub:String(r.u||''),d:String(r.n||'')})).filter(l=>/^\d{5,9}$/.test(l.p));
+  const tr=String(o.tr||'').replace(/\D/g,''),des=String(o.des||''),nota=notaC(o.nota),ts=parseTs(String(o.fs||'')),dd=lines.reduce((a,l)=>a+l.desp,0);
+  return{tr,ts,tsSrc:'sol',tsSol:ts,tsAuto:ts,sur:'',surRaw:'',suru:'',org:String(o.org||''),des,nota,t:guessStore(des)||guessStore(nota),lines,tot:+o.tot||dd,src:'auto',det:0,rc:'',bul:lines.reduce((a,l)=>a+l.bul,0),pend:dd===0?1:0,file:'Puente Gestor',pg:0}}
+async function auImportGestor(o){
+  const a=gestorToA(o);if(!a.tr||!a.lines.length){toast('No pude leer la transferencia que mandó el puente');return}
+  await auLoadDir();auMapSur(a);a.suru=USER;a.sur=NAME;   // la transferencia queda a nombre de quien la manda
+  if(a.pend&&a.t){const r=await auSavePend(a);
+    $('auMsg').textContent=r==='ok'||r==='okm'||r==='mine'?`✅ ${a.tr} guardada${ISADM?' como pendiente por surtir':' y asignada a ti'}.`:r==='inc'||r==='anu'||r==='sur'?`⚠ ${a.tr} ya fue ${r==='inc'?'chequeada y despachada':r==='sur'?'surtida (falta chequear)':'anulada'}; no se puede volver a cargar.`:`ℹ ${a.tr} ya estaba cargada.`;
+    auHome();return}
+  AUQUE=[a];auNextReview();if(!AU)auHome()}
+function gestorHash(){
+  const m=location.hash.match(/^#gestor=([\w\-]+)$/);if(!m)return;let o;
+  try{o=JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')))))}catch(e){toast('No pude leer los datos del Gestor');return}
+  try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+  openAu('auto');setTimeout(()=>auImportGestor(o).catch(e=>toast('Error: '+(e.message||e))),400)}
+{const b=$('gbCopy');if(b)b.onclick=async()=>{const c=gestorBM();try{await navigator.clipboard.writeText(c);$('gbMsg').textContent='✅ Código copiado. Pégalo como dirección (URL) de un marcador llamado Puente.'}catch(e){window.prompt('Copia este código completo:',c)}}}
 async function auReadFile(f){
   const txt=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)?await pdfText(f):await imgText(f);let a=parseTransfer(txt);
   if((!a.tr||!a.lines.length)&&ROWTXT&&txt!==ROWTXT){const a2=parseTransfer(ROWTXT);if(a2.tr&&a2.lines.length>(a.lines||[]).length)a=a2}
