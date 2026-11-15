@@ -601,9 +601,9 @@ html[data-theme=light] .prcard.ok .prok{color:#fff}
   <div class="bottom hide" id="bar"><div class="sum" id="bsum"></div><button class="btn pri" id="bsave">Guardar surtido</button></div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js"></script>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+<script async src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js"></script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import{getAuth,onAuthStateChanged,signInAnonymously,signOut,signInWithEmailAndPassword}from"https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
@@ -745,7 +745,7 @@ function startTemp(){const t=getTemp();if(!t||STARTED)return;STARTED=true;TEMP=t
   $('who').textContent=`${NAME} · Temporal`;
   if(!$('tmpOut')){const a=document.createElement('a');a.id='tmpOut';a.href='#';a.textContent='salir';a.style.cssText='font-size:10px;opacity:.6;margin-right:8px;color:inherit';$('verTag').after(a);
     a.onclick=async ev=>{ev.preventDefault();if(!confirm('¿Salir del modo temporal?'))return;try{localStorage.removeItem(TKEY);sessionStorage.removeItem('cons_nav')}catch(err){}try{if(auth.currentUser&&auth.currentUser.isAnonymous)await signOut(auth)}catch(err){}location.reload()}}
-  $('gate').classList.add('hide');$('app').classList.remove('hide');startCtrl();showRecList();showHome();navRestore();gestorHash()}
+  $('gate').classList.add('hide');$('app').classList.remove('hide');startCtrl();bootList();showHome();navRestore();gestorHash()}
 const u2e=u=>{const uu=String(u).trim().toLowerCase();return uu==='aojo'?uu+'@saks.com.pa':'westlandoutletjugueterianivel+'+uu+'@gmail.com'};
 async function doLogin(){const u=$('glu').value.trim(),p=$('glp').value;$('glerr').textContent='';if(!u||!p){$('glerr').textContent='Escribe tu usuario y contraseña.';return}
   const b=$('glgo');b.disabled=true;b.textContent='Entrando…';
@@ -753,6 +753,9 @@ async function doLogin(){const u=$('glu').value.trim(),p=$('glp').value;$('glerr
   catch(err){const c=err.code||'';$('glerr').textContent=(c.includes('invalid-credential')||c.includes('wrong-password')||c.includes('user-not-found'))?'Usuario o contraseña incorrectos.':'No se pudo iniciar sesión ('+(c||err.message)+').';b.disabled=false;b.textContent='Iniciar sesión'}}
 $('glgo').onclick=doLogin;$('glp').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 $('gtemp').onclick=e=>{e.preventDefault();if(!$('gpick').innerHTML)openTempPicker()};
+/* Entrada por el Puente (#gestor=...): se salta el armado completo de la pantalla de Recibos y va directo a la acción (etiqueta, surtido, proformas...). La lista se arma cuando la persona entra a Recibos. */
+const FASTBOOT=/^#gestor=/.test(location.hash);
+const bootList=()=>{if(!FASTBOOT){showRecList();return}loadUploaded().then(()=>{for(const k in PSEUDO)if(RECS[k])PROV[k]=PSEUDO[k]}).catch(()=>{})};
 onAuthStateChanged(auth,async u=>{
   if(STARTED)return;
   const tmp=getTemp();
@@ -770,8 +773,8 @@ onAuthStateChanged(auth,async u=>{
   const paintWho=()=>{$('who').textContent=`${NAME} · ${ISADM?'Administrador':'Surtidor'}`};paintWho();
   get(R(db,'users_v1')).then(s=>{if(!s.exists())return;const m=Object.values(s.val()).find(x=>x&&x.user===USER);if(m&&m.nombre){NAME=m.nombre;try{localStorage.setItem('cons_nm_'+USER,NAME)}catch(e){}paintWho()}}).catch(()=>{});
   $('gate').classList.add('hide');$('app').classList.remove('hide');startCtrl();
-  showRecList();showHome();navRestore();gestorHash();
-  if(ISADM)setTimeout(histMig,3000);
+  bootList();showHome();navRestore();gestorHash();
+  if(ISADM)setTimeout(histMig,FASTBOOT?60000:3000);
 });
 
 // ---------- cálculos ----------
