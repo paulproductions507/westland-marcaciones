@@ -875,7 +875,7 @@ function openProd(p){history.pushState({c:2},'');
 function closeProd(){cur=null;$('mdsp').classList.add('hide');$('v-prod').classList.add('hide');$('v-list').classList.remove('hide');$('bar').classList.add('hide');renderAll();$('q').focus()}
 $('pback').onclick=closeProd;
 function renderProd(){
-  if(!cur)return;const x=cur;
+  if(!cur)return;const x=cur;setTimeout(()=>libBanner(x.p),50);
   for(const t of STORES){const S=sel[t];if(!S||(t==='CRISTAL'&&hasCli(x.p)))continue;const pn=Math.max(0,(x.s[t]||0)-sur(x.p,t));if(pn===0){S.on=false;S.q=0;S.ed=false}else if(!S.ed||S.q>pn)S.q=pn}
 for(const t of STORES){if(sel[t]&&!sel[t].nw&&t!=='CRISTAL')sel[t].tr=lastTr(t)}
   $('ppos').textContent=`#${x.n} de ${DATA.length}`;$('hsBox').classList.toggle('hide',!ISADM);
@@ -917,29 +917,91 @@ function updateBar(){
   $('bar').classList.toggle('hide',!on.length);
   $('bsum').innerHTML=`<b>${on.length}</b> tienda(s) · <b>${fmt(pz)}</b> pzas`;
 }
+/* Diferencias de piezas (sugerido manda sobre solicitado):
+   · MENOS que lo pendiente: se muestra el cambio; si confirma "es todo lo que hay", la diferencia pasa a Bodega (queda registrada).
+   · MÁS que lo pendiente: se permite, pero el administrador debe liberar esas piezas de Cristal, Bodega u otra tienda (si es admin lo elige en el momento; si es surtidor queda con alerta). */
+function bsDonors(x,t){const o=[['BODEGA','Bodega',Math.max(0,(x.s.BODEGA||0)-bodUsed(x.p))],['CRISTAL','Cristal',crAv(x)]];for(const t2 of STORES){if(t2===t||t2==='CRISTAL'||t2==='BODEGA')continue;o.push([t2,L(t2),Math.max(0,(x.s[t2]||0)-sur(x.p,t2))])}return o}
+function bsDiff(exc,less){return new Promise(res=>{
+  const old=document.getElementById('bsDiff');if(old)old.remove();
+  const x=cur,d=document.createElement('div');d.id='bsDiff';d.style.cssText='position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.72);overflow:auto;padding:16px';
+  const lessH=less.map(l=>`<div style="border:1px solid var(--bd);border-radius:12px;padding:10px;margin-bottom:10px"><b>${esc(L(l.t))}</b><div class="msg" style="margin:4px 0">Pendiente <b>${fmt(l.pend)}</b> · vas a surtir <b>${fmt(l.q)}</b> · faltan <b style="color:var(--wn)">${fmt(l.d)}</b></div>
+     <label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0"><input type="radio" name="ls_${l.t}" value="bodega" checked style="margin-top:3px"> <span>Es todo lo que hay: <b>pasar ${fmt(l.d)} a Bodega</b> (${esc(L(l.t))} queda en ${fmt((x.s[l.t]||0)-l.d)} y Bodega +${fmt(l.d)})</span></label>
+     <label style="display:flex;gap:8px;align-items:flex-start"><input type="radio" name="ls_${l.t}" value="later" style="margin-top:3px"> <span>Surtiré el resto después (no se mueve nada)</span></label></div>`).join('');
+  const excH=exc.map(e=>{if(ISADM){const dn=bsDonors(x,e.t),ok=dn.filter(z=>z[2]>=e.e);return `<div style="border:1px solid var(--wn);border-radius:12px;padding:10px;margin-bottom:10px"><b>${esc(L(e.t))}</b><div class="msg" style="margin:4px 0">Pendiente <b>${fmt(e.pend)}</b> · vas a surtir <b>${fmt(e.q)}</b> · <b style="color:var(--wn)">${fmt(e.e)} de más</b></div>
+     <div class="msg" style="margin:0 0 6px">Como administrador, libera ${fmt(e.e)} pzas de:</div>
+     <select id="ex_${e.t}" class="f" style="width:100%">${dn.map(z=>`<option value="${z[0]}" ${z[2]<e.e?'disabled':''}>${esc(z[1])} · disponible ${fmt(z[2])}${z[2]<e.e?' (no alcanza)':''}</option>`).join('')}</select>${ok.length?'':'<div class="msg" style="color:var(--dn);margin-top:6px">Ninguna fuente tiene suficientes piezas: reduce la cantidad.</div>'}</div>`}
+    return `<div style="border:1px solid var(--wn);border-radius:12px;padding:10px;margin-bottom:10px"><b>${esc(L(e.t))}</b><div class="msg" style="margin:4px 0">Pendiente <b>${fmt(e.pend)}</b> · vas a surtir <b>${fmt(e.q)}</b> · <b style="color:var(--wn)">${fmt(e.e)} de más</b></div><div class="msg">Se guarda con <b>alerta</b>: el administrador debe liberar ${fmt(e.e)} pzas de Cristal, Bodega u otra tienda antes de dar este producto por completo.</div></div>`}).join('');
+  d.innerHTML=`<div style="max-width:460px;margin:0 auto;background:#16222e;border:2px solid var(--wn);border-radius:16px;padding:16px;color:#fff"><div style="font-size:21px;font-weight:800;margin-bottom:4px">⚠ Revisa antes de guardar</div><div class="msg" style="margin:0 0 12px">${esc(cur.ref||'')} · ${esc(cur.p)} — confirma que las cantidades son correctas (evita errores de dedo).</div>${lessH}${excH}<div style="display:flex;gap:8px"><button class="btn" id="bdNo" style="flex:1">Corregir</button><button class="btn pri" id="bdOk" style="flex:1">Confirmar y guardar</button></div></div>`;
+  document.body.appendChild(d);
+  d.querySelector('#bdNo').onclick=()=>{d.remove();res(null)};
+  d.querySelector('#bdOk').onclick=()=>{const dec={less:{},exc:{}};
+    for(const l of less){const r=d.querySelector(`input[name="ls_${l.t}"]:checked`);dec.less[l.t]=r?r.value:'later'}
+    if(ISADM)for(const e of exc){const sl=d.querySelector('#ex_'+e.t),dn=bsDonors(x,e.t).find(z=>z[0]===(sl&&sl.value));if(!dn||dn[2]<e.e){toast(`${L(e.t)}: elige una fuente con ${e.e} pzas disponibles`);return}dec.exc[e.t]=dn[0]}
+    d.remove();res(dec)}})}
+async function bsItemsMut(fn){
+  if(isPs(RECIBO)||!RECS[RECIBO])return false;
+  const items=RECS[RECIBO].items.map(z=>({...z,s:{...z.s},so:{...(z.so||{})}})),it=items.find(z=>String(z.p)===String(cur.p));if(!it)return false;
+  fn(it);await set(R(db,'meta_v1/consultas_recs/'+RECIBO+'/items'),items);
+  RECS[RECIBO].items=items;DATA=dataOf(RECIBO);byProd=Object.fromEntries(DATA.map(z=>[z.p,z]));cur=byProd[cur.p]||cur;return true}
 $('bsave').onclick=async()=>{
   const on=STORES.filter(t=>sel[t].on);if(!on.length)return;
   if(!ONLINE){toast(NOCON);return}
+  const exc=[],less=[];
   for(const t of on){
     if(!(sel[t].q>0)){toast(`${L(t)}: cantidad inválida`);return}
     if(t!=='CRISTAL'&&!/^\d{8,10}$/.test(sel[t].tr)){toast(`${L(t)}: la transferencia debe tener 8 a 10 dígitos`);return}
-    const pend=Math.max(0,(cur.s[t]||0)-sur(cur.p,t));
-    if(sel[t].q>pend){const msg=pend===0?`⛔ ${L(t)}: este producto ya fue surtido completo por otro compañero.`:`⛔ ${L(t)}: intentas surtir ${sel[t].q} pero solo quedan ${pend} pendientes.`;
+    const pend=Math.max(0,(cur.s[t]||0)-sur(cur.p,t)),q=sel[t].q;
+    if(q>pend){
+      if(t!=='CRISTAL'&&pend>0&&!isPs(RECIBO)){exc.push({t,pend,q,e:q-pend});continue}
+      const msg=pend===0?`⛔ ${L(t)}: este producto ya fue surtido completo por otro compañero.`:`⛔ ${L(t)}: intentas surtir ${sel[t].q} pero solo quedan ${pend} pendientes.`;
       if(!(ISADM&&confirm(msg+'\n\nComo administrador puedes forzarlo, pero se duplicaría el surtido. ¿Surtir de todos modos?'))){toast(msg+' Se actualizó la pantalla.');renderProd();return}}
+    else if(q<pend&&t!=='CRISTAL')less.push({t,pend,q,d:pend-q})
   }
   let W={u:USER,n:NAME};
   if(INC&&ISADM){if(on.some(t=>t!=='CRISTAL')){toast('Modo asignación: solo se permite Cristal');return}W=await incPick();if(!W)return}
+  let dec=null;if(exc.length||less.length){dec=await bsDiff(exc,less);if(!dec)return}
   $('bsave').disabled=true;
   try{
-    const ts=Date.now(),d=today();
+    const ts=Date.now(),d=today(),movs=[],mb=`meta_v1/consultas/${RECIBO}`;
+    if(dec){
+      const doL=less.filter(l=>dec.less[l.t]==='bodega'),doE=ISADM?exc:[];
+      if(doL.length||doE.length){
+        const ok=await bsItemsMut(it=>{it.so=it.so||{};
+          for(const l of doL){if(it.so[l.t]==null)it.so[l.t]=it.s[l.t]||0;it.s[l.t]=Math.max(0,(it.s[l.t]||0)-l.d);it.s.BODEGA=(it.s.BODEGA||0)+l.d;it.dt=Math.max(0,(it.dt||0)-l.d);movs.push({tipo:'menos→bodega',t:l.t,q:l.d})}
+          for(const e of doE){const dn=dec.exc[e.t];if(it.so[e.t]==null)it.so[e.t]=it.s[e.t]||0;it.s[e.t]=(it.s[e.t]||0)+e.e;
+            if(dn==='BODEGA'){it.s.BODEGA=(it.s.BODEGA||0)-e.e;it.dt=(it.dt||0)+e.e}else if(dn==='CRISTAL'){it.s.CRISTAL=(it.s.CRISTAL||0)-e.e;it.dt=(it.dt||0)+e.e}else{if(it.so[dn]==null)it.so[dn]=it.s[dn]||0;it.s[dn]=(it.s[dn]||0)-e.e}
+            movs.push({tipo:'libera',t:e.t,q:e.e,de:dn})}});
+        if(!ok){toast('Este recibo es calculado: no se pudo mover piezas. Ajusta en el recibo de origen.')}}}
     for(const t of on){
-      await push(R(db,BASE),{p:cur.p,r:cur.ref,t,q:sel[t].q,tr:sel[t].tr,u:W.u,n:W.n,ts,d});
+      const e=exc.find(z=>z.t===t),flag=e&&!ISADM?{ex:e.e}:{};
+      await push(R(db,BASE),{p:cur.p,r:cur.ref,t,q:sel[t].q,tr:sel[t].tr,u:W.u,n:W.n,ts,d,...flag});
+      if(flag.ex)await set(R(db,`${mb}/lib/${cur.p}_${t}`),{p:cur.p,t,q:e.e,u:USER,n:NAME,ts,d});
       if(t!=='CRISTAL'&&sel[t].tr&&sel[t].tr!==lastTr(t)){await set(R(db,`${TRFB}/${t}`),{tr:sel[t].tr,u:USER,n:NAME,ts})}
     }
-    toast('✅ Surtido guardado');closeProd()
+    for(const mv of movs)await push(R(db,`${mb}/movs`),{p:cur.p,...mv,u:USER,n:NAME,ts,d});
+    toast(dec&&(less.some(l=>dec.less[l.t]==='bodega')||movs.length)?'✅ Surtido guardado · diferencia aplicada':'✅ Surtido guardado');closeProd()
   }catch(e){toast('Error al guardar: '+(e.code||e.message))}
   $('bsave').disabled=false
 };
+/* Alerta para el administrador: piezas surtidas de más que esperan liberación */
+let _libAt=0,_libP='';
+async function libBanner(p){
+  if(!ISADM||!RECIBO||isPs(RECIBO))return;const k=RECIBO+'|'+p;if(_libP===k&&Date.now()-_libAt<8000)return;_libP=k;_libAt=Date.now();
+  let l={};try{l=(await get(R(db,`meta_v1/consultas/${RECIBO}/lib`))).val()||{}}catch(e){return}
+  const rows=Object.entries(l).filter(([id,v])=>v&&String(v.p)===String(p));const box=$('pinfo');if(!box||!cur||cur.p!==p)return;
+  const old=box.querySelector('.libBox');if(old)old.remove();if(!rows.length)return;
+  box.insertAdjacentHTML('beforeend',`<div class="libBox" style="margin-top:10px;border:2px solid var(--wn);border-radius:12px;padding:10px"><b style="color:var(--wn)">⚠ Piezas surtidas de más: liberar</b>${rows.map(([id,v])=>`<div class="msg" style="margin:6px 0">${esc(L(v.t))}: <b>${fmt(v.q)}</b> pzas de más (${esc(v.n||v.u||'')}) <button class="btn sm pri" data-lib="${esc(id)}" style="margin-left:6px">Liberar…</button></div>`).join('')}</div>`)}
+document.addEventListener('click',async ev=>{const b=ev.target.closest('[data-lib]');if(!b||!ISADM||!cur)return;
+  const id=b.dataset.lib,v=(await get(R(db,`meta_v1/consultas/${RECIBO}/lib/${id}`))).val();if(!v){toast('Ya fue liberado');libBanner(cur.p);return}
+  const e={t:v.t,pend:0,q:v.q,e:v.q},dec=await bsDiff([e],[]);if(!dec)return;
+  try{const dn=dec.exc[v.t],mv=[];
+    const ok=await bsItemsMut(it=>{it.so=it.so||{};if(it.so[v.t]==null)it.so[v.t]=it.s[v.t]||0;it.s[v.t]=(it.s[v.t]||0)+v.q;
+      if(dn==='BODEGA'){it.s.BODEGA=(it.s.BODEGA||0)-v.q;it.dt=(it.dt||0)+v.q}else if(dn==='CRISTAL'){it.s.CRISTAL=(it.s.CRISTAL||0)-v.q;it.dt=(it.dt||0)+v.q}else{if(it.so[dn]==null)it.so[dn]=it.s[dn]||0;it.s[dn]=(it.s[dn]||0)-v.q}});
+    if(!ok){toast('No se pudo liberar en este recibo');return}
+    await push(R(db,`meta_v1/consultas/${RECIBO}/movs`),{p:cur.p,tipo:'libera',t:v.t,q:v.q,de:dn,u:USER,n:NAME,ts:Date.now(),d:today()});
+    await remove(R(db,`meta_v1/consultas/${RECIBO}/lib/${id}`));toast('✅ Piezas liberadas');renderAll();libBanner(cur.p)}
+  catch(err){toast('Error: '+(err.code||err.message))}});
+
 
 // ---------- Cristal: clientes ----------
 let cliP=null,cliSel={};
@@ -2512,6 +2574,9 @@ async function auFinish(tr,btn){
   if(sinMot.length){toast(`⛔ ${sinMot.length} producto(s) en cero sin motivo. Elige el motivo en cada uno.`);$('auMod').classList.add('hide');AUOP=sinMot[0].p;auPaint();window.scrollTo(0,0);return}
   if(tot>0&&bul<1){toast('Indica cuántos bultos son antes de despachar');const e=$('auBul');if(e)e.focus();return}
   if(tot===0&&!nt&&!Object.keys(Z).length){toast('Para surtir en cero escribe la nota (obligatoria)');const e=$('auNt');if(e)e.focus();return}
+  {const dif=lines.filter(l=>lnRes(l)>0&&l.desp!==lnRes(l));
+   if(dif.length){const ln=dif.slice(0,12).map(l=>`• ${l.ref||''} ${l.p}: reservado ${fmt(lnRes(l))} → surtes ${fmt(l.desp)} (${l.desp>lnRes(l)?'+':'−'}${fmt(Math.abs(l.desp-lnRes(l)))})`).join('\n');
+     if(!confirm(`⚠ Revisa las diferencias antes de completar (evita errores de dedo):\n\n${ln}${dif.length>12?`\n… y ${dif.length-12} más`:''}\n\nTotal: ${fmt(tot)} surtidas de ${fmt(sumL(lines,lnRes))} reservadas.\n\n¿Son correctas estas cantidades?`))return}}
   if(!btn.dataset.modal&&!confirm(`¿Completar el surtido de la transferencia ${tr} (${LN(m.t)})?\n\nSurtido: ${fmt(tot)} de ${fmt(sumL(lines,lnRes))} pzas reservadas · ${fmt(bul)} bulto(s).${sin?`\n${sin} línea(s) sin tocar se registran en 0.`:''}\n\nQueda por chequear/despachar por un administrador.`))return;
   btn.disabled=true;btn.classList.add('busy');
   try{
@@ -2558,7 +2623,7 @@ async function auSavePend(a){
   return 'ok'}
 /* ---------- Puente con el Gestor de Bodega: un marcador lee la pantalla de Surtido y manda los datos a esta app ---------- */
 /* Un solo marcador: reconoce la pantalla del Gestor donde estás (Surtido / Por agregar / Liberación y reasignación) */
-function BMCODE(U){try{var send=function(o){var j=btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_'),u=U+'#gestor='+j;if(!window.open(u,'_blank'))location.href=u},d=document,tx=function(e){return e?e.textContent.replace(/\s+/g,' ').trim():''},g=function(i){return tx(d.getElementById(i))},o=null,i,c,x,m,L,R,t,H,rows,tr,cb,s2,E,dest,st;
+function BMCODE(U){try{var gu=function(){var m=(document.title||'').match(/GP\s*\|\s*([\w.\-]+)/i),e;if(m)return m[1].toLowerCase();e=document.querySelector('.user-panel .info p')||document.querySelector('.user-menu .hidden-xs')||document.querySelector('[id*=lblUser],[id*=lblUsuario],[id*=UserName],[id*=lblLogin]');return e?(e.textContent||'').trim().toLowerCase().split(/\s+/)[0]:''},send=function(o){try{o.gu=gu()}catch(e){}var j=btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_'),u=U+'#gestor='+j;if(!window.open(u,'_blank'))location.href=u},d=document,tx=function(e){return e?e.textContent.replace(/\s+/g,' ').trim():''},g=function(i){return tx(d.getElementById(i))},o=null,i,c,x,m,L,R,t,H,rows,tr,cb,s2,E,dest,st;
 t=d.getElementById('MainContent_gvTransferDetail');
 if(t&&g('MainContent_lblTransferNumber')){L=[];R=t.rows;for(i=1;i<R.length;i++){c=R[i].cells;if(c.length<10)continue;x=function(k){var e=c[k];if(!e)return'';var n=e.querySelector('input[type=number],input[type=text]');return n?n.value:tx(e)};m=x(2).match(/^(?:(\S+)\s+)?(\d{5,9})$/);if(!m)continue;L.push({r:m[1]||'',p:m[2],i:x(3),s:x(4),v:x(5),d:x(6),b:x(7),n:x(9),u:x(10)})}if(!L.length){alert('No encontré productos en esta pantalla');return}o={tr:g('MainContent_lblTransferNumber'),fs:g('MainContent_lblCaptureRequestedDate'),org:g('MainContent_lblOrigin'),des:g('MainContent_lblDestiny'),nota:g('MainContent_LblNote'),tot:g('MainContent_lblTotalUnitsDispatched'),l:L}}
 else if(d.getElementById('MainContent_gvTransferAssigned')){t=d.getElementById('MainContent_gvTransferAssigned');H={};for(i=0;i<t.rows[0].cells.length;i++)H[tx(t.rows[0].cells[i]).toLowerCase()]=i;rows=[];dest='';s2=d.getElementById('MainContent_ddlEmployeeAssigned');E=d.getElementById('MainContent_gvEmployee');
@@ -2629,6 +2694,11 @@ async function auImportGestor(o){
 /* FASE 2: el surtidor (o el administrador en modo surtidor) abre SU transferencia directo y se cargan las cantidades despachadas del Gestor */
 async function auBridgeSur(a,raw){
   const tr=a.tr;await auLoad();
+  {const as0=AUD.asg[tr];
+   if(!ISADM&&(!as0||as0.u!==USER)){
+     secBlock('Transferencia no asignada a ti',as0?`La transferencia ${tr} está asignada a ${as0.n||as0.u}, y la sesión abierta en esta app es la de ${NAME} (${USER}).`:`La transferencia ${tr} todavía no está asignada a nadie en la app.`,
+       as0?`Si tú eres ${as0.n||as0.u}: cierra la sesión de la app, entra con tu usuario y vuelve a tocar Puente. Si no, pídele al administrador que te la reasigne (pestaña Reasignar).`:'Pídele al administrador que te la asigne (pestaña Por asignar) y vuelve a tocar Puente.',!!as0);
+     await auHome();return}}
   let m=AUD.all[tr]||(await get(R(db,AUB+'/'+tr))).val();
   if(!m){const r=await auSavePend({...a,suru:USER,sur:NAME});if(r==='inc'||r==='anu'||r==='sur'){toast('⚠ Esta transferencia ya fue surtida o anulada');await auHome();return}
     await auLoad();m=AUD.all[tr]}
@@ -2810,10 +2880,24 @@ async function piImport(o){
   catch(err){toast('No se pudo guardar el producto/imagen: '+(err.code||err.message))}
   piShow(p)}
 $('mlblBody').addEventListener('click',e=>{const b=e.target.closest('[data-piimg]');if(b)piOpenImg(b.dataset.piimg)});
+/* ---------- Seguridad: nadie surte con la sesión de otra persona ---------- */
+const sameUser=(a,b)=>String(a||'').toLowerCase().replace(/[^a-z0-9]/g,'')===String(b||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+async function secLogout(){try{localStorage.removeItem(TKEY)}catch(e){}try{sessionStorage.removeItem('cons_nav')}catch(e){}try{if(auth.currentUser)await signOut(auth)}catch(e){}location.replace(location.pathname)}
+function secBlock(title,why,fix,logout){
+  const old=document.getElementById('secBlk');if(old)old.remove();
+  const d=document.createElement('div');d.id='secBlk';d.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px';
+  d.innerHTML=`<div style="max-width:440px;width:100%;background:#16222e;border:2px solid #ff3b30;border-radius:16px;padding:18px;color:#fff;font-family:inherit"><div style="font-size:22px;font-weight:800;margin-bottom:10px">⛔ ${esc(title)}</div><div style="font-weight:700;margin-bottom:4px;color:#ffb4ae">Motivo</div><div style="margin-bottom:12px;line-height:1.4">${esc(why)}</div><div style="font-weight:700;margin-bottom:4px;color:#7ff0dd">Qué hacer para continuar</div><div style="margin-bottom:16px;line-height:1.4">${esc(fix)}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${logout?'<button class="btn pri" id="secOut" style="flex:1">Cerrar sesión de la app</button>':''}<button class="btn" id="secOk" style="flex:1">Entendido</button></div></div>`;
+  document.body.appendChild(d);d.querySelector('#secOk').onclick=()=>d.remove();const b=d.querySelector('#secOut');if(b)b.onclick=secLogout}
+function gestorUserOk(o){
+  const g=String((o&&o.gu)||'').trim();if(!g||sameUser(g,USER))return true;
+  if(ISADM)return confirm(`El Gestor está abierto con «${g}» pero la sesión de esta app es «${USER}».\n\nComo administrador puedes continuar, pero todo quedará a nombre de ${USER}.\n\n¿Continuar?`);
+  secBlock('El usuario no coincide',`En el Gestor tienes la sesión de «${g}», pero en esta app la sesión abierta es «${USER}». Si sigues, lo surtido quedaría a nombre de otra persona.`,`Cierra la sesión de la app, entra con el usuario «${g}» y vuelve a tocar Puente. (Si el Gestor es el equivocado, cierra sesión en el Gestor y entra con «${USER}».)`,true);
+  return false}
 function gestorHash(){
   const m=location.hash.match(/^#gestor=([\w\-=]+)$/);if(!m)return;let o;   // el base64 puede terminar en = (relleno)
   try{o=JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')))))}catch(e){toast('No pude leer los datos del Gestor');return}
   try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+  if(o&&!gestorUserOk(o))return;
   if(o&&(o.k==='tm'||o.k==='ts'||o.k==='pi'||o.k==='pf')){setTimeout(()=>brNew(o).catch(e=>toast('Error: '+(e.message||e))),400);return}
   HOMEBACK=true;HMLAST=ISADM?['trf']:[];NAVK=ISADM?'auto':'aut';openAu('auto');$('btnHome').textContent='Menú';setTimeout(()=>auImportGestor(o).catch(e=>toast('Error: '+(e.message||e))),400)}
 /* Copiar el código del Puente (botón permanente en Gestión + el de la tarjeta Subir PDF) */
