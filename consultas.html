@@ -472,7 +472,7 @@ html[data-theme=light] .prcard.ok .prok{color:#fff}
       <details id="gbBox" style="margin-top:12px"><summary class="msg" style="cursor:pointer;margin:0">🔗 Puente con el Gestor (sin subir PDF)</summary>
         <div class="msg" style="margin-top:8px">Un marcador en el Chrome que lee la pantalla de <b>Surtido</b> del Gestor y la envía a esta app. Funciona en <b>dos fases</b> según tu rol:<br>
         <b>Fase 1 · Administrador:</b> abre la transferencia en el Gestor y toca <b>Puente</b>. La app guarda solo lo <b>Solicitado y Reservado</b> (aunque ya hayas dado “Surtir todo”) y la deja <b>por asignar</b>. Luego reasignas con la pestaña <b>🔁 Reasignar</b> (PDF de Liberación del Gestor).<br>
-        <b>Fase 2 · Surtidor:</b> en el Gestor da “Surtir todo” (o ajusta cantidades) y toca <b>Puente</b>. La app abre directo <b>tu</b> transferencia con lo despachado cargado; si algo queda en cero debes poner el motivo. Primero presiona <b>Completar surtido</b> en el Gestor y, si no da error, completa aquí.<br>
+        <b>Fase 2 · Surtidor (2 toques, sin abrir la app):</b> <b>1)</b> en el Gestor da “Surtir todo” (o ajusta cantidades y bultos) y toca <b>Puente</b>: sale una tarjeta “Surtido cargado” y se cierra sola. <b>2)</b> Presiona <b>Completar surtido</b> en el Gestor y toca <b>Puente</b> otra vez: si el Gestor no dio error sale “Transferencia actualizada” (con <b>Deshacer</b> unos segundos); si dio error la tarjeta lo dice y no se guarda nada. No cambies cantidades después del primer toque.<br>
         Si el administrador también surte, usa el botón <b>🧭 Puente</b> de arriba para cambiar de rol.<br>
         <b>Instalación:</b> <b>1)</b> Toca <i>Copiar código del puente</i>. <b>2)</b> En el Chrome guarda cualquier página como marcador ⭐ con el nombre <b>Puente</b>. <b>3)</b> Edita ese marcador, pega el código en la dirección (URL) y elige la carpeta <b>Barra de favoritos</b> (Ctrl+Shift+B la muestra). <b>4)</b> Con la transferencia abierta en el Gestor, haz clic en <b>Puente</b> (en la Pocket escribe <b>Puente</b> en la barra de direcciones y elige la ⭐). <b>Un solo Puente:</b> reconoce solo la pantalla donde estás — <i>Surtido</i> de una transferencia, <i>Transferencias por agregar</i> (compara con la app y avisa cuáles faltan) y <i>Liberación y reasignación</i> (con transferencias marcadas y un surtidor elegido = reasignar; sin marcar = revalidar), <i>Distribución del túnel manual</i> (administrador: la agrega como un recibo TM + número), <i>Surtido del producto</i> (pasa lo surtido por tienda con su transferencia al recibo o túnel que elijas) y <i>Producto - INV</i> (llena la etiqueta de almacenaje y guarda la imagen). Como cambió el código, copia el código del puente y actualiza el marcador una sola vez. La app usa la sesión iniciada en ese dispositivo.</div>
         <button class="btn sm" type="button" id="gbCopy" style="margin-top:8px">📋 Copiar código del puente</button><div class="msg" id="gbMsg"></div></details></div>
@@ -2564,20 +2564,25 @@ function auFinModal(tr){
    <div class="msg">Lo surtido se acredita a tu producción; el administrador la chequea y despacha.</div>
    <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px"><button class="dspbtn" id="auFin" data-modal="1" data-tr="${esc(m.tr)}"><span>✔ Completar surtido</span></button><button class="btn" id="auModNo">Cancelar</button></div>`;
   $('auMod').classList.remove('hide');setTimeout(()=>{const e=$('auBul');if(e)e.focus()},150)}
-async function auFinish(tr,btn){
+async function auFinish(tr,btn,opt){
+  const S=!!(opt&&opt.silent);if(S)opt.out=opt.out||{};   // modo silencioso (Puente): sin ventanas ni confirm; el resultado queda en opt.out
+  const toast=S?(x=>{opt.out.msg=x}):toastRaw;
+  btn=btn||{dataset:{},classList:{add(){},remove(){}}};
   const m=AUD.all[tr];if(!m||m.st!=='new'){toast('Esta transferencia ya no está pendiente');return}
   const A=AUD.asg[tr];if(!A||(A.u!==USER&&!ISADM)){toast('Esta transferencia no está asignada a ti');return}
-  const w=AUD.wk[tr]||{},q=w.q||{},bul=Math.max(0,parseInt(($('auBul')||{}).value)||0),nt=(($('auNt')||{}).value||'').trim();
+  const w=AUD.wk[tr]||{},q=w.q||{},bul=S?Math.max(0,parseInt(opt.bul)||parseInt(w.b)||0):Math.max(0,parseInt(($('auBul')||{}).value)||0),nt=S?String(opt.nt||w.nt||'').trim():(($('auNt')||{}).value||'').trim();
   const lines=(m.lines||[]).map(l=>({...l,desp:Math.max(0,Math.min(+q[l.p]||0,lnCap(tr,l)))})),tot=sumL(lines,l=>l.desp),sin=lines.filter(l=>lnRes(l)>0&&q[l.p]===undefined).length;
   const Z=w.z||{},sinMot=lines.filter(l=>lnRes(l)>0&&l.desp===0&&!Z[l.p]);
-  if(w.br&&!($('auGok')||{}).checked){toast('Primero completa el surtido en el Gestor y marca la casilla');return}
-  if(sinMot.length){toast(`⛔ ${sinMot.length} producto(s) en cero sin motivo. Elige el motivo en cada uno.`);$('auMod').classList.add('hide');AUOP=sinMot[0].p;auPaint();window.scrollTo(0,0);return}
-  if(tot>0&&bul<1){toast('Indica cuántos bultos son antes de despachar');const e=$('auBul');if(e)e.focus();return}
+  if(!S&&w.br&&!($('auGok')||{}).checked){toast('Primero completa el surtido en el Gestor y marca la casilla');return}
+  if(sinMot.length){if(S){opt.out.zero=sinMot.length;return}toast(`⛔ ${sinMot.length} producto(s) en cero sin motivo. Elige el motivo en cada uno.`);$('auMod').classList.add('hide');AUOP=sinMot[0].p;auPaint();window.scrollTo(0,0);return}
+  if(tot>0&&bul<1){if(S){opt.out.nobul=1;return}toast('Indica cuántos bultos son antes de despachar');const e=$('auBul');if(e)e.focus();return}
+  if(S&&tot===0){opt.out.zero=1;return}
   if(tot===0&&!nt&&!Object.keys(Z).length){toast('Para surtir en cero escribe la nota (obligatoria)');const e=$('auNt');if(e)e.focus();return}
   {const dif=lines.filter(l=>lnRes(l)>0&&l.desp!==lnRes(l));
-   if(dif.length){const ln=dif.slice(0,12).map(l=>`• ${l.ref||''} ${l.p}: reservado ${fmt(lnRes(l))} → surtes ${fmt(l.desp)} (${l.desp>lnRes(l)?'+':'−'}${fmt(Math.abs(l.desp-lnRes(l)))})`).join('\n');
+   if(S)opt.out.dif=dif.length;
+   if(dif.length&&!S){const ln=dif.slice(0,12).map(l=>`• ${l.ref||''} ${l.p}: reservado ${fmt(lnRes(l))} → surtes ${fmt(l.desp)} (${l.desp>lnRes(l)?'+':'−'}${fmt(Math.abs(l.desp-lnRes(l)))})`).join('\n');
      if(!confirm(`⚠ Revisa las diferencias antes de completar (evita errores de dedo):\n\n${ln}${dif.length>12?`\n… y ${dif.length-12} más`:''}\n\nTotal: ${fmt(tot)} surtidas de ${fmt(sumL(lines,lnRes))} reservadas.\n\n¿Son correctas estas cantidades?`))return}}
-  if(!btn.dataset.modal&&!confirm(`¿Completar el surtido de la transferencia ${tr} (${LN(m.t)})?\n\nSurtido: ${fmt(tot)} de ${fmt(sumL(lines,lnRes))} pzas reservadas · ${fmt(bul)} bulto(s).${sin?`\n${sin} línea(s) sin tocar se registran en 0.`:''}\n\nQueda por chequear/despachar por un administrador.`))return;
+  if(!S&&!btn.dataset.modal&&!confirm(`¿Completar el surtido de la transferencia ${tr} (${LN(m.t)})?\n\nSurtido: ${fmt(tot)} de ${fmt(sumL(lines,lnRes))} pzas reservadas · ${fmt(bul)} bulto(s).${sin?`\n${sin} línea(s) sin tocar se registran en 0.`:''}\n\nQueda por chequear/despachar por un administrador.`))return;
   btn.disabled=true;btn.classList.add('busy');
   try{
     const now=Date.now(),dd=ymd(now),ab='meta_v1/consultas/'+AUID,got=lines.filter(l=>l.desp>0),lg={},dp={};
@@ -2601,9 +2606,10 @@ async function auFinish(tr,btn){
     await update(R(db,`${AUA}/${tr}`),{dn:now});AUD.asg[tr]={...A,dn:now};
     try{await remove(R(db,`${AUW}/${tr}`))}catch(e){}delete AUD.wk[tr];
     if(btn.dataset.modal){btn.classList.remove('busy');btn.classList.add('done');btn.disabled=false;btn.innerHTML='<span>✓ Transferencia surtida</span>';await new Promise(r=>setTimeout(r,1000));$('auMod').classList.add('hide')}
+    if(S){Object.assign(opt.out,{ok:1,tot,bul,t:m.t,n:got.length});return}
     toast(`✅ Transferencia ${tr} surtida (${fmt(tot)} pzas · ${fmt(bul)} bultos). Queda por chequear.`);AUCUR='';auPaint();
     if(tot>0&&confirm('¿Imprimir ahora las etiquetas de bultos?'))auGoto(AUID,tr)
-  }catch(err){toast('Error: '+(err.code||err.message));btn.disabled=false;btn.classList.remove('busy')}}
+  }catch(err){if(S)opt.out.err=err.code||err.message;toast('Error: '+(err.code||err.message));btn.disabled=false;btn.classList.remove('busy')}}
 
 /* ---------- Subida de PDF (varios a la vez): quedan pendientes por surtir ---------- */
 async function auSelfAssign(tr){ // un surtidor que sube la transferencia es porque ya la tiene asignada en el Gestor: le queda a él
@@ -2893,10 +2899,128 @@ function gestorUserOk(o){
   if(ISADM)return confirm(`El Gestor está abierto con «${g}» pero la sesión de esta app es «${USER}».\n\nComo administrador puedes continuar, pero todo quedará a nombre de ${USER}.\n\n¿Continuar?`);
   secBlock('El usuario no coincide',`En el Gestor tienes la sesión de «${g}», pero en esta app la sesión abierta es «${USER}». Si sigues, lo surtido quedaría a nombre de otra persona.`,`Cierra la sesión de la app, entra con el usuario «${g}» y vuelve a tocar Puente. (Si el Gestor es el equivocado, cierra sesión en el Gestor y entra con «${USER}».)`,true);
   return false}
+/* ---------- Puente silencioso: tarjeta corta ("Guardada") en vez de abrir la app ---------- */
+const toastRaw=toast;
+(function(){const st=document.createElement('style');st.textContent=`
+#puOv{position:fixed;inset:0;z-index:100000;background:rgba(48,52,56,.62);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);display:flex;align-items:center;justify-content:center;padding:16px}
+#puCard{position:relative;width:min(94vw,430px);max-height:92vh;overflow:auto;background:#fff;color:#545454;border-radius:14px;padding:26px 22px 30px;text-align:center;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+#puCard .puIc{width:84px;height:84px;border-radius:50%;margin:0 auto 16px;border:4px solid;display:flex;align-items:center;justify-content:center;font-size:44px;line-height:1;font-weight:300}
+#puCard .puIc.ok{color:#2f9e6a;border-color:#bfe5d1}#puCard .puIc.wn{color:#f8bb86;border-color:#fad9bc;font-size:50px}#puCard .puIc.er{color:#e5534b;border-color:#f4c2be}
+#puCard .puIc.sp{border-color:#d9e2e6;border-top-color:#3085d6;animation:puSp .9s linear infinite}@keyframes puSp{to{transform:rotate(360deg)}}
+#puCard .puT{font-weight:800;font-size:25px;line-height:1.18;margin:0 0 10px;color:#545454}
+#puCard .puS{font-size:15px;line-height:1.4;color:#666;margin:0 0 4px}
+#puCard .puR{margin:14px auto 0;text-align:left;border-top:1px solid #e6e9ec}
+#puCard .puR div{display:flex;justify-content:space-between;gap:12px;padding:8px 2px;border-bottom:1px solid #eef0f2;font-size:14.5px}
+#puCard .puR b{color:#333;text-align:right}#puCard .puR span{color:#7a7f85}
+#puCard .puB{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+#puCard .puB button{border:0;border-radius:6px;padding:12px 30px;font:600 16px 'Inter',-apple-system,Roboto,sans-serif;color:#fff;background:#3085d6;cursor:pointer}
+#puCard .puB button.sec{background:#fff;color:#4a4f55;border:1px solid #cfd4d8}
+#puCard .puBar{position:absolute;left:0;bottom:0;height:5px;width:100%;background:#c9ccd0;transform:scaleX(0);transform-origin:left;animation:puBar linear forwards}@keyframes puBar{to{transform:scaleX(1)}}`;document.head.appendChild(st)})();
+let puTm=0;
+function puCard(c){
+  clearTimeout(puTm);let ov=$('puOv');if(!ov){ov=document.createElement('div');ov.id='puOv';document.body.appendChild(ov)}
+  const ic={ok:'✓',wn:'!',er:'✕',sp:''}[c.ic||'ok'];
+  ov.innerHTML=`<div id="puCard"><div class="puIc ${c.ic||'ok'}">${ic}</div><div class="puT">${esc(c.title||'')}</div>${c.sub?`<div class="puS">${esc(c.sub)}</div>`:''}
+   ${c.rows&&c.rows.length?`<div class="puR">${c.rows.map(r=>`<div><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('')}</div>`:''}
+   ${c.btns&&c.btns.length?`<div class="puB">${c.btns.map((b,i)=>`<button data-pub="${i}" class="${b.sec?'sec':''}">${esc(b.t)}</button>`).join('')}</div>`:''}
+   ${c.auto?`<div class="puBar" style="animation-duration:${c.auto}ms"></div>`:''}</div>`;
+  ov.querySelectorAll('[data-pub]').forEach(b=>b.onclick=()=>{clearTimeout(puTm);const f=c.btns[+b.dataset.pub].fn;if(f)f()});
+  if(c.auto)puTm=setTimeout(puBack,c.auto)}
+function puHide(){clearTimeout(puTm);const ov=$('puOv');if(ov)ov.remove()}
+function puMsg(m){try{if(window.opener&&!window.opener.closed)window.opener.postMessage(m,'*')}catch(e){}}
+function puBack(){ // vuelve al Gestor: cierra esta ventana; si no se deja (misma pestaña), regresa en el historial
+  puHide();try{window.close()}catch(e){}
+  setTimeout(()=>{if(window.closed)return;if(history.length>1){history.back();return}
+    puCard({ic:'ok',title:'Listo',sub:'Ya puedes volver al Gestor.',btns:[{t:'Ir a la app',fn:puHide}]})},350)}
+const puOk=[{t:'OK',fn:puBack}];
+function puFull(o){ // salida de emergencia: abrir la app completa con lo que mandó el Gestor
+  puHide();HOMEBACK=true;HMLAST=ISADM?['trf']:[];NAVK=ISADM?'auto':'aut';openAu('auto');$('btnHome').textContent='Menú';
+  if(o.k==='fin'){setTimeout(async()=>{await auLoad();AUCUR=String(o.tr||'');AUV=ISADM?'adm':'mine';auPaint()},400);return}
+  delete o.sil;setTimeout(()=>auImportGestor(o).catch(e=>toast('Error: '+(e.message||e))),400)}
+async function puSilent(o){
+  puCard({ic:'sp',title:'Procesando…',sub:'Leyendo lo que mandó el Gestor'});
+  try{
+    const g=String((o&&o.gu)||'').trim();
+    if(g&&!sameUser(g,USER)){
+      if(ISADM){if(!confirm(`El Gestor está abierto con «${g}» pero la sesión de esta app es «${USER}».\n\nComo administrador puedes continuar, pero todo quedará a nombre de ${USER}.\n\n¿Continuar?`)){puBack();return}}
+      else{puCard({ic:'er',title:'Usuario distinto',sub:`En el Gestor tienes la sesión de «${g}» y en la app la de «${USER}». Si sigues, lo surtido quedaría a nombre de otra persona.`,rows:[['Qué hacer',`Entra a la app con «${g}» y vuelve a tocar Puente`]],btns:puOk});return}}
+    await auLoadDir();
+    if(o.k==='fin')return await puFin(o);
+    if(brMode()==='asg')return await puAsg(o);
+    return await puSur(o)
+  }catch(e){puCard({ic:'er',title:'No se pudo guardar',sub:String((e&&(e.code||e.message))||e),btns:[{t:'OK',fn:puBack},{t:'Abrir la app',sec:1,fn:()=>puFull(o)}]})}}
+const puRows=(tr,t,extra)=>[['Transferencia','#'+tr],['Tienda',t?LN(t):'—'],...(extra||[])];
+/* Fase 1 (administrador): guarda lo solicitado y reservado, queda POR ASIGNAR */
+async function puAsg(o){
+  const a=gestorToA({...o,l:(o.l||[]).map(r=>({...r,d:0,b:0}))});
+  if(!a.tr||!a.lines.length){puCard({ic:'er',title:'No pude leer la transferencia',sub:'Abre la pantalla Surtido de la transferencia y vuelve a tocar Puente.',btns:puOk});return}
+  auMapSur(a);a.pend=1;
+  if(!a.t){puCard({ic:'wn',title:'Tienda no reconocida',sub:`No reconocí la tienda destino de la transferencia ${a.tr}. Ábrela en la app para elegirla.`,btns:[{t:'Abrir la app',fn:()=>puFull(o)},{t:'Cerrar',sec:1,fn:puBack}]});return}
+  a.suru='';a.sur='';
+  const r=await auSavePend(a),rows=puRows(a.tr,a.t,[['Productos',fmt(a.lines.length)],['Piezas reservadas',fmt(sumL(a.lines,l=>l.res))]]);
+  if(r==='ok'||r==='okm'||r==='mine'){puMsg({pu:'clr'});puCard({ic:'ok',title:'Transferencia guardada',sub:'Queda por asignar con lo solicitado y reservado.',rows,auto:3500});return}
+  if(r==='inc'||r==='sur'||r==='anu'){puCard({ic:'wn',title:`Ya fue ${r==='inc'?'chequeada y despachada':r==='sur'?'surtida (falta chequear)':'anulada'}`,sub:'No se puede volver a cargar.',rows,btns:puOk});return}
+  puCard({ic:'wn',title:'Ya estaba cargada',sub:'No se duplicó nada.',rows,auto:3500})}
+/* Fase 2, paso 1 (surtidor): carga lo despachado del Gestor y deja la transferencia lista; el guardado final llega con el 2.º Puente */
+async function puSur(o){
+  const raw=(o.l||[]).map(r=>({...r})),a=gestorToA({...o,l:raw.map(r=>({...r,d:0,b:0}))});
+  if(!a.tr||!a.lines.length){puCard({ic:'er',title:'No pude leer la transferencia',sub:'Abre la pantalla Surtido de la transferencia y vuelve a tocar Puente.',btns:puOk});return}
+  auMapSur(a);a.pend=1;
+  if(!a.t){puCard({ic:'wn',title:'Tienda no reconocida',sub:`No reconocí la tienda destino de la transferencia ${a.tr}.`,btns:[{t:'Abrir la app',fn:()=>puFull(o)},{t:'Cerrar',sec:1,fn:puBack}]});return}
+  const tr=a.tr;await auLoad();
+  const as0=AUD.asg[tr];
+  if(!ISADM&&(!as0||as0.u!==USER)){puCard({ic:'er',title:'Transferencia no asignada a ti',sub:as0?`Está asignada a ${as0.n||as0.u} y en la app tienes la sesión de ${NAME} (${USER}).`:'Todavía no está asignada a nadie en la app.',rows:[['Qué hacer',as0?'Pide que te la reasignen':'Pide que te la asignen']],btns:puOk});return}
+  let m=AUD.all[tr]||(await get(R(db,AUB+'/'+tr))).val();
+  if(!m){const r=await auSavePend({...a,suru:USER,sur:NAME});if(r==='inc'||r==='anu'||r==='sur'){puCard({ic:'wn',title:'Ya fue surtida o anulada',rows:puRows(tr,a.t),btns:puOk});return}await auLoad();m=AUD.all[tr]}
+  if(!m){puCard({ic:'er',title:'No pude abrir la transferencia',sub:tr,btns:puOk});return}
+  if(m.st!=='new'||m.pend!==1){puCard({ic:'wn',title:`Ya fue ${m.st==='anu'?'anulada':'surtida'}`,sub:'No se puede volver a surtir.',rows:puRows(tr,a.t),btns:puOk});return}
+  const asg=AUD.asg[tr];
+  if(asg&&asg.u!==USER){
+    if(!ISADM){puCard({ic:'er',title:'Asignada a otra persona',sub:`La tiene ${asg.n||asg.u}. Pídele al administrador que te la reasigne.`,rows:puRows(tr,a.t),btns:puOk});return}
+    if(!confirm(`La transferencia ${tr} está asignada a ${asg.n||asg.u}. ¿Tomarla tú para surtirla?`)){puBack();return}}
+  if(!asg||asg.u!==USER){if(ISADM)await auAssign([tr],USER,'puente');else await auSelfAssign(tr);await auLoad();m=AUD.all[tr]||m}
+  const ps={};let nz=0,pz=0;
+  (m.lines||[]).forEach(l=>{const g=raw.find(x=>String(x.p)===String(l.p));if(!g)return;const d=Math.max(0,+g.d||0),cap=lnCap(tr,l);
+    if(lnRes(l)>0&&d>0){ps[l.p]=Math.min(d,cap);pz+=ps[l.p]}else if(lnRes(l)>0)nz++});
+  if(Object.keys(ps).length)await auSetQ(tr,ps);
+  const bk=Math.max(0,parseInt(o.bk)||0);
+  try{await update(R(db,AUW+'/'+tr),{br:1,u:USER,ts:Date.now(),...(bk?{b:bk}:{})});const w=(AUD.wk[tr]=AUD.wk[tr]||{});w.br=1;if(bk)w.b=bk}catch(e){}
+  puMsg({pu:'arm',tr,bk});
+  puCard({ic:nz?'wn':'ok',title:'Surtido cargado',sub:`Ahora presiona «Completar surtido» en el Gestor y toca Puente otra vez para guardarlo.${nz?` Hay ${nz} línea(s) en cero: pon la nota en el Gestor o abre la app para dar el motivo.`:''}`,
+    rows:puRows(tr,a.t,[['Piezas cargadas',fmt(pz)],['Bultos',bk?fmt(bk):'—']]),auto:nz?0:5000,btns:nz?puOk:null})}
+/* Fase 2, paso 2: el 2.º Puente (después de «Completar surtido») avisa cómo le fue al Gestor; solo si no hubo error se guarda en la app */
+async function puFin(o){
+  const tr=String(o.tr||'').replace(/\D/g,'');await auLoad();
+  const m=AUD.all[tr]||(await get(R(db,AUB+'/'+tr))).val();
+  if(!m){puCard({ic:'wn',title:'Esa transferencia no está en la app',sub:'Abre su pantalla Surtido en el Gestor y toca Puente (antes de Completar surtido).',btns:puOk});return}
+  const rows=puRows(tr,m.t);
+  if(m.st==='sur'||m.st==='inc'){puMsg({pu:'clr'});puCard({ic:'ok',title:'Ya estaba surtida',sub:'No se duplicó nada.',rows,auto:3500});return}
+  if(o.ok===0||o.ok==='0'){puCard({ic:'er',title:'El Gestor dio error',sub:o.err||'El Gestor no completó el surtido.',rows:[...rows,['En la app','No se guardó nada']],btns:[{t:'OK',fn:puBack}]});return}
+  if(o.ok==='?'){
+    const go=()=>puFinGo(o,tr,m);
+    puCard({ic:'wn',title:'¿El Gestor la completó?',sub:'No pude confirmarlo desde la pantalla que quedó. Si «Completar surtido» no dio error, guárdala.',rows,btns:[{t:'Sí, guardar',fn:go},{t:'Todavía no',sec:1,fn:puBack}]});return}
+  return puFinGo(o,tr,m)}
+async function puFinGo(o,tr,m){
+  puCard({ic:'sp',title:'Guardando…'});
+  const out={};await auFinish(tr,null,{silent:true,out,bul:parseInt(o.bk)||0});
+  const rows=puRows(tr,out.t||m.t);
+  if(out.ok){puMsg({pu:'clr'});
+    puCard({ic:'ok',title:'Transferencia actualizada',sub:out.dif?`Guardada. ${out.dif} línea(s) con diferencia contra lo reservado.`:'Guardada y lista para chequear.',rows:[...rows,['Piezas surtidas',fmt(out.tot)],['Bultos',fmt(out.bul)]],
+      btns:[{t:'OK',fn:puBack},{t:'↩ Deshacer',sec:1,fn:()=>puUndo(tr)}],auto:7000});return}
+  if(out.zero){puCard({ic:'wn',title:'Líneas en cero sin motivo',sub:'Para surtir en cero la app pide el motivo. Ábrela para elegirlo y completar.',rows,btns:[{t:'Abrir la app',fn:()=>puFull({k:'fin',tr})},{t:'Cerrar',sec:1,fn:puBack}]});return}
+  if(out.nobul){puCard({ic:'wn',title:'Faltan los bultos',sub:'El Gestor no trajo la cantidad de bultos. Ábrela en la app para indicarla.',rows,btns:[{t:'Abrir la app',fn:()=>puFull({k:'fin',tr})},{t:'Cerrar',sec:1,fn:puBack}]});return}
+  puCard({ic:'er',title:'No se pudo guardar',sub:out.err||out.msg||'Intenta de nuevo o abre la app.',rows,btns:[{t:'OK',fn:puBack},{t:'Abrir la app',sec:1,fn:()=>puFull({k:'fin',tr})}]})}
+/* Deshacer: deja la transferencia de nuevo "por surtir" en la app. NO toca el Gestor (si ya la completó allá, se corrige allá). */
+async function puUndo(tr){
+  puCard({ic:'sp',title:'Deshaciendo…'});
+  try{await auLoad();await auRevert(tr);if(ISADM)await auAssign([tr],USER,'puente');else await auSelfAssign(tr);
+    puCard({ic:'wn',title:'Deshecho en la app',sub:'La transferencia volvió a «por surtir». Ojo: el Gestor no se revierte desde aquí; si ya la completó allá, corrígela allá.',rows:puRows(tr,(AUD.all[tr]||{}).t),btns:puOk})}
+  catch(e){puCard({ic:'er',title:'No se pudo deshacer',sub:(e.code||e.message||'')+' · Pídele al administrador «Reabrir / reasignar».',btns:puOk})}}
 function gestorHash(){
   const m=location.hash.match(/^#gestor=([\w\-=]+)$/);if(!m)return;let o;   // el base64 puede terminar en = (relleno)
   try{o=JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')))))}catch(e){toast('No pude leer los datos del Gestor');return}
   try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+  if(o&&(o.sil||o.k==='fin')){puSilent(o);return}   // Puente silencioso: solo la tarjeta "Guardado", sin abrir la app
   if(o&&!gestorUserOk(o))return;
   if(o&&(o.k==='tm'||o.k==='ts'||o.k==='pi'||o.k==='pf')){setTimeout(()=>brNew(o).catch(e=>toast('Error: '+(e.message||e))),400);return}
   HOMEBACK=true;HMLAST=ISADM?['trf']:[];NAVK=ISADM?'auto':'aut';openAu('auto');$('btnHome').textContent='Menú';setTimeout(()=>auImportGestor(o).catch(e=>toast('Error: '+(e.message||e))),400)}
