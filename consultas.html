@@ -4500,24 +4500,39 @@ function embCalc(e){
 }
 // Tipología del documento: Pro forma (Cristal/clientes) · Transferencia (tiendas) · Movimiento interno (bodega a bodega, no va a tiendas)
 const docTipo=x=>(x&&(x.mi||x.t==='BODEGA'||x.t==='MI'))?'Movimiento interno':(x&&(x.t==='CRISTAL'||x.cl))?'Proforma':'Transferencia';
-function embHTML(e){
+/* El aviso de despacho se arma por bloques para poder partirlo en varios correos cuando supera el límite del servicio (EmailJS: ~50 KB por envío). */
+function embBlocks(e){
   const c=embCalc(e),th='style="background:#06303a;color:#fff;padding:9px 10px;text-align:left;font-size:12px"',thn='style="background:#06303a;color:#fff;padding:9px 10px;text-align:right;font-size:12px"',td='style="padding:7px 10px;border-bottom:1px solid #d9e1e8;font-size:13px"',tdn='style="padding:7px 10px;border-bottom:1px solid #d9e1e8;font-size:13px;text-align:right"';
   const kpi=(l,v,col)=>`<td style="background:#08404c;border:1px solid #06303a;border-top:4px solid ${col};padding:14px 6px;text-align:center;width:20%"><div style="font:800 26px Arial,sans-serif;color:#ffffff">${fmt(v)}</div><div style="font:11px Arial,sans-serif;color:#bfeee8;text-transform:uppercase;letter-spacing:.5px">${l}</div></td>`;
-  return `<div style="font-family:Arial,sans-serif;color:#1c2b36;max-width:760px;margin:0 auto;-webkit-text-size-adjust:none;text-size-adjust:none">
-  <div style="background:#06303a;border-bottom:4px solid #2de2c9;color:#fff;padding:20px 24px"><div style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#2de2c9">Aviso de despacho · Logística</div><div style="font-size:22px;font-weight:700;margin-top:4px">${esc(e.num)}</div><div style="font-size:12px;opacity:.85;margin-top:4px">${esc(fdt(e.ts))} · Prepara: ${esc(e.n||e.u||'')}</div></div>
-  <table style="width:100%;border-collapse:collapse;margin:14px 0"><tr>${kpi('Camiones',c.cams.length,'#2de2c9')}${kpi('Palets',c.np,'#2de2c9')}${kpi('Bultos',c.tb,'#2de2c9')}${kpi('Piezas',c.tp,'#2de2c9')}${kpi('Tiendas',c.st.length,'#2de2c9')}</tr></table>
-  <div style="font-size:15px;font-weight:700;color:#06303a;border-left:4px solid #2de2c9;padding-left:8px;margin:16px 0 6px">Distribución por tienda · piezas</div>
-  <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${(()=>{const tt=Math.max(1,c.tp);return c.st.map(x=>{const pc=x.pz/tt*100,w=Math.max(1,Math.round(pc));return `<tr><td style="padding:5px 8px 5px 0;font-size:13px;width:70px"><b>${esc(L(x.t))}</b></td><td style="padding:5px 0"><table width="100%" cellpadding="0" cellspacing="0" style="background:#e6edf3"><tr><td width="${w}%" bgcolor="#0fb5a8" style="background:#0fb5a8;height:16px;line-height:16px;font-size:1px">&nbsp;</td><td style="font-size:1px">&nbsp;</td></tr></table></td><td style="padding:5px 0 5px 8px;font-size:12px;white-space:nowrap;text-align:right"><b>${pc.toFixed(1)}%</b> · ${fmt(x.pz)} pzas · ${fmt(x.b)} bultos</td></tr>`}).join('')})()}</table>
-  <div style="font-size:15px;font-weight:700;color:#06303a;border-left:4px solid #2de2c9;padding-left:8px;margin:20px 0 6px">Resumen por tienda</div>
-  <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Tienda</th><th ${thn}>Documentos</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.st.map(s=>`<tr><td ${td}><b>${esc(LN(s.t))}</b></td><td ${tdn}>${s.tf}</td><td ${tdn}>${fmt(s.b)}</td><td ${tdn}>${fmt(s.pz)}</td></tr>`).join('')}<tr><td ${td}><b>TOTAL</b></td><td ${tdn}><b>${c.tf.length}</b></td><td ${tdn}><b>${fmt(c.tb)}</b></td><td ${tdn}><b>${fmt(c.tp)}</b></td></tr></table>
-  <div style="font-size:15px;font-weight:700;color:#06303a;border-left:4px solid #2de2c9;padding-left:8px;margin:20px 0 6px">Detalle por documento</div>
-  <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Tienda</th><th ${th}>Tipología</th><th ${th}>N.º de documento</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.tf.map(a=>`<tr><td ${td}>${esc(L(a.t))}</td><td ${td}>${esc(docTipo(a))}</td><td ${td}>${esc(a.tr||'—')}${a.cn?` <span style="color:#5a6b7a">· ${esc(a.cn)}</span>`:''}</td><td ${tdn}>${a.b}${a.b<a.N?' de '+a.N:''}</td><td ${tdn}>${fmt(a.pz)}</td></tr>`).join('')}</table>
-  <div style="font-size:15px;font-weight:700;color:#06303a;border-left:4px solid #2de2c9;padding-left:8px;margin:20px 0 6px">Camiones</div>
-  <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Camión</th><th ${th}>Chofer</th><th ${th}>Placa</th><th ${th}>Palets</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${c.cams.map((x,i)=>`<tr><td ${td}>${i+1}</td><td ${td}>${esc(x.chofer||'')}</td><td ${td}>${esc(x.placa||'')}</td><td ${td}><span style="white-space:nowrap">${x.pals.length>1?`Palet ${x.pals[0].pos} hasta Palet ${x.pals[x.pals.length-1].pos}`:x.pals.length?`Palet ${x.pals[0].pos}`:'—'}</span></td><td ${tdn}>${fmt(x.b)}</td><td ${tdn}>${fmt(x.pz)}</td></tr><tr><td colspan="6" ${td}><span style="font-size:13px;line-height:1.5;-webkit-text-size-adjust:none">Nota: ${x.pals.map(pl=>esc(pl.num)).reduce((r,v,i)=>(i%5?r[r.length-1].push(v):r.push([v]),r),[]).map(g=>g.join(', ')).join('<br>')||'—'}</span></td></tr>`).join('')}</table>
-  ${c.cams.map((x,i)=>`<div style="font-size:15px;font-weight:700;color:#06303a;border-left:4px solid #2de2c9;padding-left:8px;margin:20px 0 6px">Desglose · Camión ${i+1}</div>
-  <table style="width:100%;border-collapse:collapse"><tr><th ${th}>Palet (etiqueta)</th><th ${th}>Tienda</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>${x.pals.map(pl=>`<tr><td ${td}><b>Palet ${pl.pos}</b> (${esc(pl.num)}${pl.g?' · PL GP #'+esc(String(pl.g)):''})</td><td ${td}>${esc(pStores(pl).map(s=>L(s.t)).join(' · ')||'—')}</td><td ${tdn}>${fmt(pl.nb)}</td><td ${tdn}>${fmt(pl.pz)}</td></tr>`).join('')}</table>`).join('')}
-  <div style="font-size:12px;color:#5a6b7a;margin-top:16px">El número de palet indica el orden en que se cargó en el camión; la fila de notas de cada camión trae la referencia real (etiqueta impresa) de cada palet. La recepción se realiza por palet completo.</div></div>`
-}
+  const TB='<table style="width:100%;border-collapse:collapse">',tt=Math.max(1,c.tp);
+  const head=`<div style="background:#06303a;border-bottom:4px solid #2de2c9;color:#fff;padding:20px 24px"><div style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#2de2c9">Aviso de despacho · Logística</div><div style="font-size:22px;font-weight:700;margin-top:4px">${esc(e.num)}</div><div style="font-size:12px;opacity:.85;margin-top:4px">${esc(fdt(e.ts))} · Prepara: ${esc(e.n||e.u||'')}</div></div>
+  <table style="width:100%;border-collapse:collapse;margin:14px 0"><tr>${kpi('Camiones',c.cams.length,'#2de2c9')}${kpi('Palets',c.np,'#2de2c9')}${kpi('Bultos',c.tb,'#2de2c9')}${kpi('Piezas',c.tp,'#2de2c9')}${kpi('Tiendas',c.st.length,'#2de2c9')}</tr></table>`;
+  const secs=[
+   {t:'Distribución por tienda · piezas',m:16,open:'<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">',h:'',rows:c.st.map(x=>{const pc=x.pz/tt*100,w=Math.max(1,Math.round(pc));return `<tr><td style="padding:5px 8px 5px 0;font-size:13px;width:70px"><b>${esc(L(x.t))}</b></td><td style="padding:5px 0"><table width="100%" cellpadding="0" cellspacing="0" style="background:#e6edf3"><tr><td width="${w}%" bgcolor="#0fb5a8" style="background:#0fb5a8;height:16px;line-height:16px;font-size:1px">&nbsp;</td><td style="font-size:1px">&nbsp;</td></tr></table></td><td style="padding:5px 0 5px 8px;font-size:12px;white-space:nowrap;text-align:right"><b>${pc.toFixed(1)}%</b> · ${fmt(x.pz)} pzas · ${fmt(x.b)} bultos</td></tr>`})},
+   {t:'Resumen por tienda',open:TB,h:`<tr><th ${th}>Tienda</th><th ${thn}>Documentos</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>`,rows:c.st.map(s=>`<tr><td ${td}><b>${esc(LN(s.t))}</b></td><td ${tdn}>${s.tf}</td><td ${tdn}>${fmt(s.b)}</td><td ${tdn}>${fmt(s.pz)}</td></tr>`).concat([`<tr><td ${td}><b>TOTAL</b></td><td ${tdn}><b>${c.tf.length}</b></td><td ${tdn}><b>${fmt(c.tb)}</b></td><td ${tdn}><b>${fmt(c.tp)}</b></td></tr>`])},
+   {t:'Detalle por documento',open:TB,h:`<tr><th ${th}>Tienda</th><th ${th}>Tipología</th><th ${th}>N.º de documento</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>`,rows:c.tf.map(a=>`<tr><td ${td}>${esc(L(a.t))}</td><td ${td}>${esc(docTipo(a))}</td><td ${td}>${esc(a.tr||'—')}${a.cn?` <span style="color:#5a6b7a">· ${esc(a.cn)}</span>`:''}</td><td ${tdn}>${a.b}${a.b<a.N?' de '+a.N:''}</td><td ${tdn}>${fmt(a.pz)}</td></tr>`)},
+   {t:'Camiones',open:TB,h:`<tr><th ${th}>Camión</th><th ${th}>Chofer</th><th ${th}>Placa</th><th ${th}>Palets</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>`,rows:c.cams.map((x,i)=>`<tr><td ${td}>${i+1}</td><td ${td}>${esc(x.chofer||'')}</td><td ${td}>${esc(x.placa||'')}</td><td ${td}><span style="white-space:nowrap">${x.pals.length>1?`Palet ${x.pals[0].pos} hasta Palet ${x.pals[x.pals.length-1].pos}`:x.pals.length?`Palet ${x.pals[0].pos}`:'—'}</span></td><td ${tdn}>${fmt(x.b)}</td><td ${tdn}>${fmt(x.pz)}</td></tr><tr><td colspan="6" ${td}><span style="font-size:13px;line-height:1.5;-webkit-text-size-adjust:none">Nota: ${x.pals.map(pl=>esc(pl.num)).reduce((r,v,i)=>(i%5?r[r.length-1].push(v):r.push([v]),r),[]).map(g=>g.join(', ')).join('<br>')||'—'}</span></td></tr>`)},
+   ...c.cams.map((x,i)=>({t:`Desglose · Camión ${i+1}`,open:TB,h:`<tr><th ${th}>Palet (etiqueta)</th><th ${th}>Tienda</th><th ${thn}>Bultos</th><th ${thn}>Piezas</th></tr>`,rows:x.pals.map(pl=>`<tr><td ${td}><b>Palet ${pl.pos}</b> (${esc(pl.num)}${pl.g?' · PL GP #'+esc(String(pl.g)):''})</td><td ${td}>${esc(pStores(pl).map(s=>L(s.t)).join(' · ')||'—')}</td><td ${tdn}>${fmt(pl.nb)}</td><td ${tdn}>${fmt(pl.pz)}</td></tr>`)}))];
+  return{head,secs,foot:`<div style="font-size:12px;color:#5a6b7a;margin-top:16px">El número de palet indica el orden en que se cargó en el camión; la fila de notas de cada camión trae la referencia real (etiqueta impresa) de cada palet. La recepción se realiza por palet completo.</div>`,
+    W0:'<div style="font-family:Arial,sans-serif;color:#1c2b36;max-width:760px;margin:0 auto;-webkit-text-size-adjust:none;text-size-adjust:none">',
+    H:(t,m)=>`<div style="font-size:15px;font-weight:700;color:#06303a;border-left:4px solid #2de2c9;padding-left:8px;margin:${m||20}px 0 6px">${t}</div>`}}
+function embHTML(e){
+  const B=embBlocks(e);
+  return B.W0+B.head+B.secs.map(s=>B.H(s.t,s.m)+s.open+s.h+s.rows.join('')+'</table>').join('')+B.foot+'</div>'}
+/* Parte el aviso en varios HTML que no pasan de "lim" bytes (medidos como JSON, que es como los cuenta el servicio). Cada tabla continúa con su encabezado. */
+function embHTMLparts(e,lim,sz0){
+  const B=embBlocks(e),enc=new TextEncoder(),sz=x=>enc.encode(JSON.stringify(x)).length-2,RES=sz(B.foot)+sz('</table></div>')+sz(B.W0)+700;
+  const parts=[];let cur=B.W0+B.head,len=sz(cur),open=false;
+  const flush=()=>{if(open){cur+='</table>';open=false}parts.push(cur+'</div>');cur=B.W0;len=sz(cur)};
+  for(const s of B.secs){let n=0;open=false;
+    for(const r of s.rows){const hd=B.H(s.t+(n?' (continuación)':''),s.m)+s.open+s.h,rs=sz(r);
+      if(!open){if(cur!==B.W0&&len+sz(hd)+rs+RES>lim)flush();cur+=hd;len+=sz(hd);open=true}
+      else if(len+rs+RES>lim){flush();cur+=hd;len+=sz(hd);open=true}
+      cur+=r;len+=rs;n++}
+    if(open){cur+='</table>';open=false;len+=8}}
+  cur+=B.foot;flush();
+  const note=(i,n)=>`<div style="font:13px Arial,sans-serif;color:#5a6b7a;margin:0 0 10px">${i?`Continuación del despacho <b>${esc(e.num)}</b>`:`El detalle de este despacho es extenso y se envía en <b>${n} correos</b>`} · parte ${i+1} de ${n}</div>`;
+  return parts.map((x,i)=>x.replace(B.W0,B.W0+note(i,parts.length)))}
 async function embReady(e){const c=embCalc(e);
   if(!e.comp)return'Primero completa el packing list.';
   if(!c.cams.length)return'El embarque no tiene camiones.';
@@ -4646,12 +4661,13 @@ async function cmpMsg(id){const e=EMB[id];if(!e||!e.desp)return;const c=embCalc(
   const ul=a=>`<ul style="margin:4px 0 10px 18px;padding:0">${a.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
   const html=`<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#1c2b36"><p>Buen día, estimado comprador y equipo:</p><p>${esc(intro)}</p><p>${esc(res)}</p><p><b>Distribución por tienda:</b></p>${ul(tiendas)}<p><b>Por tipo de documento:</b></p>${ul(tipos)}${cliS.length?`<p><b>Clientes (Cristal):</b></p>${ul(cliS)}`:''}<p>${esc(adj)}</p>${cierre?`<p>Pueden consultar el detalle por producto en el portal: <a href="${esc(link)}">${esc(link)}</a></p>`:''}<p>Quedamos atentos.<br>Saludos cordiales,<br>${esc(NAME||'')}</p></div>`;
   const ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;z-index:99999;background:#000b;display:flex;align-items:flex-end;justify-content:center';
-  ov.innerHTML=`<div style="background:#fff;color:#1c2b36;width:100%;max-width:680px;max-height:90vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column"><div style="padding:12px 14px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #d9e1e8"><b style="flex:1;font-size:15px">💬 Mensaje para el comprador · ${esc(e.num)}</b><button type="button" class="btn sm" data-m="x">✕</button></div><div style="padding:10px 14px;border-bottom:1px solid #d9e1e8;font-size:13px"><b>Asunto:</b> ${esc(subj)}</div><div style="padding:14px;overflow:auto;flex:1">${html}</div><div style="padding:10px 14px;border-top:1px solid #d9e1e8;display:flex;gap:8px"><button type="button" class="btn pri" data-m="c" style="flex:2">📋 Copiar mensaje</button><button type="button" class="btn" data-m="s" style="flex:1">Asunto</button></div><div style="padding:0 14px 12px;display:flex;gap:8px"><button type="button" class="btn pri" data-m="sh" style="flex:2">📎 Enviar con Excel adjunto</button><button type="button" class="btn" data-m="xl" style="flex:1">⬇ Excel</button></div></div>`;
+  ov.innerHTML=`<div style="background:#fff;color:#1c2b36;width:100%;max-width:680px;max-height:90vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column"><div style="padding:12px 14px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #d9e1e8"><b style="flex:1;font-size:15px">💬 Mensaje para el comprador · ${esc(e.num)}</b><button type="button" class="btn sm" data-m="x">✕</button></div><div style="padding:10px 14px;border-bottom:1px solid #d9e1e8;font-size:13px"><b>Asunto:</b> ${esc(subj)}</div><div style="padding:14px;overflow:auto;flex:1">${html}</div><div style="padding:10px 14px;border-top:1px solid #d9e1e8;display:flex;gap:8px"><button type="button" class="btn pri" data-m="c" style="flex:2">📋 Copiar mensaje</button><button type="button" class="btn" data-m="s" style="flex:1">Asunto</button></div><div style="padding:0 14px 8px"><button type="button" class="btn pri" data-m="mail" style="width:100%">✉ Correo con Excel + PDF adjuntos</button></div><div style="padding:0 14px 12px;display:flex;gap:8px"><button type="button" class="btn" data-m="sh" style="flex:2">📎 Solo Excel</button><button type="button" class="btn" data-m="xl" style="flex:1">⬇ Excel</button></div></div>`;
   embXlsxC(id,e).catch(()=>{});
   const clip=async(h,p,okm)=>{try{if(h&&window.ClipboardItem&&navigator.clipboard.write)await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([h],{type:'text/html'}),'text/plain':new Blob([p],{type:'text/plain'})})]);else await navigator.clipboard.writeText(p);toast(okm)}catch(x){try{await navigator.clipboard.writeText(p);toast(okm)}catch(y){prompt('Copia el texto:',p)}}};
   ov.addEventListener('click',ev=>{const b=ev.target.closest('[data-m]');if(ev.target===ov||(b&&b.dataset.m==='x')){ov.remove();return}
     if(b&&b.dataset.m==='c')clip(html,plain,'✅ Mensaje copiado: pégalo en tu correo');
     if(b&&b.dataset.m==='s')clip('',subj,'✅ Asunto copiado');
+    if(b&&b.dataset.m==='mail')embMailFiles(id,subj,plain);
     if(b&&(b.dataset.m==='sh'||b.dataset.m==='xl'))embExcelShare(id,b.dataset.m==='sh',{title:subj,text:plain})});
   document.body.appendChild(ov)}
 // Ley: todo packing list despachado o recibido se publica solo (si nunca se publicó, o si cambió de Despachado a Recibido). El botón "Publicar" queda solo como respaldo.
@@ -4679,8 +4695,44 @@ async function embXlsx(eid,e){
   const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[11,21,24,28,26,12,34,16,13,52,18,11].map(w=>({wch:w}));ws['!autofilter']={ref:'A1:L'+(aoa.length-1)};ws['!freeze']={xSplit:0,ySplit:1};
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Productos');
   const name=`packing_list_${e.num}.xlsx`,b64=XLSX.write(wb,{type:'base64',bookType:'xlsx'});
-  return{name,b64,uri:'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'+b64}}
+  return{name,b64,uri:'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'+b64,rows}}
 function embXlsxFile(adj){const bin=atob(adj.b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new File([u],adj.name,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})}
+/* PDF de una tabla, hecho a mano (sin librerías): Helvetica, A4 horizontal, encabezado repetido por página. */
+function pdfSimple(o){
+  const PW=842,PH=595,M=24,LH=11,FS=7.5,CW=3.95,cols=o.cols,tw=cols.reduce((a,c)=>a+c.w,0);
+  const enc=x=>{let r='';for(const ch of String(x==null?'':x)){const k=ch.charCodeAt(0);r+=k<32?' ':k<256?ch:(ch==='–'||ch==='—')?'-':(ch==='·'||ch==='•')?'\xb7':'?'}return r};
+  const es=x=>enc(x).replace(/[\\()]/g,m=>'\\'+m),cut=(x,w)=>{x=enc(x);const n=Math.max(1,Math.floor((w-5)/CW));return x.length>n?x.slice(0,n-1)+'.':x};
+  const pages=[];let cur,y;
+  const hdr=()=>{let x=M;cur.push(`0.88 g ${M} ${y-3} ${tw} ${LH+2} re f 0 g`);cols.forEach(c=>{cur.push(`BT /F2 ${FS} Tf 1 0 0 1 ${c.al==='r'?x+c.w-3-enc(c.h).length*CW:x+2} ${y} Tm (${es(cut(c.h,c.w))}) Tj ET`);x+=c.w});y-=LH+4};
+  const np=()=>{cur=[];pages.push(cur);y=PH-M;cur.push(`BT /F2 12 Tf 1 0 0 1 ${M} ${y-8} Tm (${es(o.title)}) Tj ET`);y-=22;cur.push(`BT /F1 8 Tf 1 0 0 1 ${M} ${y} Tm (${es(o.sub||'')}) Tj ET`);y-=16;hdr()};
+  np();
+  for(const r of o.rows){if(y<M+16){np()}let x=M;
+    cols.forEach((c,i)=>{const t=cut(r[i],c.w);cur.push(`BT /F${r.b?2:1} ${FS} Tf 1 0 0 1 ${c.al==='r'?x+c.w-3-t.length*CW:x+2} ${y} Tm (${es(t)}) Tj ET`);x+=c.w});
+    cur.push(`0.85 G 0.3 w ${M} ${y-3} m ${M+tw} ${y-3} l S 0 G`);y-=LH}
+  pages.forEach((p,i)=>p.push(`BT /F1 7 Tf 1 0 0 1 ${PW-M-70} 12 Tm (Página ${i+1} de ${pages.length}) Tj ET`));
+  const ob=[];ob.push('<< /Type /Catalog /Pages 2 0 R >>');ob.push(`<< /Type /Pages /Kids [${pages.map((_,i)=>`${5+2*i} 0 R`).join(' ')}] /Count ${pages.length} >>`);
+  ob.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');ob.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  pages.forEach((p,i)=>{const st=p.join('\n');ob.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${6+2*i} 0 R >>`);ob.push(`<< /Length ${st.length} >>\nstream\n${st}\nendstream`)});
+  let out='%PDF-1.4\n';const off=[];ob.forEach((x,i)=>{off.push(out.length);out+=`${i+1} 0 obj\n${x}\nendobj\n`});
+  const xr=out.length;out+=`xref\n0 ${ob.length+1}\n0000000000 65535 f \n`+off.map(x=>String(x).padStart(10,'0')+' 00000 n \n').join('')+`trailer\n<< /Size ${ob.length+1} /Root 1 0 R >>\nstartxref\n${xr}\n%%EOF`;
+  const u=new Uint8Array(out.length);for(let i=0;i<out.length;i++)u[i]=out.charCodeAt(i)&255;return u}
+function embPdfFile(adj,e){const c=embCalc(e),rows=(adj.rows||[]).map(x=>[x.t,x.td||'',x.tr||'',x.cn||'',x.v,x.e||'',String(x.p||''),x.d||'',x.q||0]);
+  rows.push(Object.assign(['TOTAL','','','','','','','',(adj.rows||[]).reduce((a,x)=>a+(x.q||0),0)],{b:1}));
+  const u=pdfSimple({title:`Packing list ${e.num}`,sub:`${fdt(e.ts)} · ${c.cams.length} camión(es) · ${c.np} palets · ${fmt(c.tb)} bultos · ${fmt(c.tp)} piezas · ${c.st.length} tienda(s)`,
+    cols:[{h:'Tienda',w:50},{h:'Tipo doc.',w:62},{h:'N.º documento',w:70},{h:'Cliente',w:90},{h:'Proveedor',w:105},{h:'Estilo',w:60},{h:'Producto',w:52},{h:'Descripción',w:225},{h:'Piezas',w:42,al:'r'}],rows});
+  return new File([u],`packing_list_${e.num}.pdf`,{type:'application/pdf'})}
+/* Correo al comprador con Excel + PDF: en el celular abre el menú de compartir (Outlook/Gmail) con los 2 archivos, el asunto y el texto ya cargados;
+   en la computadora descarga los 2 archivos y abre el correo con destinatario, asunto y texto (hay que arrastrar los adjuntos: el navegador no puede adjuntar solo). */
+async function embMailFiles(id,subj,plain){const e=EMB[id];if(!e)return;
+  try{toast('Preparando Excel y PDF…');const adj=await embXlsxC(id,e),files=[embXlsxFile(adj),embPdfFile(adj,e)];
+    if(navigator.canShare&&navigator.canShare({files})){try{await navigator.share({files,title:subj,text:plain});return}catch(x){if(x&&x.name==='AbortError')return}}
+    for(const f of files){const u=URL.createObjectURL(f),a=document.createElement('a');a.href=u;a.download=f.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(u);a.remove()},1500);await new Promise(r=>setTimeout(r,700))}
+    let to='',cc='';try{const c0=(await get(R(db,PB+'/cfg'))).val()||{};to=(e.mail&&e.mail.to)||c0.to||'';cc=(e.mail&&e.mail.cc)||c0.cc||''}catch(x){}
+    const addr=z=>String(z||'').split(/[;,]\s*/).map(q=>q.trim()).filter(Boolean).map(encodeURIComponent).join(',');
+    let body=plain;if(plain.length>1800){body='(Pega aquí el mensaje: ya está copiado)';try{await navigator.clipboard.writeText(plain)}catch(x){body=plain.slice(0,1800)}}
+    toast('📎 Descargué el Excel y el PDF: arrástralos al correo que se abre');
+    setTimeout(()=>{location.href='mailto:'+addr(to)+'?'+(cc?'cc='+addr(cc)+'&':'')+'subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body)},900)}
+  catch(x){toast('No se pudieron preparar los adjuntos: '+(x.message||x))}}
 let MAILADJ=null;const XLC={};
 function embXlsxC(id,e){const c=XLC[id];if(c&&Date.now()-c.at<120000)return c.p;const p=embXlsx(id,e);XLC[id]={at:Date.now(),p};p.catch(()=>{delete XLC[id]});return p}
 // Excel del packing list: en el celular abre el menú de compartir (Correo/Outlook/WhatsApp) con el archivo ya adjunto; si no se puede, lo descarga.
@@ -4703,12 +4755,24 @@ async function embMail(id){
       let adj=null;try{toast('Preparando el Excel adjunto…');adj=await embXlsx(id,e);MAILADJ=adj}catch(x2){adj=null;MAILADJ=null}
       /* Remitente automático: "Notificaciones Westland Outlook" (notificacioneswestland@outlook.com). Reemplaza al servicio viejo de provira@saks.com.pa, que quedó suspendido. */
       const EMAIL_SERVICE_ID='service_gqk1da3';
-      const P={to_email:to,cc_email:cc,subject:`Despacho ${e.num} · ${c.cams.length} camión(es) · ${c.tb} bultos · ${c.tp} piezas`,html_content:embHTML(e),message:`Aviso de despacho ${e.num}: ${c.tb} bultos, ${c.tp} piezas, ${c.cams.length} camión(es).`,saludo:'',periodo:e.num,timestamp:new Date().toLocaleString('es')};
-      /* Adjunto: variable "packing_xlsx" (data URI). En la plantilla de EmailJS debe existir un adjunto de tipo variable con ese nombre. */
-      let sinAdj=!adj,adjErr='';
-      if(adj){try{await emailjs.send(EMAIL_SERVICE_ID,cfg.templateId,{...P,packing_xlsx:adj.uri,packing_name:adj.name})}catch(e1){adjErr=String(e1&&(e1.text||e1.message)||e1||'').slice(0,140);console.warn('EmailJS rechazó el adjunto:',e1);await emailjs.send(EMAIL_SERVICE_ID,cfg.templateId,P);sinAdj=true}}
-      else await emailjs.send(EMAIL_SERVICE_ID,cfg.templateId,P);
-      await update(R(db,PB),{[`emb/${id}/st`]:'enviado',[`emb/${id}/mail`]:{to,cc,ts:Date.now(),u:NAME,adj:sinAdj?0:1},cfg:{to,cc}});toast(sinAdj?'✅ Correo enviado SIN adjunto'+(adjErr?' · motivo: '+adjErr:' (el servicio no aceptó el Excel)')+' · usa 📎 Excel para adjuntarlo tú':'✅ Correo enviado con Excel adjunto')
+      const P={to_email:to,cc_email:cc,subject:`Despacho ${e.num} · ${c.cams.length} camión(es) · ${c.tb} bultos · ${c.tp} piezas`,html_content:'',message:`Aviso de despacho ${e.num}: ${c.tb} bultos, ${c.tp} piezas, ${c.cams.length} camión(es).`,saludo:'',periodo:e.num,timestamp:new Date().toLocaleString('es')};
+      /* Límite del servicio de correo: ~50 KB por envío (todas las variables juntas). Si el aviso es más grande (muchas tiendas/palets) se parte solo en varios correos "parte i de n". */
+      const LIM=46000,jsz=x=>new TextEncoder().encode(JSON.stringify(x)).length,base=jsz(P);
+      const full=embHTML(e);let parts=[full];
+      if(base+jsz(full)-2>LIM)parts=embHTMLparts(e,LIM-base-400);
+      const np=parts.length;
+      /* Adjunto: variable "packing_xlsx" (data URI). En la plantilla de EmailJS debe existir un adjunto de tipo variable con ese nombre. Solo se intenta si cabe en el límite. */
+      let sinAdj=!adj,adjErr='',extraXl=false;
+      if(adj&&base+jsz(parts[0])-2+adj.uri.length>LIM){sinAdj=true;adjErr='el Excel pesa demasiado para el servicio de correo (límite 50 KB)';extraXl=base+adj.uri.length+900<=LIM}
+      const send=Pp=>emailjs.send(EMAIL_SERVICE_ID,cfg.templateId,Pp);
+      for(let i=0;i<np;i++){
+        if(np>1)toast(`Enviando correo ${i+1} de ${np}…`);
+        const Pp={...P,html_content:parts[i],subject:np>1?P.subject+` · parte ${i+1} de ${np}`:P.subject};
+        if(i===0&&adj&&!sinAdj){try{await send({...Pp,packing_xlsx:adj.uri,packing_name:adj.name})}catch(e1){adjErr=String(e1&&(e1.text||e1.message)||e1||'').slice(0,140);console.warn('EmailJS rechazó el adjunto:',e1);await send(Pp);sinAdj=true}}
+        else await send(Pp);
+        if(i<np-1)await new Promise(r=>setTimeout(r,700))}
+      if(extraXl){try{await send({...P,subject:P.subject+' · Excel',html_content:`<div style="font-family:Arial,sans-serif;font-size:14px">Excel del despacho <b>${esc(e.num)}</b> (detalle por producto).</div>`,packing_xlsx:adj.uri,packing_name:adj.name});sinAdj=false;adjErr=''}catch(x3){adjErr=String(x3&&(x3.text||x3.message)||'').slice(0,100)}}
+      await update(R(db,PB),{[`emb/${id}/st`]:'enviado',[`emb/${id}/mail`]:{to,cc,ts:Date.now(),u:NAME,adj:sinAdj?0:1,np},cfg:{to,cc}});toast((np>1?`✅ Aviso enviado en ${np} correos (era muy extenso para uno solo). `:'')+(sinAdj?(np>1?'':'✅ Correo enviado ')+'SIN Excel'+(adjErr?' · motivo: '+adjErr:' (el servicio no aceptó el Excel)')+' · usa «Correo al comprador» para mandar Excel + PDF':(np>1?'Excel adjunto.':'✅ Correo enviado con Excel adjunto')))
     }catch(err){toast('No se pudo enviar: '+(err.text||err.code||err.message));
       /* Respaldo: si el servicio automático falla (p. ej. cuenta Outlook suspendida), abre tu app de correo con todo precargado. */
       setTimeout(async()=>{if(confirm('El envío automático falló:\n'+(err.text||err.code||err.message||'')+'\n\n¿Abrir tu app de correo con el resumen y los destinatarios ya cargados para enviarlo tú mismo?')){
