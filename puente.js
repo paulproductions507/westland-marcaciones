@@ -1,4 +1,4 @@
-/* Puente · Gestor de Bodega → consultas. Se carga desde el marcador corto. */
+/* Puente · Gestor de Bodega → Connexion. Se carga desde el marcador corto (o el script de Firefox). Deja un botón flotante «Puente» en pantalla. */
 (function(){var U=window.__PUENTE_U;if(!U){alert('Puente: falta la dirección de la app. Vuelve a copiar el Puente desde la app.');return}
 function BMCODE(U){try{var send=function(o){var j=btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_'),u=U+'#gestor='+j,w=(o.sil||o.k==='fin')?window.open(u,'_blank','popup=yes,width=440,height=660,left='+Math.max(0,(screen.width||900)-500)+',top=60'):window.open(u,'_blank');if(!w)location.href=u},d=document,tx=function(e){return e?e.textContent.replace(/\s+/g,' ').trim():''},g=function(i){return tx(d.getElementById(i))},o=null,i,c,x,m,L,R,t,H,rows,tr,cb,s2,E,dest,st;
 t=d.getElementById('MainContent_gvTransferDetail');
@@ -60,4 +60,32 @@ if(im&&im.src&&!/sin_imagen/i.test(im.src)){I2=new Image();I2.crossOrigin='anony
 I2.onload=function(){try{var w=I2.naturalWidth,h=I2.naturalHeight,s=Math.min(1,380/Math.max(w,h)),cv=d.createElement('canvas'),cx;cv.width=Math.max(1,Math.round(w*s));cv.height=Math.max(1,Math.round(h*s));cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);cx.drawImage(I2,0,0,cv.width,cv.height);o.i=cv.toDataURL('image/jpeg',.6)}catch(e){}send(o)};
 I2.onerror=function(){send(o)};I2.src=im.currentSrc||im.src;return}}
 send(o)}catch(e){alert('Puente: '+e.message)}}
-BMCODE(U)})();
+/* ---- Botón flotante: queda en pantalla, se puede arrastrar, y al tocarlo ejecuta el Puente ---- */
+function mkFab(){
+var host=document.createElement('div'),sh=host.attachShadow?host.attachShadow({mode:'open'}):host,b=document.createElement('button'),K='puente_fab',dr=0,mv=0,sx,sy,ox,oy,busy=0;
+host.id='puente-fab-host';host.style.cssText='all:initial;position:fixed;z-index:2147483647;left:0;top:0;width:0;height:0';
+var st=document.createElement('style');
+st.textContent='.b{position:fixed;right:14px;bottom:96px;display:flex;align-items:center;gap:8px;height:50px;padding:0 18px 0 12px;border:0;border-radius:99px;background:linear-gradient(135deg,#14a99d,#0a5560);color:#fff;font:800 15px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;box-shadow:0 6px 18px #0007,0 0 0 2px #ffffffaa;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer;opacity:.96}.b:active{transform:scale(.96)}.b svg{width:28px;height:28px;flex:none}.b.arm{background:linear-gradient(135deg,#ffb347,#d36a00);animation:p 1.3s infinite}.b.ok{background:linear-gradient(135deg,#34e08a,#13894f)}@keyframes p{0%{box-shadow:0 6px 18px #0007,0 0 0 2px #fff,0 0 0 0 #ffc857cc}70%{box-shadow:0 6px 18px #0007,0 0 0 2px #fff,0 0 0 14px #ffc85700}100%{box-shadow:0 6px 18px #0007,0 0 0 2px #fff,0 0 0 0 #ffc85700}}';
+b.className='b';b.type='button';b.setAttribute('aria-label','Puente: enviar esta pantalla a Connexion');
+b.innerHTML='<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="9" y="7" width="8" height="6" rx="3" fill="#fff"/><rect x="20" y="7" width="8" height="6" rx="3" fill="#fff"/><rect x="31" y="7" width="8" height="6" rx="3" fill="#fff"/><rect x="5" y="12" width="38" height="14" rx="2.5" fill="#fff"/><rect x="5" y="26" width="38" height="14" rx="2.5" fill="#cfe3e6"/></svg><span class="t">Puente</span>';
+sh.appendChild(st);sh.appendChild(b);(document.body||document.documentElement).appendChild(host);
+var tt=b.querySelector('.t');
+function armed(){try{var p=JSON.parse(localStorage.getItem('puente_pre')||'null');return !!(p&&p.arm&&Date.now()-p.ts<108e5)}catch(e){return false}}
+function sync(){if(busy)return;var a=armed();b.className='b'+(a?' arm':'');tt.textContent=a?'Reportar':'Puente'}
+function place(x,y){var w=b.offsetWidth||120,h=b.offsetHeight||50;x=Math.max(4,Math.min(innerWidth-w-4,x));y=Math.max(4,Math.min(innerHeight-h-4,y));b.style.right='auto';b.style.bottom='auto';b.style.left=x+'px';b.style.top=y+'px'}
+function save(){try{var r=b.getBoundingClientRect();localStorage.setItem(K,JSON.stringify({x:r.left,y:r.top}))}catch(e){}}
+try{var P=JSON.parse(localStorage.getItem(K)||'null');if(P&&isFinite(P.x)&&isFinite(P.y))place(P.x,P.y)}catch(e){}
+b.addEventListener('pointerdown',function(e){dr=1;mv=0;sx=e.clientX;sy=e.clientY;var r=b.getBoundingClientRect();ox=r.left;oy=r.top;try{b.setPointerCapture(e.pointerId)}catch(x){}});
+b.addEventListener('pointermove',function(e){if(!dr)return;var dx=e.clientX-sx,dy=e.clientY-sy;if(!mv&&Math.abs(dx)+Math.abs(dy)<10)return;mv=1;place(ox+dx,oy+dy)});
+b.addEventListener('pointerup',function(){dr=0;if(mv)save()});
+b.addEventListener('pointercancel',function(){dr=0});
+b.addEventListener('click',function(e){if(mv){mv=0;return}e.preventDefault();busy=1;b.className='b ok';tt.textContent='Enviando…';
+ try{window.__puRun()}catch(x){alert('Puente: '+x.message)}
+ setTimeout(function(){busy=0;sync()},1800)});
+window.addEventListener('resize',function(){var r=b.getBoundingClientRect();if(b.style.left)place(r.left,r.top)});
+window.__puFabSync=sync;setInterval(sync,2000);sync()}
+var FO=window.__PUENTE_FAB_ONLY;window.__PUENTE_FAB_ONLY=0;
+window.__puRun=function(){BMCODE(window.__PUENTE_U||U)};
+if(!window.__puFab){window.__puFab=1;try{mkFab()}catch(e){}}else{try{window.__puFabSync()}catch(e){}}
+if(!FO)BMCODE(U)})();
+
