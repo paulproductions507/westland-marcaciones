@@ -2300,8 +2300,8 @@ function auTabRows(tab){
 function auAdmView(){
   const all=Object.values(AUD.all),pend=all.filter(isPend),sur=all.filter(isSur),ya=all.filter(isYa),hist=all.filter(m=>isDone(m)||isAnu(m));
   const n0=pend.filter(m=>!AUD.asg[m.tr]).length,n1=pend.length-n0,open=[...pend,...sur].map(m=>auTrInfo(m)),Tp=sumL(open,i=>i.pz),Sd=sumL(open,i=>i.sdone);
-  if(!['asg0','asg','rea','sur','pers','hist'].includes(AUGT))AUGT='asg0';
-  const tabs=[['asg0','Por asignar',n0],['asg','Asignadas',n1],['rea','🔁 Reasignar',null],['sur','Por chequear',sur.length],['pers','Por surtidor',null],['hist','Histórico',hist.length]];
+  if(!['asg0','asg','rea','sur','pers','hist','rev'].includes(AUGT))AUGT='asg0';
+  const tabs=[['asg0','Por asignar',n0],['asg','Asignadas',n1],['rea','🔁 Reasignar',null],['sur','Por chequear',sur.length],['rev','🔎 Revisión',null],['pers','Por surtidor',null],['hist','Histórico',hist.length]];
   const falt=Object.keys(AUD.asg).filter(tr=>!AUD.all[tr]&&!AUD.asg[tr].dn);
   const users=[...new Map(Object.values(AUD.asg).filter(a=>a&&a.u&&!a.dn).map(a=>[a.u,a.n||a.u])).entries()].sort((a,b)=>String(a[1]).localeCompare(String(b[1])));
   const cnt=u=>pend.filter(m=>AUD.asg[m.tr]&&AUD.asg[m.tr].u===u).length;
@@ -2316,6 +2316,7 @@ function auAdmView(){
     <div class="msg" style="text-align:center;margin:6px 0 0">${fmt(Sd)} de ${fmt(Tp)} pzas surtidas · ${fmt(Tp-Sd)} pendientes</div></div>
    <div style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px">${tabs.map(([k,l,n])=>`<button class="btn sm ${AUGT===k?'pri':''}" data-aum="${k}" style="white-space:nowrap;flex:none">${l}${n==null?'':' ('+fmt(n)+')'}</button>`).join('')}</div>`;
   const ayaB=ya.length?`<div class="card" style="padding:10px 12px"><div class="msg" style="margin:0 0 6px">${ya.length} cargada(s) con el flujo anterior (ya despachadas en el Gestor).</div><button class="btn pri sm" data-aua="ya" style="width:100%">✔ Incorporar ${ya.length} al recibo</button></div>`:'';
+  if(AUGT==='rev')return head+auRevHtml();
   if(AUGT==='rea'){
     const dirO=`<option value="">Elegir surtidor…</option>`+UDIR.map(x=>`<option value="${esc(x.u)}">${esc(x.n)} (${esc(x.u)})</option>`).join('');
     return head+`<div class="card" style="padding:12px"><div class="slbl">🔁 Reasignar transferencias</div>
@@ -2521,7 +2522,7 @@ function auDetail(tr){
     }).join('');
   return `${AUOP?'':`<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><button class="btn sm" data-aut="back">← ${window._auMode==='autosur'?'Transferencias':(AUD.asg[tr]||{}).u===USER?'Mis transferencias':'Volver'}</button>${isPend(m)&&(AUD.asg[tr]||{}).u===USER?`<button class="btn sm" data-qall="*">✔ Surtir todo (reservado)</button>`:''}${isPend(m)&&((AUD.asg[tr]||{}).u===USER||ISADM)?`<button class="btn sm pri" data-aufin="${esc(tr)}">✔ Completar surtido</button>`:''}</div>`}
    ${AUOP?'':`<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="font:800 24px 'Inter';color:#fff;line-height:1.15">#${esc(m.tr)}</div><div style="flex:none">${auPill(inf.k,inf)}</div></div>
-    <div style="color:var(--ac);font-weight:700;margin-top:3px">${esc(LN(m.t))}</div><div class="msg" style="margin:3px 0 0">${m.pas?'Pasillo '+esc(m.pas)+' · ':''}Solicitada ${fdt(m.ts)}</div>${(AUD.asg[tr]||{}).n?`<div class="msg" style="margin:2px 0 0">👤 ${esc(AUD.asg[tr].n)}</div>`:''}
+    <div style="color:var(--ac);font-weight:700;margin-top:3px">${esc(LN(m.t))}</div><div class="msg" style="margin:3px 0 0">${m.pas?'Pasillo '+esc(m.pas)+' · ':''}Solicitada ${fdt(m.ts)}</div>${(AUD.asg[tr]||{}).n?`<div class="msg" style="margin:2px 0 0">👤 ${esc(AUD.asg[tr].n)}</div>`:''}${ISADM&&isPend(m)&&(AUD.asg[tr]||{}).u&&AUD.asg[tr].u!==USER?`<div class="msg" style="margin:2px 0 0;color:var(--wn)">🧑‍💼 Lo surtes como administrador: el crédito va a ${esc(AUD.asg[tr].n||AUD.asg[tr].u)}.</div>`:''}
     <div class="msg" style="margin:2px 0 0">${esc(m.org||'')} → ${esc(m.des||'')}</div>${notaC(m.nota)?`<div class="msg" style="margin:2px 0 0">Nota: ${esc(notaC(m.nota))}</div>`:''}
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px"><div><div class="lbl">Solicitado</div><b style="font-size:20px">${fmt(sol)}</b></div><div><div class="lbl">Reservado</div><b style="font-size:20px;color:var(--wn)">${fmt(res)}</b></div><div><div class="lbl">Surtido</div><b id="auSur" style="font-size:20px;color:var(--ok)">${fmt(sur)}</b></div></div>
     <div style="margin-top:12px;display:flex;justify-content:space-between;font-weight:800"><span id="auItm">${inf.idone}/${inf.items} ítems</span><span id="auPct">${pctT(inf.sdone,inf.pz)}</span></div><div class="bar" style="margin-top:6px"><i id="auBar" style="width:${inf.pc}%"></i></div>
@@ -2561,7 +2562,7 @@ function auFinModal(tr){
    ${w.br?`<label class="ck" style="margin-top:10px;display:flex;gap:8px;align-items:center"><input type="checkbox" id="auGok"> <span>Ya presioné “Completar surtido” en el Gestor y no dio error</span></label>`:''}
    <div class="lbl" style="margin-top:12px">Cantidad de bultos de esta transferencia</div><input class="f" type="number" inputmode="numeric" min="0" id="auBul" value="${w.b!=null?w.b:''}" placeholder="Ej. 2" style="width:100%">
    <div class="lbl" style="margin-top:10px">Nota <span style="text-transform:none;letter-spacing:0">(obligatoria si surtes en cero)</span></div><textarea class="f" id="auNt" rows="2" style="font-family:inherit;width:100%;padding:11px;border-radius:12px;border:1px solid var(--bd);background:#02171c;color:var(--tx)">${esc(w.nt||'')}</textarea>
-   <div class="msg">Lo surtido se acredita a tu producción; el administrador la chequea y despacha.</div>
+   <div class="msg">${ISADM&&(AUD.asg[tr]||{}).u&&AUD.asg[tr].u!==USER?`Lo surtido se acredita a <b>${esc(AUD.asg[tr].n||AUD.asg[tr].u)}</b> (tú solo lo registras como administrador)`:'Lo surtido se acredita a tu producción'}; el administrador la chequea y despacha.</div>
    <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px"><button class="dspbtn" id="auFin" data-modal="1" data-tr="${esc(m.tr)}"><span>✔ Completar surtido</span></button><button class="btn" id="auModNo">Cancelar</button></div>`;
   $('auMod').classList.remove('hide');setTimeout(()=>{const e=$('auBul');if(e)e.focus()},150)}
 async function auFinish(tr,btn,opt){
@@ -2570,6 +2571,7 @@ async function auFinish(tr,btn,opt){
   btn=btn||{dataset:{},classList:{add(){},remove(){}}};
   const m=AUD.all[tr];if(!m||m.st!=='new'){toast('Esta transferencia ya no está pendiente');return}
   const A=AUD.asg[tr];if(!A||(A.u!==USER&&!ISADM)){toast('Esta transferencia no está asignada a ti');return}
+  const CU=(ISADM&&A.u&&A.u!==USER)?A.u:USER,CN=CU===USER?NAME:(A.n||A.u);   // si el administrador la registra, el crédito es de quien la tiene asignada
   const w=AUD.wk[tr]||{},q=w.q||{},bul=S?Math.max(0,parseInt(opt.bul)||parseInt(w.b)||0):Math.max(0,parseInt(($('auBul')||{}).value)||0),nt=S?String(opt.nt||w.nt||'').trim():(($('auNt')||{}).value||'').trim();
   const lines=(m.lines||[]).map(l=>({...l,desp:Math.max(0,Math.min(+q[l.p]||0,lnCap(tr,l)))})),tot=sumL(lines,l=>l.desp),sin=lines.filter(l=>lnRes(l)>0&&q[l.p]===undefined).length;
   const Z=w.z||{},sinMot=lines.filter(l=>lnRes(l)>0&&l.desp===0&&!Z[l.p]);
@@ -2586,10 +2588,10 @@ async function auFinish(tr,btn,opt){
   btn.disabled=true;btn.classList.add('busy');
   try{
     const now=Date.now(),dd=ymd(now),ab='meta_v1/consultas/'+AUID,got=lines.filter(l=>l.desp>0),lg={},dp={};
-    for(const l of got)lg['x'+tr+'_'+l.p]={p:l.p,r:l.ref,t:m.t,q:l.desp,tr,u:USER,n:NAME,ts:now,d:dd,ax:1,pk:1};
+    for(const l of got)lg['x'+tr+'_'+l.p]={p:l.p,r:l.ref,t:m.t,q:l.desp,tr,u:CU,n:CN,ts:now,d:dd,ax:1,pk:1,...(CU!==USER?{adm:USER}:{})};
     if(got.length){
       await auPut(ab+'/log',lg);
-      await update(R(db,ab+'/trfb'),{[`${m.t}_${tr}`]:{b:bul,u:USER,n:NAME,ts:now,ax:1}});
+      await update(R(db,ab+'/trfb'),{[`${m.t}_${tr}`]:{b:bul,u:CU,n:CN,ts:now,ax:1}});
       const DX={};for(const rid of Object.keys(RECS)){if(!isPs(rid))for(const y of RECS[rid].items)if(!DX[y.p])DX[y.p]=y}
       await runTransaction(R(db,'meta_v1/consultas_recs/'+AUID),cur=>{
         cur=cur||{by:USER,file:PSEUDO[AUID],fecha:ymd(now),auto:1};const items=Array.isArray(cur.items)?cur.items:Object.values(cur.items||{}),by={};items.forEach(x=>by[x.p]=x);
@@ -2600,7 +2602,7 @@ async function auFinish(tr,btn,opt){
       if(!FECHAS[AUID]){FECHAS[AUID]=ymd(now);await set(R(db,'meta_v1/consultas_fechas/'+AUID),FECHAS[AUID])}
       try{await remove(R(db,'meta_v1/consultas_prog/'+AUID));await remove(R(db,'meta_v1/consultas_comp/'+AUID));delete COMP[AUID]}catch(e){}
       sigTouch()}
-    const meta={st:'sur',dts:now,t0:(AUD.wk[tr]||{}).t0||0,route:'auto',pr:AUID,suru:USER,sur:NAME,bul,pz:tot,n:got.length,nt,lines:lines.map(l=>({p:l.p,ref:l.ref||'',d:l.d||'',inv:l.inv||0,sol:l.sol||0,res:lnRes(l),desp:l.desp,bul:l.bul||0,ub:l.ub||'',pr:l.pr||0,...(l.desp===0&&Z[l.p]?{zr:Z[l.p]}:{})}))};
+    const meta={st:'sur',dts:now,t0:(AUD.wk[tr]||{}).t0||0,route:'auto',pr:AUID,suru:CU,sur:CN,...(CU!==USER?{adm:USER,admn:NAME}:{}),bul,pz:tot,n:got.length,nt,lines:lines.map(l=>({p:l.p,ref:l.ref||'',d:l.d||'',inv:l.inv||0,sol:l.sol||0,res:lnRes(l),desp:l.desp,bul:l.bul||0,ub:l.ub||'',pr:l.pr||0,...(l.desp===0&&Z[l.p]?{zr:Z[l.p]}:{})}))};
     await update(R(db,`${AUB}/${tr}`),meta);Object.assign(m,meta);
     try{await auBdApply(tr,m,lines)}catch(e){console.warn('descuento de Bodega',e)}
     await update(R(db,`${AUA}/${tr}`),{dn:now});AUD.asg[tr]={...A,dn:now};
@@ -3016,6 +3018,40 @@ async function puUndo(tr){
   try{await auLoad();await auRevert(tr);if(ISADM)await auAssign([tr],USER,'puente');else await auSelfAssign(tr);
     puCard({ic:'wn',title:'Deshecho en la app',sub:'La transferencia volvió a «por surtir». Ojo: el Gestor no se revierte desde aquí; si ya la completó allá, corrígela allá.',rows:puRows(tr,(AUD.all[tr]||{}).t),btns:puOk})}
   catch(e){puCard({ic:'er',title:'No se pudo deshacer',sub:(e.code||e.message||'')+' · Pídele al administrador «Reabrir / reasignar».',btns:puOk})}}
+/* ---------- Administrador · 🔎 Revisión de transferencias pendientes (quién surtió, cuántas, y surtir a nombre de otro) ---------- */
+let AURV='all';
+function auRevHtml(){
+  const now=Date.now(),days=m=>Math.max(0,Math.floor((now-(m.ts||now))/864e5));
+  const L=Object.values(AUD.all).filter(m=>isPend(m)||isSur(m)).map(m=>{
+    const i=auTrInfo(m),a=AUD.asg[m.tr],w=AUD.wk[m.tr]||{},res=sumL(m.lines||[],lnRes),sur=isSur(m),fl=[];
+    if(sur){if((m.pz||0)<res)fl.push(`Surtió ${fmt(m.pz||0)} de ${fmt(res)} reservadas`);
+      const z=(m.lines||[]).filter(l=>lnRes(l)>0&&!(l.desp>0)&&!l.zr).length;if(z)fl.push(`${z} línea(s) en cero sin motivo`);
+      if(m.adm)fl.push(`Registrada por ${m.admn||m.adm} a nombre de ${m.sur||m.suru}`)}
+    else{if(!a)fl.push('Sin asignar');if(w.ts&&now-w.ts>1728e5&&Object.keys(w.q||{}).length)fl.push(`Avance sin completar hace ${Math.floor((now-w.ts)/864e5)} días`)}
+    const d=days(m);if(d>=5)fl.push(`Pendiente hace ${d} días`);
+    return{m,i,a,sur,fl,d,res}}).sort((x,y)=>y.fl.length-x.fl.length||(x.m.ts||0)-(y.m.ts||0));
+  const V=L.filter(r=>AURV==='all'||(AURV==='sur'&&r.sur)||(AURV==='pend'&&!r.sur)||(AURV==='alert'&&r.fl.length));
+  const chip=(k,t,n)=>`<button class="btn sm ${AURV===k?'pri':''}" data-rvf="${k}" style="white-space:nowrap;flex:none">${t} (${n})</button>`;
+  const dirO=`<option value="">Surtidor…</option>`+UDIR.map(x=>`<option value="${esc(x.u)}">${esc(x.n)}</option>`).join('');
+  const row=r=>{const m=r.m,who=r.sur?`Surtió: <b>${esc(m.sur||m.suru||'—')}</b>`:(r.a?`Asignada a: <b>${esc(r.a.n||r.a.u)}</b>`:'<b style="color:var(--wn)">Sin asignar</b>');
+    return `<div class="card" style="padding:11px 12px;margin:0 0 8px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b class="sora" style="font-size:16px">#${esc(m.tr)}</b><span class="pill ${r.sur?'p-no':'p-ok'}">${r.sur?'Por chequear':'Por surtir'}</span></div>
+     <div style="color:var(--ac);font-weight:700">${esc(LN(m.t))}</div>
+     <div class="msg" style="margin:3px 0 0">${who} · ${fmt(r.sur?(m.pz||0):r.i.sdone)} de ${fmt(r.res)} pzas · ${r.i.idone}/${r.i.items} ítems · hace ${r.d} día(s)</div>
+     ${r.fl.map(f=>`<div class="msg" style="margin:3px 0 0;color:var(--wn)">⚠ ${esc(f)}</div>`).join('')}
+     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn sm" data-rvopen="${esc(m.tr)}">🔍 Ver líneas</button><select class="f" id="rvw_${esc(m.tr)}" style="flex:1;min-width:130px">${dirO}</select><button class="btn pri sm" data-rvas="${esc(m.tr)}">Surtir a nombre de…</button></div></div>`};
+  return `<div class="card" style="padding:12px"><div class="slbl">🔎 Revisión de transferencias</div><div class="msg" style="margin:0 0 8px">Pendientes por surtir o chequear, con quién las surtió y cuántas piezas. Las que tienen ⚠ van primero. «Surtir a nombre de…» la asigna a ese surtidor (si ya estaba surtida, primero la reabre): tú la surtes y el crédito es de él/ella, no tuyo.</div>
+    <div style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px">${chip('all','Todas',L.length)}${chip('pend','Por surtir',L.filter(r=>!r.sur).length)}${chip('sur','Por chequear',L.filter(r=>r.sur).length)}${chip('alert','Con alertas',L.filter(r=>r.fl.length).length)}</div></div>
+    ${V.length?V.map(row).join(''):'<div class="msg">No hay transferencias en este filtro.</div>'}`}
+async function auRevAs(tr){
+  const sel=$('rvw_'+tr),u=sel&&sel.value;if(!u){toast('Elige a qué surtidor se le acredita');return}
+  let m=AUD.all[tr];if(!m||!ISADM)return;const nm=(UDIR.find(x=>x.u===u)||{}).n||u;
+  if(isSur(m)){await auReopen(tr);m=AUD.all[tr];if(!m||m.st!=='new')return}
+  else if(!confirm(`¿Surtir la transferencia ${tr} a nombre de ${nm}?\n\nSe le acredita a ${nm}; tú solo la registras como administrador.`))return;
+  try{await auAssign([tr],u,'rev');AUCUR=tr;AUV='adm';auPaint();window.scrollTo(0,0);toast(`👤 ${tr} asignada a ${nm}: surte y completa; el crédito es suyo`)}catch(err){toast('Error: '+(err.code||err.message))}}
+document.addEventListener('click',e=>{
+  const f=e.target.closest('[data-rvf]');if(f){AURV=f.dataset.rvf;auPaint();return}
+  const o=e.target.closest('[data-rvopen]');if(o){AUCUR=o.dataset.rvopen;AUV='adm';auPaint();window.scrollTo(0,0);return}
+  const b=e.target.closest('[data-rvas]');if(b)auRevAs(b.dataset.rvas)});
 function gestorHash(){
   const m=location.hash.match(/^#gestor=([\w\-=]+)$/);if(!m)return;let o;   // el base64 puede terminar en = (relleno)
   try{o=JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')))))}catch(e){toast('No pude leer los datos del Gestor');return}
@@ -3143,7 +3179,7 @@ async function auAnular(tr){
 async function auChequear(tr,skipSelf){
   const m=AUD.all[tr];if(!m||m.st!=='sur'){toast('Esta transferencia no está por chequear');return false}
   if(!ISADM){toast('Solo un administrador chequea y despacha');return false}
-  if(!skipSelf&&m.suru===USER&&!confirm('Tú mismo surtiste esta transferencia. El chequeo debería hacerlo otra persona (no puedes ser juez y parte). ¿Chequearla de todas formas?'))return false;
+  if(!skipSelf&&(m.suru===USER||m.adm===USER)&&!confirm('Tú mismo surtiste (o registraste) esta transferencia. El chequeo debería hacerlo otra persona (no puedes ser juez y parte). ¿Chequearla de todas formas?'))return false;
   try{const now=Date.now(),dd=ymd(now),ab='meta_v1/consultas/'+AUID,lg={},dp={},got=(m.lines||[]).filter(l=>(l.desp||0)>0);
     await Promise.all(got.map(async l=>{lg['x'+tr+'_'+l.p+'/dc']=now;const ex=(await get(R(db,`${ab}/desp/${l.p}`))).val();if(!ex)dp[l.p]={u:m.suru||USER,n:m.sur||NAME,ts:now,d:dd,r:l.ref,ax:1,pk:1,b:0}}));
     if(got.length){await auPut(ab+'/log',lg);if(Object.keys(dp).length)await auPut(ab+'/desp',dp);sigTouch()}
