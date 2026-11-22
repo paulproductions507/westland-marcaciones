@@ -299,7 +299,7 @@ async function openPL(id,sec){PLID=id;
   $('app').innerHTML='<div class="card msg">Cargando lista de empaque…</div>';
   try{const v=(await get(ref(db,`${CMPB}/${DK}/pl/${id}`))).val();
     if(!v){fail('Ese lista de empaque ya no está disponible');return}
-    v.num=dn(v.num);PL=v;SN={};(v.stores||[]).forEach(s=>{if(s.t&&s.tn)SN[s.t]=s.tn});ROWS=Object.values(v.rows||{}).map(norm1);SORT={k:'t',d:1};paintPL();if(sec&&document.querySelector('#app [data-sec="'+sec+'"]'))hmGo(sec)}
+    v.num=dn(v.num);PL=v;SN={};(v.stores||[]).forEach(s=>{if(s.t&&s.tn)SN[s.t]=s.tn});ROWS=Object.values(v.rows||{}).map(norm1);SORT={k:'t',d:1};paintPL();if(sec==='mail')mailPrompt();else if(sec&&document.querySelector('#app [data-sec="'+sec+'"]'))hmGo(sec)}
   catch(e){fail('No se pudo abrir ('+(e.code||e.message)+')')}
 }
 const grp=(rows,f)=>{const o={};rows.forEach(r=>{const k=f(r),a=o[k]=o[k]||{k,q:0,l:0,rf:new Set()};a.q+=r.q||0;a.l++;if(r.p)a.rf.add(r.p)});return Object.values(o).sort((a,b)=>b.q-a.q)};
@@ -320,7 +320,7 @@ function paintPL(){
   $('app').innerHTML=`
   <div class="card" data-sec="res"><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-bottom:12px">
     <div><span class="chip ${rc?'R':'D'}">${rc?'Recibido':'Despachado'}</span></div>
-    <div style="display:flex;gap:8px"><button class="btn" id="xl">Excel</button><button class="btn sec" id="pdf">PDF</button></div></div>
+    <div style="display:flex;gap:8px"><button class="btn" id="xl">Excel</button><button class="btn sec" id="pdf">PDF</button><button class="btn" id="mail">✉ Correo</button></div></div>
     <div class="kpis">${[['Piezas',v.tp],['Referencias',refs],['Tiendas',v.stores.length],['Documentos',v.tf]].map(([l,n])=>`<div class="kpi"><b>${fmt(n)}</b><span>${l}</span></div>`).join('')}</div>
     <div class="info">Informativo: ${fmt(v.tb)} bultos · ${fmt((v.cams||[]).length)} camión(es) · Preparó ${esc(v.prep||'—')} · Despachó ${esc(v.dby||'—')}${rc&&v.rby?' · Recibió '+esc(v.rby):''}</div>
     <div class="tools" style="margin:14px 0 4px"><label style="font-weight:700;font-size:13px">Ver resumen:</label><select id="rsv"><option value="all">Todos</option><option value="tie">Por tienda</option><option value="pro">Por proveedor</option></select></div>
@@ -340,7 +340,7 @@ function paintPL(){
   ['q','fm'].forEach(id=>$(id).addEventListener('input',render));$('fx').addEventListener('change',render);
   $('clr').onclick=()=>{$('q').value='';$('fk').value='';fkSync();render()};
   $('rsv').onchange=()=>{$('rsBody').innerHTML=RSV[$('rsv').value]};
-  $('xl').onclick=excel;$('pdf').onclick=pdf;
+  $('xl').onclick=excel;$('pdf').onclick=pdf;$('mail').onclick=mailFiles;
   render();hmInit();
 }
 
@@ -367,7 +367,7 @@ function render(){
 
 /* ---------- EXCEL (ExcelJS: estilos, filtros, formato tabla) ---------- */
 const sortRows=a=>[...a].sort((x,y)=>String(x.t).localeCompare(String(y.t),'es',{numeric:true})||String(x.tr).localeCompare(String(y.tr),'es',{numeric:true})||String(x.p).localeCompare(String(y.p),'es',{numeric:true}));
-async function excel(){
+async function excel(out){let FILE=null;
   if(!window.ExcelJS){alert('No cargó la librería de Excel. Revisa tu conexión.');return}
   const b=$('xl');b.disabled=true;
   try{
@@ -419,14 +419,15 @@ async function excel(){
     s2.autoFilter={from:{row:4,column:1},to:{row:Math.max(5,last),column:11}};
     s2.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,paperSize:9,printTitlesRow:'4:4'};
 
-    const buf=await wb.xlsx.writeBuffer(),url=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),a=document.createElement('a');
-    a.href=url;a.download=`lista_empaque_${v.num}.xlsx`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1500);
+    const buf=await wb.xlsx.writeBuffer(),XT='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    if(out===true)FILE=new File([buf],`lista_empaque_${v.num}.xlsx`,{type:XT});
+    else{const url=URL.createObjectURL(new Blob([buf],{type:XT})),a=document.createElement('a');a.href=url;a.download=`lista_empaque_${v.num}.xlsx`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1500)}
   }catch(e){alert('No se pudo generar el Excel: '+(e.message||e))}
-  b.disabled=false;
+  b.disabled=false;return FILE
 }
 
 /* ---------- PDF gerencial (jsPDF + autoTable): encabezado, parámetros, resumen, detalle agrupado con subtotales ---------- */
-function pdf(){
+function pdf(out){
   const J=window.jspdf&&window.jspdf.jsPDF;if(!J){alert('No cargó la librería de PDF. Revisa tu conexión.');return}
   const doc=new J({orientation:'landscape',unit:'mm',format:'a4'});if(!doc.autoTable){alert('No cargó el complemento de tablas del PDF.');return}
   const v=PL,tp=Math.max(1,v.tp||0),W=297,M=12,NAVY=[6,48,58],PET=[8,64,76],GR=[90,107,122],LT=[234,241,248],ZB=[245,248,252];
@@ -484,8 +485,30 @@ function pdf(){
   for(let i=1;i<=n;i++){doc.setPage(i);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...GR);
     if(i>1){doc.text(`Reporte de Despacho a Tiendas  |  Lista de empaque ${v.num}`,M,9);doc.text('WESTLAND',W-M,9,{align:'right'});doc.setDrawColor(...PET);doc.setLineWidth(.5);doc.line(M,11,W-M,11)}
     doc.setDrawColor(201,214,228);doc.setLineWidth(.2);doc.line(M,201,W-M,201);doc.text(`Generado el ${gen}  |  Documento de solo lectura`,M,205);doc.text(`Página ${i} de ${n}`,W-M,205,{align:'right'})}
+  if(out===true)return new File([doc.output('arraybuffer')],`reporte_despacho_${v.num}.pdf`,{type:'application/pdf'});
   doc.save(`reporte_despacho_${v.num}.pdf`);
 }
+/* ---------- CORREO con Excel + PDF (los mismos archivos de los botones Excel y PDF) ---------- */
+function mailText(){const v=PL,rc=v.st==='R',st=v.stores||[];
+  const intro=rc?`Les informamos que el despacho ${v.num} fue RECIBIDO en la Bodega CF el ${fdt(v.rts)}${v.rby?' (recibido por '+v.rby+')':''}. Había salido el ${fdt(v.ts)}.`:`Les informamos que el despacho ${v.num} fue despachado el ${fdt(v.ts)} y se encuentra EN TRÁNSITO hacia la Bodega CF.`;
+  const subj=`Lista de empaque ${v.num} · ${rc?'Recibido en Bodega CF':'En tránsito a Bodega CF'} · ${fmt(v.tp)} piezas`;
+  const body=['Buen día, estimado comprador y equipo:','',intro,'',`Contenido: ${fmt((v.cams||[]).length)} camión(es), ${fmt(v.tb)} bultos y ${fmt(v.tp)} piezas, para ${st.length} tienda(s)/destino(s).`,'','Distribución por tienda:',...st.map(x=>`• ${TL(x.t)}${x.tn?' · '+x.tn:''} — ${fmt(x.pz)} pzas · ${fmt(x.tf)} doc.`),'','Adjuntamos el Excel y el PDF con el detalle por producto.','','Quedamos atentos.','Saludos cordiales,'].join('\n');
+  return{subj,body}}
+/* Se abre desde Consultas con #codigo/id/mail: pide un toque (el navegador exige un toque del usuario para compartir archivos) y prepara el correo. */
+function mailPrompt(){const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;z-index:99999;background:#000b;display:flex;align-items:center;justify-content:center;padding:20px';
+  o.innerHTML=`<div style="background:#06303a;border:1px solid #17697a;border-radius:20px;padding:22px;max-width:360px;width:100%;text-align:center;color:#e9fbf8"><h2 style="margin:0 0 6px;font-size:19px">Correo para el comprador</h2><div style="color:#8fc3c6;font-size:13px;margin-bottom:16px">Lista de empaque ${esc(PL.num)}: se preparan el Excel y el PDF completos y se abre tu correo con el mensaje.</div><button class="btn" id="mpGo" style="width:100%;padding:14px;font-size:15px">✉ Preparar correo</button><button class="btn sec" id="mpX" style="width:100%;margin-top:8px">Cancelar</button></div>`;
+  document.body.appendChild(o);o.querySelector('#mpGo').onclick=()=>{o.remove();mailFiles()};o.querySelector('#mpX').onclick=()=>o.remove()}
+async function mailFiles(){const b=$('mail'),v=PL;if(!v)return;const t0=b?b.textContent:'';
+  const lab=x=>{if(b){b.textContent=x;b.disabled=x==='Preparando…'}};lab('Preparando…');
+  try{const fx=await excel(true),fp=pdf(true);if(!fx||!fp){lab(t0);if(b)b.disabled=false;return}
+    const {subj,body}=mailText(),files=[fx,fp];
+    if(navigator.canShare&&navigator.canShare({files})){try{await navigator.share({files,title:subj,text:body});lab(t0);if(b)b.disabled=false;return}catch(x){if(x&&x.name==='AbortError'){lab(t0);if(b)b.disabled=false;return}}}
+    for(const f of files){const u=URL.createObjectURL(f),a=document.createElement('a');a.href=u;a.download=f.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(u);a.remove()},1500);await new Promise(r=>setTimeout(r,700))}
+    let bd=body;if(bd.length>1800){bd='(Pega aquí el mensaje: ya está copiado)';try{await navigator.clipboard.writeText(body)}catch(x){bd=body.slice(0,1800)}}
+    lab('📎 Arrastra los 2 archivos al correo');setTimeout(()=>{lab(t0);if(b)b.disabled=false},6000);
+    setTimeout(()=>{location.href='mailto:?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(bd)},900)}
+  catch(e){alert('No se pudo preparar el correo: '+(e.message||e));lab(t0);if(b)b.disabled=false}}
+
 /* ---------- MENÚ SECTORIZADO + CONFIGURACIÓN DE ANIMACIONES ---------- */
 const HM_ORB='<svg class="hm-orb" viewBox="0 0 120 120" aria-hidden="true"><circle class="o2" cx="60" cy="60" r="50"/><circle class="o1" cx="60" cy="60" r="57"/><circle class="dt" cx="60" cy="3" r="4"/><circle class="dt" cx="19.7" cy="100.3" r="3"/></svg>';
 const HM_ICO={
@@ -494,11 +517,12 @@ const HM_ICO={
   pro:'<path d="M2 6h11v10H2z"/><path d="M13 9h5l3 3v4h-8"/><circle cx="6.5" cy="18" r="2"/><circle cx="17.5" cy="18" r="2"/>',
   det:'<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
   xl:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/>',
-  pdf:'<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>'};
+  pdf:'<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>',
+  mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>'};
 const HM_LIST=[
   {s:'Resumen',it:[['res','Resumen','Totales, tiendas y proveedores']]},
   {s:'Detalle',it:[['det','Productos','Todas las líneas, con filtros']]},
-  {s:'Exportar',it:[['xl','Excel','Descargar .xlsx'],['pdf','PDF','Descargar .pdf']]}];
+  {s:'Exportar',it:[['xl','Excel','Descargar .xlsx'],['pdf','PDF','Descargar .pdf'],['mail','Correo','Excel + PDF adjuntos']]}];
 let SEC=null;
 function hmDraw(){const hm=$('hm');if(!hm||!PL)return;let n=0;
   hm.innerHTML=`<div class="hm-hero"><div class="hm-hi">Menú</div><div class="hm-sub">Lista de empaque <b>${esc(PL.num)}</b> · elige qué quieres ver</div></div>`+
@@ -511,7 +535,7 @@ function hmInit(){SEC=null;
   $('bk').onclick=()=>{if(SEC)hmBack();else location.hash=TOK}}
 function hmBack(){SEC=null;try{history.replaceState(null,'','#'+TOK+'/'+PLID)}catch(e){}hmSecs(null);$('app').classList.remove('sec-one');$('hm').classList.remove('hide');$('bk').textContent='← Inicio';scrollTo(0,0)}
 function hmGo(k,btn){
-  if(k==='xl'||k==='pdf'){if(btn){btn.classList.add('busy');setTimeout(()=>btn.classList.remove('busy'),2500)}$(k).click();return}
+  if(k==='xl'||k==='pdf'||k==='mail'){if(btn){btn.classList.add('busy');setTimeout(()=>btn.classList.remove('busy'),2500)}$(k).click();return}
   SEC=k;try{history.replaceState(null,'','#'+TOK+'/'+PLID+'/'+k)}catch(e){}$('hm').classList.add('hide');hmSecs(k);$('app').classList.add('sec-one');$('bk').textContent='← Menú';scrollTo(0,0)}
 $('app').addEventListener('click',e=>{const b=e.target.closest('[data-hm]');if(b)hmGo(b.dataset.hm,b)});
 const FXS=[['arc','Media luna','Salen juntos, suben en arco y caen en su lugar'],['slide','Deslizar','Uno por uno desde la izquierda'],['roll','Rodar','Uno por uno, rodando como rueda'],['drop','Caída con rebote','Caen desde arriba y rebotan al llegar'],['zoom','Zoom','Crecen desde el centro, en cascada'],['flip','Giro 3D','Giran como una puerta y se abren'],['fan','Abanico','Se abren en abanico desde la esquina izquierda'],['fade','Transición suave','Aparece con desvanecimiento, sin movimiento'],['none','Sin animación','Entra directo; ideal para equipos lentos']];

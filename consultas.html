@@ -4561,6 +4561,8 @@ async function cmpShortCode(){
   if(!c)throw new Error('sin código');
   return CMPSHORT=c}
 async function cmpLink(){try{return new URL(CMP_SHORT_FILE,location.href).href+'#'+await cmpShortCode()}catch(e){return cmpUrl(await cmpTok())}}
+// Abre el portal del comprador directo en el correo con Excel + PDF (mismos archivos que descarga el comprador)
+async function cmpOpenMail(id){const w=window.open('','_blank'),e=EMB[id];try{if(e&&(!e.cmp||cmpPend(e))){toast('Publicando en el portal del comprador…');if(!await cmpPublish(id,true)){if(w)w.close();toast('No se pudo publicar en el portal; inténtalo de nuevo');return}}const u=(await cmpLink())+'/'+id+'/mail';if(w)w.location.href=u;else location.href=u}catch(x){if(w)w.close();toast('No se pudo abrir el portal del comprador')}}
 async function cmpCopy(msg,long){const url=long?cmpUrl(await cmpTok()):await cmpLink();try{await navigator.clipboard.writeText(url);toast(msg||(long?'✅ Link largo del comprador copiado':'✅ Link del comprador copiado'))}catch(e){prompt('Link para el comprador (cópialo y reenvíalo):',url)}}
 function cmpRc(e,strict){if(e.rcv)return e.rcv;if(e.rec)return{ts:e.rec.ts||0,by:e.rec.by||''};if(!e.desp)return null;const ps=embCalc(e).cams.flatMap(c=>c.pals);if(!ps.length)return null;let ts=0,by='';
   for(const pl of ps){const p=PM[pl.id]||PMX[pl.id];if(!p)return strict?undefined:null;const r=p.rcv;if(!r)return null;if((r.ts||0)>=ts){ts=r.ts||0;by=r.by||''}}return{ts,by}}
@@ -4667,7 +4669,7 @@ async function cmpMsg(id){const e=EMB[id];if(!e||!e.desp)return;const c=embCalc(
   ov.addEventListener('click',ev=>{const b=ev.target.closest('[data-m]');if(ev.target===ov||(b&&b.dataset.m==='x')){ov.remove();return}
     if(b&&b.dataset.m==='c')clip(html,plain,'✅ Mensaje copiado: pégalo en tu correo');
     if(b&&b.dataset.m==='s')clip('',subj,'✅ Asunto copiado');
-    if(b&&b.dataset.m==='mail')embMailFiles(id,subj,plain);
+    if(b&&b.dataset.m==='mail')cmpOpenMail(id);
     if(b&&(b.dataset.m==='sh'||b.dataset.m==='xl'))embExcelShare(id,b.dataset.m==='sh',{title:subj,text:plain})});
   document.body.appendChild(ov)}
 // Ley: todo packing list despachado o recibido se publica solo (si nunca se publicó, o si cambió de Despachado a Recibido). El botón "Publicar" queda solo como respaldo.
@@ -4697,42 +4699,6 @@ async function embXlsx(eid,e){
   const name=`packing_list_${e.num}.xlsx`,b64=XLSX.write(wb,{type:'base64',bookType:'xlsx'});
   return{name,b64,uri:'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'+b64,rows}}
 function embXlsxFile(adj){const bin=atob(adj.b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new File([u],adj.name,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})}
-/* PDF de una tabla, hecho a mano (sin librerías): Helvetica, A4 horizontal, encabezado repetido por página. */
-function pdfSimple(o){
-  const PW=842,PH=595,M=24,LH=11,FS=7.5,CW=3.95,cols=o.cols,tw=cols.reduce((a,c)=>a+c.w,0);
-  const enc=x=>{let r='';for(const ch of String(x==null?'':x)){const k=ch.charCodeAt(0);r+=k<32?' ':k<256?ch:(ch==='–'||ch==='—')?'-':(ch==='·'||ch==='•')?'\xb7':'?'}return r};
-  const es=x=>enc(x).replace(/[\\()]/g,m=>'\\'+m),cut=(x,w)=>{x=enc(x);const n=Math.max(1,Math.floor((w-5)/CW));return x.length>n?x.slice(0,n-1)+'.':x};
-  const pages=[];let cur,y;
-  const hdr=()=>{let x=M;cur.push(`0.88 g ${M} ${y-3} ${tw} ${LH+2} re f 0 g`);cols.forEach(c=>{cur.push(`BT /F2 ${FS} Tf 1 0 0 1 ${c.al==='r'?x+c.w-3-enc(c.h).length*CW:x+2} ${y} Tm (${es(cut(c.h,c.w))}) Tj ET`);x+=c.w});y-=LH+4};
-  const np=()=>{cur=[];pages.push(cur);y=PH-M;cur.push(`BT /F2 12 Tf 1 0 0 1 ${M} ${y-8} Tm (${es(o.title)}) Tj ET`);y-=22;cur.push(`BT /F1 8 Tf 1 0 0 1 ${M} ${y} Tm (${es(o.sub||'')}) Tj ET`);y-=16;hdr()};
-  np();
-  for(const r of o.rows){if(y<M+16){np()}let x=M;
-    cols.forEach((c,i)=>{const t=cut(r[i],c.w);cur.push(`BT /F${r.b?2:1} ${FS} Tf 1 0 0 1 ${c.al==='r'?x+c.w-3-t.length*CW:x+2} ${y} Tm (${es(t)}) Tj ET`);x+=c.w});
-    cur.push(`0.85 G 0.3 w ${M} ${y-3} m ${M+tw} ${y-3} l S 0 G`);y-=LH}
-  pages.forEach((p,i)=>p.push(`BT /F1 7 Tf 1 0 0 1 ${PW-M-70} 12 Tm (Página ${i+1} de ${pages.length}) Tj ET`));
-  const ob=[];ob.push('<< /Type /Catalog /Pages 2 0 R >>');ob.push(`<< /Type /Pages /Kids [${pages.map((_,i)=>`${5+2*i} 0 R`).join(' ')}] /Count ${pages.length} >>`);
-  ob.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');ob.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
-  pages.forEach((p,i)=>{const st=p.join('\n');ob.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${6+2*i} 0 R >>`);ob.push(`<< /Length ${st.length} >>\nstream\n${st}\nendstream`)});
-  let out='%PDF-1.4\n';const off=[];ob.forEach((x,i)=>{off.push(out.length);out+=`${i+1} 0 obj\n${x}\nendobj\n`});
-  const xr=out.length;out+=`xref\n0 ${ob.length+1}\n0000000000 65535 f \n`+off.map(x=>String(x).padStart(10,'0')+' 00000 n \n').join('')+`trailer\n<< /Size ${ob.length+1} /Root 1 0 R >>\nstartxref\n${xr}\n%%EOF`;
-  const u=new Uint8Array(out.length);for(let i=0;i<out.length;i++)u[i]=out.charCodeAt(i)&255;return u}
-function embPdfFile(adj,e){const c=embCalc(e),rows=(adj.rows||[]).map(x=>[x.t,x.td||'',x.tr||'',x.cn||'',x.v,x.e||'',String(x.p||''),x.d||'',x.q||0]);
-  rows.push(Object.assign(['TOTAL','','','','','','','',(adj.rows||[]).reduce((a,x)=>a+(x.q||0),0)],{b:1}));
-  const u=pdfSimple({title:`Packing list ${e.num}`,sub:`${fdt(e.ts)} · ${c.cams.length} camión(es) · ${c.np} palets · ${fmt(c.tb)} bultos · ${fmt(c.tp)} piezas · ${c.st.length} tienda(s)`,
-    cols:[{h:'Tienda',w:50},{h:'Tipo doc.',w:62},{h:'N.º documento',w:70},{h:'Cliente',w:90},{h:'Proveedor',w:105},{h:'Estilo',w:60},{h:'Producto',w:52},{h:'Descripción',w:225},{h:'Piezas',w:42,al:'r'}],rows});
-  return new File([u],`packing_list_${e.num}.pdf`,{type:'application/pdf'})}
-/* Correo al comprador con Excel + PDF: en el celular abre el menú de compartir (Outlook/Gmail) con los 2 archivos, el asunto y el texto ya cargados;
-   en la computadora descarga los 2 archivos y abre el correo con destinatario, asunto y texto (hay que arrastrar los adjuntos: el navegador no puede adjuntar solo). */
-async function embMailFiles(id,subj,plain){const e=EMB[id];if(!e)return;
-  try{toast('Preparando Excel y PDF…');const adj=await embXlsxC(id,e),files=[embXlsxFile(adj),embPdfFile(adj,e)];
-    if(navigator.canShare&&navigator.canShare({files})){try{await navigator.share({files,title:subj,text:plain});return}catch(x){if(x&&x.name==='AbortError')return}}
-    for(const f of files){const u=URL.createObjectURL(f),a=document.createElement('a');a.href=u;a.download=f.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(u);a.remove()},1500);await new Promise(r=>setTimeout(r,700))}
-    let to='',cc='';try{const c0=(await get(R(db,PB+'/cfg'))).val()||{};to=(e.mail&&e.mail.to)||c0.to||'';cc=(e.mail&&e.mail.cc)||c0.cc||''}catch(x){}
-    const addr=z=>String(z||'').split(/[;,]\s*/).map(q=>q.trim()).filter(Boolean).map(encodeURIComponent).join(',');
-    let body=plain;if(plain.length>1800){body='(Pega aquí el mensaje: ya está copiado)';try{await navigator.clipboard.writeText(plain)}catch(x){body=plain.slice(0,1800)}}
-    toast('📎 Descargué el Excel y el PDF: arrástralos al correo que se abre');
-    setTimeout(()=>{location.href='mailto:'+addr(to)+'?'+(cc?'cc='+addr(cc)+'&':'')+'subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body)},900)}
-  catch(x){toast('No se pudieron preparar los adjuntos: '+(x.message||x))}}
 let MAILADJ=null;const XLC={};
 function embXlsxC(id,e){const c=XLC[id];if(c&&Date.now()-c.at<120000)return c.p;const p=embXlsx(id,e);XLC[id]={at:Date.now(),p};p.catch(()=>{delete XLC[id]});return p}
 // Excel del packing list: en el celular abre el menú de compartir (Correo/Outlook/WhatsApp) con el archivo ya adjunto; si no se puede, lo descarga.
