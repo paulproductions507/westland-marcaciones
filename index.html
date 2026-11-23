@@ -1327,6 +1327,8 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
             <div id="deuda-auto-wrap" style="background:var(--bg);border:1px solid #f59e0b;border-radius:var(--rs);padding:10px;margin-bottom:12px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><div style="font-size:12.5px;font-weight:800;color:#f59e0b">🔎 Pendientes detectados solos</div><button class="btn bg bsm" id="btn-deuda-auto-scan" type="button" style="width:auto;padding:4px 10px;font-size:11px">🔄 Revisar</button></div>
               <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Lee las marcaciones de los últimos domingos (o del día que elijas) y te muestra quién terminó sin completar las 8 h y todavía no está registrado. Deja marcados a quienes aplican y registra con un toque: ese día se les paga completo y lo que repongan después se descuenta solo de lo que deben. Usa el check “Almuerzo incluido” de abajo si ese domingo se les acredita el almuerzo.</div>
+              <div style="display:flex;gap:8px"><div class="fg" style="flex:1"><label>Entrada programada</label><input type="time" class="fc" id="deuda-prog-ini"></div><div class="fg" style="flex:1"><label>Salida programada</label><input type="time" class="fc" id="deuda-prog-fin"></div></div>
+              <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Si ese día el horario fue distinto al de su turno (ej. 10:00 → 18:00), ponlo aquí. Lo que deben = lo que faltó entre su salida real y la programada (+ entrada tarde). Vacío = usa el horario de su turno.</div>
               <div class="fg"><label>Revisar otro día (opcional)</label><input type="date" class="fc" id="deuda-auto-fecha"></div>
               <div id="deuda-auto"></div>
               <div style="font-size:11px;color:var(--mt);margin-top:10px;line-height:1.45">🧹 <strong>Limpiar lo anterior</strong> a este día: se dan por repuestas las deudas viejas (cada día sigue pagado completo, solo se quita lo pendiente).</div>
@@ -8867,17 +8869,29 @@ function sumaDiasISO(f,n){const d=new Date(f+'T00:00:00');d.setDate(d.getDate()+
 function hmDeDate(d){return fmtHoraEmerg(`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`);}
 function diaCortoDM(f){return `${DIA_LARGO[new Date(f+'T00:00:00').getDay()].toLowerCase().slice(0,3)} ${fmtFechaDM(f)}`;}
 // Cuánto debe un colaborador por un día: lo que falta para completar 8h según sus marcaciones reales
-async function calcularDeudaDia(user,fecha,almIncl,almCampo,almGlobal,histPre){
+async function calcularDeudaDia(user,fecha,almIncl,almCampo,almGlobal,histPre,progOv){
   const marks=((histPre||await getHist(fecha))||[]).filter(m=>m.user===user);
   if(!marks.length)return{ok:false,msg:'no tiene marcaciones ese día (no vino)'};
   const by={};marks.forEach(m=>{if(m&&m.tipo)by[m.tipo]=new Date(m.stamp);});
   if(!by['Entrada']||!by['Salida Final'])return{ok:false,msg:'le falta la Entrada o la Salida Final ese día'};
   const dow=new Date(fecha+'T00:00:00').getDay();
   const hrs=computeHrs(marks,almCfgForDia(almGlobal,dow));
-  const raw=Math.max(0,Math.round((8-hrs)*60));
+  // Lo que deben = lo que faltó entre su salida real y la salida PROGRAMADA (+ entrada tarde).
+  // Horario: el que indiques para ese día; si no, el de su turno. Sin horario → respaldo: 8 h de jornada.
+  let raw=Math.max(0,Math.round((8-hrs)*60)),progTxt='8 h de jornada';
+  try{
+    let ini=progOv&&progOv.ini,fin=progOv&&progOv.fin;
+    if(!(ini&&fin)){const b=await getHorarioBaseDe(user,fecha);ini=b&&b.inicio;fin=b&&b.fin;}
+    if(ini&&fin){
+      const mm=d=>d.getHours()*60+d.getMinutes();
+      const[ih,im]=ini.split(':').map(Number),[fh,fm]=fin.split(':').map(Number);
+      raw=Math.max(0,(fh*60+fm)-mm(by['Salida Final']))+Math.max(0,mm(by['Entrada'])-(ih*60+im));
+      progTxt=fmtHoraEmerg(ini)+' → '+fmtHoraEmerg(fin);
+    }
+  }catch(e){}
   const real=(by['Salida Alm.']&&by['Regreso Alm.'])?Math.round((by['Regreso Alm.']-by['Salida Alm.'])/60000):null;
   const credito=almIncl?(real!=null?real:Math.max(0,almCampo)):0;
-  return{ok:true,entrada:by['Entrada'],salida:by['Salida Final'],hrs,raw,credito,almFuente:real!=null?'real':'campo',debe:Math.max(0,raw-credito)};
+  return{ok:true,entrada:by['Entrada'],salida:by['Salida Final'],hrs,raw,credito,almFuente:real!=null?'real':'campo',debe:Math.max(0,raw-credito),progTxt};
 }
 // Minutos que se quedó de más un día (después de su salida programada), sin contar los que ya son
 // horas adelantadas (sábado habilitado) ni los ya registrados en el banco de horas adelantadas
@@ -9053,6 +9067,7 @@ async function escanearPendientesDeuda(){
     const[users,almGlobal,deudas]=await Promise.all([getUsers(),loadAlmuerzoGlobal(),loadDeudasTodos()]);
     const almIncl=!!(el('deuda-almincl')&&el('deuda-almincl').checked),almCampo=parseInt(el('deuda-alm')&&el('deuda-alm').value,10)||0;
     const lista=Object.values(users).filter(u=>u&&u.user&&!GERENTES.includes(u.user)).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+    const _pi=el('deuda-prog-ini')&&el('deuda-prog-ini').value,_pf=el('deuda-prog-fin')&&el('deuda-prog-fin').value,progOv=(_pi&&_pf)?{ini:_pi,fin:_pf}:null;
     _deudaAuto={};let html='';
     for(const fecha of fechas){
       const hist=(await getHist(fecha))||[];
@@ -9062,7 +9077,7 @@ async function escanearPendientesDeuda(){
       for(const u of lista){
         if((deudas[u.user]||{})[fecha])continue; // ya está registrado
         try{if(pagoFijoDelDia(u,dow,false,fecha))continue;}catch(e){}
-        const r=await calcularDeudaDia(u.user,fecha,almIncl,almCampo,almGlobal,hist);
+        const r=await calcularDeudaDia(u.user,fecha,almIncl,almCampo,almGlobal,hist,progOv);
         if(r.ok&&r.debe>0){
           const t=u.tarifa||{};const tar=(dow===0?(t.domingo||t.regular):t.regular)||20;
           rows.push({user:u.user,nombre:u.nombre||u.user,tar,...r});
@@ -9074,7 +9089,7 @@ async function escanearPendientesDeuda(){
         <div style="font-size:12px;font-weight:800;color:var(--ac);margin-bottom:6px">${escHtml(diaCortoDM(fecha))} — ${rows.length} sin completar las 8 h</div>
         ${rows.map(r=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--bd);font-size:11.5px">
           <input type="checkbox" class="deuda-auto-ck" data-user="${escHtml(r.user)}" checked style="width:auto;accent-color:var(--ac);flex:none">
-          <div style="flex:1;min-width:0"><strong style="font-size:12.5px">${escHtml(r.nombre)}</strong><div style="color:var(--mt);line-height:1.4">🕐 ${hmDeDate(r.entrada)} → ${hmDeDate(r.salida)} · trabajó ${fmtMinHM(Math.round(r.hrs*60))} · le faltan ${r.raw} min para las 8h${almIncl?` · 🍽 −${r.credito} min (${r.almFuente==='real'?'el que marcó':'el del campo'})`:''} · ≈ $${((r.debe/480)*r.tar).toFixed(2)}</div></div>
+          <div style="flex:1;min-width:0"><strong style="font-size:12.5px">${escHtml(r.nombre)}</strong><div style="color:var(--mt);line-height:1.4">🕐 ${hmDeDate(r.entrada)} → ${hmDeDate(r.salida)} · trabajó ${fmtMinHM(Math.round(r.hrs*60))} · le faltan ${r.raw} min (horario ${r.progTxt})${almIncl?` · 🍽 −${r.credito} min (${r.almFuente==='real'?'el que marcó':'el del campo'})`:''} · ≈ $${((r.debe/480)*r.tar).toFixed(2)}</div></div>
           <span style="white-space:nowrap"><input type="number" class="fc deuda-auto-min" data-user="${escHtml(r.user)}" min="0" value="${r.debe}" style="width:64px;display:inline-block;padding:4px 6px"> min</span></div>`).join('')}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
           <div class="fg" style="flex:1;min-width:130px"><label>Reponen desde</label><input type="date" class="fc deuda-auto-ini" value="${sumaDiasISO(fecha,1)}"></div>
@@ -9147,13 +9162,14 @@ el('btn-deuda-calc')?.addEventListener('click',async()=>{
   try{
     const almGlobal=await loadAlmuerzoGlobal();
     const rows=[];
-    for(const u of sel)rows.push({...u,...(await calcularDeudaDia(u.user,fecha,almIncl,almCampo,almGlobal))});
+    const _pi=el('deuda-prog-ini')&&el('deuda-prog-ini').value,_pf=el('deuda-prog-fin')&&el('deuda-prog-fin').value,progOv=(_pi&&_pf)?{ini:_pi,fin:_pf}:null;
+    for(const u of sel)rows.push({...u,...(await calcularDeudaDia(u.user,fecha,almIncl,almCampo,almGlobal,undefined,progOv))});
     _deudaCalc={fecha,almIncl,rows};
     box.innerHTML=`<div style="font-size:11.5px;font-weight:800;color:var(--ac);margin-bottom:6px">${escHtml(diaCortoDM(fecha))} — lo que deben${almIncl?' (con almuerzo incluido)':''}</div>`
       +rows.map(r=>r.ok?`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;margin-bottom:6px;font-size:11.5px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><strong style="font-size:13px">${escHtml(r.nombre)}</strong>
           <span style="white-space:nowrap">Debe: <input type="number" class="fc" min="0" data-deuda-min="${escHtml(r.user)}" value="${r.debe}" style="width:72px;display:inline-block;padding:4px 6px"> min</span></div>
-        <div style="color:var(--mt);margin-top:4px;line-height:1.4">🕐 ${hmDeDate(r.entrada)} → ${hmDeDate(r.salida)} · trabajó ${fmtMinHM(Math.round(r.hrs*60))} · le faltan ${r.raw} min para las 8h${almIncl?`<br>🍽 almuerzo acreditado: −${r.credito} min (${r.almFuente==='real'?'el que marcó':'el del campo'}) → debe ${r.debe} min`:''}</div></div>`
+        <div style="color:var(--mt);margin-top:4px;line-height:1.4">🕐 ${hmDeDate(r.entrada)} → ${hmDeDate(r.salida)} · trabajó ${fmtMinHM(Math.round(r.hrs*60))} · le faltan ${r.raw} min (horario ${r.progTxt})${almIncl?`<br>🍽 almuerzo acreditado: −${r.credito} min (${r.almFuente==='real'?'el que marcó':'el del campo'}) → debe ${r.debe} min`:''}</div></div>`
         :`<div style="font-size:11.5px;color:#ff6b6b;margin-bottom:6px">⛔ ${escHtml(r.nombre)}: ${escHtml(r.msg)}</div>`).join('');
     if(st)st.textContent='';
   }catch(e){box.innerHTML='<div style="font-size:12px;color:#ff6b6b">⛔ No se pudo calcular: '+escHtml(e.message||e)+'</div>';}
