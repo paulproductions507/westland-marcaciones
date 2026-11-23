@@ -1324,6 +1324,14 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
               <div id="deuda-resumen"></div>
             </div>
             <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Es lo <strong>contrario a las horas adelantadas</strong>: el colaborador trabajó menos de su jornada (ej. un domingo de 11 a 5) y <strong>debe esas horas a la empresa</strong>. Eliges el día, el sistema lee sus marcaciones y calcula cuánto deben para completar las 8 horas. Si ese día llevaba <strong>almuerzo incluido</strong>, se les acredita el almuerzo. Desde la fecha de inicio que elijas, cada minuto que se queden <strong>después de su hora de salida</strong> va pagando la deuda (de la más antigua a la más reciente) y <strong>no genera pago extra</strong>. El saldo se calcula en vivo con sus marcaciones reales. <strong>Ese día NO se descuenta</strong> (Vista RRHH, correos y reportes lo pagan como jornada completa; solo tú lo ves marcado en Vista Semanal). Lo que reponen después no genera pago extra, así que queda en cero y todo queda registrado para auditoría.</div>
+            <div id="deuda-auto-wrap" style="background:var(--bg);border:1px solid #f59e0b;border-radius:var(--rs);padding:10px;margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><div style="font-size:12.5px;font-weight:800;color:#f59e0b">🔎 Pendientes detectados solos</div><button class="btn bg bsm" id="btn-deuda-auto-scan" type="button" style="width:auto;padding:4px 10px;font-size:11px">🔄 Revisar</button></div>
+              <div style="font-size:11px;color:var(--mt);margin-bottom:8px;line-height:1.45">Lee las marcaciones de los últimos domingos (o del día que elijas) y te muestra quién terminó sin completar las 8 h y todavía no está registrado. Deja marcados a quienes aplican y registra con un toque: ese día se les paga completo y lo que repongan después se descuenta solo de lo que deben. Usa el check “Almuerzo incluido” de abajo si ese domingo se les acredita el almuerzo.</div>
+              <div class="fg"><label>Revisar otro día (opcional)</label><input type="date" class="fc" id="deuda-auto-fecha"></div>
+              <div id="deuda-auto"></div>
+              <div style="font-size:11px;color:var(--mt);margin-top:10px;line-height:1.45">🧹 <strong>Limpiar lo anterior</strong> a este día: se dan por repuestas las deudas viejas (cada día sigue pagado completo, solo se quita lo pendiente).</div>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:4px"><input type="date" class="fc" id="deuda-limpiar-fecha" style="flex:1"><button class="btn bg bsm" id="btn-deuda-limpiar" type="button" style="width:auto">🧹 Limpiar</button></div>
+            </div>
             <div style="font-size:11.5px;font-weight:800;color:var(--ac);margin:4px 0">Registrar horas que deben</div>
             <div class="fg"><label>Día en que quedaron debiendo</label><input type="date" class="fc" id="deuda-fecha"></div>
             <label style="display:flex;align-items:center;gap:10px;padding:6px 2px;font-size:14px;text-transform:none;letter-spacing:0;color:var(--tx);cursor:pointer"><input type="checkbox" id="deuda-almincl" style="width:auto;accent-color:var(--ac)"> 🍽 Almuerzo incluido (se les acredita)</label>
@@ -3834,10 +3842,21 @@ async function reaplicarTurnoTodosDias(t){
 }
 // Semana que se está programando en el panel de Turnos (lunes ISO) y sus datos
 let _turnosSemLun=null,_turnosSemData={},_turnosSemLibres={};
+// FERIADOS: mapa {fecha:descripcion} con caché corto. Un feriado NO programado a mano deja a todos libres (la plantilla no aplica).
+let _turnosFer={},_ferMapCache={t:0,v:{}};
+async function cargarFerMapa(fresh){
+  if(!fresh&&Date.now()-_ferMapCache.t<30000)return _ferMapCache.v;
+  const v={};
+  try{const fs=await get(R(db,FER));if(fs.exists())Object.values(fs.val()||{}).forEach(f=>{if(f&&f.fecha)v[f.fecha]=f.desc||'Feriado';});}catch(e){console.warn('cargarFerMapa',e);}
+  _ferMapCache={t:Date.now(),v};_turnosFer=v;return v;
+}
+async function feriadoDeFecha(f){const m=await cargarFerMapa();return m[f]!==undefined?(m[f]||'Feriado'):null;}
+async function feriadosEnRango(f1,f2){const m=await cargarFerMapa();const out=[];for(let f=f1;f<=f2;f=addDaysISO(f,1)){if(m[f]!==undefined)out.push({f,desc:m[f]||'Feriado'});}return out;}
 // Asignación EFECTIVA de un día: lo programado para esa semana, o la plantilla base si aún no se programó
 function efectivoDia(sem,dia){
   const m={};
   if(diaProgramado(sem,dia)){Object.keys(sem[dia]).forEach(u=>{if(u!=='_meta'&&sem[dia][u])m[u]=sem[dia][u];});return m;}
+  try{const _fF=_turnosSemLun?addDaysISO(_turnosSemLun,DIA_KEYS.indexOf(dia)):null;if(_fF&&_turnosFer[_fF]!==undefined)return m;}catch(e){} // FERIADO sin programar a mano: la plantilla no aplica
   Object.keys(_turnosCache||{}).forEach(tid=>{
     const t=_turnosCache[tid];const dd=migrarTurnoADias(t);
     Object.keys(dd[dia]||{}).forEach(u=>{m[u]={tid,nombre:t.nombre,inicio:t.inicio,fin:t.fin,almInicio:t.almInicio||null,duracionAlm:t.duracionAlm!==undefined?t.duracionAlm:60};});
@@ -3863,7 +3882,7 @@ function turnoDiaChecklistHTML(id,dia,dias,colab,dueno){
   return colab.map(u=>{
     const checked=!!chk[u.user];
     const otro=(!checked&&dueno[u.user])?dueno[u.user]:null;
-    const libre=libresDia[u.user]?` <span style="color:var(--dn);font-size:10.5px;font-weight:700">🏖 día libre</span>`:'';
+    const libre=(libresDia[u.user]?` <span style="color:var(--dn);font-size:10.5px;font-weight:700">🏖 día libre</span>`:'')+((!checked&&_turnosFer[addDaysISO(_turnosSemLun,DIA_KEYS.indexOf(dia))]!==undefined)?` <span style="color:#ffb020;font-size:10.5px;font-weight:700">🎉 libre (feriado)</span>`:'');
     return `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;padding:2px 0"><input type="checkbox" class="turno-dia-ck" data-id="${id}" data-dia="${dia}" data-user="${u.user}" ${checked?'checked':''} style="width:auto;accent-color:var(--ac);flex-shrink:0"><span>${u.nombre}${otro?` <span style="color:var(--wn);font-size:10.5px">(en: ${otro})</span>`:''}${libre}</span></label>`;
   }).join('')||'<div style="font-size:12px;color:var(--mt)">Sin colaboradores.</div>';
 }
@@ -3878,7 +3897,9 @@ function renderTurnoDiaBody(id){
   const badge=prog
     ?`<div style="font-size:11px;color:var(--ac);margin-bottom:6px">✓ Programado para el ${fmtFechaCorta(fechaISO)} — por <strong>${meta.por||'?'}</strong> · ${fmtFechaHora(meta.ts)}</div>`
     :`<div style="font-size:11px;color:var(--wn);margin-bottom:6px">⚠ ${fmtFechaCorta(fechaISO)} aún NO está programado: se muestra el horario base. Al guardar, queda programado solo para esa fecha.</div>`;
-  body.innerHTML=badge+`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 12px;max-height:260px;overflow-y:auto;margin-bottom:8px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px">`
+  const ferDia=_turnosFer[fechaISO];
+  const ferBanner=ferDia!==undefined?`<div style="font-size:11.5px;background:rgba(255,176,32,.12);border:1px solid #ffb020;border-radius:var(--rs);color:#ffb020;padding:7px 10px;margin-bottom:8px;line-height:1.45">🎉 <strong>FERIADO${ferDia&&ferDia!=='Feriado'?' — '+escHtml(ferDia):''}</strong>: por defecto todos quedan <strong>libres</strong> y el turno automático no se aplica. Si marcas a alguien aquí, te voy a pedir confirmación.</div>`:'';
+  body.innerHTML=ferBanner+badge+`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 12px;max-height:260px;overflow-y:auto;margin-bottom:8px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px">`
     +turnoDiaChecklistHTML(id,dia,dias,_turnosColabCache,dueno)
     +`</div><button class="btn bp bsm btn-guardar-turno-dia" data-id="${id}" data-dia="${dia}" style="width:auto">💾 Guardar ${DIA_NOMBRE[dia]} ${fmtFechaCorta(fechaISO)}</button>`;
   body.querySelector('.btn-guardar-turno-dia').addEventListener('click',()=>guardarTurnoDia(id,dia));
@@ -3925,6 +3946,7 @@ function renderBarraSemanaTurnos(){
 async function cargarSemanaTurnos(){
   if(!_turnosSemLun)_turnosSemLun=semanaPorDefectoLun();
   const lun=_turnosSemLun,dom=addDaysISO(lun,6);
+  await cargarFerMapa(true);
   try{const r=await Promise.all([getTurnosSemana(lun,true),loadDiasLibresRango(lun,dom)]);_turnosSemData=r[0];_turnosSemLibres=r[1];}
   catch(e){_turnosSemData={};_turnosSemLibres={};}
   renderBarraSemanaTurnos();
@@ -3991,7 +4013,7 @@ async function datosSemanaTodos(lun){
   const dias=DIA_KEYS.map((dk,i)=>{
     const f=addDaysISO(lun,i),prog=diaProgramado(semD,dk),asig={};
     if(prog){Object.keys(semD[dk]).forEach(u=>{if(u!=='_meta'&&semD[dk][u])asig[u]=semD[dk][u];});}
-    else Object.keys(turnos).forEach(tid=>{const dd=migrarTurnoADias(turnos[tid]);Object.keys(dd[dk]||{}).forEach(u=>{asig[u]={tid,nombre:turnos[tid].nombre,inicio:turnos[tid].inicio,fin:turnos[tid].fin};});});
+    else if(fer[f]===undefined)Object.keys(turnos).forEach(tid=>{const dd=migrarTurnoADias(turnos[tid]);Object.keys(dd[dk]||{}).forEach(u=>{asig[u]={tid,nombre:turnos[tid].nombre,inicio:turnos[tid].inicio,fin:turnos[tid].fin};});});
     return{dk,f,prog,meta:prog?semD[dk]._meta:null,asig,libres:libres[f]||{}};
   });
   const ids=ordenarIdsTurnos(turnos);
@@ -4250,6 +4272,7 @@ async function renderTcolSemana(){
   body.innerHTML='<div style="font-size:12px;color:var(--mt)">Cargando...</div>';
   try{
     const dias=DIA_KEYS.map((_,i)=>addDaysISO(lun,i));
+    await cargarFerMapa();
     const[mapas,libresRango]=await Promise.all([
       Promise.all(dias.map(f=>turnoMapParaFecha(f))),
       loadDiasLibresRango(lun,dom)
@@ -4260,6 +4283,7 @@ async function renderTcolSemana(){
       const turnos=mapas[i].turnos;
       let txt;
       if(libre)txt=`<span style="color:var(--wn);font-weight:800">🏖 Día libre</span>`;
+      else if(!info&&_turnosFer[f]!==undefined)txt=`<span style="color:#ffb020;font-weight:800">🎉 Feriado — libre</span>`;
       else if(info)txt=`<strong>${escHtml(info.nombre)}</strong> <span style="color:var(--mt)">${turnos[info.tid]?`(${turnos[info.tid].inicio}→${turnos[info.tid].fin})`:''}</span>`;
       else txt=`<span style="color:var(--mt)">Sin turno asignado</span>`;
       return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span style="color:var(--mt);font-weight:700">${DIA_NOMBRE[DIA_KEYS[i]]} ${new Date(f+'T00:00:00').getDate()}</span><span>${txt}</span></div>`;
@@ -4290,6 +4314,14 @@ async function guardarTurnoDia(id,dia){
   const libresDia=_turnosSemLibres[fechaISO]||{};
   const conLibre=[...checked].filter(u=>libresDia[u]);
   if(conLibre.length&&!confirm(`Estos colaboradores tienen DÍA LIBRE el ${fmtFechaCorta(fechaISO)}: ${conLibre.join(', ')}.\n¿Igual los quieres en ${t.nombre}?`))return;
+  {const ferDesc=_turnosFer[fechaISO];
+    if(ferDesc!==undefined){
+      const nuevosFer=[...checked].filter(u=>!prevChecked.has(u));
+      if(nuevosFer.length){
+        const nmF={};(_turnosColabCache||[]).forEach(u=>{nmF[u.user]=u.nombre;});
+        if(!confirm(`🎉 ATENCIÓN: el ${fmtFechaCorta(fechaISO)} es FERIADO${ferDesc&&ferDesc!=='Feriado'?' ('+ferDesc+')':''}.\n\nPor defecto todos los colaboradores quedan libres ese día. ¿Seguro que quieres agregar a:\n• ${nuevosFer.map(u=>nmF[u]||u).join('\n• ')}\n\nen ${t.nombre}?`))return;
+      }
+    }}
   const btn=body.querySelector('.btn-guardar-turno-dia');if(btn){btn.disabled=true;btn.textContent='Guardando...';}
   try{
     // Día completo de esa semana: se conserva lo de los otros turnos, se quita a quien se destildó y se pasa a este turno a quien se marcó
@@ -5176,7 +5208,7 @@ async function loadFeriados(){try{const s=await get(R(db,FER)),c=el('fer-list');
     const b=document.createElement('button');b.type='button';b.textContent='🗑 Eliminar';b.className='btn bd bsm';b.style.cssText='width:auto;font-size:11px;padding:3px 9px;flex:none';
     b.addEventListener('click',async()=>{
       if(!confirm(`¿Eliminar el feriado del ${f.fecha}${f.desc?' ('+f.desc+')':''}?\n\nEse día volverá a contarse como día normal en los reportes y pagos.`))return;
-      try{await remove(R(db,`${FER}/${k}`));await addLog(`Feriado eliminado: ${f.fecha}${f.desc?' ('+f.desc+')':''} (por ${CU})`);toast('Feriado eliminado ✓','ok');loadFeriados();}catch(e){toast('No se pudo eliminar','err');}
+      try{await remove(R(db,`${FER}/${k}`));await addLog(`Feriado eliminado: ${f.fecha}${f.desc?' ('+f.desc+')':''} (por ${CU})`);_ferMapCache.t=0;toast('Feriado eliminado ✓','ok');loadFeriados();}catch(e){toast('No se pudo eliminar','err');}
     });
     d.appendChild(sp);d.appendChild(b);c.appendChild(d);
   });}catch(e){}}
@@ -5281,7 +5313,7 @@ el('btn-save-horario').addEventListener('click',async()=>{
 });
 el('btn-add-fer').addEventListener('click',async()=>{
   const f=el('fer-fecha').value;if(!f){toast('Seleccione fecha','err');return;}
-  try{await set(R(db,`${FER}/f_${Date.now()}`),{fecha:f,desc:el('fer-desc').value||''});toast('Feriado ✓','ok');el('fer-fecha').value='';el('fer-desc').value='';loadFeriados();}catch(e){toast('Error','err');}
+  try{await set(R(db,`${FER}/f_${Date.now()}`),{fecha:f,desc:el('fer-desc').value||''});_ferMapCache.t=0;toast('Feriado ✓','ok');el('fer-fecha').value='';el('fer-desc').value='';loadFeriados();}catch(e){toast('Error','err');}
 });
 el('btn-save-gps').addEventListener('click',async()=>{const lat=el('g-lat').value,lon=el('g-lon').value;if(!lat||!lon){toast('Ingrese lat/lon','err');return;}try{await set(R(db,GPS),{lat:parseFloat(lat),lon:parseFloat(lon)});toast('GPS guardado ✓','ok');checkGPS();}catch(e){toast('Error','err');}});
 el('btn-cap-gps').addEventListener('click',async()=>{toast('Obteniendo...');try{const pos=await getPos();el('g-lat').value=pos.coords.latitude.toFixed(6);el('g-lon').value=pos.coords.longitude.toFixed(6);toast('Capturado ✓','ok');}catch(e){toast('No se pudo','err');}});
@@ -6851,10 +6883,12 @@ async function renderMiTurno(semana){
       const dias=migrarTurnoADias(t);
       Object.keys(dias).forEach(dia=>{if(dias[dia]&&dias[dia][CU])nombreTurnoDia[dia]=t.nombre;});
     });
+    const ferM=await cargarFerMapa();
     const filas=await Promise.all(DIA_KEYS.map(async(dia,i)=>{
       const fechaISO=isoD(isoDateAdd(lun,i));
       const libres=libresRango[fechaISO]||{};
       if(libres[CU])return{dia,label:DIA_NOMBRE[dia],estado:'libre'};
+      if(ferM[fechaISO]!==undefined&&turnoSemanaDe(semD,dia,CU)===undefined)return{dia,label:DIA_NOMBRE[dia],estado:'libre'}; // feriado sin programar: libre
       const otro=MITURNO_OTRO_DEPTO[CU];
       if(otro&&otro.dias.includes(dia))return{dia,label:DIA_NOMBRE[dia],estado:'otrodepto',texto:otro.texto};
       // Turno PROGRAMADO para esa semana concreta: manda sobre la plantilla base
@@ -7219,6 +7253,7 @@ async function turnoMapParaFecha(fechaISO){
     Object.keys(map).forEach(u=>delete map[u]); // ese día ya quedó fijado en firme para la semana: la plantilla no aplica
     Object.keys(semD[dn]).forEach(u=>{if(u!=='_meta'&&semD[dn][u])map[u]={tid:semD[dn][u].tid,nombre:semD[dn][u].nombre};});
   }
+  if(!diaProgramado(semD,dn)){try{if(await feriadoDeFecha(fechaISO))Object.keys(map).forEach(u=>delete map[u]);}catch(e){}} // feriado: el turno automático no aplica
   return{map,turnos};
 }
 // Repinta el selector de turnos y le pone a cada checkbox su turno de ese día (data-tid), luego
@@ -7286,6 +7321,7 @@ el('btn-gen').addEventListener('click',async()=>{
   if(!users.length){toast('Selecciona al menos un usuario','err');return;}
   if(!f1||!f2){toast('Seleccione fechas','err');return;}
   if(f2<f1){toast('"Hasta" no puede ser anterior a "Desde"','err');return;}
+  try{const _fr=await feriadosEnRango(f1,f2);if(_fr.length&&!confirm(`🎉 ATENCIÓN: entre ${f1} y ${f2} hay FERIADO(S):\n${_fr.map(x=>'• '+x.f+' — '+x.desc).join('\n')}\n\nPor defecto los colaboradores están libres esos días. ¿Generar marcaciones igualmente?`))return;}catch(e){}
   const allU=await getUsers();
   const nombres=users.map(u=>(allU[u]&&allU[u].nombre)||u);
   const motivo=genMotivoFinal();
@@ -8831,8 +8867,8 @@ function sumaDiasISO(f,n){const d=new Date(f+'T00:00:00');d.setDate(d.getDate()+
 function hmDeDate(d){return fmtHoraEmerg(`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`);}
 function diaCortoDM(f){return `${DIA_LARGO[new Date(f+'T00:00:00').getDay()].toLowerCase().slice(0,3)} ${fmtFechaDM(f)}`;}
 // Cuánto debe un colaborador por un día: lo que falta para completar 8h según sus marcaciones reales
-async function calcularDeudaDia(user,fecha,almIncl,almCampo,almGlobal){
-  const marks=((await getHist(fecha))||[]).filter(m=>m.user===user);
+async function calcularDeudaDia(user,fecha,almIncl,almCampo,almGlobal,histPre){
+  const marks=((histPre||await getHist(fecha))||[]).filter(m=>m.user===user);
   if(!marks.length)return{ok:false,msg:'no tiene marcaciones ese día (no vino)'};
   const by={};marks.forEach(m=>{if(m&&m.tipo)by[m.tipo]=new Date(m.stamp);});
   if(!by['Entrada']||!by['Salida Final'])return{ok:false,msg:'le falta la Entrada o la Salida Final ese día'};
@@ -8867,7 +8903,7 @@ async function extraDiaReponer(user,fecha,histMap,almGlobal,banco){
 }
 // Reparte lo que se quedó de más cada día entre las deudas (la más antigua primero) desde su fecha de inicio
 async function calcularRepago(user,deudas,banco,histMap,almGlobal){
-  const lista=Object.values(deudas||{}).filter(x=>x&&x.fecha&&(+x.min||0)>0).map(x=>({...x,min:+x.min,pagado:0,abonos:[]})).sort((a,c)=>a.fecha.localeCompare(c.fecha));
+  const lista=Object.values(deudas||{}).filter(x=>x&&x.fecha&&(+x.min||0)>0).map(x=>({...x,min:+x.min,pagado:x.saldada?+x.min:0,abonos:[]})).sort((a,c)=>a.fecha.localeCompare(c.fecha));
   if(!lista.length)return lista;
   const hoy=isoD(new Date());
   const desde=lista.reduce((m,x)=>{const i=x.inicio||sumaDiasISO(x.fecha,1);return i<m?i:m;},'9999-12-31');
@@ -8895,7 +8931,7 @@ function condonadoDeudaDia(deudasMap,user,k,tar,montoAuto){
   if(!(condMin>0)||!(tar>0))return{monto:0,min:0,deuda:+x.min||0};
   const falta=+(tar-montoAuto).toFixed(2);
   if(!(falta>0))return{monto:0,min:0,deuda:+x.min||0};
-  const monto=+Math.min(falta,(condMin/(8*60))*tar).toFixed(2);
+  const monto=falta; // el día con horas por reponer se paga COMPLETO (tarifa del día): no se recorta por los minutos registrados
   return{monto,min:Math.round(monto/tar*8*60),deuda:+x.min||0};
 }
 // Saldo de la deuda (traza permanente): por cada día con adelanto, cuánto debía, cuánto ya repuso y
@@ -8949,7 +8985,7 @@ async function renderDeudaResumen(){
           const r=x.min-x.pagado;
           return `<div style="font-size:11px;color:var(--mt);margin-top:4px;line-height:1.4">
             <div style="display:flex;justify-content:space-between;gap:6px;align-items:flex-start"><span>🗓 ${escHtml(diaCortoDM(x.fecha))} — debía ${x.min} min${x.almIncl?` <span style="opacity:.8">(almuerzo ${x.almMin} min incluido)</span>`:''} · empieza a reponer ${escHtml(fmtFechaDM(x.inicio||sumaDiasISO(x.fecha,1)))}${x.hasta?` hasta ${escHtml(fmtFechaDM(x.hasta))}`:''}${x.motivo?' — '+escHtml(x.motivo):''}</span>
-            <button type="button" class="btn bg bsm" data-deuda-del="${escHtml(f.uid)}|${escHtml(x.fecha)}" style="width:auto;padding:2px 7px;font-size:10px;flex:none">🗑</button></div>
+            <span style="display:flex;gap:4px;flex:none">${r>0?`<button type="button" class="btn bp bsm" data-deuda-saldar="${escHtml(f.uid)}|${escHtml(x.fecha)}" style="width:auto;padding:2px 7px;font-size:10px">✔ Saldar</button>`:''}<button type="button" class="btn bg bsm" data-deuda-del="${escHtml(f.uid)}|${escHtml(x.fecha)}" style="width:auto;padding:2px 7px;font-size:10px">🗑</button></span></div>
             ${x.abonos.map(a=>`<div style="color:#00c9a7;font-size:10.5px">   ➖ ${escHtml(diaCortoDM(a.fecha))}: repuso ${a.min} min</div>`).join('')}
             <div style="font-weight:700;color:${r>0?'#f59e0b':'#00c9a7'}">${r>0?`Resta ${r} min (${fmtMinHM(r)})`:'✅ Repuesta'}</div></div>`;
         }).join('')}
@@ -8975,6 +9011,111 @@ document.addEventListener('click',async e=>{
     toast('Quitado ✓','ok');renderDeudaResumen();
   }catch(err){toast('⛔ No se pudo quitar','err');}
 });
+// ── ✔ SALDAR / 🧹 LIMPIAR: dar por repuesta una deuda sin borrarla (el día sigue pagándose completo) ──
+async function saldarDeudas(pares,motivoLog){
+  for(const [user,fecha] of pares){
+    const ref=R(db,`${DEUDA}/${user}/${fecha}`);
+    const sn=await get(ref);if(!sn.exists())continue;
+    await set(ref,{...sn.val(),saldada:true,saldadaPor:CU,saldadaTs:Date.now()});
+  }
+  await addLog(`⏱ Horas por reponer SALDADAS (${motivoLog}): ${pares.map(([u,f])=>u+' '+f).join(', ')} (por ${CU})`);
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest&&e.target.closest('[data-deuda-saldar]');if(!b)return;
+  const[user,fecha]=String(b.dataset.deudaSaldar||'').split('|');if(!user||!fecha)return;
+  if(!confirm(`¿Dar por REPUESTAS las horas de ${user} del ${fecha}?\n\nEl día sigue pagado completo; solo se quita lo pendiente.`))return;
+  try{await saldarDeudas([[user,fecha]],'manual');toast('✔ Saldada ✓','ok');renderDeudaResumen();}
+  catch(err){toast('⛔ No se pudo saldar','err');}
+});
+el('btn-deuda-limpiar')?.addEventListener('click',async()=>{
+  const corte=el('deuda-limpiar-fecha').value;
+  if(!corte){toast('Elige el día: se limpian las deudas anteriores a ese día','err');return;}
+  try{
+    const[all,users]=await Promise.all([loadDeudasTodos(),getUsers()]);
+    const pares=[];
+    Object.entries(all).forEach(([u,ds])=>Object.entries(ds||{}).forEach(([f,x])=>{if(x&&f<corte&&!x.saldada)pares.push([u,f]);}));
+    if(!pares.length){toast('No hay deudas anteriores a ese día por limpiar ✅','ok');return;}
+    const nom=u=>((users[u]&&users[u].nombre)||u);
+    if(!confirm(`Se darán por REPUESTAS ${pares.length} deuda(s) anteriores al ${corte}:\n${pares.map(([u,f])=>'• '+nom(u)+' — '+f).join('\n')}\n\nCada día sigue pagado completo; solo se quita lo pendiente. ¿Continuar?`))return;
+    await saldarDeudas(pares,`limpieza anterior a ${corte}`);
+    toast(`🧹 ${pares.length} limpiada(s) ✓`,'ok');renderDeudaResumen();
+  }catch(err){toast('⛔ No se pudo limpiar: '+(err.message||err),'err');}
+});
+// ── 🔎 DETECCIÓN AUTOMÁTICA de quién terminó sin completar las 8 h (sobre todo domingos) ──────────
+let _deudaAuto={};
+function ultimosDomingosISO(n){const out=[],d=new Date();d.setHours(0,0,0,0);while(d.getDay()!==0)d.setDate(d.getDate()-1);for(let i=0;i<n;i++){out.push(isoD(d));d.setDate(d.getDate()-7);}return out;}
+async function escanearPendientesDeuda(){
+  const box=el('deuda-auto');if(!box)return;
+  const manual=(el('deuda-auto-fecha')&&el('deuda-auto-fecha').value||'').trim();
+  const fechas=manual?[manual]:ultimosDomingosISO(4);
+  box.innerHTML='<div style="font-size:12px;color:var(--mt)">Revisando marcaciones…</div>';
+  try{
+    const[users,almGlobal,deudas]=await Promise.all([getUsers(),loadAlmuerzoGlobal(),loadDeudasTodos()]);
+    const almIncl=!!(el('deuda-almincl')&&el('deuda-almincl').checked),almCampo=parseInt(el('deuda-alm')&&el('deuda-alm').value,10)||0;
+    const lista=Object.values(users).filter(u=>u&&u.user&&!GERENTES.includes(u.user)).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+    _deudaAuto={};let html='';
+    for(const fecha of fechas){
+      const hist=(await getHist(fecha))||[];
+      if(!hist.length)continue;
+      const dow=new Date(fecha+'T00:00:00').getDay();
+      const rows=[];
+      for(const u of lista){
+        if((deudas[u.user]||{})[fecha])continue; // ya está registrado
+        try{if(pagoFijoDelDia(u,dow,false,fecha))continue;}catch(e){}
+        const r=await calcularDeudaDia(u.user,fecha,almIncl,almCampo,almGlobal,hist);
+        if(r.ok&&r.debe>0){
+          const t=u.tarifa||{};const tar=(dow===0?(t.domingo||t.regular):t.regular)||20;
+          rows.push({user:u.user,nombre:u.nombre||u.user,tar,...r});
+        }
+      }
+      if(!rows.length)continue;
+      _deudaAuto[fecha]={rows,almIncl};
+      html+=`<div class="deuda-auto-dia" data-fecha="${fecha}" style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 10px;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:800;color:var(--ac);margin-bottom:6px">${escHtml(diaCortoDM(fecha))} — ${rows.length} sin completar las 8 h</div>
+        ${rows.map(r=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--bd);font-size:11.5px">
+          <input type="checkbox" class="deuda-auto-ck" data-user="${escHtml(r.user)}" checked style="width:auto;accent-color:var(--ac);flex:none">
+          <div style="flex:1;min-width:0"><strong style="font-size:12.5px">${escHtml(r.nombre)}</strong><div style="color:var(--mt);line-height:1.4">🕐 ${hmDeDate(r.entrada)} → ${hmDeDate(r.salida)} · trabajó ${fmtMinHM(Math.round(r.hrs*60))} · le faltan ${r.raw} min para las 8h${almIncl?` · 🍽 −${r.credito} min (${r.almFuente==='real'?'el que marcó':'el del campo'})`:''} · ≈ $${((r.debe/480)*r.tar).toFixed(2)}</div></div>
+          <span style="white-space:nowrap"><input type="number" class="fc deuda-auto-min" data-user="${escHtml(r.user)}" min="0" value="${r.debe}" style="width:64px;display:inline-block;padding:4px 6px"> min</span></div>`).join('')}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          <div class="fg" style="flex:1;min-width:130px"><label>Reponen desde</label><input type="date" class="fc deuda-auto-ini" value="${sumaDiasISO(fecha,1)}"></div>
+          <div class="fg" style="flex:1;min-width:130px"><label>Hasta</label><input type="date" class="fc deuda-auto-fin" value="${sumaDiasISO(fecha,6)}"></div>
+        </div>
+        <div class="fg"><label>Motivo</label><input type="text" class="fc deuda-auto-mot" value="Salió antes del horario regular"></div>
+        <button type="button" class="btn bp bsm deuda-auto-reg" data-fecha="${fecha}" style="width:auto;margin-top:2px">💾 Registrar seleccionados</button>
+      </div>`;
+    }
+    box.innerHTML=html||'<div style="font-size:12px;color:var(--mt)">✅ No hay pendientes sin registrar en '+(manual?'ese día':'los últimos domingos')+'.</div>';
+  }catch(e){box.innerHTML='<div style="font-size:12px;color:#ff6b6b">⛔ No se pudo revisar: '+escHtml(e.message||e)+'</div>';console.warn('escanearPendientesDeuda',e);}
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest&&e.target.closest('.deuda-auto-reg');if(!b)return;
+  const card=b.closest('.deuda-auto-dia'),fecha=b.dataset.fecha,info=_deudaAuto[fecha];if(!card||!info)return;
+  const inicio=card.querySelector('.deuda-auto-ini').value||sumaDiasISO(fecha,1);
+  const hasta=card.querySelector('.deuda-auto-fin').value||sumaDiasISO(inicio,5);
+  const motivo=(card.querySelector('.deuda-auto-mot').value||'').trim()||'Salió antes del horario regular';
+  if(inicio<=fecha){toast('El inicio de la reposición debe ser después del día en que quedaron debiendo','err');return;}
+  if(hasta<inicio){toast('El día “hasta” no puede ser antes del inicio','err');return;}
+  const sel=[...card.querySelectorAll('.deuda-auto-ck')].filter(c=>c.checked).map(c=>c.dataset.user);
+  if(!sel.length){toast('Marca al menos un colaborador','err');return;}
+  b.disabled=true;
+  try{
+    const ok=[];
+    for(const uid of sel){
+      const r=info.rows.find(x=>x.user===uid);if(!r)continue;
+      const inp=card.querySelector(`.deuda-auto-min[data-user="${CSS.escape(uid)}"]`);
+      const min=parseInt(inp?inp.value:r.debe,10);if(!(min>0))continue;
+      await set(R(db,`${DEUDA}/${uid}/${fecha}`),{fecha,minBruto:r.raw,almIncl:!!info.almIncl,almMin:info.almIncl?r.credito:0,min,inicio,hasta,motivo,por:CU,ts:Date.now(),auto:true});
+      ok.push(`${r.nombre} ${min} min`);
+    }
+    if(ok.length){await addLog(`⏱ Horas por reponer registradas (detección automática, ${fecha}, reponen ${inicio} → ${hasta}${info.almIncl?', almuerzo incluido':''}): ${ok.join(', ')} — "${motivo}" (por ${CU})`);toast('⏱ Registrado ✓','ok');}
+    else toast('No se registró a nadie','err');
+    renderDeudaResumen();escanearPendientesDeuda();
+  }catch(err){toast('⛔ No se pudo registrar: '+(err.message||err),'err');}
+  b.disabled=false;
+});
+el('btn-deuda-auto-scan')?.addEventListener('click',escanearPendientesDeuda);
+el('deuda-auto-fecha')?.addEventListener('change',escanearPendientesDeuda);
+document.querySelector('[data-ac="ac-deuda"]')?.addEventListener('click',()=>setTimeout(()=>{const lf=el('deuda-limpiar-fecha');if(lf&&!lf.value)lf.value=ultimosDomingosISO(1)[0];escanearPendientesDeuda();},150));
 // Lista de colaboradores con casillas (igual que en el banco de horas adelantadas)
 function renderDeudaChecks(){
   const sel=el('deuda-users'),box=el('deuda-users-checks'),info=el('deuda-users-info');
@@ -9019,7 +9160,10 @@ el('btn-deuda-calc')?.addEventListener('click',async()=>{
   btn.disabled=false;
 });
 el('btn-deuda-add')?.addEventListener('click',async()=>{
-  const fecha=el('deuda-fecha').value,inicio=el('deuda-inicio').value,hasta=el('deuda-hasta').value,motivo=(el('deuda-motivo').value||'').trim(),st=el('deuda-status');
+  const fecha=el('deuda-fecha').value,st=el('deuda-status');
+  const inicio=el('deuda-inicio').value||(fecha?sumaDiasISO(fecha,1):'');
+  const hasta=el('deuda-hasta').value||(inicio?sumaDiasISO(inicio,5):'');
+  const motivo=(el('deuda-motivo').value||'').trim()||'Horas por reponer';
   if(!_deudaCalc||_deudaCalc.fecha!==fecha){toast('Primero pulsa “Calcular lo que deben” para ese día','err');return;}
   if(!inicio||!hasta||!motivo){toast('Completa el día de inicio, el día “hasta” y el motivo','err');return;}
   if(hasta<inicio){toast('El día “hasta” no puede ser antes del día de inicio','err');return;}
@@ -9151,6 +9295,7 @@ el('btn-man').addEventListener('click',async()=>{
   const val=el('man-dt').value,user=el('man-user').value,segManual=el('man-seg').value,tipoSel=el('man-tipo').value;
   if(!val||!user){toast('Seleccione fecha y usuario','err');return;}
   const d=new Date(val);if(isNaN(d)){toast('Fecha inválida','err');return;}
+  try{const _fd=await feriadoDeFecha(isoD(d));if(_fd&&!confirm(`🎉 ATENCIÓN: el ${isoD(d)} es FERIADO (${_fd}).\n\nPor defecto los colaboradores están libres ese día. ¿Registrar la marcación igualmente?`))return;}catch(e){}
   // Si el input datetime-local no traía segundos (algunos navegadores los omiten), se aplican los del campo "Segundos"
   if(d.getSeconds()===0&&segManual!==''&&!isNaN(parseInt(segManual))){
     d.setSeconds(Math.max(0,Math.min(59,parseInt(segManual))));
